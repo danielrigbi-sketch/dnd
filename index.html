@@ -3,55 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CritRoll - DND Dice Room</title>
+    <title>CritRoll - היכל הגורל</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body id="main-body">
 
     <div id="login-screen">
-        <h1>חדר קוביות D&D</h1>
+        <h1>היכל הגורל</h1>
         <div class="login-card">
-            <input type="text" id="player-name" placeholder="שם השחקן" autocomplete="off">
-            <input type="text" id="char-name" placeholder="שם הדמות" autocomplete="off">
+            <input type="text" id="player-name" placeholder="זהות השחקן" autocomplete="off">
+            <input type="text" id="char-name" placeholder="שם הגיבור/ה" autocomplete="off">
             <div style="display:flex; justify-content:center; align-items:center; gap:10px; color:white; margin-bottom:15px;">
-                <span>צבע קובייה:</span> <input type="color" id="user-color" value="#e74c3c" style="width:40px; height:40px; border:none; background:none; cursor:pointer;">
+                <span>צבע קובייה:</span> 
+                <input type="color" id="user-color" value="#e74c3c" style="width:40px; height:40px; border:none; background:none; cursor:pointer;">
             </div>
-            <button id="join-btn" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">הצטרף למשחק</button>
+            <button id="join-btn" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">התחל בהרפתקה</button>
         </div>
     </div>
 
     <div id="game-screen">
         <div id="side-panel">
-            <h3 style="margin:0 0 10px 0; font-size: 16px;">סדר יוזמה</h3>
+            <h3 style="margin:0 0 10px 0; font-size: 16px;">סדר הקרב</h3>
             <div id="init-list"></div>
             <div style="margin-top:auto; display:flex; flex-direction:column; gap:5px;">
-                <div style="font-size:11px; opacity:0.5;">מחוברים: <span id="online-count">0</span></div>
-                <button id="reset-init-btn" style="background:#444; font-size:10px; padding:5px; color:white; border:none; border-radius:4px; cursor:pointer;">איפוס קרב (DM)</button>
+                <div style="font-size:11px; opacity:0.8;">הרפתקנים בחדר: <span id="online-count">0</span></div>
+                <button id="reset-init-btn" style="background:#444; font-size:10px; padding:5px; color:white; border:none; border-radius:4px; cursor:pointer;">לסיים את הקרב (DM)</button>
                 <button id="mute-btn" style="background:#222; font-size:10px; padding:5px; color:white; border:none; border-radius:4px; cursor:pointer;">🔇 השתק</button>
             </div>
         </div>
         <div id="main-area">
             <div id="log-container">
-                <div style="font-weight:bold; border-bottom:1px solid #ccc; margin-bottom:5px;">לוג הטלות:</div>
-                <div id="roll-log"></div>
-            </div>
-            <div id="dice-stage">
-                <div id="dice-visual" class="dice-container" style="display: none;"><svg id="dice-svg" viewBox="0 0 100 100"></svg><div id="result-text"></div></div>
-                <div id="empty-state" style="color:#555; font-style: italic;">ממתין להטלה...</div>
-            </div>
-            <div id="controls">
-                <input type="number" id="mod-input" value="0">
-                <button class="dice-btn" data-type="d4">D4</button>
-                <button class="dice-btn" data-type="d6">D6</button>
-                <button class="dice-btn" data-type="d8">D8</button>
-                <button class="dice-btn" data-type="d10">D10</button>
-                <button class="dice-btn" data-type="d12">D12</button>
-                <button class="dice-btn" data-type="d20">D20</button>
-                <button id="init-btn" style="background:#27ae60;">⚡</button>
-            </div>
-        </div>
-    </div>
-
-    <script type="module" src="app.js"></script>
-</body>
-</html>
+                <div style="font-weight:bold; border-bottom:1px solid rgba(0,0,0,0.1); margin-bottom:5px;">דברי הימים (לוג):</div>
+                <div id="roll
