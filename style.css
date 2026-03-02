@@ -8,8 +8,8 @@ body {
     overflow: hidden; 
     height: 100dvh; 
     background-color: #2c1e16; 
-    /* תמונת שולחן עץ אמיתית ובדוקה! */
-    background-image: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2000'); 
+    /* התמונה החדשה שבחרת */
+    background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); 
     background-size: cover; 
     background-position: center; 
 }
