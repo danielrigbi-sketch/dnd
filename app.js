@@ -14,9 +14,9 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 let pName, cName, pColor, isMuted = false, isCooldown = false, canAnimate = false;
 
-// הגדרת סאונדים עם טעינה מראש
-const rollSound = new Audio('https://actions.google.com/sounds/v1/foley/rolling_dice.ogg');
-const critSound = new Audio('https://actions.google.com/sounds/v1/cartoon/cartoon_success_fanfare.ogg');
+// שימוש בקבצים המקומיים שהעלית
+const rollSound = new Audio('./dice.mp3');
+const critSound = new Audio('./crit.mp3');
 rollSound.preload = 'auto';
 critSound.preload = 'auto';
 
@@ -35,15 +35,9 @@ document.getElementById('join-btn').onclick = () => {
     pColor = document.getElementById('user-color').value;
     if (!pName || !cName) return alert("מלא פרטים!");
 
-    // "דריכת" הסאונדים על ידי ניגון והשתקה מיידית - פותר בעיות Autoplay
-    const unlockSound = (sound) => {
-        sound.play().then(() => {
-            sound.pause();
-            sound.currentTime = 0;
-        }).catch(e => console.log("Audio unlock interaction required"));
-    };
-    unlockSound(rollSound);
-    unlockSound(critSound);
+    // "דריכת" הסאונדים לעקיפת חסימות Autoplay
+    rollSound.play().then(() => { rollSound.pause(); rollSound.currentTime = 0; }).catch(()=>{});
+    critSound.play().then(() => { critSound.pause(); critSound.currentTime = 0; }).catch(()=>{});
 
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
@@ -96,9 +90,8 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     const log = document.getElementById('roll-log');
     const stage = document.getElementById('dice-visual'); 
     const body = document.getElementById('main-body');
-    
-    // הסתרת טקסט ה-"ממתין"
     const emptyState = document.getElementById('empty-state');
+    
     if (emptyState) emptyState.style.display = 'none';
 
     stage.style.display = "block"; 
@@ -106,16 +99,15 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     stage.classList.remove('crit-glow'); 
     body.classList.remove('screen-shake');
 
-    // לוגיקת סאונד
     if (!isMuted) {
         if (data.type === 'd20' && data.res === 20) {
             critSound.currentTime = 0;
-            critSound.play().catch(e => console.log("Playback blocked"));
+            critSound.play().catch(e => console.log("Sound error:", e));
             stage.classList.add('crit-glow'); 
             body.classList.add('screen-shake');
         } else {
             rollSound.currentTime = 0;
-            rollSound.play().catch(e => console.log("Playback blocked"));
+            rollSound.play().catch(e => console.log("Sound error:", e));
         }
     }
 
