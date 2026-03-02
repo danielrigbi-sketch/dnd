@@ -1,9 +1,8 @@
 :root { 
-    --primary: #c0392b; /* אדום עמוק ודרמטי יותר */
+    --primary: #c0392b; /* אדום עמוק ודרמטי */
     --bg: #1a1a1a; 
     --parchment-top: #fdf5d3; 
     --parchment-bottom: #e8d596;
-    --glass-bg: rgba(17, 17, 17, 0.85); /* צבע שקוף למחצה לפאנלים */
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -15,12 +14,13 @@ body {
     overflow: hidden; 
     height: 100dvh; 
     background-color: #2c1e16; 
+    /* התמונה המעולה שבחרת! */
     background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); 
     background-size: cover; 
     background-position: center; 
 }
 
-/* מסך התחברות עם רקע מטושטש ואווירה קסומה */
+/* מסך התחברות - שמור על הקיים המצוין */
 #login-screen { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
 .login-card { background: linear-gradient(145deg, rgba(44, 62, 80, 0.9), rgba(30, 42, 54, 0.9)); border: 1px solid rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 16px; width: 100%; max-width: 350px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); }
 
@@ -30,9 +30,52 @@ input::placeholder { color: rgba(255,255,255,0.5); }
 
 #game-screen { display: none; height: 100%; flex-direction: row; }
 
-/* פאנל צדדי שקוף למחצה (כדי לראות את העץ) */
-#side-panel { width: 260px; background: var(--glass-bg); backdrop-filter: blur(5px); border-left: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 15px; flex-shrink: 0; box-shadow: -5px 0 15px rgba(0,0,0,0.5); z-index: 10; }
+/* פאנל צדדי - שחזור ה-LAYOUT המקורי */
+#side-panel { width: 260px; background: rgba(17, 17, 17, 0.85); backdrop-filter: blur(5px); border-left: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; padding: 15px; flex-shrink: 0; box-shadow: -5px 0 15px rgba(0,0,0,0.5); z-index: 10; }
 .tracker-item { background: rgba(0,0,0,0.4); margin-bottom: 8px; padding: 10px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border-right: 4px solid var(--primary); transition: transform 0.2s; }
 .tracker-item:hover { transform: translateX(-3px); background: rgba(0,0,0,0.6); }
 
-#main-area { flex-grow: 1; display
+#main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+
+/* רקע אזור ההטלה */
+#dice-stage { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.85) 100%); }
+
+/* קופסת הלוג - שחזור ה-LAYOUT המקורי */
+#log-container { background: linear-gradient(135deg, var(--parchment-top), var(--parchment-bottom)); color: #2c1e16; padding: 15px; border-radius: 8px; text-align: right; box-shadow: 5px 5px 20px rgba(0,0,0,0.6); border: 1px solid #d4c382; font-size: 13px; max-height: 40%; overflow-y: auto; pointer-events: auto; }
+.log-entry { border-bottom: 1px solid rgba(0,0,0,0.1); padding: 6px 0; }
+.log-time { font-size: 11px; color: #7f8c8d; font-family: monospace; }
+
+/* אזור כפתורים - שחזור ה-LAYOUT המקורי בתחתית */
+#controls { padding: 15px; background: rgba(17, 17, 17, 0.85); backdrop-filter: blur(5px); display: flex; justify-content: center; gap: 10px; border-top: 2px solid var(--primary); flex-wrap: wrap; z-index: 110; align-items: center; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
+
+/* כפתורים - שחזור הסטייל העדין */
+.dice-btn, #init-btn { padding: 12px 18px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 15px; transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.3); text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+.dice-btn:hover:not(:disabled), #init-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.5); filter: brightness(1.1); }
+.dice-btn:active:not(:disabled), #init-btn:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+button:disabled { background: #444; opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+#mod-input { width: 55px; height: 44px; text-align: center; background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; font-size: 16px; font-weight: bold; transition: all 0.3s; }
+#mod-input:focus { outline: none; border-color: var(--primary); background: rgba(0,0,0,0.7); }
+
+/* הקוביות עצמן - שחזור ה-LAYOUT המקורי */
+.dice-container { position: relative; filter: drop-shadow(0 15px 25px rgba(0,0,0,0.7)); }
+#result-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 55px; font-weight: 900; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 0 15px rgba(0,0,0,0.8); color: white; }
+
+.shake { animation: shakeAnim 0.5s infinite; }
+@keyframes shakeAnim { 0%, 100% {transform:rotate(0)} 25% {transform:rotate(10deg)} 75% {transform:rotate(-10deg)} }
+
+.screen-shake { animation: screenShake 0.4s; }
+@keyframes screenShake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(6px, 6px); } 50% { transform: translate(-6px, -6px); } }
+
+.crit-glow { filter: drop-shadow(0 0 30px #f1c40f) drop-shadow(0 0 10px #f39c12); }
+
+/* התאמה למובייל */
+@media (max-width: 768px) { 
+    #game-screen { flex-direction: column; } 
+    #side-panel { width: 100%; height: auto; max-height: 130px; border-left: none; border-bottom: 1px solid rgba(255,255,255,0.1); flex-direction: row; padding: 10px; overflow-x: auto; align-items: center; } 
+    #init-list { display: flex; gap: 10px; flex-grow: 1; } 
+    .tracker-item { margin-bottom: 0; min-width: 120px; }
+    #log-container { padding: 10px; } 
+    #controls { padding: 10px; gap: 6px; }
+    .dice-btn, #init-btn { flex-grow: 1; padding: 10px; font-size: 14px; } 
+}
