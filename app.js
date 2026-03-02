@@ -14,7 +14,6 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 let pName, cName, pColor, isMuted = false, isCooldown = false, canAnimate = false;
 
-// טעינת הקבצים מהשרת שלך
 const rollSound = new Audio('./dice.mp3');
 const critSound = new Audio('./crit.mp3');
 const failSound = new Audio('./fail.mp3');
@@ -32,9 +31,8 @@ document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
     pColor = document.getElementById('user-color').value;
-    if (!pName || !cName) return alert("מלא פרטים!");
+    if (!pName || !cName) return alert("אפילו לוחם צריך שם. מלא את הפרטים!");
 
-    // "דריכת" סאונד - קריטי להפעלה בדפדפנים
     const prep = (s) => { s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(()=>{}); };
     [rollSound, critSound, failSound].forEach(prep);
 
@@ -47,7 +45,12 @@ document.getElementById('join-btn').onclick = () => {
 };
 
 window.roll = (type, isInit = false) => {
-    if (isCooldown && !isInit) return;
+    // שיפור המיקרו-קופי לזמן המתנה
+    if (isCooldown && !isInit) {
+        console.log("סבלנות, הקוביות צריכות לנוח!");
+        return;
+    }
+    
     if (!isInit) {
         isCooldown = true;
         const btns = document.querySelectorAll('.dice-btn');
@@ -68,7 +71,10 @@ document.getElementById('mute-btn').onclick = () => {
     document.getElementById('mute-btn').innerText = isMuted ? "🔊 הפעל" : "🔇 השתק"; 
 };
 
-document.getElementById('reset-init-btn').onclick = () => { if(confirm("לאפס יוזמה?")) remove(ref(db, 'initiative')); };
+document.getElementById('reset-init-btn').onclick = () => { 
+    if(confirm("לסיים את הקרב ולנקות רשימה?")) remove(ref(db, 'initiative')); 
+};
+
 document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => window.roll(btn.getAttribute('data-type')); });
 document.getElementById('init-btn').onclick = () => { const total = window.roll('d20', true); set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); };
 
@@ -79,7 +85,7 @@ onValue(ref(db, 'initiative'), s => {
     s.forEach(c => items.push({name: c.key, ...c.val()}));
     items.sort((a,b) => b.score - a.score).forEach(i => {
         const div = document.createElement('div'); div.className = 'tracker-item'; div.style.borderRightColor = i.color;
-        div.innerHTML = `<span>${i.name}(${i.playerName || ''})</span><b>${i.score}</b>`; list.appendChild(div);
+        div.innerHTML = `<span>${i.name}</span><b>${i.score}</b>`; list.appendChild(div);
     });
 });
 
@@ -97,7 +103,6 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     stage.classList.remove('crit-glow'); 
     body.classList.remove('screen-shake');
 
-    // לוגיקת סאונד מתוקנת - בחירה בלעדית בסאונד אחד
     if (!isMuted) {
         if (data.type === 'd20' && data.res === 20) {
             critSound.currentTime = 0;
@@ -105,11 +110,9 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
             stage.classList.add('crit-glow'); 
             body.classList.add('screen-shake');
         } else if (data.type === 'd20' && data.res === 1) {
-            // ניגון סאונד כישלון בלבד בתוצאה 1
             failSound.currentTime = 0;
             failSound.play().catch(()=>{});
         } else {
-            // גלגול רגיל - יתנגן רק אם זה לא 1 ולא 20
             rollSound.currentTime = 0;
             rollSound.play().catch(()=>{});
         }
@@ -123,9 +126,12 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
         stage.classList.remove('shake'); 
         const total = data.res + (data.mod || 0);
         document.getElementById('result-text').innerText = total;
+        
+        // שינוי מבנה השורה בלוג
         const entry = document.createElement('div'); 
         entry.className = 'log-entry';
-        entry.innerHTML = `<span class="log-time">[${data.time}]</span> <b>${data.char}(${data.player})</b>: ${total} <small>(${data.res}+${data.mod})</small>`;
+        entry.innerHTML = `<span class="log-time">[${data.time}]</span> <b>${data.char}</b> הטילה וקיבלה: <b>${total}</b> <small>(${data.res}+${data.mod})</small>`;
+        
         log.prepend(entry); 
         if (log.children.length > 20) log.removeChild(log.lastChild);
     }, 600);
