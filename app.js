@@ -14,6 +14,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 let pName, cName, pColor, isMuted = false, isCooldown = false, canAnimate = false;
 
+// סאונדים מקומיים
 const rollSound = new Audio('./dice.mp3');
 const critSound = new Audio('./crit.mp3');
 const failSound = new Audio('./fail.mp3');
@@ -27,26 +28,35 @@ const diceShapes = {
     d20: '<polygon points="50,5 95,25 95,75 50,95 5,75 5,25" stroke="black" fill-opacity="0.95"/>'
 };
 
+// תיקון כפתור הכניסה
 document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
     pColor = document.getElementById('user-color').value;
-    if (!pName || !cName) return alert("אפילו לוחם צריך שם. מלא את הפרטים!");
 
+    if (!pName || !cName) {
+        alert("אפילו לוחם צריך שם. מלא את הפרטים!");
+        return;
+    }
+
+    // "דריכת" סאונדים
     const prep = (s) => { s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(()=>{}); };
     [rollSound, critSound, failSound].forEach(prep);
 
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
+    
     const userRef = ref(db, 'online/' + pName + '_' + cName);
     set(userRef, true);
     onDisconnect(userRef).remove();
+    
+    // מניעת אנימציות של גלגולים ישנים בכניסה
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
 window.roll = (type, isInit = false) => {
-    // שיפור המיקרו-קופי לזמן המתנה
     if (isCooldown && !isInit) {
+        // מיקרו-קופי להספמה (מופיע בקונסול או כהודעה שקטה)
         console.log("סבלנות, הקוביות צריכות לנוח!");
         return;
     }
@@ -57,8 +67,10 @@ window.roll = (type, isInit = false) => {
         btns.forEach(b => b.disabled = true);
         setTimeout(() => { isCooldown = false; btns.forEach(b => b.disabled = false); }, 3000);
     }
+
     const res = Math.floor(Math.random() * parseInt(type.replace('d', ''))) + 1;
     const mod = parseInt(document.getElementById('mod-input').value) || 0;
+    
     push(ref(db, 'rolls'), { 
         player: pName, char: cName, type, res, mod, color: pColor,
         time: new Date().toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' })
@@ -75,17 +87,28 @@ document.getElementById('reset-init-btn').onclick = () => {
     if(confirm("לסיים את הקרב ולנקות רשימה?")) remove(ref(db, 'initiative')); 
 };
 
-document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => window.roll(btn.getAttribute('data-type')); });
-document.getElementById('init-btn').onclick = () => { const total = window.roll('d20', true); set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); };
+document.querySelectorAll('.dice-btn').forEach(btn => { 
+    btn.onclick = () => window.roll(btn.getAttribute('data-type')); 
+});
 
-onValue(ref(db, 'online'), s => document.getElementById('online-count').innerText = s.numChildren());
+document.getElementById('init-btn').onclick = () => { 
+    const total = window.roll('d20', true); 
+    set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); 
+};
+
+onValue(ref(db, 'online'), s => document.getElementById('online-count').innerText = s.numChildren() || 0);
+
 onValue(ref(db, 'initiative'), s => {
     const list = document.getElementById('init-list');
-    list.innerHTML = ""; const items = [];
+    list.innerHTML = ""; 
+    const items = [];
     s.forEach(c => items.push({name: c.key, ...c.val()}));
     items.sort((a,b) => b.score - a.score).forEach(i => {
-        const div = document.createElement('div'); div.className = 'tracker-item'; div.style.borderRightColor = i.color;
-        div.innerHTML = `<span>${i.name}</span><b>${i.score}</b>`; list.appendChild(div);
+        const div = document.createElement('div'); 
+        div.className = 'tracker-item'; 
+        div.style.borderRightColor = i.color;
+        div.innerHTML = `<span>${i.name}</span><b>${i.score}</b>`; 
+        list.appendChild(div);
     });
 });
 
@@ -95,14 +118,16 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     const log = document.getElementById('roll-log');
     const stage = document.getElementById('dice-visual'); 
     const body = document.getElementById('main-body');
+    const emptyState = document.getElementById('empty-state');
     
-    if (document.getElementById('empty-state')) document.getElementById('empty-state').style.display = 'none';
+    if (emptyState) emptyState.style.display = 'none';
 
     stage.style.display = "block"; 
     stage.classList.add('shake'); 
     stage.classList.remove('crit-glow'); 
     body.classList.remove('screen-shake');
 
+    // לוגיקת סאונד בלעדית
     if (!isMuted) {
         if (data.type === 'd20' && data.res === 20) {
             critSound.currentTime = 0;
@@ -110,29 +135,3 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
             stage.classList.add('crit-glow'); 
             body.classList.add('screen-shake');
         } else if (data.type === 'd20' && data.res === 1) {
-            failSound.currentTime = 0;
-            failSound.play().catch(()=>{});
-        } else {
-            rollSound.currentTime = 0;
-            rollSound.play().catch(()=>{});
-        }
-    }
-
-    document.getElementById('dice-svg').innerHTML = diceShapes[data.type];
-    document.getElementById('dice-svg').firstChild.style.fill = data.color;
-    document.getElementById('result-text').innerText = "";
-    
-    setTimeout(() => {
-        stage.classList.remove('shake'); 
-        const total = data.res + (data.mod || 0);
-        document.getElementById('result-text').innerText = total;
-        
-        // שינוי מבנה השורה בלוג
-        const entry = document.createElement('div'); 
-        entry.className = 'log-entry';
-        entry.innerHTML = `<span class="log-time">[${data.time}]</span> <b>${data.char}</b> הטילה וקיבלה: <b>${total}</b> <small>(${data.res}+${data.mod})</small>`;
-        
-        log.prepend(entry); 
-        if (log.children.length > 20) log.removeChild(log.lastChild);
-    }, 600);
-});
