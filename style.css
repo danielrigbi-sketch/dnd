@@ -1,6 +1,19 @@
 :root { --primary: #e74c3c; --bg: #1a1a1a; --parchment: #f3e5ab; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body { font-family: 'Segoe UI', sans-serif; color: white; margin: 0; overflow: hidden; height: 100dvh; background-color: #2c1e16; background-image: url('https://images.unsplash.com/photo-1518640467707-6811f4a6ab73?auto=format&fit=crop&w=1950&q=80'); background-size: cover; background-position: center; }
+
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    color: white; 
+    margin: 0; 
+    overflow: hidden; 
+    height: 100dvh; 
+    background-color: #2c1e16; 
+    /* קישור מתוקן לשולחן עץ אמיתי */
+    background-image: url('https://images.unsplash.com/photo-1597075687490-8f673c6c17f6?q=80&w=2000'); 
+    background-size: cover; 
+    background-position: center; 
+}
+
 #login-screen { position: fixed; inset: 0; background: #2c3e50; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
 .login-card { background: #34495e; padding: 25px; border-radius: 12px; width: 100%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; border: none; font-size: 16px; text-align: center; }
@@ -8,7 +21,10 @@ input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; bor
 #side-panel { width: 260px; background: #111; border-left: 2px solid #333; display: flex; flex-direction: column; padding: 15px; flex-shrink: 0; }
 .tracker-item { background: #222; margin-bottom: 8px; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; border-right: 4px solid var(--primary); }
 #main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+
+/* אזור ההטלה שקוף למחצה כדי לראות את העץ */
 #dice-stage { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%); }
+
 #log-container { position: absolute; top: 15px; left: 15px; width: 240px; background: var(--parchment); color: #000; padding: 12px; border-radius: 8px; text-align: right; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); font-size: 13px; max-height: 40%; overflow-y: auto; z-index: 90; pointer-events: auto; }
 .log-entry { border-bottom: 1px solid rgba(0,0,0,0.1); padding: 5px 0; }
 .log-time { font-size: 11px; color: #666; font-family: monospace; }
