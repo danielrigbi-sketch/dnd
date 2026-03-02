@@ -152,8 +152,7 @@ document.getElementById('init-btn').onclick = () => { const total = window.roll(
             s.forEach(c => items.push({name: c.key, ...c.val()}));
             items.sort((a,b) => b.score - a.score).forEach(i => {
                 const div = document.createElement('div'); div.className = 'tracker-item'; div.style.borderRightColor = i.color;
-                div.innerHTML = `<span>${i.name}</span><b>${i.score}</b>`; list.appendChild(div);
-            });
+div.innerHTML = `<span>${i.name}(${i.playerName || ''})</span><b>${i.score}</b>`; list.appendChild(div);            });
         });
 
         onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
