@@ -19,12 +19,12 @@ const rollSound = new Audio('https://actions.google.com/sounds/v1/foley/rolling_
 const critSound = new Audio('https://actions.google.com/sounds/v1/cartoon/cartoon_success_fanfare.ogg');
 
 const diceShapes = {
-    d4: '<polygon points="50,5 95,85 5,85" stroke="black" fill-opacity="0.2"/>',
-    d6: '<rect x="15" y="15" width="70" height="70" rx="8" stroke="black" fill-opacity="0.2"/>',
-    d8: '<polygon points="50,5 90,50 50,95 10,50" stroke="black" fill-opacity="0.2"/>',
-    d10: '<polygon points="50,5 95,45 50,95 5,45" stroke="black" fill-opacity="0.2"/>',
-    d12: '<polygon points="50,5 90,30 75,85 25,85 10,30" stroke="black" fill-opacity="0.2"/>',
-    d20: '<polygon points="50,5 95,25 95,75 50,95 5,75 5,25" stroke="black" fill-opacity="0.2"/>'
+    d4: '<polygon points="50,5 95,85 5,85" stroke="black" fill-opacity="0.95"/>',
+    d6: '<rect x="15" y="15" width="70" height="70" rx="8" stroke="black" fill-opacity="0.95"/>',
+    d8: '<polygon points="50,5 90,50 50,95 10,50" stroke="black" fill-opacity="0.95"/>',
+    d10: '<polygon points="50,5 95,45 50,95 5,45" stroke="black" fill-opacity="0.95"/>',
+    d12: '<polygon points="50,5 90,30 75,85 25,85 10,30" stroke="black" fill-opacity="0.95"/>',
+    d20: '<polygon points="50,5 95,25 95,75 50,95 5,75 5,25" stroke="black" fill-opacity="0.95"/>'
 };
 
 document.getElementById('join-btn').onclick = () => {
