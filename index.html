@@ -129,7 +129,7 @@
                 isCooldown = true;
                 const btns = document.querySelectorAll('.dice-btn');
                 btns.forEach(b => b.disabled = true);
-                setTimeout(() => { isCooldown = false; btns.forEach(b => b.disabled = false); }, 10000);
+                setTimeout(() => { isCooldown = false; btns.forEach(b => b.disabled = false); }, 3000);
             }
             const res = Math.floor(Math.random() * parseInt(type.replace('d', ''))) + 1;
             const mod = parseInt(document.getElementById('mod-input').value) || 0;
@@ -144,8 +144,7 @@
         document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "הפעל סאונד" : "השתק סאונד"; };
         document.getElementById('reset-init-btn').onclick = () => { if(confirm("לאפס יוזמה?")) remove(ref(db, 'initiative')); };
         document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => window.roll(btn.getAttribute('data-type')); });
-        document.getElementById('init-btn').onclick = () => { const total = window.roll('d20', true); set(ref(db, 'initiative/' + cName), { score: total, color: pColor }); };
-
+document.getElementById('init-btn').onclick = () => { const total = window.roll('d20', true); set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); };
         onValue(ref(db, 'online'), s => document.getElementById('online-count').innerText = s.numChildren());
         onValue(ref(db, 'initiative'), s => {
             const list = document.getElementById('init-list');
