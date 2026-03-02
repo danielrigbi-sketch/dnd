@@ -8,7 +8,7 @@ body {
     overflow: hidden; 
     height: 100dvh; 
     background-color: #2c1e16; 
-    /* התמונה החדשה שבחרת */
+    /* התמונה שבחרת */
     background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); 
     background-size: cover; 
     background-position: center; 
@@ -18,25 +18,51 @@ body {
 .login-card { background: #34495e; padding: 25px; border-radius: 12px; width: 100%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; border: none; font-size: 16px; text-align: center; }
 #game-screen { display: none; height: 100%; flex-direction: row; }
-#side-panel { width: 260px; background: #111; border-left: 2px solid #333; display: flex; flex-direction: column; padding: 15px; flex-shrink: 0; }
-.tracker-item { background: #222; margin-bottom: 8px; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; border-right: 4px solid var(--primary); }
-#main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 
-/* אזור ההטלה שקוף למחצה כדי לראות את העץ */
+/* שיפור 2: אפקט זכוכית מטושטשת לפאנל הצדדי */
+#side-panel { width: 260px; background: rgba(17, 17, 17, 0.75); border-left: 2px solid #333; display: flex; flex-direction: column; padding: 15px; flex-shrink: 0; backdrop-filter: blur(5px); }
+.tracker-item { background: rgba(34, 34, 34, 0.8); margin-bottom: 8px; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; border-right: 4px solid var(--primary); }
+
+#main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 #dice-stage { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%); }
 
-#log-container { position: absolute; top: 15px; left: 15px; width: 240px; background: var(--parchment); color: #000; padding: 12px; border-radius: 8px; text-align: right; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); font-size: 13px; max-height: 40%; overflow-y: auto; z-index: 90; pointer-events: auto; }
+/* שיפור 1: שדרוג ה-"קלף" של הלוג */
+#log-container { 
+    position: absolute; top: 15px; left: 15px; width: 240px; 
+    background: linear-gradient(to bottom, #fdf5d3, #f3e5ab); 
+    color: #000; padding: 12px; border-radius: 12px; text-align: right; 
+    box-shadow: 5px 5px 20px rgba(0,0,0,0.6); 
+    font-size: 13px; max-height: 40%; overflow-y: auto; z-index: 90; pointer-events: auto; 
+    border: 1px solid #d4c382;
+}
 .log-entry { border-bottom: 1px solid rgba(0,0,0,0.1); padding: 5px 0; }
 .log-time { font-size: 11px; color: #666; font-family: monospace; }
-#controls { padding: 15px; background: #111; display: flex; justify-content: center; gap: 8px; border-top: 4px solid var(--primary); flex-wrap: wrap; z-index: 110; align-items: center; }
-.dice-btn, #init-btn { padding: 12px 16px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; }
+
+/* שיפור 2: אפקט זכוכית מטושטשת לתפריט התחתון */
+#controls { padding: 15px; background: rgba(17, 17, 17, 0.75); display: flex; justify-content: center; gap: 8px; border-top: 4px solid var(--primary); flex-wrap: wrap; z-index: 110; align-items: center; backdrop-filter: blur(5px); }
+
+/* שיפור 3: תגובה לכפתורים (ריחוף ולחיצה) */
+.dice-btn, #init-btn { padding: 12px 16px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; transition: all 0.2s ease; }
+.dice-btn:hover:not(:disabled), #init-btn:hover { filter: brightness(1.2); transform: translateY(-2px); }
+.dice-btn:active:not(:disabled), #init-btn:active { transform: translateY(1px); }
+
 button:disabled { background: #444; opacity: 0.6; }
 #mod-input { width: 50px; height: 42px; text-align: center; background: #222; color: white; border: 1px solid #444; border-radius: 6px; }
 .dice-container { width: 180px; height: 180px; position: relative; }
-#result-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: bold; text-shadow: 0 0 10px black; }
+
+/* שיפור 4: שדרוג טקסט התוצאה (הילה לקריאות) */
+#result-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: bold; text-shadow: 0 0 15px black, 0 0 5px black; }
+
 .shake { animation: shakeAnim 0.6s infinite; }
 @keyframes shakeAnim { 0%, 100% {transform:rotate(0)} 25% {transform:rotate(8deg)} 75% {transform:rotate(-8deg)} }
 .screen-shake { animation: screenShake 0.4s; }
 @keyframes screenShake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(5px, 5px); } 50% { transform: translate(-5px, -5px); } }
 .crit-glow { filter: drop-shadow(0 0 20px #f1c40f); }
-@media (max-width: 768px) { #game-screen { flex-direction: column; } #side-panel { width: 100%; height: 110px; border-left: none; border-bottom: 2px solid #333; flex-direction: row; padding: 10px; overflow-x: auto; } #init-list { display: flex; gap: 10px; } #log-container { width: 180px; top: 120px; font-size: 11px; } .dice-btn, #init-btn { flex-grow: 1; padding: 12px 10px; } }
+
+@media (max-width: 768px) { 
+    #game-screen { flex-direction: column; } 
+    #side-panel { width: 100%; height: 110px; border-left: none; border-bottom: 2px solid #333; flex-direction: row; padding: 10px; overflow-x: auto; } 
+    #init-list { display: flex; gap: 10px; } 
+    #log-container { width: 180px; top: 120px; font-size: 11px; } 
+    .dice-btn, #init-btn { flex-grow: 1; padding: 12px 10px; } 
+}
