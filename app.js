@@ -14,11 +14,13 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 let pName, cName, pColor, isMuted = false, isCooldown = false, canAnimate = false;
 
-// שימוש בקבצים המקומיים שהעלית
+// הגדרת שלושת הסאונדים מהקבצים שהעלית
 const rollSound = new Audio('./dice.mp3');
 const critSound = new Audio('./crit.mp3');
+const failSound = new Audio('./fail.mp3'); // הסאונד החדש שהוספת
 rollSound.preload = 'auto';
 critSound.preload = 'auto';
+failSound.preload = 'auto';
 
 const diceShapes = {
     d4: '<polygon points="50,5 95,85 5,85" stroke="black" fill-opacity="0.95"/>',
@@ -35,9 +37,11 @@ document.getElementById('join-btn').onclick = () => {
     pColor = document.getElementById('user-color').value;
     if (!pName || !cName) return alert("מלא פרטים!");
 
-    // "דריכת" הסאונדים לעקיפת חסימות Autoplay
-    rollSound.play().then(() => { rollSound.pause(); rollSound.currentTime = 0; }).catch(()=>{});
-    critSound.play().then(() => { critSound.pause(); critSound.currentTime = 0; }).catch(()=>{});
+    // "דריכת" כל הסאונדים (כולל ה-fail) לעקיפת חסימות Autoplay
+    const unlock = (s) => { s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(()=>{}); };
+    unlock(rollSound);
+    unlock(critSound);
+    unlock(failSound);
 
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
@@ -75,54 +79,3 @@ document.getElementById('init-btn').onclick = () => { const total = window.roll(
 
 onValue(ref(db, 'online'), s => document.getElementById('online-count').innerText = s.numChildren());
 onValue(ref(db, 'initiative'), s => {
-    const list = document.getElementById('init-list');
-    list.innerHTML = ""; const items = [];
-    s.forEach(c => items.push({name: c.key, ...c.val()}));
-    items.sort((a,b) => b.score - a.score).forEach(i => {
-        const div = document.createElement('div'); div.className = 'tracker-item'; div.style.borderRightColor = i.color;
-        div.innerHTML = `<span>${i.name}(${i.playerName || ''})</span><b>${i.score}</b>`; list.appendChild(div);
-    });
-});
-
-onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
-    if (!canAnimate) return;
-    const data = snapshot.val(); 
-    const log = document.getElementById('roll-log');
-    const stage = document.getElementById('dice-visual'); 
-    const body = document.getElementById('main-body');
-    const emptyState = document.getElementById('empty-state');
-    
-    if (emptyState) emptyState.style.display = 'none';
-
-    stage.style.display = "block"; 
-    stage.classList.add('shake'); 
-    stage.classList.remove('crit-glow'); 
-    body.classList.remove('screen-shake');
-
-    if (!isMuted) {
-        if (data.type === 'd20' && data.res === 20) {
-            critSound.currentTime = 0;
-            critSound.play().catch(e => console.log("Sound error:", e));
-            stage.classList.add('crit-glow'); 
-            body.classList.add('screen-shake');
-        } else {
-            rollSound.currentTime = 0;
-            rollSound.play().catch(e => console.log("Sound error:", e));
-        }
-    }
-
-    document.getElementById('dice-svg').innerHTML = diceShapes[data.type];
-    document.getElementById('dice-svg').firstChild.style.fill = data.color;
-    document.getElementById('result-text').innerText = "";
-    
-    setTimeout(() => {
-        stage.classList.remove('shake'); 
-        const total = data.res + (data.mod || 0);
-        document.getElementById('result-text').innerText = total;
-        const entry = document.createElement('div'); 
-        entry.className = 'log-entry';
-        entry.innerHTML = `<span class="log-time">[${data.time}]</span> <b>${data.char}(${data.player})</b>: ${total} <small>(${data.res}+${data.mod})</small>`;
-        log.prepend(entry); 
-        if (log.children.length > 20) log.removeChild(log.lastChild);
-    }, 600);
-});
