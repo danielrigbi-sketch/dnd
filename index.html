@@ -3,118 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DND Dice Room</title>
+    <title>CritRoll - DND Dice Room</title>
+    
     <style>
-        :root { --primary: #e74c3c; --bg: #1a1a1a; --panel: #111; --card: #34495e; }
+        :root { --primary: #e74c3c; --bg: #1a1a1a; --parchment: #f3e5ab; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; height: 100dvh; }
-
-        /* מסך כניסה */
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; margin: 0; overflow: hidden; height: 100dvh; }
         #login-screen { position: fixed; inset: 0; background: #2c3e50; z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
-        .login-card { background: var(--card); padding: 25px; border-radius: 12px; width: 100%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        input[type="text"] { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; border: none; font-size: 16px; text-align: center; background: #1a252f; color: white; }
-
-        /* ממשק משחק */
+        .login-card { background: #34495e; padding: 25px; border-radius: 12px; width: 100%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; border: none; font-size: 16px; text-align: center; }
         #game-screen { display: none; height: 100%; flex-direction: row; }
-
-        /* פאנל יוזמה */
-        #side-panel { width: 260px; background: var(--panel); border-left: 2px solid #333; display: flex; flex-direction: column; padding: 15px; flex-shrink: 0; }
-        #init-list { flex-grow: 1; overflow-y: auto; }
+        #side-panel { width: 260px; background: #111; border-left: 2px solid #333; display: flex; flex-direction: column; padding: 15px; flex-shrink: 0; }
         .tracker-item { background: #222; margin-bottom: 8px; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; border-right: 4px solid var(--primary); }
-
-        /* אזור מרכזי */
         #main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
         #dice-stage { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #333 0%, #1a1a1a 100%); }
-        
-        /* לוג תוצאות */
-        #log-container { position: absolute; top: 15px; left: 15px; width: 250px; background: rgba(0,0,0,0.85); color: white; padding: 15px; border-radius: 12px; text-align: right; border: 1px solid #444; font-size: 13px; max-height: 40%; overflow-y: auto; z-index: 90; pointer-events: none; }
-        .log-entry { border-bottom: 1px solid #333; padding: 5px 0; }
-        .log-time { font-size: 11px; color: #888; font-family: monospace; margin-left: 5px; }
-
-        /* פקדים תחתונים */
-        #controls { padding: 15px; background: var(--panel); display: flex; justify-content: center; gap: 8px; border-top: 4px solid var(--primary); flex-wrap: wrap; z-index: 110; align-items: center; }
-        button { padding: 12px 16px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; transition: 0.2s; }
-        button:disabled { background: #444; opacity: 0.6; cursor: not-allowed; }
-        
-        #mod-input { width: 50px; height: 42px; text-align: center; background: #222; color: white; border: 1px solid #444; border-radius: 6px; font-weight: bold; }
-
-        /* קוביות ואפקטים */
+        #log-container { position: absolute; top: 15px; left: 15px; width: 240px; background: var(--parchment); color: #000; padding: 12px; border-radius: 8px; text-align: right; box-shadow: 5px 5px 15px rgba(0,0,0,0.5); font-size: 13px; max-height: 40%; overflow-y: auto; z-index: 90; pointer-events: auto; }
+        .log-entry { border-bottom: 1px solid rgba(0,0,0,0.1); padding: 5px 0; }
+        .log-time { font-size: 11px; color: #666; font-family: monospace; }
+        #controls { padding: 15px; background: #111; display: flex; justify-content: center; gap: 8px; border-top: 4px solid var(--primary); flex-wrap: wrap; z-index: 110; align-items: center; }
+        .dice-btn, #init-btn { padding: 12px 16px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; }
+        button:disabled { background: #444; opacity: 0.6; }
+        #mod-input { width: 50px; height: 42px; text-align: center; background: #222; color: white; border: 1px solid #444; border-radius: 6px; }
         .dice-container { width: 180px; height: 180px; position: relative; }
-        #result-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: bold; text-shadow: 2px 2px 4px black; }
-        
+        #result-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 50px; font-weight: bold; text-shadow: 0 0 10px black; }
         .shake { animation: shakeAnim 0.6s infinite; }
-        @keyframes shakeAnim { 0%, 100% {transform:rotate(0)} 25% {transform:rotate(5deg)} 75% {transform:rotate(-5deg)} }
-        
+        @keyframes shakeAnim { 0%, 100% {transform:rotate(0)} 25% {transform:rotate(8deg)} 75% {transform:rotate(-8deg)} }
         .screen-shake { animation: screenShake 0.4s; }
         @keyframes screenShake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(5px, 5px); } 50% { transform: translate(-5px, -5px); } }
-        
-        .crit-glow { filter: drop-shadow(0 0 25px #f1c40f); }
-
-        /* התאמה לניידים */
-        @media (max-width: 768px) {
-            #game-screen { flex-direction: column; }
-            #side-panel { width: 100%; height: 110px; border-left: none; border-bottom: 2px solid #333; flex-direction: row; padding: 10px; overflow-x: auto; }
-            #side-panel h3 { display: none; }
-            #init-list { display: flex; gap: 10px; }
-            .tracker-item { min-width: 120px; margin-bottom: 0; flex-direction: column; justify-content: center; align-items: center; }
-            #log-container { width: 200px; top: 125px; left: 10px; font-size: 11px; }
-            button { flex-grow: 1; padding: 15px 10px; }
-            #controls { padding: 10px; gap: 5px; }
-        }
+        .crit-glow { filter: drop-shadow(0 0 20px #f1c40f); }
+        @media (max-width: 768px) { #game-screen { flex-direction: column; } #side-panel { width: 100%; height: 110px; border-left: none; border-bottom: 2px solid #333; flex-direction: row; padding: 10px; overflow-x: auto; } #init-list { display: flex; gap: 10px; } #log-container { width: 180px; top: 120px; font-size: 11px; } .dice-btn, #init-btn { flex-grow: 1; padding: 12px 10px; } }
     </style>
 </head>
 <body id="main-body">
 
     <div id="login-screen">
-        <h1 style="margin-bottom: 20px;">חדר קוביות D&D</h1>
+        <h1>חדר קוביות D&D</h1>
         <div class="login-card">
-            <input type="text" id="player-name" placeholder="שם השחקן (למשל: דניאל)" autocomplete="off">
-            <input type="text" id="char-name" placeholder="שם הדמות (למשל: גנדלף)" autocomplete="off">
-            <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:15px;">
-                <span>צבע קובייה:</span> 
-                <input type="color" id="user-color" value="#e74c3c" style="width:40px; height:40px; border:none; background:none; cursor:pointer;">
+            <input type="text" id="player-name" placeholder="שם השחקן" autocomplete="off">
+            <input type="text" id="char-name" placeholder="שם הדמות" autocomplete="off">
+            <div style="display:flex; justify-content:center; align-items:center; gap:10px; color:white; margin-bottom:15px;">
+                <span>צבע קובייה:</span> <input type="color" id="user-color" value="#e74c3c" style="width:40px; height:40px; border:none; background:none; cursor:pointer;">
             </div>
-            <button onclick="window.joinGame()" style="width:100%; padding:15px; font-size: 16px;">הצטרף למשחק</button>
+            <button id="join-btn" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">הצטרף למשחק</button>
         </div>
     </div>
 
     <div id="game-screen">
         <div id="side-panel">
-            <h3 style="margin:0 0 10px 0; font-size: 16px; color: var(--primary);">סדר יוזמה</h3>
+            <h3 style="margin:0 0 10px 0; font-size: 16px;">סדר יוזמה</h3>
             <div id="init-list"></div>
-            <div style="margin-top:auto; display:flex; flex-direction:column; gap:8px;">
-                <div style="font-size:12px; color: #aaa;">מחוברים: <b id="online-count">0</b></div>
-                <button onclick="window.resetInitiative()" style="background:#444; font-size:11px; padding:6px;">איפוס יוזמה (DM)</button>
-                <button id="mute-btn" onclick="window.toggleMute()" style="background:#2ecc71; font-size:11px; padding:6px; color:black;">סאונד מופעל</button>
+            <div style="margin-top:auto; display:flex; flex-direction:column; gap:5px;">
+                <div style="font-size:11px; opacity:0.5;">מחוברים: <span id="online-count">0</span></div>
+                <button id="reset-init-btn" style="background:#444; font-size:10px; padding:5px; color:white; border:none; border-radius:4px; cursor:pointer;">איפוס יוזמה (DM)</button>
+                <button id="mute-btn" style="background:#222; font-size:10px; padding:5px; color:white; border:none; border-radius:4px; cursor:pointer;">השתק סאונד</button>
             </div>
         </div>
-
         <div id="main-area">
             <div id="log-container">
-                <div style="font-weight:bold; color:var(--primary); border-bottom:1px solid #444; margin-bottom:5px; padding-bottom: 5px;">לוג הטלות:</div>
+                <div style="font-weight:bold; border-bottom:1px solid #ccc; margin-bottom:5px;">לוג הטלות:</div>
                 <div id="roll-log"></div>
             </div>
-            
             <div id="dice-stage">
-                <div id="dice-visual" class="dice-container" style="display: none;">
-                    <svg id="dice-svg" viewBox="0 0 100 100"></svg>
-                    <div id="result-text"></div>
-                </div>
-                <div id="empty-state" style="color:#555; font-size: 20px;">ממתין להטלה...</div>
+                <div id="dice-visual" class="dice-container" style="display: none;"><svg id="dice-svg" viewBox="0 0 100 100"></svg><div id="result-text"></div></div>
+                <div id="empty-state" style="color:#555; font-style: italic;">ממתין להטלה...</div>
             </div>
-
             <div id="controls">
-                <div style="display:flex; align-items:center; background:#222; padding:2px 8px; border-radius:6px;">
-                    <span style="font-size:12px; color:#aaa; margin-left:5px;">בונוס:</span>
-                    <input type="number" id="mod-input" value="0">
-                </div>
-                <button class="dice-btn" onclick="window.rollDice('d4')">D4</button>
-                <button class="dice-btn" onclick="window.rollDice('d6')">D6</button>
-                <button class="dice-btn" onclick="window.rollDice('d8')">D8</button>
-                <button class="dice-btn" onclick="window.rollDice('d10')">D10</button>
-                <button class="dice-btn" onclick="window.rollDice('d12')">D12</button>
-                <button class="dice-btn" onclick="window.rollDice('d20')">D20</button>
-                <button style="background:#27ae60;" onclick="window.rollInit()" title="גלגל יוזמה">⚡</button>
+                <input type="number" id="mod-input" value="0">
+                <button class="dice-btn" data-type="d4">D4</button>
+                <button class="dice-btn" data-type="d6">D6</button>
+                <button class="dice-btn" data-type="d8">D8</button>
+                <button class="dice-btn" data-type="d10">D10</button>
+                <button class="dice-btn" data-type="d12">D12</button>
+                <button class="dice-btn" data-type="d20">D20</button>
+                <button id="init-btn" style="background:#27ae60;">⚡</button>
             </div>
         </div>
     </div>
@@ -129,190 +90,89 @@
             databaseURL: "https://dnd-dice-room-default-rtdb.firebaseio.com",
             projectId: "dnd-dice-room",
             storageBucket: "dnd-dice-room.firebasestorage.app",
-            messagingSenderId: "365914207851",
-            appId: "1:365914207851:web:777478485eabf5bf1f632e"
+            messagingSenderId: "365914207851", appId: "1:365914207851:web:777478485eabf5bf1f632e"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        
-        let pName = "", cName = "", pColor = "";
-        let isMuted = false, isCooldown = false, canAnimate = false;
-        
+        let pName, cName, pColor, isMuted = false, isCooldown = false, canAnimate = false;
         const rollSound = new Audio('https://www.soundjay.com/misc/sounds/dice-roll-1.mp3');
         const critSound = new Audio('https://www.myinstants.com/media/sounds/ff7_victory_fanfare.mp3');
 
         const diceShapes = {
-            d4: '<polygon points="50,5 95,85 5,85" stroke="black" stroke-width="2" fill-opacity="0.8"/>',
-            d6: '<rect x="15" y="15" width="70" height="70" rx="10" stroke="black" stroke-width="2" fill-opacity="0.8"/>',
-            d8: '<polygon points="50,5 95,50 50,95 5,50" stroke="black" stroke-width="2" fill-opacity="0.8"/>',
-            d10: '<polygon points="50,5 90,40 50,95 10,40" stroke="black" stroke-width="2" fill-opacity="0.8"/>',
-            d12: '<polygon points="50,5 92,35 76,85 24,85 8,35" stroke="black" stroke-width="2" fill-opacity="0.8"/>',
-            d20: '<polygon points="50,5 95,25 95,75 50,95 5,75 5,25" stroke="black" stroke-width="2" fill-opacity="0.8"/>'
+            d4: '<polygon points="50,5 95,85 5,85" stroke="black" fill-opacity="0.2"/>',
+            d6: '<rect x="15" y="15" width="70" height="70" rx="8" stroke="black" fill-opacity="0.2"/>',
+            d8: '<polygon points="50,5 90,50 50,95 10,50" stroke="black" fill-opacity="0.2"/>',
+            d10: '<polygon points="50,5 95,45 50,95 5,45" stroke="black" fill-opacity="0.2"/>',
+            d12: '<polygon points="50,5 90,30 75,85 25,85 10,30" stroke="black" fill-opacity="0.2"/>',
+            d20: '<polygon points="50,5 95,25 95,75 50,95 5,75 5,25" stroke="black" fill-opacity="0.2"/>'
         };
 
-        // חיבור ישיר לפונקציות חלון (מונע שגיאות Join is not defined)
-        window.joinGame = () => {
+        // לוגיקת הפעלה
+        document.getElementById('join-btn').onclick = () => {
             pName = document.getElementById('player-name').value.trim();
             cName = document.getElementById('char-name').value.trim();
             pColor = document.getElementById('user-color').value;
-            
-            if (!pName || !cName) {
-                alert("חובה למלא שם שחקן ושם דמות!");
-                return;
-            }
-            
-            // "שחרור" סאונד לדפדפני מובייל
-            rollSound.play().then(() => { rollSound.pause(); rollSound.currentTime = 0; }).catch(() => {});
-            
+            if (!pName || !cName) return alert("מלא פרטים!");
+            rollSound.play().then(() => { rollSound.pause(); rollSound.currentTime = 0; }).catch(()=>{});
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'flex';
-            
             const userRef = ref(db, 'online/' + pName + '_' + cName);
             set(userRef, true);
             onDisconnect(userRef).remove();
-            
-            // מתחיל להציג הטלות רק אחרי שנייה (מונע הצפת היסטוריה)
             setTimeout(() => { canAnimate = true; }, 1000);
         };
 
-        window.toggleMute = () => {
-            isMuted = !isMuted;
-            const btn = document.getElementById('mute-btn');
-            if (isMuted) {
-                btn.innerText = "🔇 סאונד מושתק";
-                btn.style.background = "#e74c3c";
-            } else {
-                btn.innerText = "🔊 סאונד מופעל";
-                btn.style.background = "#2ecc71";
-            }
-        };
-
-        window.resetInitiative = () => {
-            if(confirm("המנחה: האם אתה בטוח שברצונך לאפס את רשימת היוזמה?")) {
-                remove(ref(db, 'initiative'));
-            }
-        };
-
-        window.rollDice = (type, isInit = false) => {
+        window.roll = (type, isInit = false) => {
             if (isCooldown && !isInit) return;
-            
             if (!isInit) {
                 isCooldown = true;
                 const btns = document.querySelectorAll('.dice-btn');
                 btns.forEach(b => b.disabled = true);
-                setTimeout(() => { 
-                    isCooldown = false; 
-                    btns.forEach(b => b.disabled = false); 
-                }, 10000); // 10 שניות Cooldown
+                setTimeout(() => { isCooldown = false; btns.forEach(b => b.disabled = false); }, 10000);
             }
-
-            const sides = parseInt(type.replace('d', ''));
-            const res = Math.floor(Math.random() * sides) + 1;
-            const modVal = document.getElementById('mod-input').value;
-            const mod = parseInt(modVal) || 0;
-
-            const timeNow = new Date().toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' });
-
+            const res = Math.floor(Math.random() * parseInt(type.replace('d', ''))) + 1;
+            const mod = parseInt(document.getElementById('mod-input').value) || 0;
             push(ref(db, 'rolls'), { 
-                player: pName, 
-                char: cName, 
-                type: type, 
-                res: res, 
-                mod: mod, 
-                color: pColor,
-                time: timeNow
+                player: pName, char: cName, type, res, mod, color: pColor,
+                time: new Date().toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' })
             });
-
             return res + mod;
         };
 
-        window.rollInit = () => {
-            const total = window.rollDice('d20', true);
-            set(ref(db, 'initiative/' + cName), { score: total, color: pColor });
-        };
+        // חיבור כפתורים
+        document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "הפעל סאונד" : "השתק סאונד"; };
+        document.getElementById('reset-init-btn').onclick = () => { if(confirm("לאפס יוזמה?")) remove(ref(db, 'initiative')); };
+        document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => window.roll(btn.getAttribute('data-type')); });
+        document.getElementById('init-btn').onclick = () => { const total = window.roll('d20', true); set(ref(db, 'initiative/' + cName), { score: total, color: pColor }); };
 
-        // האזנה למחוברים
-        onValue(ref(db, 'online'), snapshot => {
-            document.getElementById('online-count').innerText = snapshot.numChildren();
-        });
-        
-        // האזנה ליוזמה
-        onValue(ref(db, 'initiative'), snapshot => {
+        onValue(ref(db, 'online'), s => document.getElementById('online-count').innerText = s.numChildren());
+        onValue(ref(db, 'initiative'), s => {
             const list = document.getElementById('init-list');
-            list.innerHTML = "";
-            const items = [];
-            snapshot.forEach(c => items.push({name: c.key, ...c.val()}));
-            
-            // מיון מהגבוה לנמוך
+            list.innerHTML = ""; const items = [];
+            s.forEach(c => items.push({name: c.key, ...c.val()}));
             items.sort((a,b) => b.score - a.score).forEach(i => {
-                const div = document.createElement('div');
-                div.className = 'tracker-item';
-                div.style.borderRightColor = i.color;
-                div.innerHTML = `<span>${i.name}</span><b>${i.score}</b>`;
-                list.appendChild(div);
+                const div = document.createElement('div'); div.className = 'tracker-item'; div.style.borderRightColor = i.color;
+                div.innerHTML = `<span>${i.name}</span><b>${i.score}</b>`; list.appendChild(div);
             });
         });
 
-        // האזנה להטלות - רק להטלה האחרונה כדי למנוע הצפה בכניסה
-        const rollsQuery = query(ref(db, 'rolls'), limitToLast(1));
-        
-        onChildAdded(rollsQuery, (snapshot) => {
-            if (!canAnimate) return; // לא מציג את ההטלה האחרונה בהיסטוריה בזמן טעינה
-
-            const data = snapshot.val();
-            const log = document.getElementById('roll-log');
-            const stage = document.getElementById('dice-visual');
-            const body = document.getElementById('main-body');
-            const resTxt = document.getElementById('result-text');
-
-            // איפוס אפקטים
-            stage.style.display = "block";
-            stage.classList.add('shake');
-            stage.classList.remove('crit-glow');
-            body.classList.remove('screen-shake');
-
-            // טיפול בסאונד ואפקט קריטי
-            if (data.type === 'd20' && data.res === 20) {
-                if(!isMuted) critSound.play().catch(()=>{});
-                stage.classList.add('crit-glow');
-                body.classList.add('screen-shake');
-            } else if (!isMuted) {
-                rollSound.currentTime = 0; 
-                rollSound.play().catch(()=>{});
-            }
-
-            // עדכון גרפיקה מיידי (בלי המספר עדיין)
-            document.getElementById('empty-state').style.display = "none";
+        onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
+            if (!canAnimate) return;
+            const data = snapshot.val(); const log = document.getElementById('roll-log');
+            const stage = document.getElementById('dice-visual'); const body = document.getElementById('main-body');
+            stage.style.display = "block"; stage.classList.add('shake'); stage.classList.remove('crit-glow'); body.classList.remove('screen-shake');
+            if (data.type === 'd20' && data.res === 20) { if(!isMuted) critSound.play().catch(()=>{}); stage.classList.add('crit-glow'); body.classList.add('screen-shake'); }
+            else if (!isMuted) { rollSound.currentTime = 0; rollSound.play().catch(()=>{}); }
             document.getElementById('dice-svg').innerHTML = diceShapes[data.type];
             document.getElementById('dice-svg').firstChild.style.fill = data.color;
-            resTxt.innerText = "";
-
-            // אחרי 0.6 שניות (זמן האנימציה), מציגים תוצאה ומעדכנים לוג
+            document.getElementById('result-text').innerText = "";
             setTimeout(() => {
-                stage.classList.remove('shake');
-                
-                const total = data.res + (data.mod || 0);
-                resTxt.innerText = total;
-                
-                // הוספת שורה ללוג בפורמט: [14:30] גנדלף(דניאל): 18 (15+3)
-                const entry = document.createElement('div');
-                entry.className = 'log-entry';
-                
-                let modText = data.mod !== 0 ? `${data.res}${data.mod > 0 ? '+' : ''}${data.mod}` : `${data.res}`;
-                
-                entry.innerHTML = `
-                    <span class="log-time">[${data.time}]</span> 
-                    <b>${data.char}(${data.player})</b>: ${total} 
-                    <small>(${modText})</small>
-                `;
-                
-                log.prepend(entry);
-                
-                // הגבלת לוג ל-20 רשומות
-                if (log.children.length > 20) {
-                    log.removeChild(log.lastChild);
-                }
+                stage.classList.remove('shake'); const total = data.res + (data.mod || 0);
+                document.getElementById('result-text').innerText = total;
+                const entry = document.createElement('div'); entry.className = 'log-entry';
+                entry.innerHTML = `<span class="log-time">[${data.time}]</span> <b>${data.char}(${data.player})</b>: ${total} <small>(${data.res}+${data.mod})</small>`;
+                log.prepend(entry); if (log.children.length > 20) log.removeChild(log.lastChild);
             }, 600);
         });
     </script>
