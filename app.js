@@ -1,15 +1,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// ייבוא מודולים - הוספתי את setDiceCooldown
-import { firebaseConfig, diceShapes } from "./constants.js";
-import { getFlavorText } from "./messages.js";
-import { unlockAudio, playRollSound, stopAllSounds } from "./audio.js";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js";
+// הוספת גרסה ?v=4 כדי להכריח את הדפדפן להביא קבצים חדשים!
+import { firebaseConfig, diceShapes } from "./constants.js?v=4";
+import { getFlavorText } from "./messages.js?v=4";
+import { unlockAudio, playRollSound, stopAllSounds } from "./audio.js?v=4";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=4";
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
+// ... שאר הקוד של app.js נשאר בדיוק אותו דבר ...
 // משתנים גלובליים
 let pName = "", cName = "", pColor = "#8B0000", userRole = "player";
 let isMuted = false, isCooldown = false, canAnimate = false;
