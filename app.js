@@ -10,11 +10,37 @@ import { updateModeUI, updateInitiativeUI, addLogEntry } from "./ui.js";
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let pName = "", cName = "", pColor = "#e74c3c", userRole = "player", isMuted = false, isCooldown = false, canAnimate = false;
+// משתנים גלובליים
+let pName = "", cName = "", pColor = "#8B0000", userRole = "player";
+let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal'; 
 
-// --- טעינה מהזיכרון בעת עליית הדף ---
+// --- 1. טיפול בבחירת צבעים וטעינת זיכרון ---
 window.addEventListener('DOMContentLoaded', () => {
+    const colorOptions = document.querySelectorAll('.color-opt');
+    const colorInput = document.getElementById('user-color');
+
+    // פונקציה לעדכון הצבע הנבחר ויזואלית
+    const setActiveColor = (color) => {
+        colorOptions.forEach(opt => {
+            if (opt.getAttribute('data-color') === color) {
+                colorOptions.forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                colorInput.value = color;
+                pColor = color;
+            }
+        });
+    };
+
+    // האזנה ללחיצה על צבע
+    colorOptions.forEach(opt => {
+        opt.addEventListener('click', () => {
+            const selectedColor = opt.getAttribute('data-color');
+            setActiveColor(selectedColor);
+        });
+    });
+
+    // טעינה מה-localStorage
     const savedPName = localStorage.getItem('critroll_pName');
     const savedCName = localStorage.getItem('critroll_cName');
     const savedColor = localStorage.getItem('critroll_pColor');
@@ -22,11 +48,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (savedPName) document.getElementById('player-name').value = savedPName;
     if (savedCName) document.getElementById('char-name').value = savedCName;
-    if (savedColor) document.getElementById('user-color').value = savedColor;
     if (savedRole) document.getElementById('user-role').value = savedRole;
+    if (savedColor) setActiveColor(savedColor);
 });
 
-// --- הצטרפות למשחק ---
+// --- 2. הצטרפות למשחק ---
 document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
@@ -35,7 +61,7 @@ document.getElementById('join-btn').onclick = () => {
 
     if (!pName || !cName) return alert("מלא פרטים!");
 
-    // שמירה ב-localStorage לשימוש עתידי
+    // שמירה בזיכרון לשימוש עתידי
     localStorage.setItem('critroll_pName', pName);
     localStorage.setItem('critroll_cName', cName);
     localStorage.setItem('critroll_pColor', pColor);
@@ -45,6 +71,7 @@ document.getElementById('join-btn').onclick = () => {
 
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
+    
     updateModeUI(activeMode);
 
     const userRef = ref(db, 'online/' + pName + '_' + cName);
@@ -52,6 +79,8 @@ document.getElementById('join-btn').onclick = () => {
     onDisconnect(userRef).remove();
     setTimeout(() => { canAnimate = true; }, 1000);
 };
+
+// --- המשך הקוד (פונקציית roll וכו') נשאר אותו דבר ---
 
 // --- לוגיקת ההטלה ---
 window.roll = (type, isInit = false) => {
