@@ -34,7 +34,6 @@ document.getElementById('join-btn').onclick = () => {
     pColor = document.getElementById('user-color').value;
     if (!pName || !cName) return alert("מלא פרטים!");
 
-    // "דריכת" סאונד - קריטי להפעלה בדפדפנים
     const prep = (s) => { s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(()=>{}); };
     [rollSound, critSound, failSound].forEach(prep);
 
@@ -56,9 +55,16 @@ window.roll = (type, isInit = false) => {
     }
     const res = Math.floor(Math.random() * parseInt(type.replace('d', ''))) + 1;
     const mod = parseInt(document.getElementById('mod-input').value) || 0;
+    
+    // שמירה לבסיס הנתונים עם שמות שמתאימים ללוג
     push(ref(db, 'rolls'), { 
-        player: pName, char: cName, type, res, mod, color: pColor,
-        time: new Date().toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' })
+        pName: pName, 
+        cName: cName, 
+        type: type, 
+        res: res, 
+        mod: mod, 
+        color: pColor,
+        ts: Date.now() // הוספת חותמת זמן לחישוב שעה
     });
     return res + mod;
 };
@@ -72,7 +78,11 @@ document.getElementById('reset-init-btn').onclick = () => { if(confirm("לאפס
 document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => window.roll(btn.getAttribute('data-type')); });
 document.getElementById('init-btn').onclick = () => { const total = window.roll('d20', true); set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); };
 
-onValue(ref(db, 'online'), s => document.getElementById('online-count').innerText = s.numChildren());
+onValue(ref(db, 'online'), s => {
+    const countEl = document.getElementById('online-count');
+    if(countEl) countEl.innerText = s.numChildren();
+});
+
 onValue(ref(db, 'initiative'), s => {
     const list = document.getElementById('init-list');
     list.innerHTML = ""; const items = [];
@@ -85,17 +95,20 @@ onValue(ref(db, 'initiative'), s => {
 
 onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     const data = snapshot.val();
-    const time = new Date(data.ts).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
     const stage = document.getElementById('dice-visual');
     const body = document.getElementById('main-body');
     const emptyState = document.getElementById('empty-state');
+    const log = document.getElementById('roll-log');
 
-    // 1. טיפול באפקטים ויזואליים וסאונד (החלק שחששת לאבד)
+    if (!canAnimate) return;
+
     emptyState.style.display = 'none';
     stage.style.display = 'block';
     stage.classList.remove('shake', 'crit-glow');
     body.classList.remove('screen-shake');
 
+    // ניהול סאונד ואפקטים
     if (!isMuted) {
         if (data.type === 'd20' && data.res === 20) {
             critSound.currentTime = 0;
@@ -116,7 +129,7 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     document.getElementById('dice-svg').firstChild.style.fill = data.color;
     document.getElementById('result-text').innerText = "";
 
-    // 2. מנוע המיקרו-קופי (התוספת החדשה)
+    // מנוע המיקרו-קופי
     const maxVal = parseInt(data.type.replace('d', ''));
     const total = data.res + (data.mod || 0);
     let flavorText = "";
@@ -135,7 +148,6 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
         else flavorText = "היה עדיף להישאר במיטה היום.";
     }
 
-    // 3. הצגת התוצאה והוספה ללוג
     setTimeout(() => {
         stage.classList.remove('shake');
         document.getElementById('result-text').innerText = total;
@@ -145,8 +157,8 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
         entry.innerHTML = `
             <div style="margin-bottom: 12px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); border-radius: 6px;">
                 <span style="color: #aaa; font-size: 11px;">[${time}]</span> 
-                <strong style="color: var(--primary);">${data.cName}</strong> 
-                <span style="font-size: 12px;">(${data.pName})</span><br>
+                <strong style="color: var(--primary);">${data.cName || 'גיבור'}</strong> 
+                <span style="font-size: 12px;">(${data.pName || 'שחקן'})</span><br>
                 הטיל <strong style="color: #fff;">${data.type.toUpperCase()}</strong> וקיבל 
                 <span style="color: ${data.res === 20 ? '#f1c40f' : (data.res === 1 ? '#e74c3c' : '#fff')}; font-weight: bold; font-size: 1.1em;">
                     ${data.res === 20 ? '20 טבעי!' : data.res}
@@ -156,40 +168,7 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
             </div>
         `;
 
-        const log = document.getElementById('roll-log');
         log.insertBefore(entry, log.firstChild);
-    }, 600);
-});
-    // לוגיקת סאונד מתוקנת - בחירה בלעדית בסאונד אחד
-    if (!isMuted) {
-        if (data.type === 'd20' && data.res === 20) {
-            critSound.currentTime = 0;
-            critSound.play().catch(()=>{});
-            stage.classList.add('crit-glow'); 
-            body.classList.add('screen-shake');
-        } else if (data.type === 'd20' && data.res === 1) {
-            // ניגון סאונד כישלון בלבד בתוצאה 1
-            failSound.currentTime = 0;
-            failSound.play().catch(()=>{});
-        } else {
-            // גלגול רגיל - יתנגן רק אם זה לא 1 ולא 20
-            rollSound.currentTime = 0;
-            rollSound.play().catch(()=>{});
-        }
-    }
-
-    document.getElementById('dice-svg').innerHTML = diceShapes[data.type];
-    document.getElementById('dice-svg').firstChild.style.fill = data.color;
-    document.getElementById('result-text').innerText = "";
-    
-    setTimeout(() => {
-        stage.classList.remove('shake'); 
-        const total = data.res + (data.mod || 0);
-        document.getElementById('result-text').innerText = total;
-        const entry = document.createElement('div'); 
-        entry.className = 'log-entry';
-        entry.innerHTML = `<span class="log-time">[${data.time}]</span> <b>${data.char}(${data.player})</b>: ${total} <small>(${data.res}+${data.mod})</small>`;
-        log.prepend(entry); 
         if (log.children.length > 20) log.removeChild(log.lastChild);
     }, 600);
 });
