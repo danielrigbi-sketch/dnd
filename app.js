@@ -10,15 +10,36 @@ import { updateModeUI, updateInitiativeUI, addLogEntry } from "./ui.js";
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let pName = "", cName = "", pColor = "#e74c3c", isMuted = false, isCooldown = false, canAnimate = false;
+let pName = "", cName = "", pColor = "#e74c3c", userRole = "player", isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal'; 
+
+// --- טעינה מהזיכרון בעת עליית הדף ---
+window.addEventListener('DOMContentLoaded', () => {
+    const savedPName = localStorage.getItem('critroll_pName');
+    const savedCName = localStorage.getItem('critroll_cName');
+    const savedColor = localStorage.getItem('critroll_pColor');
+    const savedRole = localStorage.getItem('critroll_role');
+
+    if (savedPName) document.getElementById('player-name').value = savedPName;
+    if (savedCName) document.getElementById('char-name').value = savedCName;
+    if (savedColor) document.getElementById('user-color').value = savedColor;
+    if (savedRole) document.getElementById('user-role').value = savedRole;
+});
 
 // --- הצטרפות למשחק ---
 document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
     pColor = document.getElementById('user-color').value;
+    userRole = document.getElementById('user-role').value;
+
     if (!pName || !cName) return alert("מלא פרטים!");
+
+    // שמירה ב-localStorage לשימוש עתידי
+    localStorage.setItem('critroll_pName', pName);
+    localStorage.setItem('critroll_cName', cName);
+    localStorage.setItem('critroll_pColor', pColor);
+    localStorage.setItem('critroll_role', userRole);
 
     unlockAudio(); // תיקון סאונד לנייד
 
