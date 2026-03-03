@@ -35,16 +35,15 @@ export function updateInitiativeUI(data) {
         div.className = 'tracker-item';
         const playerColor = i.color || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
-        // שימוש בפונט מודרני גם ביוזמה
         div.innerHTML = `
-            <span style="font-weight:bold; font-family: 'Segoe UI', Tahoma, sans-serif;">${i.name}</span>
+            <span style="font-weight:bold; font-family: 'Assistant', sans-serif;">${i.name}</span>
             <span class="init-score">${i.score}</span>
         `;
         list.appendChild(div);
     });
 }
 
-// הוספת שורת לוג - שחזור ה-Segoe UI הלבן עם ההילה
+// הוספת שורת לוג - פונט Assistant נקי
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -55,11 +54,10 @@ export function addLogEntry(data, time, flavorText) {
     const userColor = data.color || '#8B0000';
     const modeLabel = data.mode === 'adv' ? '<span style="color:#2d4238; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#8c5151; font-weight:bold;">(חיסרון)</span>' : '');
 
-    // הסטייל שאהבת: Segoe UI, לבן, 900 (עבה במיוחד) והילה
     const nameStyle = `
         color: #ffffff !important;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-        font-weight: 900 !important;
+        font-family: 'Assistant', sans-serif !important;
+        font-weight: 800 !important;
         font-size: 1.15em;
         text-shadow: 
             -1px -1px 0 #000,  
@@ -71,13 +69,13 @@ export function addLogEntry(data, time, flavorText) {
     `;
 
     entry.innerHTML = `
-        <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.02); border-radius: 8px; font-family: 'Segoe UI', Tahoma, sans-serif !important;">
+        <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.02); border-radius: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                  <span style="${nameStyle}">${data.cName || 'גיבור'} (${data.pName || 'שחקן'})</span>
                  <span style="color: #2c1e16; font-size: 11px; font-weight: bold; font-family: monospace;">[${time}]</span> 
             </div>
             
-            <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4; font-family: 'Segoe UI', sans-serif !important;">
+            <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4; font-family: 'Assistant', sans-serif;">
                 הטיל <strong style="color: #000;">${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
                 <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.3em;">
                     ${data.res + (data.mod || 0)}
@@ -85,7 +83,7 @@ export function addLogEntry(data, time, flavorText) {
                 <small style="color: #666; font-weight: bold;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
             </div>
             
-            ${flavorText ? `<div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 6px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px; font-family: 'Segoe UI', sans-serif !important;">"${flavorText}"</div>` : ""}
+            ${flavorText ? `<div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 6px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px; font-family: 'Assistant', sans-serif;">"${flavorText}"</div>` : ""}
         </div>
     `;
 
@@ -95,11 +93,9 @@ export function addLogEntry(data, time, flavorText) {
         log.removeChild(log.lastChild);
     }
 }
-// ui.js
 
 // ניהול נראות כפתורים בזמן קולדאון
 export function setDiceCooldown(isActive) {
-    // בחירת כל כפתורי ההטלה, כפתור היוזמה והכפתורים המיוחדים
     const buttons = document.querySelectorAll('.dice-btn, #init-btn, .special-roll-btn');
     
     buttons.forEach(btn => {
