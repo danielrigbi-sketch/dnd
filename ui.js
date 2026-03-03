@@ -45,7 +45,7 @@ export function updateInitiativeUI(data) {
     });
 }
 
-// הוספת שורת לוג - פונט מודרני כפוי (Sans-Serif), לבן והילה
+// הוספת שורת לוג - פונט לבן בוהק עם הילה צבעונית משתנה
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -55,31 +55,27 @@ export function addLogEntry(data, time, flavorText) {
     
     const userColor = data.color || '#8B0000';
     const modeLabel = data.mode === 'adv' ? '<span style="color:#2d4238; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#8c5151; font-weight:bold;">(חיסרון)</span>' : '');
-    
-    // שם השחקן והדמות - פונט מודרני עבה במיוחד (900) עם הילה חזקה
-    // שימוש ב-!important כדי למנוע חזרה לפונט מיושן
-    const nameStyle = `
-        color: #ffffff !important; 
-        font-family: 'Segoe UI', 'Roboto', 'Tahoma', sans-serif !important;
-        font-weight: 900 !important;
-        font-size: 1.15em;
-        text-shadow: 
-            -1px -1px 0 #000,  
-             1px -1px 0 #000,
-            -1px  1px 0 #000,
-             1px  1px 0 #000,
-             0 0 10px ${userColor}, 
-             0 0 18px ${userColor};
+
+    // בניית ה-Shadow הדינמי: מסגרת שחורה לקריאות + הילה צבעונית
+    const dynamicShadow = `
+        -1px -1px 0 #000,  
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000,
+         0 0 10px ${userColor}, 
+         0 0 18px ${userColor}88
     `;
 
     entry.innerHTML = `
-        <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.02); border-radius: 8px; font-family: sans-serif;">
+        <div style="margin-bottom: 12px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.03); border-radius: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                 <span style="${nameStyle}">${data.cName || 'גיבור'} (${data.pName || 'שחקן'})</span>
-                 <span style="color: #2c1e16; font-size: 11px; font-weight: bold; font-family: monospace;">[${time}]</span> 
+                 <span class="log-player-name" style="text-shadow: ${dynamicShadow};">
+                    ${data.cName || 'גיבור'} (${data.pName || 'שחקן'})
+                 </span>
+                 <span style="color: #2c1e16; font-size: 11px; font-weight: bold; font-family: monospace !important;">[${time}]</span> 
             </div>
             
-            <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4; font-family: sans-serif;">
+            <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4;">
                 הטיל <strong style="color: #000;">${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
                 <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.3em;">
                     ${data.res + (data.mod || 0)}
@@ -87,7 +83,7 @@ export function addLogEntry(data, time, flavorText) {
                 <small style="color: #666; font-weight: bold;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
             </div>
             
-            ${flavorText ? `<div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 6px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px; font-family: sans-serif;">"${flavorText}"</div>` : ""}
+            ${flavorText ? `<div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 6px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px;">"${flavorText}"</div>` : ""}
         </div>
     `;
 
