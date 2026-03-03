@@ -88,15 +88,13 @@ window.roll = (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     const currentMode = isInit ? 'normal' : activeMode;
 
-    if (!isInit) {
+   if (!isInit) {
         isCooldown = true;
-        // הפעלת מצב קולדאון ויזואלי (אפור ונעול)
-        setDiceCooldown(true);
+        setDiceCooldown(true); // קריאה לפונקציה שאחראית על האפור!
         
         setTimeout(() => { 
             isCooldown = false; 
-            // החזרת הכפתורים לצבע המקורי ולמצב פעיל
-            setDiceCooldown(false);
+            setDiceCooldown(false); // החזרת הצבע
         }, 3000);
     }
 
