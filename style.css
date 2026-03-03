@@ -28,7 +28,7 @@ input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; bor
 
 /* שיפור 1: שדרוג ה-"קלף" של הלוג */
 #log-container { 
-    position: absolute; top: 15px; left: 15px; width: 240px; 
+    position: absolute; top: 15px; left: 15px; width: 300px; 
     background: linear-gradient(to bottom, #fdf5d3, #f3e5ab); 
     color: #000; padding: 12px; border-radius: 12px; text-align: right; 
     box-shadow: 5px 5px 20px rgba(0,0,0,0.6); 
