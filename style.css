@@ -108,7 +108,7 @@ body {
 
 .log-header { font-weight: bold; border-bottom: 2px solid rgba(0,0,0,0.1); margin-bottom: 10px; padding-bottom: 5px; color: #5d4037; }
 
-/* --- אזור כפתורי השליטה (התיקון המרכזי) --- */
+/* --- אזור כפתורי השליטה --- */
 #controls { 
     padding: 15px; background: rgba(17, 17, 17, 0.85); 
     display: flex; justify-content: center; gap: 10px; 
@@ -123,7 +123,6 @@ body {
     color: white; border: 1px solid #444; border-radius: 6px; font-size: 16px;
 }
 
-/* עיצוב כפתורי הקוביות */
 .dice-btn, #init-btn { 
     padding: 12px 18px; cursor: pointer; background: var(--primary); 
     color: white; border: none; border-radius: 8px; font-weight: bold; 
@@ -133,7 +132,6 @@ body {
 .dice-btn:hover:not(:disabled), #init-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
 .dice-btn:active:not(:disabled), #init-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #a93226; }
 
-/* עיצוב כפתורי יתרון/חיסרון */
 .special-roll-btn {
     padding: 12px 16px; cursor: pointer; color: white; 
     border: none; border-radius: 8px; font-weight: bold; 
@@ -142,16 +140,66 @@ body {
 
 .special-roll-btn.adv { background: linear-gradient(145deg, #4e6e5d, #2d4238); }
 .special-roll-btn.dis { background: linear-gradient(145deg, #8c5151, #5a3232); }
-
 .special-roll-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+
+/* --- אנימציית תוצאת הקובייה --- */
+#result-text { 
+    position: absolute; top: 50%; left: 50%; 
+    transform: translate(-50%, -50%); 
+    font-size: 60px; font-weight: 900; color: white; 
+    text-shadow: 0 0 15px rgba(0,0,0,0.8), 0 0 5px black;
+    
+    /* הגדרות לפייד-אין */
+    opacity: 0;
+    scale: 0.5;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* כשהקלאס show מתווסף דרך ה-JS */
+#result-text.show {
+    opacity: 1;
+    scale: 1;
+}
+
+/* --- פאנל צד וכפתורי שירות --- */
+.side-btn {
+    background: #333;
+    color: #ddd;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    margin-top: 5px;
+}
+
+.side-btn:hover {
+    background: #444;
+    color: white;
+}
+
+.side-btn:active {
+    transform: translateY(1px);
+    background: #222;
+    box-shadow: none;
+}
 
 /* --- שאר האלמנטים --- */
 #dice-stage { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
 .dice-container { width: 180px; height: 180px; position: relative; }
-#result-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; font-weight: 900; color: white; text-shadow: 0 0 15px rgba(0,0,0,0.8), 0 0 5px black; }
-
 .main-logo { width: 250px; height: auto; margin-bottom: 25px; }
 .side-logo { width: 80px; height: auto; display: block; margin: 0 auto 15px auto; border-radius: 8px; }
+
+.shake { animation: shakeAnim 0.6s infinite; }
+@keyframes shakeAnim { 0%, 100% {transform:rotate(0)} 25% {transform:rotate(8deg)} 75% {transform:rotate(-8deg)} }
+.screen-shake { animation: screenShake 0.4s; }
+@keyframes screenShake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(6px, 6px); } 50% { transform: translate(-6px, -6px); } }
+.crit-glow { filter: drop-shadow(0 0 25px #f1c40f); }
 
 /* --- התאמה לנייד --- */
 @media (max-width: 768px) { 
@@ -164,40 +212,4 @@ body {
     #controls { padding: 10px; gap: 6px; }
     .dice-btn, #init-btn { flex: 1 1 21%; padding: 12px 5px; font-size: 14px; } 
     .special-roll-btn { flex: 1 1 45%; font-size: 13px; }
-}
-/* --- עיצוב כפתורי פאנל הצד (איפוס והשתק) --- */
-.side-btn {
-    background: #333; /* רקע כהה שמתאים לפאנל */
-    color: #ddd;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: bold;
-    transition: all 0.2s ease;
-    width: 100%; /* שהכפתורים יתפרסו על כל רוחב הפאנל */
-    text-align: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.side-btn:hover {
-    background: #444;
-    color: white;
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-.side-btn:active {
-    transform: translateY(1px);
-    background: #222;
-    box-shadow: none;
-}
-
-/* עיצוב טקסט "מחוברים" */
-#online-count-container {
-    font-size: 11px;
-    color: #888;
-    margin-bottom: 5px;
-    text-align: center;
-    letter-spacing: 0.5px;
 }
