@@ -1,3 +1,6 @@
+/* ייבוא פונטים מודרניים ישירות מגוגל */
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;700;800&family=Heebo:wght@400;700;800;900&display=swap');
+
 :root { 
     --primary: #e74c3c; 
     --bg: #1a1a1a; 
@@ -5,9 +8,13 @@
     --ink: #2c1e16;
 }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* { 
+    box-sizing: border-box; 
+    -webkit-tap-highlight-color: transparent; 
+}
 
 body { 
+    /* שימוש בפונטים המיובאים כעדיפות ראשונה */
     font-family: 'Heebo', 'Assistant', 'Segoe UI', sans-serif; 
     color: white; 
     margin: 0; 
@@ -73,21 +80,22 @@ body {
     background: #2c3e50; color: white; cursor: pointer; font-family: inherit; font-size: 15px;
 }
 
-/* --- תיקון פונט ללוג - שימוש ב-Heebo כעדיפות עליונה --- */
+/* --- תיקון פונט ללוג - הכרחת הפונט המודרני --- */
 #roll-log, .log-entry, .log-entry * {
-    font-family: 'Heebo', 'Assistant', 'Segoe UI', sans-serif !important;
+    font-family: 'Heebo', 'Assistant', sans-serif !important;
 }
 
 .log-player-name {
     color: #ffffff !important;
-    font-weight: 900 !important; /* משקל מקסימלי למראה מודרני ועבה */
+    font-weight: 900 !important; 
     font-size: 1.15em;
     letter-spacing: 0.5px;
     display: inline-block;
 }
 
-/* שאר עיצובי המשחק ששמרנו קודם */
+/* --- מסך משחק --- */
 #game-screen { display: none; height: 100%; flex-direction: row; }
+
 #log-container { 
     position: absolute; top: 15px; left: 15px; width: 320px; 
     background-color: var(--parchment);
