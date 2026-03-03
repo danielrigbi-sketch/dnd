@@ -1,15 +1,28 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import DiceBox from "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/dice-box.es.min.js";
 
-// הוספת גרסה ?v=4 כדי להכריח את הדפדפן להביא קבצים חדשים!
-import { firebaseConfig, diceShapes } from "./constants.js?v=4";
-import { getFlavorText } from "./messages.js?v=4";
-import { unlockAudio, playRollSound, stopAllSounds } from "./audio.js?v=4";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=4";
+// שימוש בגרסה מעודכנת של הקבצים
+import { firebaseConfig } from "./constants.js?v=8";
+import { getFlavorText } from "./messages.js?v=8";
+import { unlockAudio, playRollSound, stopAllSounds } from "./audio.js?v=8";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=8";
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-// ... שאר הקוד של app.js נשאר בדיוק אותו דבר ...
+
+// --- אתחול מנוע 3D Dice ---
+const diceBox = new DiceBox("#dice-box-canvas", {
+    assetPath: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/assets/",
+    origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/",
+    theme: "default",
+    scale: 5,
+    gravity: 3,
+    friction: 0.8
+});
+
+diceBox.init();
+
 // משתנים גלובליים
 let pName = "", cName = "", pColor = "#8B0000", userRole = "player";
 let isMuted = false, isCooldown = false, canAnimate = false;
@@ -25,7 +38,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (opt.getAttribute('data-color') === color) {
                 colorOptions.forEach(o => o.classList.remove('active'));
                 opt.classList.add('active');
-                colorInput.value = color;
+                if(colorInput) colorInput.value = color;
                 pColor = color;
             }
         });
@@ -53,7 +66,7 @@ window.addEventListener('DOMContentLoaded', () => {
 document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
-    pColor = document.getElementById('user-color').value;
+    pColor = document.getElementById('user-color') ? document.getElementById('user-color').value : pColor;
     userRole = document.getElementById('user-role').value;
 
     if (!pName || !cName) return alert("מלא פרטים!");
@@ -83,44 +96,51 @@ document.getElementById('join-btn').onclick = () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- לוגיקת ההטלה המעודכנת עם הקולדאון הויזואלי ---
-window.roll = (type, isInit = false) => {
+// --- לוגיקת ההטלה המעודכנת עם תלת-ממד ---
+window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     const currentMode = isInit ? 'normal' : activeMode;
 
-   if (!isInit) {
+    if (!isInit) {
         isCooldown = true;
-        setDiceCooldown(true); // קריאה לפונקציה שאחראית על האפור!
-        
-        setTimeout(() => { 
-            isCooldown = false; 
-            setDiceCooldown(false); // החזרת הצבע
-        }, 3000);
+        setDiceCooldown(true);
     }
 
-    const max = parseInt(type.replace('d', '')) || 20;
-    const mod = parseInt(document.getElementById('mod-input').value) || 0;
-    let res, res1 = null, res2 = null;
+    // עדכון צבע הקוביות לצבע השחקן לפני הגלגול
+    diceBox.updateConfig({ themeColor: pColor });
 
-    if (currentMode === 'normal') {
-        res = Math.floor(Math.random() * max) + 1;
+    let finalRes, res1 = null, res2 = null;
+
+    // הרצת האנימציה התלת-ממדית
+    if (currentMode !== 'normal' && type === 'd20') {
+        const results = await diceBox.roll("2d20");
+        res1 = results[0].value;
+        res2 = results[1].value;
+        finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
     } else {
-        res1 = Math.floor(Math.random() * max) + 1;
-        res2 = Math.floor(Math.random() * max) + 1;
-        res = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
+        const results = await diceBox.roll(`1${type}`);
+        finalRes = results[0].value;
     }
     
-    const rollData = { pName, cName, type, res, mod, color: pColor, mode: currentMode, ts: Date.now() };
+    const mod = parseInt(document.getElementById('mod-input').value) || 0;
+    const rollData = { pName, cName, type, res: finalRes, mod, color: pColor, mode: currentMode, ts: Date.now() };
     if (res1 !== null) rollData.res1 = res1;
     if (res2 !== null) rollData.res2 = res2;
 
+    // שליחה ל-Firebase
     push(ref(db, 'rolls'), rollData);
 
     if (!isInit) {
         activeMode = 'normal';
         updateModeUI(activeMode);
+        
+        // שחרור קולדאון אחרי שהקובייה נחתה
+        setTimeout(() => { 
+            isCooldown = false; 
+            setDiceCooldown(false); 
+        }, 1000);
     }
-    return res + mod;
+    return finalRes + mod;
 };
 
 // מאזיני כפתורים
@@ -129,8 +149,9 @@ document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode ==
 document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊 הפעל" : "🔇 השתק"; };
 document.getElementById('reset-init-btn').onclick = () => { if(confirm("לאפס יוזמה?")) remove(ref(db, 'initiative')); };
 document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => window.roll(btn.getAttribute('data-type')); });
-document.getElementById('init-btn').onclick = () => { 
-    const total = window.roll('d20', true); 
+
+document.getElementById('init-btn').onclick = async () => { 
+    const total = await window.roll('d20', true); 
     set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); 
 };
 
@@ -147,43 +168,32 @@ onValue(ref(db, 'initiative'), (snapshot) => {
     updateInitiativeUI(snapshot.val());
 });
 
-// הטלות ואנימציה
-onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
+// קבלת הטלות מ-Firebase והצגת המספר
+onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     const data = snapshot.val();
     if (!data || !canAnimate) return;
 
     const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    const stage = document.getElementById('dice-visual');
     const resultText = document.getElementById('result-text');
-    const body = document.getElementById('main-body');
+    const visualContainer = document.getElementById('dice-visual');
 
     document.getElementById('empty-state').style.display = 'none';
-    stage.style.display = 'block';
-    
-    stage.classList.remove('shake', 'crit-glow');
-    body.classList.remove('screen-shake');
+    visualContainer.style.display = 'flex';
     resultText.classList.remove('show');
-    resultText.innerText = "";
 
+    // השמעת סאונד
     playRollSound(data.type, data.res, isMuted);
-    
-    if (data.type === 'd20' && data.res === 20) {
-        stage.classList.add('crit-glow'); 
-        body.classList.add('screen-shake');
-    }
 
-    stage.classList.add('shake');
-    document.getElementById('dice-svg').innerHTML = diceShapes[data.type] || diceShapes.d20;
-    document.getElementById('dice-svg').firstChild.style.fill = data.color;
-
-    const maxVal = parseInt(data.type.replace('d', '')) || 20;
-    const total = (data.res || 0) + (data.mod || 0);
-    const flavorText = getFlavorText(data.type, data.res, total, maxVal);
-
+    // הצגת המספר הגדול אחרי שהקובייה "נוחתת"
     setTimeout(() => {
-        stage.classList.remove('shake');
+        const total = (data.res || 0) + (data.mod || 0);
+        const maxVal = parseInt(data.type.replace('d', '')) || 20;
+        const flavorText = getFlavorText(data.type, data.res, total, maxVal);
+
         resultText.innerText = total;
+        resultText.style.color = data.color;
         resultText.classList.add('show');
+        
         addLogEntry(data, time, flavorText);
-    }, 600);
+    }, 1500); 
 });
