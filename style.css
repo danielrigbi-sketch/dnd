@@ -145,34 +145,46 @@ body {
     max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
 }
 
-/* --- אזור הקוביות התלת-ממדיות --- */
+/* --- אזור הקוביות התלת-ממדיות (FIXED) --- */
+#dice-box-canvas {
+    position: fixed; /* קריטי: תופס את כל שטח המסך של הדפדפן */
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    pointer-events: none; /* מאפשר ללחוץ על הכפתורים שמתחת לקנבס */
+    z-index: 5; /* בין הרקע לבין הכפתורים */
+}
+
 #dice-stage {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     width: 100%;
-    height: 100%; /* תופס את כל הגובה האפשרי */
+    height: 100%;
     position: relative;
+    z-index: 6; /* הטקסט מעל הקוביות */
 }
 
 .dice-container { 
     position: absolute; 
     top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 200px; height: 200px; 
+    width: 100%; height: 100%; 
     display: flex; align-items: center; justify-content: center;
-    pointer-events: none; /* כדי לא להפריע ללחיצות על הקוביות ב-3D */
+    pointer-events: none; 
 }
 
-/* אנימציה להופעת הטקסט של התוצאה אחרי שהקובייה עוצרת */
+/* שיפור אנימציית התוצאה */
 #result-text { 
-    font-size: 65px; 
+    font-size: 100px; /* הגדלנו את המספר למרשים יותר */
     font-weight: 900; 
     color: white; 
-    text-shadow: 0 0 20px black, 0 0 10px rgba(0,0,0,0.8); 
+    text-shadow: 0 0 30px black, 0 0 10px black, 2px 2px 5px rgba(0,0,0,0.8); 
     opacity: 0; 
-    transform: scale(0.5);
-    transition: opacity 0.3s ease, transform 0.3s ease; 
+    transform: scale(0.3);
+    transition: opacity 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
 }
 #result-text.show { 
     opacity: 1; 
@@ -236,7 +248,6 @@ body {
         z-index: 80;
     }
 
-    /* רשימת יוזמה כ"שורת HUD" עליונה */
     #init-list {
         flex-direction: row; 
         overflow-x: auto; 
@@ -255,9 +266,8 @@ body {
         backdrop-filter: blur(4px);
     }
     
-    .side-footer { display: none; } /* מחביאים כפתורי DM בנייד כדי לחסוך מקום */
+    .side-footer { display: none; } 
 
-    /* 2. לוג הטלות הופך לשקוף וצף בצד */
     #log-container {
         position: absolute; 
         top: 75px; 
@@ -267,20 +277,18 @@ body {
         background-color: rgba(243, 229, 171, 0.85); 
         font-size: 11px; 
         padding: 8px;
-        pointer-events: none; /* שלא יפריע ללחיצות על הקוביות */
+        pointer-events: auto; 
         margin: 0;
         z-index: 50;
     }
 
-    /* 3. אזור הקוביות במרכז */
     #main-area { 
         width: 100%;
         height: 100vh;
-        padding-bottom: 220px; /* מפנה מקום לשלט למטה */
+        padding-bottom: 220px; 
         padding-top: 50px;
     }
     
-    /* 4. הקונטרולר התחתון (Game Pad) - משתמש ב-Grid מסודר */
     #controls {
         position: fixed; 
         bottom: 0; 
@@ -302,7 +310,6 @@ body {
         z-index: 100;
     }
 
-    /* מיקומי כפתורים בגריד על פי השמות שהגדרנו */
     .mod-container { 
         grid-area: mod; 
         background: #333; 
@@ -332,6 +339,6 @@ body {
         font-size: 15px; 
         border-radius: 8px; 
         border: none;
-        flex: none; /* ביטול flex ישן לטובת ה-grid */
+        flex: none; 
     }
 }
