@@ -28,6 +28,7 @@ const diceShapes = {
     d20: '<polygon points="50,5 95,25 95,75 50,95 5,75 5,25" stroke="black" fill-opacity="0.95"/>'
 };
 
+// עדכון ויזואלי של כפתורי יתרון/חיסרון
 function updateModeUI() {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
@@ -93,11 +94,9 @@ window.roll = (type, isInit = false) => {
     }
     
     const rollData = { 
-        pName: pName, cName: cName, type, res, mod, 
-        color: pColor, mode: currentMode, ts: Date.now()
+        pName, cName, type, res, mod, color: pColor, mode: currentMode, ts: Date.now()
     };
 
-    // הוספת תוצאות נוספות רק אם הן קיימות באמת (מונע שגיאת undefined)
     if (res1 !== null) rollData.res1 = res1;
     if (res2 !== null) rollData.res2 = res2;
 
@@ -120,24 +119,34 @@ document.getElementById('init-btn').onclick = () => {
     set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); 
 };
 
-// תיקון שגיאת numChildren
-onValue(ref(db, 'online'), s => {
+// --- האזנה לנתונים עם הגנה משגיאות ---
+
+onValue(ref(db, 'online'), (snapshot) => {
     const countEl = document.getElementById('online-count');
-    if(countEl) {
-        let count = 0;
-        s.forEach(() => { count++; }); // דרך בטוחה לספור ילדים
-        countEl.innerText = count;
+    if(countEl && snapshot.exists()) {
+        countEl.innerText = snapshot.numChildren();
+    } else if (countEl) {
+        countEl.innerText = "0";
     }
 });
 
-onValue(ref(db, 'initiative'), s => {
+onValue(ref(db, 'initiative'), (snapshot) => {
     const list = document.getElementById('init-list');
     if(!list) return;
-    list.innerHTML = ""; const items = [];
-    s.forEach(c => items.push({name: c.key, ...c.val()}));
+    list.innerHTML = "";
+    if(!snapshot.exists()) return;
+
+    const items = [];
+    snapshot.forEach(c => {
+        items.push({ name: c.key, ...c.val() });
+    });
+    
     items.sort((a,b) => b.score - a.score).forEach(i => {
-        const div = document.createElement('div'); div.className = 'tracker-item'; div.style.borderRightColor = i.color;
-        div.innerHTML = `<span>${i.name}(${i.playerName || ''})</span><b>${i.score}</b>`; list.appendChild(div);
+        const div = document.createElement('div');
+        div.className = 'tracker-item';
+        div.style.borderRightColor = i.color;
+        div.innerHTML = `<span>${i.name}(${i.playerName || ''})</span><b>${i.score}</b>`;
+        list.appendChild(div);
     });
 });
 
@@ -173,10 +182,10 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     document.getElementById('dice-svg').firstChild.style.fill = data.color;
     document.getElementById('result-text').innerText = "";
 
-    const maxVal = parseInt(data.type.replace('d', '')) || 20;
     const total = (data.res || 0) + (data.mod || 0);
     let flavorText = "הטלה מעניינת...";
 
+    // לוגיקת המיקרו-קופי
     if (data.type === 'd20') {
         if (data.res === 20) flavorText = getRandomMsg(["האלים מריעים לך! 🌟", "פגיעה קטלנית!", "אגדה נולדה!"]);
         else if (data.res === 1) flavorText = getRandomMsg(["זה הולך לכאוב... 💀", "יום רע להיות הרפתקן.", "החרב החליקה?"]);
@@ -190,7 +199,7 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
 
         const entry = document.createElement('div');
         entry.className = 'log-entry';
-        const modeLabel = data.mode === 'adv' ? '<span style="color:#4e6e5d;">(ביתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#e74c3c;">(בחיסרון)</span>' : '');
+        const modeLabel = data.mode === 'adv' ? '<span style="color:#4e6e5d;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#e74c3c;">(חיסרון)</span>' : '');
         const diceBreakdown = (data.res1 && data.res2) ? `<small style="opacity:0.6;"> [${data.res1}, ${data.res2}]</small>` : '';
 
         entry.innerHTML = `
