@@ -72,6 +72,14 @@ document.getElementById('join-btn').onclick = () => {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
     
+    // הצגת/הסתרת כפתורי DM
+    const dmOnlyBtn = document.getElementById('reset-init-btn');
+    if (userRole === 'dm') {
+        dmOnlyBtn.style.display = 'block';
+    } else {
+        dmOnlyBtn.style.display = 'none';
+    }
+
     updateModeUI(activeMode);
 
     const userRef = ref(db, 'online/' + pName + '_' + cName);
@@ -79,8 +87,6 @@ document.getElementById('join-btn').onclick = () => {
     onDisconnect(userRef).remove();
     setTimeout(() => { canAnimate = true; }, 1000);
 };
-
-// --- המשך הקוד (פונקציית roll וכו') נשאר אותו דבר ---
 
 // --- לוגיקת ההטלה ---
 window.roll = (type, isInit = false) => {
@@ -143,32 +149,37 @@ onValue(ref(db, 'initiative'), (snapshot) => {
     updateInitiativeUI(snapshot.val());
 });
 
-// הטלות ואנימציה
+// הטלות ואנימציה - גרסה משופרת
 onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     const data = snapshot.val();
     if (!data || !canAnimate) return;
 
     const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
     const stage = document.getElementById('dice-visual');
+    const resultText = document.getElementById('result-text');
     const body = document.getElementById('main-body');
 
     document.getElementById('empty-state').style.display = 'none';
     stage.style.display = 'block';
+    
+    // איפוס מצבים קודמים
     stage.classList.remove('shake', 'crit-glow');
     body.classList.remove('screen-shake');
+    resultText.classList.remove('show');
+    resultText.innerText = "";
 
     // ניהול סאונד
     playRollSound(data.type, data.res, isMuted);
     
     // אפקטים מיוחדים ב-20 טבעי
     if (data.type === 'd20' && data.res === 20) {
-        stage.classList.add('crit-glow'); body.classList.add('screen-shake');
+        stage.classList.add('crit-glow'); 
+        body.classList.add('screen-shake');
     }
 
     stage.classList.add('shake');
     document.getElementById('dice-svg').innerHTML = diceShapes[data.type] || diceShapes.d20;
     document.getElementById('dice-svg').firstChild.style.fill = data.color;
-    document.getElementById('result-text').innerText = "";
 
     const maxVal = parseInt(data.type.replace('d', '')) || 20;
     const total = (data.res || 0) + (data.mod || 0);
@@ -176,7 +187,11 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
 
     setTimeout(() => {
         stage.classList.remove('shake');
-        document.getElementById('result-text').innerText = total;
+        
+        // הצגת התוצאה עם אנימציית Fade In
+        resultText.innerText = total;
+        resultText.classList.add('show');
+        
         addLogEntry(data, time, flavorText);
     }, 600);
 });
