@@ -1,6 +1,6 @@
 // ui.js
 
-// עדכון ויזואלי של כפתורי יתרון/חיסרון
+// עדכון ויזואלי של כפתורי יתרון/חיסרון (נשאר כפי שאהבת)
 export function updateModeUI(activeMode) {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
@@ -33,10 +33,8 @@ export function updateInitiativeUI(data) {
     items.sort((a, b) => b.score - a.score).forEach(i => {
         const div = document.createElement('div');
         div.className = 'tracker-item';
-        
         const playerColor = i.color || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
-        
         div.innerHTML = `
             <span style="font-weight:bold;">${i.name}</span>
             <span class="init-score">${i.score}</span>
@@ -45,7 +43,7 @@ export function updateInitiativeUI(data) {
     });
 }
 
-// הוספת שורת לוג - שימוש במחלקה מה-CSS להבטחת פונט מודרני
+// הוספת שורת לוג - שחזור הפונט המודרני והלבן עם ההילה
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -56,34 +54,37 @@ export function addLogEntry(data, time, flavorText) {
     const userColor = data.color || '#8B0000';
     const modeLabel = data.mode === 'adv' ? '<span style="color:#2d4238; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#8c5151; font-weight:bold;">(חיסרון)</span>' : '');
 
-    // בניית ה-Shadow הדינמי: מסגרת שחורה (בליטה) + הילה צבעונית
-    const dynamicShadow = `
-        -1px -1px 0 #000,  
-         1px -1px 0 #000,
-        -1px  1px 0 #000,
-         1px  1px 0 #000,
-         0 0 12px ${userColor}, 
-         0 0 20px ${userColor}88
+    // הסטייל שאהבת: פונט Segoe UI, לבן, עבה במיוחד והילה עוצמתית
+    const nameStyle = `
+        color: #ffffff !important;
+        font-family: 'Segoe UI', sans-serif !important;
+        font-weight: 900 !important;
+        font-size: 1.15em;
+        text-shadow: 
+            -1px -1px 0 #000,  
+             1px -1px 0 #000,
+            -1px  1px 0 #000,
+             1px  1px 0 #000,
+             0 0 10px ${userColor}, 
+             0 0 18px ${userColor}88;
     `;
 
     entry.innerHTML = `
-        <div style="margin-bottom: 12px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.03); border-radius: 8px;">
+        <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.02); border-radius: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                 <span class="log-player-name" style="text-shadow: ${dynamicShadow};">
-                    ${data.cName || 'גיבור'} (${data.pName || 'שחקן'})
-                 </span>
-                 <span style="color: #2c1e16; font-size: 11px; font-weight: bold; font-family: monospace !important;">[${time}]</span> 
+                 <span style="${nameStyle}">${data.cName || 'גיבור'} (${data.pName || 'שחקן'})</span>
+                 <span style="color: #2c1e16; font-size: 11px; font-weight: bold; font-family: monospace;">[${time}]</span> 
             </div>
             
-            <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4;">
+            <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4; font-family: 'Segoe UI', sans-serif;">
                 הטיל <strong style="color: #000;">${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
-                <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.35em;">
+                <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.3em;">
                     ${data.res + (data.mod || 0)}
                 </span>
                 <small style="color: #666; font-weight: bold;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
             </div>
             
-            ${flavorText ? `<div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 6px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px;">"${flavorText}"</div>` : ""}
+            ${flavorText ? `<div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 6px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px; font-family: 'Segoe UI', sans-serif;">"${flavorText}"</div>` : ""}
         </div>
     `;
 
