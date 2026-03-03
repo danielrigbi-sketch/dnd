@@ -27,11 +27,18 @@
 
             <input type="text" id="char-name" placeholder="שם הדמות" autocomplete="off">
 
-            <div style="display:flex; justify-content:center; align-items:center; gap:10px; color:white; margin-bottom:15px;">
-
-                <span>צבע קובייה:</span> <input type="color" id="user-color" value="#e74c3c" style="width:40px; height:40px; border:none; background:none; cursor:pointer;">
-
-            </div>
+           <div style="margin-bottom:15px; text-align:center;">
+    <span style="color:white; display:block; margin-bottom:8px;">בחר צבע זיהוי:</span>
+    <div id="color-palette" style="display:flex; justify-content:center; gap:8px;">
+        <div class="color-opt active" data-color="#8e1c19" style="background:#8e1c19;"></div>
+        <div class="color-opt" data-color="#1a472a" style="background:#1a472a;"></div>
+        <div class="color-opt" data-color="#1e3a5f" style="background:#1e3a5f;"></div>
+        <div class="color-opt" data-color="#4b2c20" style="background:#4b2c20;"></div>
+        <div class="color-opt" data-color="#5e2a84" style="background:#5e2a84;"></div>
+        <div class="color-opt" data-color="#c25e00" style="background:#c25e00;"></div>
+    </div>
+    <input type="hidden" id="user-color" value="#8e1c19">
+</div>
 <div style="margin-bottom: 15px;">
     <select id="user-role" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: #2c3e50; color: white; cursor: pointer;">
         <option value="player">שחקן</option>
