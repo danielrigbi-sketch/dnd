@@ -79,26 +79,24 @@
 
             </div>
 
-            <div id="controls">
-
-                <input type="number" id="mod-input" value="0">
-
-                <button class="dice-btn" data-type="d4">D4</button>
-
-                <button class="dice-btn" data-type="d6">D6</button>
-
-                <button class="dice-btn" data-type="d8">D8</button>
-
-                <button class="dice-btn" data-type="d10">D10</button>
-
-                <button class="dice-btn" data-type="d12">D12</button>
-
-                <button class="dice-btn" data-type="d20">D20</button>
-
-                <button id="init-btn" style="background:#27ae60;">⚡</button>
-
-            </div>
-
+           <div id="controls">
+    <div style="display: flex; align-items: center; gap: 5px; margin-left: 10px;">
+        <span style="font-size: 14px; color: var(--parchment);">תוסף:</span>
+        <input type="number" id="mod-input" value="0">
+    </div>
+    
+    <button class="dice-btn" data-type="d4">D4</button>
+    <button class="dice-btn" data-type="d6">D6</button>
+    <button class="dice-btn" data-type="d8">D8</button>
+    <button class="dice-btn" data-type="d10">D10</button>
+    <button class="dice-btn" data-type="d12">D12</button>
+    <button class="dice-btn" data-type="d20">D20</button>
+    
+    <button id="adv-btn" class="special-roll-btn" style="background: linear-gradient(145deg, #4e6e5d, #2d4238);">יתרון</button>
+    <button id="dis-btn" class="special-roll-btn" style="background: linear-gradient(145deg, #8c5151, #5a3232);">חיסרון</button>
+    
+    <button id="init-btn">⚡</button>
+</div>
         </div>
 
     </div>
