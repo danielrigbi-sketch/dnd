@@ -281,7 +281,7 @@ body {
 
     .dice-container { width: 140px; height: 140px; }
 
-    /* פאנל כפתורים נצמד לתחתית ומתפרס */
+   /* פאנל כפתורים נצמד לתחתית ומתפרס */
     #controls {
         position: fixed; 
         bottom: 0;
@@ -289,24 +289,37 @@ body {
         width: 100%;
         border-radius: 15px 15px 0 0;
         background: rgba(20, 20, 20, 0.98);
-        padding: 15px 10px 20px;
+        padding: 10px 5px 15px; /* צמצום הריווח כדי לחסוך מקום במסך */
+        display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        border: none;
+        align-items: center; /* מוודא שהכל מיושר אנכית באותו קו */
+        gap: 6px; /* רווח טיפה יותר קטן בין האלמנטים */
         border-top: 2px solid #333;
+        z-index: 100;
     }
 
     .mod-container {
-        width: 100%;
-        justify-content: center;
-        margin-left: 0;
-        margin-bottom: 8px;
+        flex: 0 1 auto; /* מאפשר לתוסף לתפוס רק את המקום שהוא צריך, בלי לתפוס שורה שלמה */
+        margin-bottom: 0;
     }
 
-    .dice-btn, .special-roll-btn, #init-btn {
-        flex: 1 1 22%; 
-        padding: 12px 5px;
+    #mod-input {
+        width: 45px; /* תיבת טקסט קצת יותר צרה לנייד */
+        padding: 6px;
+    }
+
+    .dice-btn {
+        flex: 1 1 18%; /* מאפשר ליותר קוביות להיכנס בשורה אחת */
+        padding: 10px 2px;
         font-size: 14px;
-        min-width: 65px;
+        min-width: 45px;
+    }
+
+    .special-roll-btn, #init-btn {
+        flex: 1 1 25%; /* היתרון, חיסרון ויוזמה יתחלקו יפה ויקבלו פרופורציה הגיונית */
+        padding: 10px 5px;
+        font-size: 14px;
+        min-width: 70px;
     }
 }
