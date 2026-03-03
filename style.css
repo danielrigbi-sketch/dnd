@@ -145,19 +145,38 @@ body {
     max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
 }
 
+/* --- אזור הקוביות התלת-ממדיות --- */
 #dice-stage {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     width: 100%;
+    height: 100%; /* תופס את כל הגובה האפשרי */
+    position: relative;
 }
 
-.dice-container { position: relative; width: 180px; height: 180px; }
-#dice-svg { width: 100%; height: 100%; filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6)); }
+.dice-container { 
+    position: absolute; 
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 200px; height: 200px; 
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; /* כדי לא להפריע ללחיצות על הקוביות ב-3D */
+}
+
+/* אנימציה להופעת הטקסט של התוצאה אחרי שהקובייה עוצרת */
 #result-text { 
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-    font-size: 45px; font-weight: 900; color: white; text-shadow: 0 0 15px black; 
+    font-size: 65px; 
+    font-weight: 900; 
+    color: white; 
+    text-shadow: 0 0 20px black, 0 0 10px rgba(0,0,0,0.8); 
+    opacity: 0; 
+    transform: scale(0.5);
+    transition: opacity 0.3s ease, transform 0.3s ease; 
+}
+#result-text.show { 
+    opacity: 1; 
+    transform: scale(1);
 }
 
 #controls {
@@ -196,18 +215,6 @@ body {
     pointer-events: none !important;
 }
 
-@keyframes shakeAnimation {
-    0% { transform: translate(1px, 1px) rotate(0deg); }
-    20% { transform: translate(-3px, 0px) rotate(5deg); }
-    40% { transform: translate(3px, 2px) rotate(-5deg); }
-    60% { transform: translate(-3px, 1px) rotate(5deg); }
-    80% { transform: translate(-1px, -1px) rotate(-2deg); }
-    100% { transform: translate(1px, -2px) rotate(0deg); }
-}
-.shake { animation: shakeAnimation 0.4s ease-in-out; }
-.crit-glow { filter: drop-shadow(0 0 30px #ffd700); }
-.screen-shake { animation: shakeAnimation 0.3s ease-in-out; }
-
 /* --- התאמה למובייל (Mobile Responsiveness) --- */
 @media (max-width: 768px) {
     #game-screen { 
@@ -226,6 +233,7 @@ body {
         top: 0; 
         padding: 10px;
         box-shadow: none;
+        z-index: 80;
     }
 
     /* רשימת יוזמה כ"שורת HUD" עליונה */
@@ -272,8 +280,6 @@ body {
         padding-top: 50px;
     }
     
-    .dice-container { width: 160px; height: 160px; }
-
     /* 4. הקונטרולר התחתון (Game Pad) - משתמש ב-Grid מסודר */
     #controls {
         position: fixed; 
@@ -293,6 +299,7 @@ body {
         grid-template-columns: 1fr 1fr 1fr;
         gap: 8px; 
         box-shadow: 0 -10px 30px rgba(0,0,0,0.8);
+        z-index: 100;
     }
 
     /* מיקומי כפתורים בגריד על פי השמות שהגדרנו */
