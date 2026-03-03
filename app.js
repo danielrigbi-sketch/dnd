@@ -14,7 +14,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 let pName, cName, pColor, isMuted = false, isCooldown = false, canAnimate = false;
 
-// משתנה למצב ההטלה הנוכחי
+// משתנה למצב ההטלה הנוכחי - מתחיל כרגיל
 let activeMode = 'normal'; 
 
 const rollSound = new Audio('./dice.mp3');
@@ -30,24 +30,38 @@ const diceShapes = {
     d20: '<polygon points="50,5 95,25 95,75 50,95 5,75 5,25" stroke="black" fill-opacity="0.95"/>'
 };
 
-// פונקציה לעדכון ויזואלי של כפתורי המצב
+// פונקציה לעדכון ויזואלי של כפתורי המצב (אפור כשכבוי, צבעוני כשדלוק)
 function updateModeUI() {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
-    
-    // איפוס עיצוב (אפור)
-    advBtn.style.filter = "grayscale(100%)";
-    advBtn.style.opacity = "0.5";
-    disBtn.style.filter = "grayscale(100%)";
-    disBtn.style.opacity = "0.5";
+    if (!advBtn || !disBtn) return;
 
-    // הדלקת הכפתור הפעיל
+    // מצב יתרון
     if (activeMode === 'adv') {
         advBtn.style.filter = "grayscale(0%)";
         advBtn.style.opacity = "1";
-    } else if (activeMode === 'dis') {
+        advBtn.style.border = "2px solid white";
+        disBtn.style.filter = "grayscale(100%)";
+        disBtn.style.opacity = "0.4";
+        disBtn.style.border = "1px solid rgba(255,255,255,0.2)";
+    } 
+    // מצב חיסרון
+    else if (activeMode === 'dis') {
         disBtn.style.filter = "grayscale(0%)";
         disBtn.style.opacity = "1";
+        disBtn.style.border = "2px solid white";
+        advBtn.style.filter = "grayscale(100%)";
+        advBtn.style.opacity = "0.4";
+        advBtn.style.border = "1px solid rgba(255,255,255,0.2)";
+    } 
+    // מצב רגיל
+    else {
+        advBtn.style.filter = "grayscale(100%)";
+        advBtn.style.opacity = "0.4";
+        advBtn.style.border = "1px solid rgba(255,255,255,0.2)";
+        disBtn.style.filter = "grayscale(100%)";
+        disBtn.style.opacity = "0.4";
+        disBtn.style.border = "1px solid rgba(255,255,255,0.2)";
     }
 }
 
@@ -63,8 +77,7 @@ document.getElementById('join-btn').onclick = () => {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
     
-    // אתחול כפתורי מצב
-    updateModeUI();
+    updateModeUI(); // עדכון ראשוני של הכפתורים
 
     const userRef = ref(db, 'online/' + pName + '_' + cName);
     set(userRef, true);
@@ -75,7 +88,6 @@ document.getElementById('join-btn').onclick = () => {
 window.roll = (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     
-    // קביעת המצב עבור ההטלה הנוכחית
     const currentMode = isInit ? 'normal' : activeMode;
 
     if (!isInit) {
@@ -101,13 +113,25 @@ window.roll = (type, isInit = false) => {
         res = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
     }
     
-    push(ref(db, 'rolls'), { 
-        pName, cName, type, res, mod, color: pColor, 
-        mode: currentMode, res1, res2,
+    // בניית אובייקט הנתונים בצורה בטוחה (בלי undefined)
+    const rollData = { 
+        pName: pName || "שחקן", 
+        cName: cName || "דמות", 
+        type, res, mod, 
+        color: pColor || "#ffffff", 
+        mode: currentMode,
         ts: Date.now()
-    });
+    };
 
-    // איפוס המצב לנורמל אחרי הטלה
+    // הוספת תוצאות נוספות רק אם הן קיימות
+    if (currentMode !== 'normal') {
+        rollData.res1 = res1;
+        rollData.res2 = res2;
+    }
+
+    push(ref(db, 'rolls'), rollData);
+
+    // איפוס המצב לנורמל אחרי כל הטלה (אלא אם זו יוזמה)
     if (!isInit) {
         activeMode = 'normal';
         updateModeUI();
@@ -116,7 +140,7 @@ window.roll = (type, isInit = false) => {
     return res + mod;
 };
 
-// מאזיני כפתורי מצב (Toggle)
+// כפתורי המצב (Toggle)
 document.getElementById('adv-btn').onclick = () => {
     activeMode = (activeMode === 'adv') ? 'normal' : 'adv';
     updateModeUI();
@@ -133,7 +157,7 @@ document.getElementById('mute-btn').onclick = () => {
 
 document.getElementById('reset-init-btn').onclick = () => { if(confirm("לאפס יוזמה?")) remove(ref(db, 'initiative')); };
 
-// קישור כפתורי הקוביות
+// חיבור כל כפתורי הקוביות
 document.querySelectorAll('.dice-btn').forEach(btn => { 
     btn.onclick = () => window.roll(btn.getAttribute('data-type')); 
 });
@@ -194,7 +218,6 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     const total = data.res + (data.mod || 0);
     let flavorText = "";
 
-    // לוגיקת המיקרו-קופי נשארת כפי שהייתה
     if (data.type === 'd20') {
         if (data.res === 20) flavorText = getRandomMsg(["האלים עצמם מריעים לך! 🌟", "פגיעה קטלנית!", "אגדה נולדה!"]);
         else if (data.res === 1) flavorText = getRandomMsg(["זה הולך לכאוב... מאוד. 💀", "אולי תפרוש בשיא?", "יום רע להיות הרפתקן."]);
