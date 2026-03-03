@@ -5,10 +5,10 @@
     --ink: #2c1e16;
 
     /* Safe area for centered overlay (DESKTOP defaults) */
-    --safe-top: 0px;
-    --safe-bottom: 150px; /* טיפה פחות כדי למרכז אופטי טוב יותר */
+    --safe-top: 250px;
+    --safe-bottom: 450px; /* טיפה פחות כדי למרכז אופטי טוב יותר */
     --safe-left: 0px;     /* לא מפצים על הלוג בדסקטופ */
-    --safe-right: 280px;  /* מקום ל-side-panel (260) + מרווח */
+    --safe-right: 520px;  /* מקום ל-side-panel (260) + מרווח */
 }
 
 * { 
