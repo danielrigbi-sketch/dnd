@@ -83,20 +83,83 @@ onValue(ref(db, 'initiative'), s => {
     });
 });
 
-onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
-    if (!canAnimate) return;
-    const data = snapshot.val(); 
-    const log = document.getElementById('roll-log');
-    const stage = document.getElementById('dice-visual'); 
+onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
+    const data = snapshot.val();
+    const time = new Date(data.ts).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    const stage = document.getElementById('dice-visual');
     const body = document.getElementById('main-body');
-    
-    if (document.getElementById('empty-state')) document.getElementById('empty-state').style.display = 'none';
+    const emptyState = document.getElementById('empty-state');
 
-    stage.style.display = "block"; 
-    stage.classList.add('shake'); 
-    stage.classList.remove('crit-glow'); 
+    // 1. טיפול באפקטים ויזואליים וסאונד (החלק שחששת לאבד)
+    emptyState.style.display = 'none';
+    stage.style.display = 'block';
+    stage.classList.remove('shake', 'crit-glow');
     body.classList.remove('screen-shake');
 
+    if (!isMuted) {
+        if (data.type === 'd20' && data.res === 20) {
+            critSound.currentTime = 0;
+            critSound.play().catch(()=>{});
+            stage.classList.add('crit-glow'); 
+            body.classList.add('screen-shake');
+        } else if (data.type === 'd20' && data.res === 1) {
+            failSound.currentTime = 0;
+            failSound.play().catch(()=>{});
+        } else {
+            rollSound.currentTime = 0;
+            rollSound.play().catch(()=>{});
+        }
+    }
+
+    stage.classList.add('shake');
+    document.getElementById('dice-svg').innerHTML = diceShapes[data.type];
+    document.getElementById('dice-svg').firstChild.style.fill = data.color;
+    document.getElementById('result-text').innerText = "";
+
+    // 2. מנוע המיקרו-קופי (התוספת החדשה)
+    const maxVal = parseInt(data.type.replace('d', ''));
+    const total = data.res + (data.mod || 0);
+    let flavorText = "";
+
+    if (data.type === 'd20') {
+        if (data.res === 20) flavorText = "האלים עצמם לא יכלו לקוות לטוב יותר! 🌟";
+        else if (data.res === 1) flavorText = "זה הולך לכאוב... מאוד. 💀";
+        else if (total >= 25) flavorText = "מעשה גבורה שייכתב בדברי הימים!";
+        else if (total >= 15) flavorText = "זה טוב, אבל האם זה טוב מספיק?";
+        else if (total >= 10) flavorText = "תוצאה סולידית, לא רע בכלל.";
+        else flavorText = "אולי כדאי לנסות שוב... בחיים הבאים.";
+    } else {
+        if (total >= maxVal + 5) flavorText = "מעבר לכל הציפיות! כוח מתפרץ!";
+        else if (data.res === maxVal) flavorText = "מקסימום עוצמה! מכה מדויקת.";
+        else if (total > maxVal / 2) flavorText = "נחמד, זה בטח יזיז משהו.";
+        else flavorText = "היה עדיף להישאר במיטה היום.";
+    }
+
+    // 3. הצגת התוצאה והוספה ללוג
+    setTimeout(() => {
+        stage.classList.remove('shake');
+        document.getElementById('result-text').innerText = total;
+
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        entry.innerHTML = `
+            <div style="margin-bottom: 12px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); border-radius: 6px;">
+                <span style="color: #aaa; font-size: 11px;">[${time}]</span> 
+                <strong style="color: var(--primary);">${data.cName}</strong> 
+                <span style="font-size: 12px;">(${data.pName})</span><br>
+                הטיל <strong style="color: #fff;">${data.type.toUpperCase()}</strong> וקיבל 
+                <span style="color: ${data.res === 20 ? '#f1c40f' : (data.res === 1 ? '#e74c3c' : '#fff')}; font-weight: bold; font-size: 1.1em;">
+                    ${data.res === 20 ? '20 טבעי!' : data.res}
+                </span>
+                <small style="opacity: 0.7;">(${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small><br>
+                <i style="color: var(--accent); font-size: 13px; display: block; margin-top: 4px;">"${flavorText}"</i>
+            </div>
+        `;
+
+        const log = document.getElementById('roll-log');
+        log.insertBefore(entry, log.firstChild);
+    }, 600);
+});
     // לוגיקת סאונד מתוקנת - בחירה בלעדית בסאונד אחד
     if (!isMuted) {
         if (data.type === 'd20' && data.res === 20) {
