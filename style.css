@@ -82,10 +82,9 @@ body {
 }
 .main-join-btn:hover { background: #c0392b; }
 
-/* --- מסך משחק (עיצוב בסיס למחשב) --- */
+/* --- מסך משחק (מחשב) --- */
 #game-screen { display: none; height: 100%; flex-direction: row; }
 
-/* פאנל צדדי */
 #side-panel {
     width: 260px;
     background: rgba(26, 26, 26, 0.95);
@@ -118,18 +117,16 @@ body {
     align-items: center;
 }
 
+.side-footer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+.online-status { font-size: 11px; opacity: 0.5; }
+.side-buttons-row { display: flex; flex-direction: column; gap: 5px; }
+
 .side-btn {
     background: #444; color: white; border: none; padding: 10px; 
     border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;
 }
 .side-btn:hover { background: #555; }
 
-/* --- עיצוב תחתית הפאנל הצידי --- */
-.side-footer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
-.online-status { font-size: 11px; opacity: 0.5; }
-.side-buttons-row { display: flex; flex-direction: column; gap: 5px; }
-
-/* אזור מרכזי */
 #main-area {
     flex: 1;
     position: relative;
@@ -139,7 +136,6 @@ body {
     justify-content: center;
 }
 
-/* לוג הטלות */
 #log-container { 
     position: absolute; top: 15px; left: 15px; width: 320px; 
     background-color: var(--parchment);
@@ -149,20 +145,6 @@ body {
     max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
 }
 
-.log-header { font-size: 16px; font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.2); margin-bottom: 10px; padding-bottom: 5px; }
-
-.log-player-name {
-    color: #ffffff !important;
-    font-weight: 800 !important;
-    font-size: 1.15em;
-    letter-spacing: 0.5px;
-    display: inline-block;
-    background: #333;
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-/* תצוגת קוביות מרכזית */
 #dice-stage {
     display: flex;
     flex-direction: column;
@@ -178,7 +160,6 @@ body {
     font-size: 45px; font-weight: 900; color: white; text-shadow: 0 0 15px black; 
 }
 
-/* פאנל שליטה (כפתורים) */
 #controls {
     position: absolute;
     bottom: 30px;
@@ -208,7 +189,6 @@ body {
 .special-roll-btn.dis { background: #c0392b; }
 #init-btn { background: #f39c12; }
 
-/* מצב קולדאון לכפתורים */
 .cooldown-active {
     filter: grayscale(100%) !important;
     opacity: 0.4 !important;
@@ -216,7 +196,6 @@ body {
     pointer-events: none !important;
 }
 
-/* אנימציות (נדרש עבור JS) */
 @keyframes shakeAnimation {
     0% { transform: translate(1px, 1px) rotate(0deg); }
     20% { transform: translate(-3px, 0px) rotate(5deg); }
@@ -237,7 +216,6 @@ body {
         overflow-x: hidden;
     }
 
-    /* פאנל יוזמה עובר למעלה */
     #side-panel {
         width: 100%;
         height: auto;
@@ -246,8 +224,6 @@ body {
         order: 1;
         padding: 15px 10px;
     }
-
-    .side-logo { max-width: 80px; margin: 0 auto 10px; }
 
     #init-list {
         flex-direction: row;
@@ -262,80 +238,62 @@ body {
         border-bottom: 4px solid;
     }
     
-    /* סידור כפתורי ההשתק והאיפוס בשורה אחת בנייד */
-    .side-footer {
-        margin-top: 5px;
-    }
-    
-    .online-status {
-        width: 100%;
-        margin-bottom: 5px;
-    }
-    
-    .side-buttons-row {
-        flex-direction: row;
-        width: 100%;
-        gap: 10px;
-    }
-    
-    .side-buttons-row .side-btn {
-        flex: 1;
-    }
+    .side-footer { margin-top: 5px; }
+    .side-buttons-row { flex-direction: row; width: 100%; gap: 10px; }
+    .side-buttons-row .side-btn { flex: 1; padding: 8px; font-size: 13px; }
 
-    /* לוג מקבל מקום מסודר ולא מרחף */
     #log-container {
         position: relative; 
-        top: 0; 
-        left: 0;
+        top: 0; left: 0;
         width: 95%;
         margin: 15px auto;
-        max-height: 200px;
+        max-height: 180px;
         order: 2;
     }
 
     #main-area {
         width: 100%;
         justify-content: flex-start;
-        padding-bottom: 220px; 
+        padding-bottom: 240px; 
         order: 3;
-    }
-
-    #dice-stage {
-        margin-top: 10px;
     }
 
     .dice-container { width: 140px; height: 140px; }
 
-   /* פאנל שליטה מרכזי בנייד */
     #controls {
         position: fixed; 
-        bottom: 0;
-        left: 0;
+        bottom: 0; left: 0;
         width: 100%;
         border-radius: 15px 15px 0 0;
         background: rgba(20, 20, 20, 0.98);
-        padding: 12px 8px;
+        padding: 15px 10px;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         gap: 8px;
         border-top: 2px solid #333;
-        z-index: 100;
     }
 
-    /* שורה 1: תוסף ויוזמה חולקים שורה */
+    /* שורה 1: תוסף ויוזמה */
     .mod-container {
         flex: 1 1 40%;
-        margin-bottom: 0;
+        margin: 0;
         justify-content: center;
     }
-    
-    #mod-input {
-        width: 45px;
-        padding: 6px;
-    }
-    
-    #init-btn {
-        flex: 1 1 45%;
-        padding: 10px;
+    #mod-input { width: 50px; }
+    #init-btn { flex: 1 1 45%; }
+
+    /* שורות 2-3: קוביות (3 בשורה) */
+    .dice-btn {
+        flex: 1 1 28%; 
+        padding: 12px 2px;
         font-size: 14px;
+    }
+
+    /* שורה 4: יתרון וחיסרון */
+    .special-roll-btn {
+        flex: 1 1 46%; 
+        padding: 12px 5px;
+        font-size: 14px;
+    }
+}
