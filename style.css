@@ -4,11 +4,11 @@
     --parchment: #f3e5ab; 
     --ink: #2c1e16;
 
-    /* Safe area for centered overlay (DESKTOP defaults) */
-    --safe-top: 250px;
-    --safe-bottom: 450px; /* טיפה פחות כדי למרכז אופטי טוב יותר */
-    --safe-left: 0px;     /* לא מפצים על הלוג בדסקטופ */
-    --safe-right: 520px;  /* מקום ל-side-panel (260) + מרווח */
+    /* DESKTOP: push center left + slightly down */
+    --safe-top: 40px;       /* דוחף למטה */
+    --safe-bottom: 110px;   /* פחות bottom => המרכז יורד */
+    --safe-left: 0px;
+    --safe-right: 520px;    /* יותר right => המרכז הולך שמאלה */
 }
 
 * { 
