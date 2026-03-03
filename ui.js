@@ -94,23 +94,18 @@ export function addLogEntry(data, time, flavorText) {
     }
 }
 
-// ניהול נראות כפתורים בזמן קולדאון
+// ניהול נראות כפתורים בזמן קולדאון - גרסה יציבה
 export function setDiceCooldown(isActive) {
     const buttons = document.querySelectorAll('.dice-btn, #init-btn, .special-roll-btn');
     
     buttons.forEach(btn => {
         if (isActive) {
+            btn.classList.add('cooldown-active');
             btn.disabled = true;
-            btn.style.filter = "grayscale(100%)";
-            btn.style.opacity = "0.5";
-            btn.style.cursor = "not-allowed";
-            btn.style.pointerEvents = "none";
         } else {
+            btn.classList.remove('cooldown-active');
             btn.disabled = false;
-            btn.style.filter = "none";
-            btn.style.opacity = "1";
-            btn.style.cursor = "pointer";
-            btn.style.pointerEvents = "auto";
         }
     });
+
 }
