@@ -59,12 +59,69 @@ button:disabled { background: #444; opacity: 0.6; }
 @keyframes screenShake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(5px, 5px); } 50% { transform: translate(-5px, -5px); } }
 .crit-glow { filter: drop-shadow(0 0 20px #f1c40f); }
 
+/* --- תיקון תצוגת נייד --- */
 @media (max-width: 768px) { 
     #game-screen { flex-direction: column; } 
-    #side-panel { width: 100%; height: 110px; border-left: none; border-bottom: 2px solid #333; flex-direction: row; padding: 10px; overflow-x: auto; } 
-    #init-list { display: flex; gap: 10px; } 
-    #log-container { width: 180px; top: 120px; font-size: 11px; } 
-    .dice-btn, #init-btn { flex-grow: 1; padding: 12px 10px; } 
+
+    /* פאנל יוזמה עליון - מאפשר גלילה לצדדים */
+    #side-panel { 
+        width: 100%; 
+        height: auto; 
+        min-height: 85px;
+        border-left: none; 
+        border-bottom: 2px solid var(--primary); 
+        flex-direction: column; 
+        padding: 8px; 
+        overflow: hidden;
+    } 
+
+    #side-panel h3 { display: none; } /* מחביא את הכותרת בנייד כדי לחסוך מקום */
+
+    #init-list { 
+        display: flex; 
+        flex-direction: row; /* מסדר את השחקנים בשורה */
+        gap: 8px; 
+        overflow-x: auto; /* מאפשר גלילה ימינה-שמאלה */
+        padding-bottom: 5px;
+        -webkit-overflow-scrolling: touch;
+    } 
+
+    .tracker-item { 
+        min-width: 130px; /* מבטיח שכל שחקן ייראה כמו כרטיס קטן */
+        margin-bottom: 0; 
+        flex-shrink: 0;
+        font-size: 12px;
+        padding: 8px;
+    } 
+
+    /* לוג ההטלות - מוזז לפינה כדי שלא יסתיר את המרכז */
+    #log-container { 
+        width: 160px; 
+        max-height: 25%; /* מקטין את הגובה בנייד */
+        top: 95px; /* ממוקם מתחת לפאנל היוזמה */
+        left: 10px; 
+        font-size: 11px;
+        opacity: 0.9;
+        pointer-events: none; /* מאפשר ללחוץ "דרכו" על הקוביות במידת הצורך */
+    } 
+    
+    #log-container * { pointer-events: auto; } /* מחזיר יכולת גלילה לתוך הלוג */
+
+    /* אזור הקוביות והכפתורים */
+    #dice-stage { padding-top: 40px; }
+    
+    #controls { 
+        padding: 10px 5px; 
+        gap: 5px; 
+    }
+
+    .dice-btn, #init-btn { 
+        flex: 1 1 20%; /* מאפשר לכפתורים להסתדר בשורות בצורה חכמה */
+        padding: 10px 5px; 
+        font-size: 14px;
+    } 
+    
+    #mod-input { width: 45px; }
 }
 /* עיצוב הלוגו הראשי במסך הכניסה */
 .main-logo {
