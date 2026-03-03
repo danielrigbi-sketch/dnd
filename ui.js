@@ -95,3 +95,26 @@ export function addLogEntry(data, time, flavorText) {
         log.removeChild(log.lastChild);
     }
 }
+// ui.js
+
+// ניהול נראות כפתורים בזמן קולדאון
+export function setDiceCooldown(isActive) {
+    // בחירת כל כפתורי ההטלה, כפתור היוזמה והכפתורים המיוחדים
+    const buttons = document.querySelectorAll('.dice-btn, #init-btn, .special-roll-btn');
+    
+    buttons.forEach(btn => {
+        if (isActive) {
+            btn.disabled = true;
+            btn.style.filter = "grayscale(100%)";
+            btn.style.opacity = "0.5";
+            btn.style.cursor = "not-allowed";
+            btn.style.pointerEvents = "none";
+        } else {
+            btn.disabled = false;
+            btn.style.filter = "none";
+            btn.style.opacity = "1";
+            btn.style.cursor = "pointer";
+            btn.style.pointerEvents = "auto";
+        }
+    });
+}
