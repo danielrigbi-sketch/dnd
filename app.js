@@ -11,16 +11,17 @@ import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// --- אתחול מנוע 3D Dice (תיקון ל-API v1.1.0+) ---
+// --- אתחול מנוע 3D Dice (מותאם למסך מלא וקוביות גדולות) ---
 const diceBox = new DiceBox({
-    container: "#dice-box-canvas", // הסלקטור עובר לכאן
-    origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/", // הבסיס של ה-CDN
-    assetPath: "assets/", // נתיב יחסי ל-origin כדי למנוע כפילות URL
+    container: "#dice-box-canvas",
+    origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/",
+    assetPath: "assets/",
     theme: "default",
-    scale: 5,
+    scale: 9, // קוביות גדולות וברורות
     gravity: 3,
     friction: 0.8,
-    sounds: false // אנחנו מנהלים סאונד בנפרד
+    sounds: false,
+    settleTimeout: 2500 // זמן המתנה לעצירת הקובייה
 });
 
 let isDiceBoxReady = false;
@@ -83,7 +84,6 @@ document.getElementById('join-btn').onclick = async () => {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
     
-    // אתחול המנוע ברגע שנכנסים (מוודא טעינת Assets)
     try {
         await diceBox.init();
         isDiceBoxReady = true;
@@ -107,7 +107,7 @@ document.getElementById('join-btn').onclick = async () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- לוגיקת ההטלה המעודכנת ---
+// --- לוגיקת ההטלה המעודכנת (עם דחיפה למרכז) ---
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     if (!isDiceBoxReady) return console.warn("מנוע הקוביות עדיין בטעינה...");
@@ -119,19 +119,24 @@ window.roll = async (type, isInit = false) => {
         setDiceCooldown(true);
     }
 
-    // הגדרת צבע הקובייה (חובה לבצע לפני הגלגול)
     await diceBox.updateConfig({ themeColor: pColor });
 
     let finalRes, res1 = null, res2 = null;
 
+    // הגדרות זריקה למרכז
+    const rollOptions = {
+        force: 10,
+        direction: { x: 0, y: 0, z: -1 }
+    };
+
     try {
         if (currentMode !== 'normal' && type === 'd20') {
-            const results = await diceBox.roll("2d20");
+            const results = await diceBox.roll("2d20", rollOptions);
             res1 = results[0].value;
             res2 = results[1].value;
             finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
         } else {
-            const results = await diceBox.roll(`1${type}`);
+            const results = await diceBox.roll(`1${type}`, rollOptions);
             finalRes = results[0].value;
         }
     } catch (err) {
@@ -168,7 +173,7 @@ document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => wind
 
 document.getElementById('init-btn').onclick = async () => { 
     const total = await window.roll('d20', true); 
-    set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); 
+    set(ref(db, 'initiative/' + (cName || pName)), { score: total, color: pColor, playerName: pName }); 
 };
 
 // טיפול בנתונים
