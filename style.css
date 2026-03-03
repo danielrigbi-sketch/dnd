@@ -24,6 +24,7 @@ body {
     background-position: center; 
 }
 
+/* --- מסך כניסה --- */
 #login-screen { 
     position: fixed; 
     inset: 0; 
@@ -72,8 +73,9 @@ body {
 
 .color-opt.active { transform: scale(1.25); border-color: white; box-shadow: 0 0 12px rgba(255,255,255,0.6); }
 
-.role-select { background: #2c3e50; color: white; }
+.role-select { background: #2c3e50; color: white; cursor: pointer; }
 
+/* --- מסך משחק --- */
 #game-screen { display: none; height: 100%; flex-direction: row; }
 
 #log-container { 
@@ -84,10 +86,12 @@ body {
     box-shadow: 5px 10px 25px rgba(0,0,0,0.5); font-size: 13px; 
     max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
 }
-/* --- מצב קולדאון לכפתורים --- */
-.cooldown-active {
-    filter: grayscale(100%) !important;
-    opacity: 0.4 !important;
-    cursor: not-allowed !important;
-    pointer-events: none !important;
+
+.log-player-name {
+    color: #ffffff !important;
+    font-family: 'Assistant', sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 1.15em;
+    letter-spacing: 0.5px;
+    display: inline-block;
 }
