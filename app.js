@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// ייבוא הקבצים המודולריים
+// ייבוא הקבצים המודולריים שיצרת
 import { firebaseConfig, diceShapes } from "./constants.js";
 import { getFlavorText } from "./messages.js";
 
@@ -15,7 +15,15 @@ const rollSound = new Audio('./dice.mp3');
 const critSound = new Audio('./crit.mp3');
 const failSound = new Audio('./fail.mp3');
 
-// --- ניהול ממשק המצב ---
+// פונקציית עזר לעצירת כל הסאונדים לפני שמתחילים אחד חדש
+function stopAllSounds() {
+    [rollSound, critSound, failSound].forEach(s => {
+        s.pause();
+        s.currentTime = 0;
+    });
+}
+
+// --- ניהול ממשק המצב (יתרון/חיסרון) ---
 function updateModeUI() {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
@@ -38,24 +46,21 @@ function updateModeUI() {
     }
 }
 
-// --- הצטרפות למשחק (כאן נמצא התיקון לבאג הסאונד) ---
+// --- הצטרפות למשחק (תיקון סופי לבאג הסאונד בנייד) ---
 document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
     pColor = document.getElementById('user-color').value;
     if (!pName || !cName) return alert("מלא פרטים!");
 
-    // תיקון "דריכת" סאונד בנייד: משתיקים, מפעילים ומכבים מייד
-    const prep = (s) => {
-        const originalVol = s.volume;
-        s.volume = 0; // השתקה מוחלטת בזמן ה"דריכה"
+    // "שחרור" האודיו בנייד ללא משחקי ווליום - פשוט הפעלה והפסקה מיידית
+    const unlock = (s) => {
         s.play().then(() => {
             s.pause();
             s.currentTime = 0;
-            s.volume = originalVol; // החזרת הווליום למצב תקין
         }).catch(() => {});
     };
-    [rollSound, critSound, failSound].forEach(prep);
+    [rollSound, critSound, failSound].forEach(unlock);
 
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
@@ -157,13 +162,14 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     body.classList.remove('screen-shake');
 
     if (!isMuted) {
+        stopAllSounds(); // מוודא שסאונד קודם לא קוטע את החדש
         if (data.type === 'd20' && data.res === 20) {
-            critSound.currentTime = 0; critSound.play().catch(()=>{});
+            critSound.play().catch(()=>{});
             stage.classList.add('crit-glow'); body.classList.add('screen-shake');
         } else if (data.type === 'd20' && data.res === 1) {
-            failSound.currentTime = 0; failSound.play().catch(()=>{});
+            failSound.play().catch(()=>{});
         } else {
-            rollSound.currentTime = 0; rollSound.play().catch(()=>{});
+            rollSound.play().catch(()=>{});
         }
     }
 
