@@ -6,8 +6,8 @@
 
     /* Safe area for centered overlay (DESKTOP defaults) */
     --safe-top: 0px;
-    --safe-bottom: 160px; /* מקום ל-controls */
-    --safe-left: 340px;   /* מקום ללוג (320) + מרווח */
+    --safe-bottom: 150px; /* טיפה פחות כדי למרכז אופטי טוב יותר */
+    --safe-left: 0px;     /* לא מפצים על הלוג בדסקטופ */
     --safe-right: 280px;  /* מקום ל-side-panel (260) + מרווח */
 }
 
@@ -256,8 +256,8 @@ body {
 /* --- התאמה למובייל (Mobile Responsiveness) --- */
 @media (max-width: 768px){
     :root{
-        --safe-top: 160px;     /* סדר יוזמה + לוג באזור העליון */
-        --safe-bottom: 260px;  /* controls קבוע */
+        --safe-top: 190px;     /* דוחף מתחת לסדר יוזמה + לוג */
+        --safe-bottom: 270px;  /* מעל controls */
         --safe-left: 0px;
         --safe-right: 0px;
     }
