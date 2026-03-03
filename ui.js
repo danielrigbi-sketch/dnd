@@ -21,22 +21,31 @@ export function updateModeUI(activeMode) {
     }
 }
 
-// עדכון רשימת היוזמה
+// עדכון רשימת היוזמה עם אפקט הילה
 export function updateInitiativeUI(data) {
     const list = document.getElementById('init-list');
     if (!list || !data) return;
     list.innerHTML = "";
     const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
+    
     items.sort((a, b) => b.score - a.score).forEach(i => {
         const div = document.createElement('div');
         div.className = 'tracker-item';
-        div.style.borderRightColor = i.color;
-        div.innerHTML = `<span>${i.name}(${i.playerName || ''})</span><b>${i.score}</b>`;
+        
+        // הוספת הילה ופס זיהוי לפי הצבע של השחקן
+        const playerColor = i.color || '#e74c3c';
+        div.style.borderRight = `4px solid ${playerColor}`;
+        div.style.boxShadow = `inset 8px 0 10px -5px ${playerColor}`;
+        
+        div.innerHTML = `
+            <span style="font-weight:bold; color: #fff; text-shadow: 1px 1px 2px #000;">${i.name}</span>
+            <span class="init-score">${i.score}</span>
+        `;
         list.appendChild(div);
     });
 }
 
-// הוספת שורה ללוג ההטלות
+// הוספת שורת לוג עם אפקט הילה לשם
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -46,19 +55,22 @@ export function addLogEntry(data, time, flavorText) {
     const modeLabel = data.mode === 'adv' ? '<span style="color:#4e6e5d;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#e74c3c;">(חיסרון)</span>' : '');
     const diceBreakdown = (data.res1 && data.res2) ? `<small style="opacity:0.6;"> [${data.res1}, ${data.res2}]</small>` : '';
 
+    // יצירת סטייל ההילה לשם המשתמש
+    const userColor = data.color || '#fff';
+    const auraStyle = `text-shadow: 0 0 8px ${userColor}; border-right: 3px solid ${userColor}; padding-right: 8px;`;
+
     entry.innerHTML = `
-        <div style="margin-bottom: 12px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); border-radius: 6px;">
+        <div style="margin-bottom: 12px; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); border-radius: 8px;">
             <span style="color: #aaa; font-size: 11px;">[${time}]</span> 
-            <strong style="color: var(--primary);">${data.cName || 'גיבור'}</strong><br>
+            <strong style="${auraStyle} color: #fff;">${data.cName || 'גיבור'}</strong><br>
             הטיל <strong style="color: #fff;">${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
-            <span style="color: ${data.res === 20 ? '#f1c40f' : (data.res === 1 ? '#e74c3c' : '#fff')}; font-weight: bold;">
-                ${data.res === 20 ? '20 טבעי!' : data.res}
+            <span style="color: ${data.res === 20 ? '#f1c40f' : (data.res === 1 ? '#e74c3c' : '#fff')}; font-weight: bold; font-size: 1.1em;">
+                ${data.res + (data.mod || 0)}
             </span>
             ${diceBreakdown}
-            <small style="opacity: 0.7;">(${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small><br>
-            <i style="color: var(--accent); font-size: 13px;">"${flavorText}"</i>
+            <div style="color: #ddd; font-style: italic; font-size: 13px; margin-top: 4px;">${flavorText}</div>
         </div>
     `;
-    log.insertBefore(entry, log.firstChild);
-    if (log.children.length > 20) log.removeChild(log.lastChild);
+
+    log.prepend(entry);
 }
