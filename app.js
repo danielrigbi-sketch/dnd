@@ -1,11 +1,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// ייבוא מודולים
+// ייבוא מודולים - הוספתי את setDiceCooldown
 import { firebaseConfig, diceShapes } from "./constants.js";
 import { getFlavorText } from "./messages.js";
 import { unlockAudio, playRollSound, stopAllSounds } from "./audio.js";
-import { updateModeUI, updateInitiativeUI, addLogEntry } from "./ui.js";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js";
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -20,7 +20,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const colorOptions = document.querySelectorAll('.color-opt');
     const colorInput = document.getElementById('user-color');
 
-    // פונקציה לעדכון הצבע הנבחר ויזואלית
     const setActiveColor = (color) => {
         colorOptions.forEach(opt => {
             if (opt.getAttribute('data-color') === color) {
@@ -32,7 +31,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // האזנה ללחיצה על צבע
     colorOptions.forEach(opt => {
         opt.addEventListener('click', () => {
             const selectedColor = opt.getAttribute('data-color');
@@ -40,7 +38,6 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // טעינה מה-localStorage
     const savedPName = localStorage.getItem('critroll_pName');
     const savedCName = localStorage.getItem('critroll_cName');
     const savedColor = localStorage.getItem('critroll_pColor');
@@ -61,18 +58,16 @@ document.getElementById('join-btn').onclick = () => {
 
     if (!pName || !cName) return alert("מלא פרטים!");
 
-    // שמירה בזיכרון לשימוש עתידי
     localStorage.setItem('critroll_pName', pName);
     localStorage.setItem('critroll_cName', cName);
     localStorage.setItem('critroll_pColor', pColor);
     localStorage.setItem('critroll_role', userRole);
 
-    unlockAudio(); // תיקון סאונד לנייד
+    unlockAudio(); 
 
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
     
-    // הצגת/הסתרת כפתורי DM
     const dmOnlyBtn = document.getElementById('reset-init-btn');
     if (userRole === 'dm') {
         dmOnlyBtn.style.display = 'block';
@@ -88,16 +83,21 @@ document.getElementById('join-btn').onclick = () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- לוגיקת ההטלה ---
+// --- לוגיקת ההטלה המעודכנת עם הקולדאון הויזואלי ---
 window.roll = (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     const currentMode = isInit ? 'normal' : activeMode;
 
     if (!isInit) {
         isCooldown = true;
-        const btns = document.querySelectorAll('.dice-btn, .special-roll-btn, #init-btn');
-        btns.forEach(b => b.disabled = true);
-        setTimeout(() => { isCooldown = false; btns.forEach(b => b.disabled = false); }, 3000);
+        // הפעלת מצב קולדאון ויזואלי (אפור ונעול)
+        setDiceCooldown(true);
+        
+        setTimeout(() => { 
+            isCooldown = false; 
+            // החזרת הכפתורים לצבע המקורי ולמצב פעיל
+            setDiceCooldown(false);
+        }, 3000);
     }
 
     const max = parseInt(type.replace('d', '')) || 20;
@@ -149,7 +149,7 @@ onValue(ref(db, 'initiative'), (snapshot) => {
     updateInitiativeUI(snapshot.val());
 });
 
-// הטלות ואנימציה - גרסה משופרת
+// הטלות ואנימציה
 onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     const data = snapshot.val();
     if (!data || !canAnimate) return;
@@ -162,16 +162,13 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     document.getElementById('empty-state').style.display = 'none';
     stage.style.display = 'block';
     
-    // איפוס מצבים קודמים
     stage.classList.remove('shake', 'crit-glow');
     body.classList.remove('screen-shake');
     resultText.classList.remove('show');
     resultText.innerText = "";
 
-    // ניהול סאונד
     playRollSound(data.type, data.res, isMuted);
     
-    // אפקטים מיוחדים ב-20 טבעי
     if (data.type === 'd20' && data.res === 20) {
         stage.classList.add('crit-glow'); 
         body.classList.add('screen-shake');
@@ -187,11 +184,8 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
 
     setTimeout(() => {
         stage.classList.remove('shake');
-        
-        // הצגת התוצאה עם אנימציית Fade In
         resultText.innerText = total;
         resultText.classList.add('show');
-        
         addLogEntry(data, time, flavorText);
     }, 600);
 });
