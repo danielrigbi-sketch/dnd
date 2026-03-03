@@ -11,17 +11,17 @@ import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// --- אתחול מנוע 3D Dice (מותאם למסך מלא וקוביות גדולות) ---
+// --- אתחול מנוע 3D Dice (מותאם למסך מלא וקוביות ענק) ---
 const diceBox = new DiceBox({
     container: "#dice-box-canvas",
     origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/",
     assetPath: "assets/",
     theme: "default",
-    scale: 9, // קוביות גדולות וברורות
-    gravity: 3,
+    scale: 15, // הגדלה משמעותית כדי שיראו מצוין בנייד ובלפטופ
+    gravity: 4, // כוח משיכה חזק יותר לנחיתה יציבה
     friction: 0.8,
     sounds: false,
-    settleTimeout: 2500 // זמן המתנה לעצירת הקובייה
+    settleTimeout: 3000 // זמן המתנה לעצירת הקובייה
 });
 
 let isDiceBoxReady = false;
@@ -107,7 +107,7 @@ document.getElementById('join-btn').onclick = async () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- לוגיקת ההטלה המעודכנת (עם דחיפה למרכז) ---
+// --- לוגיקת ההטלה המעודכנת (עם ניקוי שולחן וזריקה חזקה למרכז) ---
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     if (!isDiceBoxReady) return console.warn("מנוע הקוביות עדיין בטעינה...");
@@ -123,13 +123,17 @@ window.roll = async (type, isInit = false) => {
 
     let finalRes, res1 = null, res2 = null;
 
-    // הגדרות זריקה למרכז
+    // הגדרות זריקה מרכזיות
     const rollOptions = {
-        force: 10,
-        direction: { x: 0, y: 0, z: -1 }
+        force: 15, // זריקה חזקה יותר
+        distribute: true, // פיזור טוב של הקוביות במרכז
+        direction: { x: 0, y: 0, z: -1 } 
     };
 
     try {
+        // ניקוי הקוביות הקודמות מהמסך לפני הטלה חדשה
+        diceBox.clear(); 
+
         if (currentMode !== 'normal' && type === 'd20') {
             const results = await diceBox.roll("2d20", rollOptions);
             res1 = results[0].value;
