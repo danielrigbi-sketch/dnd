@@ -1,6 +1,4 @@
-// ui.js
-
-// שחזור פונקציית עדכון המודים מהקובץ המקורי שלך
+// עדכון ויזואלי של כפתורי יתרון/חיסרון
 export function updateModeUI(activeMode) {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
@@ -23,7 +21,7 @@ export function updateModeUI(activeMode) {
     }
 }
 
-// שחזור פונקציית היוזמה מהקובץ המקורי שלך (עם תוספת ההילה הצבעונית)
+// עדכון רשימת היוזמה
 export function updateInitiativeUI(data) {
     const list = document.getElementById('init-list');
     if (!list || !data) return;
@@ -34,7 +32,6 @@ export function updateInitiativeUI(data) {
         const div = document.createElement('div');
         div.className = 'tracker-item';
         
-        // הוספת פס זיהוי צבעוני לכל שחקן ברשימה
         const playerColor = i.color || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
         
@@ -46,7 +43,7 @@ export function updateInitiativeUI(data) {
     });
 }
 
-// שחזור המבנה המקורי של הלוג עם תיקוני השם, השעה ואפקט הבליטה
+// הוספת שורת לוג - פונט לבן בולט עם הילה צבעונית
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -55,32 +52,39 @@ export function addLogEntry(data, time, flavorText) {
     entry.className = 'log-entry';
     
     const userColor = data.color || '#8B0000';
-    const modeLabel = data.mode === 'adv' ? '<span style="color:#2d4238;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#8c5151;">(חיסרון)</span>' : '');
+    const modeLabel = data.mode === 'adv' ? '<span style="color:#2d4238; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#8c5151; font-weight:bold;">(חיסרון)</span>' : '');
     const diceBreakdown = (data.res1 && data.res2) ? `<small style="color: #666;"> [${data.res1}, ${data.res2}]</small>` : '';
 
-    // אפקט ה"בליטה והילה" שביקשת לשמור
+    // העיצוב המנצח: פונט לבן, מסגרת שחורה לקריאות, והילה בצבע השחקן
     const nameStyle = `
-        color: ${userColor}; 
-        text-shadow: 1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 0px 0px 10px ${userColor}66;
-        font-weight: 800;
+        color: #ffffff; 
+        font-weight: 900;
         font-size: 1.1em;
+        text-shadow: 
+            -1px -1px 0 #000,  
+             1px -1px 0 #000,
+            -1px  1px 0 #000,
+             1px  1px 0 #000,
+             0 0 12px ${userColor}, 
+             0 0 20px ${userColor}aa;
     `;
 
-    // המבנה המקורי מהקבצים שלך: [זמן] שם, הטלה וקיבל תוצאה
     entry.innerHTML = `
-        <div style="margin-bottom: 12px; padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.03); border-radius: 8px;">
-            <span style="color: #2c1e16; font-size: 11px; font-weight: bold;">[${time}]</span> 
-            <strong style="${nameStyle}">${data.cName || 'גיבור'} (${data.pName || 'שחקן'})</strong><br>
+        <div style="margin-bottom: 15px; padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.03); border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
+                 <strong style="${nameStyle}">${data.cName || 'גיבור'} (${data.pName || 'שחקן'})</strong>
+                 <span style="color: #2c1e16; font-size: 11px; font-weight: bold; font-family: monospace;">[${time}]</span> 
+            </div>
             
-            <div style="color: #1a1a1a; margin-top: 4px;">
+            <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4;">
                 הטיל <strong style="color: #000;">${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
-                <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.2em;">
+                <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.25em;">
                     ${data.res + (data.mod || 0)}
                 </span>
                 ${diceBreakdown}
             </div>
             
-            <div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 4px;">
+            <div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 5px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px;">
                 ${flavorText ? `"${flavorText}"` : ""}
             </div>
         </div>
