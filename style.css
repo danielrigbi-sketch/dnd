@@ -4,10 +4,11 @@
     --parchment: #f3e5ab; 
     --ink: #2c1e16;
 
-    /* --- Safe Centering Vars (NEW) --- */
+    /* --- Safe Centering Vars (UPDATED) --- */
     --safe-top: 0px;
-    --safe-bottom: 140px; /* מרווח דסקטופ ל-controls */
-    --safe-left: 360px;   /* מרווח דסקטופ ללוג (320px) + רווח */
+    --safe-bottom: 160px; /* דסקטופ: מקום ל-controls */
+    --safe-left: 0px;     /* לא חותכים את המרכז בדסקטופ כברירת מחדל */
+    --safe-right: 0px;
 }
 
 * { 
@@ -176,24 +177,21 @@ body {
     z-index: 5; /* תוצאת הטקסט מעל הקוביות */
 }
 
-/* --- Safe Center Container (NEW) --- */
-/* מרכז את הקובייה/מספר בתוך "אזור בטוח" בין הלוג/פאנל עליון לבין ה-controls */
+/* --- Safe Center Container (FIXED CENTERING) --- */
+/* תופס את כל ה-dice-stage, וממרכז לפי padding "אזור בטוח" */
 #center-stage{
     position: absolute;
-    top: var(--safe-top);
-    right: 0;
-    bottom: var(--safe-bottom);
-    left: var(--safe-left);
-
+    inset: 0; /* הכי חשוב: הקונטיינר עצמו ממורכז על כל האזור */
     display: grid;
     place-items: center;
 
+    padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+
     pointer-events: none;
 
-    z-index: 60; /* מעל הקוביות (1/5), מתחת ללוג (90) ול-controls (100) */
+    z-index: 95; /* מעל log (90) ומעל side-panel במובייל (80), מתחת ל-controls (100) */
 }
 
-/* הוויז׳ואל עצמו */
 #dice-visual{
     display: flex;
     align-items: center;
@@ -209,7 +207,7 @@ body {
 }
 
 #result-text{ 
-    font-size: clamp(80px, 15vw, 150px); /* גודל דינמי - ענק בנייד ובלפטופ */
+    font-size: clamp(80px, 15vw, 150px);
     font-weight: 900; 
     color: white; 
     text-shadow: 0 0 30px black, 0 0 10px black, 2px 2px 5px rgba(0,0,0,0.8); 
@@ -235,7 +233,7 @@ body {
     gap: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     border: 1px solid rgba(255,255,255,0.1);
-    z-index: 100; /* הכי גבוה כדי שיהיה לחיץ תמיד */
+    z-index: 100;
 }
 
 .mod-container { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
@@ -298,10 +296,11 @@ body {
     #mod-input { width: 40px; padding: 4px; font-size: 14px; }
     #init-btn { grid-area: init; background: #f39c12 !important; width: 100%; margin: 0; }
 
-    /* --- Safe Centering Vars (NEW - Mobile) --- */
+    /* --- Safe Centering Vars (Mobile) --- */
     :root{
-        --safe-top: 120px;     /* מקום ל-side-panel ולכותרות למעלה */
-        --safe-bottom: 240px;  /* מקום לפאנל controls הקבוע בתחתית */
-        --safe-left: 0px;      /* במובייל לא מפצים על לוג שמאלי */
+        --safe-top: 140px;     /* מפנה מקום לסדר יוזמה + אזור עליון */
+        --safe-bottom: 260px;  /* מפנה מקום ל-controls הקבוע */
+        --safe-left: 0px;
+        --safe-right: 0px;
     }
 }
