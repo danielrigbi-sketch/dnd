@@ -98,7 +98,7 @@ body {
     display: flex;
     flex-direction: column;
     padding: 20px;
-    z-index: 20; /* מעל הקוביות */
+    z-index: 20;
     box-shadow: -5px 0 20px rgba(0,0,0,0.6);
 }
 
@@ -140,7 +140,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    z-index: auto; /* חשוב: לא ליצור stacking context שמגביל שכבות */
+    z-index: auto;
 }
 
 #log-container{ 
@@ -152,38 +152,38 @@ body {
     max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
 }
 
-/* --- אזור הקוביות התלת-ממדיות (FULL SCREEN) --- */
+/* --- אזור הקוביות התלת-ממדיות (SAFE AREA) --- */
 #dice-box-canvas{
-    position: fixed; /* תופס את כל המסך ללא תלות באלמנטים אחרים */
-    top: 0;
-    left: 0;
-    width: 100vw !important;
-    height: 100vh !important;
-    pointer-events: none; /* מאפשר לחיצה על כפתורים מתחת לקוביות */
-    z-index: 1; /* השכבה הכי תחתונה מעל הרקע */
+    position: fixed;
+    top: var(--safe-top);
+    left: var(--safe-left);
+    right: var(--safe-right);
+    bottom: var(--safe-bottom);
+
+    width: auto !important;
+    height: auto !important;
+
+    pointer-events: none;
+    z-index: 70; /* מתחת ל-center-stage/תוצאה ומתחת ל-controls */
     display: block !important;
 }
 
 #dice-stage{
-    position: fixed;   /* הכי חשוב */
+    position: fixed;
     inset: 0;
     width: 100vw;
     height: 100vh;
-
     pointer-events: none;
-    z-index: 95; /* מעל side-panel (80) ומעל log (90?) -> נראה סעיף הבא */
+    z-index: 95;
 }
 
 /* --- Safe Center Container (FIXED CENTERING) --- */
-/* תופס את כל ה-dice-stage, וממרכז לפי padding "אזור בטוח" */
 #center-stage{
     position: absolute;
     inset: 0;
     display: grid;
     place-items: center;
-
     padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
-
     pointer-events: none;
     z-index: 95;
 }
@@ -256,11 +256,12 @@ body {
 /* --- התאמה למובייל (Mobile Responsiveness) --- */
 @media (max-width: 768px){
     :root{
-    --safe-top: 160px;     /* סדר יוזמה + לוג באזור העליון */
-    --safe-bottom: 260px;  /* controls קבוע */
-    --safe-left: 0px;
-    --safe-right: 0px;
-  
+        --safe-top: 160px;     /* סדר יוזמה + לוג באזור העליון */
+        --safe-bottom: 260px;  /* controls קבוע */
+        --safe-left: 0px;
+        --safe-right: 0px;
+    }
+
     #game-screen { flex-direction: column; }
 
     .side-logo { display: none; }
@@ -297,12 +298,4 @@ body {
     .mod-container { grid-area: mod; background: #333; border-radius: 8px; display: flex; justify-content: center; margin: 0; }
     #mod-input { width: 40px; padding: 4px; font-size: 14px; }
     #init-btn { grid-area: init; background: #f39c12 !important; width: 100%; margin: 0; }
-
-    /* --- Safe Centering Vars (Mobile) --- */
-    :root{
-        --safe-top: 140px;     /* מפנה מקום לסדר יוזמה + אזור עליון */
-        --safe-bottom: 260px;  /* מפנה מקום ל-controls הקבוע */
-        --safe-left: 0px;
-        --safe-right: 0px;
-    }
 }
