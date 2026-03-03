@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// ייבוא קבצי המודול שלנו
+// ייבוא הקבצים החדשים שיצרת
 import { firebaseConfig, diceShapes } from "./constants.js";
 import { getFlavorText } from "./messages.js";
 
@@ -15,7 +15,7 @@ const rollSound = new Audio('./dice.mp3');
 const critSound = new Audio('./crit.mp3');
 const failSound = new Audio('./fail.mp3');
 
-// --- ממשק משתמש ---
+// --- ניהול ממשק המצב (יתרון/חיסרון) ---
 function updateModeUI() {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
@@ -28,12 +28,17 @@ function updateModeUI() {
     });
 
     if (activeMode === 'adv') {
-        advBtn.style.filter = "grayscale(0%)"; advBtn.style.opacity = "1"; advBtn.style.border = "2px solid white";
+        advBtn.style.filter = "grayscale(0%)";
+        advBtn.style.opacity = "1";
+        advBtn.style.border = "2px solid white";
     } else if (activeMode === 'dis') {
-        disBtn.style.filter = "grayscale(0%)"; disBtn.style.opacity = "1"; disBtn.style.border = "2px solid white";
+        disBtn.style.filter = "grayscale(0%)";
+        disBtn.style.opacity = "1";
+        disBtn.style.border = "2px solid white";
     }
 }
 
+// --- הצטרפות למשחק ---
 document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
@@ -53,7 +58,7 @@ document.getElementById('join-btn').onclick = () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- לוגיקת הטלה ---
+// --- לוגיקת ההטלה ---
 window.roll = (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     const currentMode = isInit ? 'normal' : activeMode;
@@ -82,11 +87,15 @@ window.roll = (type, isInit = false) => {
     if (res2 !== null) rollData.res2 = res2;
 
     push(ref(db, 'rolls'), rollData);
-    if (!isInit) { activeMode = 'normal'; updateModeUI(); }
+
+    if (!isInit) {
+        activeMode = 'normal';
+        updateModeUI();
+    }
     return res + mod;
 };
 
-// --- כפתורים ומאזינים ---
+// --- מאזיני כפתורים ---
 document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(); };
 document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(); };
 document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊 הפעל" : "🔇 השתק"; };
@@ -97,11 +106,13 @@ document.getElementById('init-btn').onclick = () => {
     set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); 
 };
 
-// --- פתרון שגיאת numChildren ע"י ספירה ידנית של מפתחות האובייקט ---
+// --- טיפול בנתונים (כאן פתרנו את השגיאות) ---
+
 onValue(ref(db, 'online'), (snapshot) => {
     const countEl = document.getElementById('online-count');
     if (!countEl) return;
     const data = snapshot.val();
+    // ספירה בטוחה של מפתחות האובייקט במקום שימוש ב-numChildren
     const count = data ? Object.keys(data).length : 0;
     countEl.innerText = count;
 });
@@ -113,7 +124,12 @@ onValue(ref(db, 'initiative'), (snapshot) => {
     const data = snapshot.val();
     if (!data) return;
 
-    const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
+    // המרת האובייקט למערך לצורך מיון
+    const items = Object.keys(data).map(key => ({
+        name: key,
+        ...data[key]
+    }));
+
     items.sort((a,b) => b.score - a.score).forEach(i => {
         const div = document.createElement('div');
         div.className = 'tracker-item';
@@ -123,7 +139,7 @@ onValue(ref(db, 'initiative'), (snapshot) => {
     });
 });
 
-// --- האזנה להטלות חדשות ואנימציה ---
+// --- הטלות ואנימציה ---
 onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     const data = snapshot.val();
     if (!data || !canAnimate) return;
@@ -156,6 +172,8 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
 
     const maxVal = parseInt(data.type.replace('d', '')) || 20;
     const total = (data.res || 0) + (data.mod || 0);
+    
+    // שימוש במיקרו-קופי מהקובץ החיצוני
     const flavorText = getFlavorText(data.type, data.res, total, maxVal);
 
     setTimeout(() => {
