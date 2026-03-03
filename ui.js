@@ -1,3 +1,5 @@
+// ui.js
+
 // עדכון ויזואלי של כפתורי יתרון/חיסרון
 export function updateModeUI(activeMode) {
     const advBtn = document.getElementById('adv-btn');
@@ -43,7 +45,7 @@ export function updateInitiativeUI(data) {
     });
 }
 
-// הוספת שורת לוג - פונט לבן בולט עם הילה צבעונית
+// הוספת שורת לוג - פונט מודרני, לבן, בולט עם הילה
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -55,36 +57,38 @@ export function addLogEntry(data, time, flavorText) {
     const modeLabel = data.mode === 'adv' ? '<span style="color:#2d4238; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#8c5151; font-weight:bold;">(חיסרון)</span>' : '');
     const diceBreakdown = (data.res1 && data.res2) ? `<small style="color: #666;"> [${data.res1}, ${data.res2}]</small>` : '';
 
-    // העיצוב המנצח: פונט לבן, מסגרת שחורה לקריאות, והילה בצבע השחקן
+    // החזרת הפונט המודרני (Segoe UI / Roboto) עם משקל מקסימלי
     const nameStyle = `
         color: #ffffff; 
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         font-weight: 900;
-        font-size: 1.1em;
+        font-size: 1.15em;
+        letter-spacing: 0.5px;
         text-shadow: 
             -1px -1px 0 #000,  
              1px -1px 0 #000,
             -1px  1px 0 #000,
              1px  1px 0 #000,
-             0 0 12px ${userColor}, 
-             0 0 20px ${userColor}aa;
+             0 0 10px ${userColor}, 
+             0 0 18px ${userColor}88;
     `;
 
     entry.innerHTML = `
-        <div style="margin-bottom: 15px; padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.03); border-radius: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
-                 <strong style="${nameStyle}">${data.cName || 'גיבור'} (${data.pName || 'שחקן'})</strong>
-                 <span style="color: #2c1e16; font-size: 11px; font-weight: bold; font-family: monospace;">[${time}]</span> 
+        <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.03); border-radius: 8px; border-right: 3px solid ${userColor}44;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+                 <span style="${nameStyle}">${data.cName || 'גיבור'} (${data.pName || 'שחקן'})</span>
+                 <span style="color: #2c1e16; font-size: 11px; font-weight: bold; font-family: 'Courier New', monospace; opacity: 0.8;">[${time}]</span> 
             </div>
             
-            <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4;">
+            <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4; font-family: 'Segoe UI', sans-serif;">
                 הטיל <strong style="color: #000;">${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
-                <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.25em;">
+                <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.3em; text-shadow: 0.5px 0.5px 0px rgba(255,255,255,0.8);">
                     ${data.res + (data.mod || 0)}
                 </span>
                 ${diceBreakdown}
             </div>
             
-            <div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 5px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px;">
+            <div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 6px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px; font-family: 'Segoe UI', sans-serif;">
                 ${flavorText ? `"${flavorText}"` : ""}
             </div>
         </div>
