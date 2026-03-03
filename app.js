@@ -44,28 +44,40 @@ document.getElementById('join-btn').onclick = () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-window.roll = (type, isInit = false) => {
+// עדכון פונקציית ההטלה לתמיכה ביתרון/חיסרון
+window.roll = (type, isInit = false, mode = 'normal') => {
     if (isCooldown && !isInit) return;
+    
     if (!isInit) {
         isCooldown = true;
-        const btns = document.querySelectorAll('.dice-btn');
+        const btns = document.querySelectorAll('.dice-btn, .special-roll-btn');
         btns.forEach(b => b.disabled = true);
         setTimeout(() => { isCooldown = false; btns.forEach(b => b.disabled = false); }, 3000);
     }
-    const res = Math.floor(Math.random() * parseInt(type.replace('d', ''))) + 1;
+
+    const max = parseInt(type.replace('d', ''));
     const mod = parseInt(document.getElementById('mod-input').value) || 0;
     
+    let res, res1, res2;
+
+    if (mode === 'normal') {
+        res = Math.floor(Math.random() * max) + 1;
+    } else {
+        res1 = Math.floor(Math.random() * max) + 1;
+        res2 = Math.floor(Math.random() * max) + 1;
+        res = (mode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
+    }
+    
     push(ref(db, 'rolls'), { 
-        pName: pName, 
-        cName: cName, 
-        type: type, 
-        res: res, 
-        mod: mod, 
-        color: pColor,
+        pName, cName, type, res, mod, color: pColor, mode, res1, res2,
         ts: Date.now()
     });
     return res + mod;
 };
+
+// מאזינים לכפתורים החדשים
+document.getElementById('adv-btn').onclick = () => window.roll('d20', false, 'adv');
+document.getElementById('dis-btn').onclick = () => window.roll('d20', false, 'dis');
 
 document.getElementById('mute-btn').onclick = () => { 
     isMuted = !isMuted; 
@@ -166,15 +178,22 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
 
         const entry = document.createElement('div');
         entry.className = 'log-entry';
+        
+        // יצירת טקסט המצב (יתרון/חיסרון)
+        const modeLabel = data.mode === 'adv' ? '<span style="color:#4e6e5d;">(ביתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#e74c3c;">(בחיסרון)</span>' : '');
+        // יצירת פירוט הקוביות הקטנות למקרה של יתרון/חיסרון
+        const diceBreakdown = (data.mode !== 'normal' && data.mode) ? `<small style="opacity:0.6;"> [${data.res1}, ${data.res2}]</small>` : '';
+
         entry.innerHTML = `
             <div style="margin-bottom: 12px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); border-radius: 6px;">
                 <span style="color: #aaa; font-size: 11px;">[${time}]</span> 
                 <strong style="color: var(--primary);">${data.cName || 'גיבור'}</strong> 
                 <span style="font-size: 12px;">(${data.pName || 'שחקן'})</span><br>
-                הטיל <strong style="color: #fff;">${data.type.toUpperCase()}</strong> וקיבל 
+                הטיל <strong style="color: #fff;">${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
                 <span style="color: ${data.res === 20 ? '#f1c40f' : (data.res === 1 ? '#e74c3c' : '#fff')}; font-weight: bold; font-size: 1.1em;">
                     ${data.res === 20 ? '20 טבעי!' : data.res}
                 </span>
+                ${diceBreakdown}
                 <small style="opacity: 0.7;">(${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small><br>
                 <i style="color: var(--accent); font-size: 13px; display: block; margin-top: 4px;">"${flavorText}"</i>
             </div>
