@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
     <link rel="icon" type="image/jpeg" href="logo.png">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body id="main-body">
 
@@ -24,24 +24,32 @@
                 <span class="picker-label">בחר צבע דיו:</span>
                 <div id="color-palette" class="palette-grid">
                     <div class="color-opt active" data-color="#8B0000" style="background:#8B0000;"></div>
-                    <div class="color-opt" data-color="#00008B" style="background:#00008B;"></div>
                     <div class="color-opt" data-color="#006400" style="background:#006400;"></div>
+                    <div class="color-opt" data-color="#000080" style="background:#000080;"></div>
+                    <div class="color-opt" data-color="#B8860B" style="background:#B8860B;"></div>
                     <div class="color-opt" data-color="#4B0082" style="background:#4B0082;"></div>
-                    <div class="color-opt" data-color="#333333" style="background:#333333;"></div>
+                    <div class="color-opt" data-color="#2F4F4F" style="background:#2F4F4F;"></div>
                 </div>
+                <input type="hidden" id="user-color" value="#8B0000">
             </div>
 
-            <button class="role-select" id="role-btn">שחקן רגיל (לחץ לשינוי)</button>
-            <button id="join-btn" class="main-join-btn">היכנס לחדר</button>
+            <div class="role-section">
+                <select id="user-role" class="role-select">
+                    <option value="player">שחקן</option>
+                    <option value="dm">שליט מבוך (DM)</option>
+                </select>
+            </div>
+
+            <button id="join-btn" class="main-join-btn">הצטרף למשחק</button>
         </div>
     </div>
 
     <div id="game-screen">
         <div id="side-panel">
-            <img src="logo.png" alt="CritRoll Logo" class="side-logo">
-            
+            <img src="logo.png" alt="Small Logo" class="side-logo">
+            <h3 style="margin:0 0 10px 0; font-size: 16px;">סדר יוזמה</h3>
             <div id="init-list"></div>
-
+            
             <div class="side-footer">
                 <div class="online-status">מחוברים: <span id="online-count">0</span></div>
                 <div class="side-buttons-row">
@@ -72,7 +80,7 @@
                     <input type="number" id="mod-input" value="0">
                 </div>
                 
-                <button id="init-btn">יוזמה</button>
+                <button id="init-btn">⚡ יוזמה</button>
 
                 <button class="dice-btn" data-type="d4">D4</button>
                 <button class="dice-btn" data-type="d6">D6</button>
@@ -87,6 +95,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=7"></script>
+    <script type="module" src="app.js?v=8"></script>
 </body>
 </html>
