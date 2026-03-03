@@ -44,42 +44,44 @@ export function updateInitiativeUI(data) {
     });
 }
 
-// הוספת שורת לוג (מתוקן: שם דמות + שחקן, צבע שעה כהה)
+// הוספת שורת לוג (שמירה על המבנה המקורי עם התיקונים המבוקשים)
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
 
     const entry = document.createElement('div');
-    const userColor = data.color || '#8B0000';
+    entry.className = 'log-entry';
     
-    // סגנון השם (Character (Player))
+    const userColor = data.color || '#8B0000';
+    const modeLabel = data.mode === 'adv' ? '<span style="color:#2d4238;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#8c5151;">(חיסרון)</span>' : '');
+    
+    // הילה צבעונית לשם המשתמש (Character (Player))
     const nameStyle = `
         color: ${userColor}; 
+        text-shadow: 0 0 8px ${userColor}44;
         font-weight: bold;
-        font-size: 1.05em;
-        text-shadow: 0.5px 0.5px 0px rgba(0,0,0,0.1);
+        font-size: 1.1em;
     `;
 
     entry.innerHTML = `
-        <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-                <span style="${nameStyle}">${data.cName || 'גיבור'} (${data.pName || 'שחקן'})</span>
-                <span style="color: #2c1e16; font-size: 11px; font-weight: bold;">${time}</span>
+        <div style="margin-bottom: 12px; padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.03); border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <strong style="${nameStyle}">${data.cName || 'גיבור'} (${data.pName || 'שחקן'})</strong>
+                <span style="color: #2c1e16; font-size: 11px; font-weight: bold;">[${time}]</span>
             </div>
-            <div style="color: #332211; font-size: 14px; line-height: 1.4;">
-                הטיל <strong style="color: #000;">${data.type.toUpperCase()}</strong>
-                ${data.mode !== 'normal' ? `<span style="font-size:0.9em; color: #555;">(${(data.mode === 'adv' ? 'יתרון' : 'חיסרון')})</span>` : ''}
-                <br>
-                קיבל: <span style="font-size: 1.2em; font-weight: 900; color: #000;">${data.res + (data.mod || 0)}</span>
-                <small style="color: #666; margin-right: 4px;">(${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
+            <div style="color: #000;">
+                הטיל <strong style="color: #000;">${data.type.toUpperCase()}</strong> ${modeLabel}
+                וצאה: <span style="font-size: 1.2em; font-weight: 900; color: ${data.res === 20 ? '#d4af37' : (data.res === 1 ? '#e74c3c' : '#000')};">
+                    ${data.res + (data.mod || 0)}
+                </span>
+                <small style="color: #666;">(${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
             </div>
-            ${flavorText ? `<div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 4px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 4px;">"${flavorText}"</div>` : ''}
+            ${flavorText ? `<div style="color: #5d4037; font-style: italic; font-size: 12px; margin-top: 4px;">"${flavorText}"</div>` : ''}
         </div>
     `;
 
     log.prepend(entry);
     
-    // הגבלת מספר ההודעות בלוג כדי לא להכביד על הדף
     if (log.children.length > 30) {
         log.removeChild(log.lastChild);
     }
