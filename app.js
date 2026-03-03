@@ -12,9 +12,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-let pName, cName, pColor, isMuted = false, isCooldown = false, canAnimate = false;
-
-// משתנה למצב ההטלה הנוכחי - מתחיל כרגיל
+let pName = "", cName = "", pColor = "#e74c3c", isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal'; 
 
 const rollSound = new Audio('./dice.mp3');
@@ -30,38 +28,25 @@ const diceShapes = {
     d20: '<polygon points="50,5 95,25 95,75 50,95 5,75 5,25" stroke="black" fill-opacity="0.95"/>'
 };
 
-// פונקציה לעדכון ויזואלי של כפתורי המצב (אפור כשכבוי, צבעוני כשדלוק)
 function updateModeUI() {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
     if (!advBtn || !disBtn) return;
 
-    // מצב יתרון
+    [advBtn, disBtn].forEach(btn => {
+        btn.style.filter = "grayscale(100%)";
+        btn.style.opacity = "0.4";
+        btn.style.border = "1px solid rgba(255,255,255,0.2)";
+    });
+
     if (activeMode === 'adv') {
         advBtn.style.filter = "grayscale(0%)";
         advBtn.style.opacity = "1";
         advBtn.style.border = "2px solid white";
-        disBtn.style.filter = "grayscale(100%)";
-        disBtn.style.opacity = "0.4";
-        disBtn.style.border = "1px solid rgba(255,255,255,0.2)";
-    } 
-    // מצב חיסרון
-    else if (activeMode === 'dis') {
+    } else if (activeMode === 'dis') {
         disBtn.style.filter = "grayscale(0%)";
         disBtn.style.opacity = "1";
         disBtn.style.border = "2px solid white";
-        advBtn.style.filter = "grayscale(100%)";
-        advBtn.style.opacity = "0.4";
-        advBtn.style.border = "1px solid rgba(255,255,255,0.2)";
-    } 
-    // מצב רגיל
-    else {
-        advBtn.style.filter = "grayscale(100%)";
-        advBtn.style.opacity = "0.4";
-        advBtn.style.border = "1px solid rgba(255,255,255,0.2)";
-        disBtn.style.filter = "grayscale(100%)";
-        disBtn.style.opacity = "0.4";
-        disBtn.style.border = "1px solid rgba(255,255,255,0.2)";
     }
 }
 
@@ -76,8 +61,7 @@ document.getElementById('join-btn').onclick = () => {
 
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
-    
-    updateModeUI(); // עדכון ראשוני של הכפתורים
+    updateModeUI();
 
     const userRef = ref(db, 'online/' + pName + '_' + cName);
     set(userRef, true);
@@ -87,23 +71,18 @@ document.getElementById('join-btn').onclick = () => {
 
 window.roll = (type, isInit = false) => {
     if (isCooldown && !isInit) return;
-    
     const currentMode = isInit ? 'normal' : activeMode;
 
     if (!isInit) {
         isCooldown = true;
         const btns = document.querySelectorAll('.dice-btn, .special-roll-btn, #init-btn');
         btns.forEach(b => b.disabled = true);
-        setTimeout(() => { 
-            isCooldown = false; 
-            btns.forEach(b => b.disabled = false); 
-        }, 3000);
+        setTimeout(() => { isCooldown = false; btns.forEach(b => b.disabled = false); }, 3000);
     }
 
-    const max = parseInt(type.replace('d', ''));
+    const max = parseInt(type.replace('d', '')) || 20;
     const mod = parseInt(document.getElementById('mod-input').value) || 0;
-    
-    let res, res1, res2;
+    let res, res1 = null, res2 = null;
 
     if (currentMode === 'normal') {
         res = Math.floor(Math.random() * max) + 1;
@@ -113,67 +92,47 @@ window.roll = (type, isInit = false) => {
         res = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
     }
     
-    // בניית אובייקט הנתונים בצורה בטוחה (בלי undefined)
     const rollData = { 
-        pName: pName || "שחקן", 
-        cName: cName || "דמות", 
-        type, res, mod, 
-        color: pColor || "#ffffff", 
-        mode: currentMode,
-        ts: Date.now()
+        pName: pName, cName: cName, type, res, mod, 
+        color: pColor, mode: currentMode, ts: Date.now()
     };
 
-    // הוספת תוצאות נוספות רק אם הן קיימות
-    if (currentMode !== 'normal') {
-        rollData.res1 = res1;
-        rollData.res2 = res2;
-    }
+    // הוספת תוצאות נוספות רק אם הן קיימות באמת (מונע שגיאת undefined)
+    if (res1 !== null) rollData.res1 = res1;
+    if (res2 !== null) rollData.res2 = res2;
 
     push(ref(db, 'rolls'), rollData);
 
-    // איפוס המצב לנורמל אחרי כל הטלה (אלא אם זו יוזמה)
     if (!isInit) {
         activeMode = 'normal';
         updateModeUI();
     }
-
     return res + mod;
 };
 
-// כפתורי המצב (Toggle)
-document.getElementById('adv-btn').onclick = () => {
-    activeMode = (activeMode === 'adv') ? 'normal' : 'adv';
-    updateModeUI();
-};
-document.getElementById('dis-btn').onclick = () => {
-    activeMode = (activeMode === 'dis') ? 'normal' : 'dis';
-    updateModeUI();
-};
-
-document.getElementById('mute-btn').onclick = () => { 
-    isMuted = !isMuted; 
-    document.getElementById('mute-btn').innerText = isMuted ? "🔊 הפעל" : "🔇 השתק"; 
-};
-
+document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(); };
+document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(); };
+document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊 הפעל" : "🔇 השתק"; };
 document.getElementById('reset-init-btn').onclick = () => { if(confirm("לאפס יוזמה?")) remove(ref(db, 'initiative')); };
-
-// חיבור כל כפתורי הקוביות
-document.querySelectorAll('.dice-btn').forEach(btn => { 
-    btn.onclick = () => window.roll(btn.getAttribute('data-type')); 
-});
-
+document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => window.roll(btn.getAttribute('data-type')); });
 document.getElementById('init-btn').onclick = () => { 
     const total = window.roll('d20', true); 
     set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); 
 };
 
+// תיקון שגיאת numChildren
 onValue(ref(db, 'online'), s => {
     const countEl = document.getElementById('online-count');
-    if(countEl) countEl.innerText = s.numChildren();
+    if(countEl) {
+        let count = 0;
+        s.forEach(() => { count++; }); // דרך בטוחה לספור ילדים
+        countEl.innerText = count;
+    }
 });
 
 onValue(ref(db, 'initiative'), s => {
     const list = document.getElementById('init-list');
+    if(!list) return;
     list.innerHTML = ""; const items = [];
     s.forEach(c => items.push({name: c.key, ...c.val()}));
     items.sort((a,b) => b.score - a.score).forEach(i => {
@@ -186,12 +145,12 @@ const getRandomMsg = (msgs) => msgs[Math.floor(Math.random() * msgs.length)];
 
 onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     const data = snapshot.val();
+    if (!data || !canAnimate) return;
+
     const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
     const stage = document.getElementById('dice-visual');
     const body = document.getElementById('main-body');
     const log = document.getElementById('roll-log');
-
-    if (!canAnimate) return;
 
     document.getElementById('empty-state').style.display = 'none';
     stage.style.display = 'block';
@@ -210,24 +169,18 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     }
 
     stage.classList.add('shake');
-    document.getElementById('dice-svg').innerHTML = diceShapes[data.type];
+    document.getElementById('dice-svg').innerHTML = diceShapes[data.type] || diceShapes.d20;
     document.getElementById('dice-svg').firstChild.style.fill = data.color;
     document.getElementById('result-text').innerText = "";
 
-    const maxVal = parseInt(data.type.replace('d', ''));
-    const total = data.res + (data.mod || 0);
-    let flavorText = "";
+    const maxVal = parseInt(data.type.replace('d', '')) || 20;
+    const total = (data.res || 0) + (data.mod || 0);
+    let flavorText = "הטלה מעניינת...";
 
     if (data.type === 'd20') {
-        if (data.res === 20) flavorText = getRandomMsg(["האלים עצמם מריעים לך! 🌟", "פגיעה קטלנית!", "אגדה נולדה!"]);
-        else if (data.res === 1) flavorText = getRandomMsg(["זה הולך לכאוב... מאוד. 💀", "אולי תפרוש בשיא?", "יום רע להיות הרפתקן."]);
-        else if (total >= 25) flavorText = "מעשה גבורה שייכתב בדברי הימים!";
+        if (data.res === 20) flavorText = getRandomMsg(["האלים מריעים לך! 🌟", "פגיעה קטלנית!", "אגדה נולדה!"]);
+        else if (data.res === 1) flavorText = getRandomMsg(["זה הולך לכאוב... 💀", "יום רע להיות הרפתקן.", "החרב החליקה?"]);
         else if (total >= 18) flavorText = "מכה מרשימה ביותר!";
-        else if (total >= 12) flavorText = "תוצאה סולידית, לא רע.";
-        else flavorText = "אולי כדאי לנסות שוב... בחיים הבאים.";
-    } else {
-        if (total >= maxVal + 5) flavorText = "מעבר לכל הציפיות! 🔥";
-        else if (data.res === maxVal) flavorText = "מקסימום עוצמה!";
         else flavorText = "זה יעשה את העבודה.";
     }
 
@@ -237,9 +190,8 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
 
         const entry = document.createElement('div');
         entry.className = 'log-entry';
-        
         const modeLabel = data.mode === 'adv' ? '<span style="color:#4e6e5d;">(ביתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#e74c3c;">(בחיסרון)</span>' : '');
-        const diceBreakdown = (data.mode !== 'normal' && data.mode) ? `<small style="opacity:0.6;"> [${data.res1}, ${data.res2}]</small>` : '';
+        const diceBreakdown = (data.res1 && data.res2) ? `<small style="opacity:0.6;"> [${data.res1}, ${data.res2}]</small>` : '';
 
         entry.innerHTML = `
             <div style="margin-bottom: 12px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); border-radius: 6px;">
@@ -254,7 +206,6 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
                 <i style="color: var(--accent); font-size: 13px;">"${flavorText}"</i>
             </div>
         `;
-
         log.insertBefore(entry, log.firstChild);
         if (log.children.length > 20) log.removeChild(log.lastChild);
     }, 600);
