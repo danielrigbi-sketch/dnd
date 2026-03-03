@@ -45,7 +45,7 @@ export function updateInitiativeUI(data) {
     });
 }
 
-// הוספת שורת לוג - פונט לבן בוהק עם הילה צבעונית משתנה
+// הוספת שורת לוג - שימוש במחלקה מה-CSS להבטחת פונט מודרני
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -56,14 +56,14 @@ export function addLogEntry(data, time, flavorText) {
     const userColor = data.color || '#8B0000';
     const modeLabel = data.mode === 'adv' ? '<span style="color:#2d4238; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#8c5151; font-weight:bold;">(חיסרון)</span>' : '');
 
-    // בניית ה-Shadow הדינמי: מסגרת שחורה לקריאות + הילה צבעונית
+    // בניית ה-Shadow הדינמי: מסגרת שחורה (בליטה) + הילה צבעונית
     const dynamicShadow = `
         -1px -1px 0 #000,  
          1px -1px 0 #000,
         -1px  1px 0 #000,
          1px  1px 0 #000,
-         0 0 10px ${userColor}, 
-         0 0 18px ${userColor}88
+         0 0 12px ${userColor}, 
+         0 0 20px ${userColor}88
     `;
 
     entry.innerHTML = `
@@ -77,7 +77,7 @@ export function addLogEntry(data, time, flavorText) {
             
             <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4;">
                 הטיל <strong style="color: #000;">${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
-                <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.3em;">
+                <span style="color: ${data.res === 20 ? '#B8860B' : (data.res === 1 ? '#e74c3c' : '#000')}; font-weight: 900; font-size: 1.35em;">
                     ${data.res + (data.mod || 0)}
                 </span>
                 <small style="color: #666; font-weight: bold;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
