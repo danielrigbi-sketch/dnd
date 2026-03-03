@@ -12,21 +12,31 @@
     <div id="login-screen">
         <img src="logo.png" alt="CritRoll Logo" class="main-logo">
         <div class="login-card">
-            <input type="text" id="player-name" placeholder="שם השחקן" autocomplete="off">
-            <input type="text" id="char-name" placeholder="שם הדמות" autocomplete="off">
+    <input type="text" id="player-name" placeholder="שם השחקן" autocomplete="off">
+    <input type="text" id="char-name" placeholder="שם הדמות" autocomplete="off">
 
-            <div class="color-picker-section">
-                <span class="picker-label">בחר צבע זיהוי (דיו):</span>
-                <div id="color-palette" class="palette-grid">
-                    <div class="color-opt active" data-color="#8e1c19" style="background:#8e1c19;"></div>
-                    <div class="color-opt" data-color="#1a472a" style="background:#1a472a;"></div>
-                    <div class="color-opt" data-color="#1e3a5f" style="background:#1e3a5f;"></div>
-                    <div class="color-opt" data-color="#4b2c20" style="background:#4b2c20;"></div>
-                    <div class="color-opt" data-color="#5e2a84" style="background:#5e2a84;"></div>
-                    <div class="color-opt" data-color="#c25e00" style="background:#c25e00;"></div>
-                </div>
-                <input type="hidden" id="user-color" value="#8e1c19">
-            </div>
+    <div class="color-picker-section">
+        <span class="picker-label">בחר צבע דיו:</span>
+        <div id="color-palette" class="palette-grid">
+            <div class="color-opt active" data-color="#8B0000" style="background:#8B0000;"></div>
+            <div class="color-opt" data-color="#006400" style="background:#006400;"></div>
+            <div class="color-opt" data-color="#000080" style="background:#000080;"></div>
+            <div class="color-opt" data-color="#B8860B" style="background:#B8860B;"></div>
+            <div class="color-opt" data-color="#4B0082" style="background:#4B0082;"></div>
+            <div class="color-opt" data-color="#2F4F4F" style="background:#2F4F4F;"></div>
+        </div>
+        <input type="hidden" id="user-color" value="#8B0000">
+    </div>
+
+    <div class="role-section">
+        <select id="user-role" class="role-select">
+            <option value="player">שחקן</option>
+            <option value="dm">שליט מבוך (DM)</option>
+        </select>
+    </div>
+
+    <button id="join-btn" class="main-join-btn">הצטרף למשחק</button>
+</div>
 
             <div style="margin-bottom: 20px;">
                 <select id="user-role" class="role-select">
