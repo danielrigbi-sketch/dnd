@@ -42,7 +42,7 @@ body {
     box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
     display: flex;
     flex-direction: column;
-    gap: 15px; /* יוצר מרווח מסודר בין כל הפריטים בכרטיסייה */
+    gap: 15px;
 }
 
 .login-card input[type="text"] { 
@@ -56,241 +56,112 @@ body {
     color: #333;
 }
 
-/* פלטת צבעים */
-.color-picker-section {
-    text-align: center;
-    padding: 5px 0;
-}
-
-.picker-label {
-    color: white;
-    display: block;
-    margin-bottom: 12px;
-    font-size: 14px;
-}
-
-.palette-grid {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-}
+.color-picker-section { text-align: center; padding: 5px 0; }
+.picker-label { color: white; display: block; margin-bottom: 12px; font-size: 14px; }
+.palette-grid { display: flex; justify-content: center; gap: 12px; }
 
 .color-opt {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid rgba(255,255,255,0.3);
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    flex-shrink: 0; /* מונע מהעיגולים להימעך */
+    width: 35px; height: 35px; border-radius: 50%; cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.3); transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3); flex-shrink: 0;
 }
 
-.color-opt:hover { transform: scale(1.1); }
-.color-opt.active { 
-    transform: scale(1.25); 
-    border-color: white; 
-    box-shadow: 0 0 12px rgba(255,255,255,0.6); 
-}
+.color-opt.active { transform: scale(1.25); border-color: white; box-shadow: 0 0 12px rgba(255,255,255,0.6); }
 
-/* בחירת תפקיד */
 .role-select {
-    width: 100%;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.2);
-    background: #2c3e50;
-    color: white;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 15px;
+    width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+    background: #2c3e50; color: white; cursor: pointer; font-family: inherit; font-size: 15px;
 }
 
-/* כפתור הצטרפות ראשי */
 .main-join-btn {
-    width: 100%;
-    padding: 15px;
-    background: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 18px;
-    cursor: pointer;
-    box-shadow: 0 4px 0 #a93226;
-    transition: all 0.1s;
+    width: 100%; padding: 15px; background: var(--primary); color: white; border: none;
+    border-radius: 8px; font-weight: bold; font-size: 18px; cursor: pointer;
+    box-shadow: 0 4px 0 #a93226; transition: all 0.1s;
 }
 
-.main-join-btn:active {
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 #a93226;
-}
+.main-join-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #a93226; }
 
 /* --- מסך משחק --- */
 #game-screen { display: none; height: 100%; flex-direction: row; }
 
 #side-panel { 
-    width: 260px; 
-    background: rgba(17, 17, 17, 0.85); 
-    border-left: 2px solid #333; 
-    display: flex; 
-    flex-direction: column; 
-    padding: 15px; 
-    flex-shrink: 0; 
-    backdrop-filter: blur(8px); 
+    width: 260px; background: rgba(17, 17, 17, 0.85); border-left: 2px solid #333; 
+    display: flex; flex-direction: column; padding: 15px; flex-shrink: 0; backdrop-filter: blur(8px); 
 }
 
 .tracker-item { 
-    background: rgba(34, 34, 34, 0.8); 
-    margin-bottom: 8px; 
-    padding: 10px; 
-    border-radius: 6px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-    transition: all 0.3s ease;
+    background: rgba(34, 34, 34, 0.8); margin-bottom: 8px; padding: 10px; 
+    border-radius: 6px; display: flex; justify-content: space-between; align-items: center;
 }
 
 #main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 
-/* לוג "קלף" */
+/* לוג קלף */
 #log-container { 
     position: absolute; top: 15px; left: 15px; width: 320px; 
     background-color: var(--parchment);
     background-image: url('https://www.transparenttextures.com/patterns/parchment.png');
-    color: var(--ink); 
-    padding: 15px; 
-    border-radius: 8px; 
-    text-align: right; 
-    box-shadow: 5px 10px 25px rgba(0,0,0,0.5); 
-    font-size: 13px; 
-    max-height: 45%; 
-    overflow-y: auto; 
-    z-index: 90; 
-    border: 2px solid #d4c38d;
+    color: var(--ink); padding: 15px; border-radius: 8px; text-align: right; 
+    box-shadow: 5px 10px 25px rgba(0,0,0,0.5); font-size: 13px; 
+    max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
 }
 
-.log-header {
-    font-weight: bold;
-    border-bottom: 2px solid rgba(0,0,0,0.1);
-    margin-bottom: 10px;
-    padding-bottom: 5px;
-    color: #5d4037;
-    font-size: 15px;
-}
+.log-header { font-weight: bold; border-bottom: 2px solid rgba(0,0,0,0.1); margin-bottom: 10px; padding-bottom: 5px; color: #5d4037; }
 
+/* --- אזור כפתורי השליטה (התיקון המרכזי) --- */
 #controls { 
-    padding: 15px; 
-    background: rgba(17, 17, 17, 0.75); 
-    display: flex; 
-    justify-content: center; 
-    gap: 10px; 
-    border-top: 4px solid var(--primary); 
-    flex-wrap: wrap; 
-    z-index: 110; 
-    align-items: center; 
-    backdrop-filter: blur(10px); 
+    padding: 15px; background: rgba(17, 17, 17, 0.85); 
+    display: flex; justify-content: center; gap: 10px; 
+    border-top: 4px solid var(--primary); flex-wrap: wrap; 
+    z-index: 110; align-items: center; backdrop-filter: blur(10px); 
 }
 
+.mod-container { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
+
+#mod-input { 
+    width: 55px; height: 42px; text-align: center; background: #222; 
+    color: white; border: 1px solid #444; border-radius: 6px; font-size: 16px;
+}
+
+/* עיצוב כפתורי הקוביות */
 .dice-btn, #init-btn { 
-    padding: 12px 18px; 
-    cursor: pointer; 
-    background: var(--primary); 
-    color: white; 
-    border: none; 
-    border-radius: 8px; 
-    font-weight: bold; 
-    transition: all 0.2s ease; 
-    box-shadow: 0 4px 0 #a93226;
+    padding: 12px 18px; cursor: pointer; background: var(--primary); 
+    color: white; border: none; border-radius: 8px; font-weight: bold; 
+    transition: all 0.2s ease; box-shadow: 0 4px 0 #a93226;
 }
 
 .dice-btn:hover:not(:disabled), #init-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
-.dice-btn:active:not(:disabled), #init-btn:active { 
-    transform: translateY(2px); 
-    box-shadow: 0 1px 0 #a93226;
-}
+.dice-btn:active:not(:disabled), #init-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #a93226; }
 
-#mod-input { 
-    width: 55px; height: 42px; 
-    text-align: center; 
-    background: #222; 
-    color: white; 
-    border: 1px solid #444; 
-    border-radius: 6px; 
-    font-size: 16px;
-}
-
-/* קוביות ואנימציות */
-#dice-stage { 
-    flex-grow: 1; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%); 
-}
-
-.dice-container { width: 180px; height: 180px; position: relative; }
-
-#result-text { 
-    position: absolute; top: 50%; left: 50%; 
-    transform: translate(-50%, -50%); 
-    font-size: 60px; 
-    font-weight: 900; 
-    color: white;
-    text-shadow: 0 0 15px rgba(0,0,0,0.8), 0 0 5px black; 
-}
-
-.shake { animation: shakeAnim 0.6s infinite; }
-@keyframes shakeAnim { 0%, 100% {transform:rotate(0)} 25% {transform:rotate(8deg)} 75% {transform:rotate(-8deg)} }
-.screen-shake { animation: screenShake 0.4s; }
-@keyframes screenShake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(6px, 6px); } 50% { transform: translate(-6px, -6px); } }
-.crit-glow { filter: drop-shadow(0 0 25px #f1c40f); }
-
-/* כפתורים מיוחדים */
+/* עיצוב כפתורי יתרון/חיסרון */
 .special-roll-btn {
-    padding: 12px 16px;
-    cursor: pointer;
-    color: white;
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 8px;
-    font-weight: bold;
-    transition: all 0.2s ease;
+    padding: 12px 16px; cursor: pointer; color: white; 
+    border: none; border-radius: 8px; font-weight: bold; 
+    transition: all 0.2s ease; box-shadow: 0 4px 0 rgba(0,0,0,0.3);
 }
 
 .special-roll-btn.adv { background: linear-gradient(145deg, #4e6e5d, #2d4238); }
 .special-roll-btn.dis { background: linear-gradient(145deg, #8c5151, #5a3232); }
 
-/* לוגואים */
-.main-logo { width: 250px; height: auto; margin-bottom: 25px; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.5)); }
-.side-logo { width: 80px; height: auto; display: block; margin: 0 auto 15px auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+.special-roll-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+
+/* --- שאר האלמנטים --- */
+#dice-stage { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
+.dice-container { width: 180px; height: 180px; position: relative; }
+#result-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; font-weight: 900; color: white; text-shadow: 0 0 15px rgba(0,0,0,0.8), 0 0 5px black; }
+
+.main-logo { width: 250px; height: auto; margin-bottom: 25px; }
+.side-logo { width: 80px; height: auto; display: block; margin: 0 auto 15px auto; border-radius: 8px; }
 
 /* --- התאמה לנייד --- */
 @media (max-width: 768px) { 
     #game-screen { flex-direction: column; } 
-
-    #side-panel { 
-        width: 100%; height: auto; min-height: 90px;
-        border-left: none; border-bottom: 3px solid var(--primary); 
-        padding: 10px; overflow: hidden;
-    } 
+    #side-panel { width: 100%; height: auto; min-height: 90px; border-left: none; border-bottom: 3px solid var(--primary); padding: 10px; overflow: hidden; } 
     #side-panel h3, .side-logo { display: none; }
-
-    #init-list { 
-        display: flex; flex-direction: row; 
-        gap: 10px; overflow-x: auto; 
-        padding: 5px 0; -webkit-overflow-scrolling: touch;
-    } 
-
+    #init-list { display: flex; flex-direction: row; gap: 10px; overflow-x: auto; padding: 5px 0; } 
     .tracker-item { min-width: 140px; margin-bottom: 0; flex-shrink: 0; font-size: 13px; } 
-
-    #log-container { 
-        width: 180px; max-height: 25%; 
-        top: 105px; left: 10px; 
-        font-size: 11px; opacity: 0.95; 
-    } 
-
+    #log-container { width: 180px; max-height: 25%; top: 105px; left: 10px; font-size: 11px; } 
     #controls { padding: 10px; gap: 6px; }
     .dice-btn, #init-btn { flex: 1 1 21%; padding: 12px 5px; font-size: 14px; } 
     .special-roll-btn { flex: 1 1 45%; font-size: 13px; }
-    #mod-input { width: 50px; }
 }
