@@ -102,3 +102,94 @@ body {
     cursor: not-allowed !important;
     pointer-events: none !important;
 }
+/* --- התאמה למובייל (Mobile Responsiveness) --- */
+@media (max-width: 768px) {
+    /* הפיכת המסך לעמודה במקום שורה */
+    #game-screen { 
+        flex-direction: column; 
+        overflow-y: auto;
+    }
+
+    /* פאנל סדר היוזמה - עובר למעלה והופך לנגלל אופקית */
+    #side-panel {
+        width: 100%;
+        height: auto;
+        border-left: none;
+        border-bottom: 2px solid var(--primary);
+        order: 1; /* מופיע ראשון */
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #init-list {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto; /* מאפשר לגלול ימינה ושמאלה כשחקנים מתווספים */
+        gap: 15px;
+        padding-bottom: 5px;
+    }
+
+    .tracker-item {
+        min-width: 120px; /* שומר על רוחב הכרטיסיות כדי שלא יימעכו */
+        border-bottom: 4px solid;
+        border-right: none !important;
+        padding: 5px;
+    }
+
+    /* הלוג - ביטול הריחוף (absolute) כדי שלא יעלה על הקוביות */
+    #log-container {
+        position: relative; 
+        top: 0; 
+        left: 0;
+        width: 95%;
+        margin: 10px auto;
+        max-height: 180px;
+        order: 2; /* מופיע שני, מתחת ליוזמה */
+    }
+
+    /* אזור המשחק המרכזי */
+    #main-area {
+        width: 100%;
+        justify-content: flex-start;
+        padding-bottom: 160px; /* משאיר מקום לפאנל הכפתורים למטה */
+        order: 3;
+    }
+
+    #dice-stage {
+        margin-top: 20px;
+    }
+
+    /* כפתורי הקוביות - מקובעים לתחתית המסך */
+    #controls {
+        position: fixed; 
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(26, 26, 26, 0.95);
+        padding: 15px 10px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        z-index: 100;
+        box-shadow: 0 -5px 20px rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+    }
+
+    .mod-container {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+
+    /* התאמת גודל הכפתורים עצמם */
+    .dice-btn, .special-roll-btn, #init-btn {
+        flex: 1 1 20%; /* כפתורים מתפרסים שווה בשווה בשורה */
+        padding: 12px 5px;
+        font-size: 14px;
+        min-width: 60px;
+    }
+}
