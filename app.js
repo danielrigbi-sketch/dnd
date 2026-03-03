@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// ייבוא הקבצים החדשים שיצרת
+// ייבוא הקבצים המודולריים
 import { firebaseConfig, diceShapes } from "./constants.js";
 import { getFlavorText } from "./messages.js";
 
@@ -15,7 +15,7 @@ const rollSound = new Audio('./dice.mp3');
 const critSound = new Audio('./crit.mp3');
 const failSound = new Audio('./fail.mp3');
 
-// --- ניהול ממשק המצב (יתרון/חיסרון) ---
+// --- ניהול ממשק המצב ---
 function updateModeUI() {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
@@ -38,14 +38,23 @@ function updateModeUI() {
     }
 }
 
-// --- הצטרפות למשחק ---
+// --- הצטרפות למשחק (כאן נמצא התיקון לבאג הסאונד) ---
 document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
     pColor = document.getElementById('user-color').value;
     if (!pName || !cName) return alert("מלא פרטים!");
 
-    const prep = (s) => { s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(()=>{}); };
+    // תיקון "דריכת" סאונד בנייד: משתיקים, מפעילים ומכבים מייד
+    const prep = (s) => {
+        const originalVol = s.volume;
+        s.volume = 0; // השתקה מוחלטת בזמן ה"דריכה"
+        s.play().then(() => {
+            s.pause();
+            s.currentTime = 0;
+            s.volume = originalVol; // החזרת הווליום למצב תקין
+        }).catch(() => {});
+    };
     [rollSound, critSound, failSound].forEach(prep);
 
     document.getElementById('login-screen').style.display = 'none';
@@ -106,13 +115,11 @@ document.getElementById('init-btn').onclick = () => {
     set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); 
 };
 
-// --- טיפול בנתונים (כאן פתרנו את השגיאות) ---
-
+// --- טיפול בנתונים ---
 onValue(ref(db, 'online'), (snapshot) => {
     const countEl = document.getElementById('online-count');
     if (!countEl) return;
     const data = snapshot.val();
-    // ספירה בטוחה של מפתחות האובייקט במקום שימוש ב-numChildren
     const count = data ? Object.keys(data).length : 0;
     countEl.innerText = count;
 });
@@ -124,12 +131,7 @@ onValue(ref(db, 'initiative'), (snapshot) => {
     const data = snapshot.val();
     if (!data) return;
 
-    // המרת האובייקט למערך לצורך מיון
-    const items = Object.keys(data).map(key => ({
-        name: key,
-        ...data[key]
-    }));
-
+    const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
     items.sort((a,b) => b.score - a.score).forEach(i => {
         const div = document.createElement('div');
         div.className = 'tracker-item';
@@ -172,8 +174,6 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
 
     const maxVal = parseInt(data.type.replace('d', '')) || 20;
     const total = (data.res || 0) + (data.mod || 0);
-    
-    // שימוש במיקרו-קופי מהקובץ החיצוני
     const flavorText = getFlavorText(data.type, data.res, total, maxVal);
 
     setTimeout(() => {
