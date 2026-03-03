@@ -2,33 +2,41 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import DiceBox from "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/dice-box.es.min.js";
 
-// שימוש בגרסה מעודכנת של הקבצים
-import { firebaseConfig } from "./constants.js?v=8";
-import { getFlavorText } from "./messages.js?v=8";
-import { unlockAudio, playRollSound, stopAllSounds } from "./audio.js?v=8";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=8";
+// ייבוא הגדרות ופונקציות עזר
+import { firebaseConfig } from "./constants.js?v=9";
+import { getFlavorText } from "./messages.js?v=9";
+import { unlockAudio, playRollSound, stopAllSounds } from "./audio.js?v=9";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=9";
 
+// --- אתחול Firebase ---
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// --- אתחול מנוע 3D Dice ---
-const diceBox = new DiceBox("#dice-box-canvas", {
-    assetPath: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/assets/",
-    origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/",
+// --- אתחול מנוע 3D Dice (גרסה מעודכנת v1.1.0+) ---
+const diceBox = new DiceBox({
+    container: "#dice-box-canvas", // הסלקטור עובר לתוך אובייקט ההגדרות
+    origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/", // בסיס ה-CDN
+    assetPath: "assets/", // נתיב יחסי ל-origin כדי למנוע כפילות ב-URL
     theme: "default",
     scale: 5,
     gravity: 3,
-    friction: 0.8
+    friction: 0.8,
+    sounds: false // אנחנו מנהלים סאונד חיצונית דרך audio.js
 });
 
-diceBox.init();
+// אתחול המנוע
+let isDiceBoxReady = false;
+diceBox.init().then(() => {
+    isDiceBoxReady = true;
+    console.log("3D Dice Engine Ready");
+}).catch(err => console.error("DiceBox Init Error:", err));
 
 // משתנים גלובליים
 let pName = "", cName = "", pColor = "#8B0000", userRole = "player";
 let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal'; 
 
-// --- 1. טיפול בבחירת צבעים וטעינת זיכרון ---
+// --- 1. ניהול כניסה וצבעים ---
 window.addEventListener('DOMContentLoaded', () => {
     const colorOptions = document.querySelectorAll('.color-opt');
     const colorInput = document.getElementById('user-color');
@@ -62,14 +70,14 @@ window.addEventListener('DOMContentLoaded', () => {
     if (savedColor) setActiveColor(savedColor);
 });
 
-// --- 2. הצטרפות למשחק ---
+// הצטרפות למשחק
 document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
     pColor = document.getElementById('user-color') ? document.getElementById('user-color').value : pColor;
     userRole = document.getElementById('user-role').value;
 
-    if (!pName || !cName) return alert("מלא פרטים!");
+    if (!pName || !cName) return alert("נא למלא את כל הפרטים");
 
     localStorage.setItem('critroll_pName', pName);
     localStorage.setItem('critroll_cName', cName);
@@ -96,9 +104,11 @@ document.getElementById('join-btn').onclick = () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- לוגיקת ההטלה המעודכנת עם תלת-ממד ---
+// --- 2. לוגיקת ההטלה (3D) ---
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
+    if (!isDiceBoxReady) return console.warn("DiceBox not ready yet");
+
     const currentMode = isInit ? 'normal' : activeMode;
 
     if (!isInit) {
@@ -106,20 +116,26 @@ window.roll = async (type, isInit = false) => {
         setDiceCooldown(true);
     }
 
-    // עדכון צבע הקוביות לצבע השחקן לפני הגלגול
-    diceBox.updateConfig({ themeColor: pColor });
+    // הגדרת צבע הקוביות
+    await diceBox.updateConfig({ themeColor: pColor });
 
     let finalRes, res1 = null, res2 = null;
 
-    // הרצת האנימציה התלת-ממדית
-    if (currentMode !== 'normal' && type === 'd20') {
-        const results = await diceBox.roll("2d20");
-        res1 = results[0].value;
-        res2 = results[1].value;
-        finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
-    } else {
-        const results = await diceBox.roll(`1${type}`);
-        finalRes = results[0].value;
+    try {
+        if (currentMode !== 'normal' && type === 'd20') {
+            const results = await diceBox.roll("2d20");
+            res1 = results[0].value;
+            res2 = results[1].value;
+            finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
+        } else {
+            const results = await diceBox.roll(`1${type}`);
+            finalRes = results[0].value;
+        }
+    } catch (err) {
+        console.error("Roll Error:", err);
+        isCooldown = false;
+        setDiceCooldown(false);
+        return;
     }
     
     const mod = parseInt(document.getElementById('mod-input').value) || 0;
@@ -134,7 +150,6 @@ window.roll = async (type, isInit = false) => {
         activeMode = 'normal';
         updateModeUI(activeMode);
         
-        // שחרור קולדאון אחרי שהקובייה נחתה
         setTimeout(() => { 
             isCooldown = false; 
             setDiceCooldown(false); 
@@ -152,23 +167,19 @@ document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => wind
 
 document.getElementById('init-btn').onclick = async () => { 
     const total = await window.roll('d20', true); 
-    set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); 
+    set(ref(db, 'initiative/' + (cName || pName)), { score: total, color: pColor, playerName: pName }); 
 };
 
-// טיפול בנתונים - אונליין
+// --- 3. סנכרון נתונים ---
 onValue(ref(db, 'online'), (snapshot) => {
     const countEl = document.getElementById('online-count');
-    if (!countEl) return;
-    const data = snapshot.val();
-    countEl.innerText = data ? Object.keys(data).length : 0;
+    if (countEl) countEl.innerText = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
 });
 
-// טיפול בנתונים - יוזמה
 onValue(ref(db, 'initiative'), (snapshot) => {
     updateInitiativeUI(snapshot.val());
 });
 
-// קבלת הטלות מ-Firebase והצגת המספר
 onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     const data = snapshot.val();
     if (!data || !canAnimate) return;
@@ -181,10 +192,9 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     visualContainer.style.display = 'flex';
     resultText.classList.remove('show');
 
-    // השמעת סאונד
     playRollSound(data.type, data.res, isMuted);
 
-    // הצגת המספר הגדול אחרי שהקובייה "נוחתת"
+    // הצגת התוצאה לאחר סיום האנימציה הפיזית
     setTimeout(() => {
         const total = (data.res || 0) + (data.mod || 0);
         const maxVal = parseInt(data.type.replace('d', '')) || 20;
