@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// ייבוא הקבצים המודולריים שיצרת
+// ייבוא הקבצים המודולריים
 import { firebaseConfig, diceShapes } from "./constants.js";
 import { getFlavorText } from "./messages.js";
 
@@ -15,7 +15,7 @@ const rollSound = new Audio('./dice.mp3');
 const critSound = new Audio('./crit.mp3');
 const failSound = new Audio('./fail.mp3');
 
-// פונקציית עזר לעצירת כל הסאונדים לפני שמתחילים אחד חדש
+// פונקציית עזר לעצירת כל הסאונדים
 function stopAllSounds() {
     [rollSound, critSound, failSound].forEach(s => {
         s.pause();
@@ -23,7 +23,7 @@ function stopAllSounds() {
     });
 }
 
-// --- ניהול ממשק המצב (יתרון/חיסרון) ---
+// ניהול ממשק המצב (יתרון/חיסרון)
 function updateModeUI() {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
@@ -46,18 +46,20 @@ function updateModeUI() {
     }
 }
 
-// --- הצטרפות למשחק (תיקון סופי לבאג הסאונד בנייד) ---
+// --- הצטרפות למשחק (כאן פתרנו את ה"קליק" מהנייד) ---
 document.getElementById('join-btn').onclick = () => {
     pName = document.getElementById('player-name').value.trim();
     cName = document.getElementById('char-name').value.trim();
     pColor = document.getElementById('user-color').value;
     if (!pName || !cName) return alert("מלא פרטים!");
 
-    // "שחרור" האודיו בנייד ללא משחקי ווליום - פשוט הפעלה והפסקה מיידית
+    // "שחרור" האודיו בנייד בצורה שקטה לחלוטין
     const unlock = (s) => {
+        s.muted = true; // משתיק את האלמנט ברמת המערכת
         s.play().then(() => {
             s.pause();
             s.currentTime = 0;
+            s.muted = false; // מחזיר את היכולת להשמיע סאונד לאחר שהשתחרר
         }).catch(() => {});
     };
     [rollSound, critSound, failSound].forEach(unlock);
@@ -109,7 +111,7 @@ window.roll = (type, isInit = false) => {
     return res + mod;
 };
 
-// --- מאזיני כפתורים ---
+// מאזיני כפתורים
 document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(); };
 document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(); };
 document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊 הפעל" : "🔇 השתק"; };
@@ -120,7 +122,7 @@ document.getElementById('init-btn').onclick = () => {
     set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName }); 
 };
 
-// --- טיפול בנתונים ---
+// טיפול בנתונים
 onValue(ref(db, 'online'), (snapshot) => {
     const countEl = document.getElementById('online-count');
     if (!countEl) return;
@@ -135,7 +137,6 @@ onValue(ref(db, 'initiative'), (snapshot) => {
     list.innerHTML = "";
     const data = snapshot.val();
     if (!data) return;
-
     const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
     items.sort((a,b) => b.score - a.score).forEach(i => {
         const div = document.createElement('div');
@@ -146,7 +147,7 @@ onValue(ref(db, 'initiative'), (snapshot) => {
     });
 });
 
-// --- הטלות ואנימציה ---
+// הטלות ואנימציה
 onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     const data = snapshot.val();
     if (!data || !canAnimate) return;
@@ -162,7 +163,7 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(20)), (snapshot) => {
     body.classList.remove('screen-shake');
 
     if (!isMuted) {
-        stopAllSounds(); // מוודא שסאונד קודם לא קוטע את החדש
+        stopAllSounds();
         if (data.type === 'd20' && data.res === 20) {
             critSound.play().catch(()=>{});
             stage.classList.add('crit-glow'); body.classList.add('screen-shake');
