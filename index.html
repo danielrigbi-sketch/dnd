@@ -68,10 +68,13 @@
             <div id="dice-stage">
                 <div id="dice-box-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></div>
                 
-                <div id="dice-visual" class="dice-container" style="display: none; z-index: 10;">
-                    <div id="result-text"></div>
+                <!-- NEW: Safe Center Container (minimal change) -->
+                <div id="center-stage">
+                    <div id="dice-visual" style="display: none;">
+                        <div id="result-text"></div>
+                    </div>
+                    <div id="empty-state" style="color:#555; font-style: italic; position: relative; z-index: 10;">ממתין להטלה...</div>
                 </div>
-                <div id="empty-state" style="color:#555; font-style: italic; position: relative; z-index: 10;">ממתין להטלה...</div>
             </div>
 
             <div id="controls">
