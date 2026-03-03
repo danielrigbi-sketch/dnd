@@ -124,6 +124,11 @@ body {
 }
 .side-btn:hover { background: #555; }
 
+/* --- עיצוב תחתית הפאנל הצידי --- */
+.side-footer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+.online-status { font-size: 11px; opacity: 0.5; }
+.side-buttons-row { display: flex; flex-direction: column; gap: 5px; }
+
 /* אזור מרכזי */
 #main-area {
     flex: 1;
@@ -256,6 +261,26 @@ body {
         border-right: none !important;
         border-bottom: 4px solid;
     }
+    
+    /* סידור כפתורי ההשתק והאיפוס בשורה אחת בנייד */
+    .side-footer {
+        margin-top: 5px;
+    }
+    
+    .online-status {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+    
+    .side-buttons-row {
+        flex-direction: row;
+        width: 100%;
+        gap: 10px;
+    }
+    
+    .side-buttons-row .side-btn {
+        flex: 1;
+    }
 
     /* לוג מקבל מקום מסודר ולא מרחף */
     #log-container {
@@ -271,7 +296,7 @@ body {
     #main-area {
         width: 100%;
         justify-content: flex-start;
-        padding-bottom: 220px; /* מקום לכפתורים למטה */
+        padding-bottom: 220px; 
         order: 3;
     }
 
@@ -281,7 +306,7 @@ body {
 
     .dice-container { width: 140px; height: 140px; }
 
-   /* פאנל כפתורים נצמד לתחתית ומתפרס */
+   /* פאנל שליטה מרכזי בנייד */
     #controls {
         position: fixed; 
         bottom: 0;
@@ -289,37 +314,28 @@ body {
         width: 100%;
         border-radius: 15px 15px 0 0;
         background: rgba(20, 20, 20, 0.98);
-        padding: 10px 5px 15px; /* צמצום הריווח כדי לחסוך מקום במסך */
+        padding: 12px 8px;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        align-items: center; /* מוודא שהכל מיושר אנכית באותו קו */
-        gap: 6px; /* רווח טיפה יותר קטן בין האלמנטים */
+        gap: 8px;
         border-top: 2px solid #333;
         z-index: 100;
     }
 
+    /* שורה 1: תוסף ויוזמה חולקים שורה */
     .mod-container {
-        flex: 0 1 auto; /* מאפשר לתוסף לתפוס רק את המקום שהוא צריך, בלי לתפוס שורה שלמה */
+        flex: 1 1 40%;
         margin-bottom: 0;
+        justify-content: center;
     }
-
+    
     #mod-input {
-        width: 45px; /* תיבת טקסט קצת יותר צרה לנייד */
+        width: 45px;
         padding: 6px;
     }
-
-    .dice-btn {
-        flex: 1 1 18%; /* מאפשר ליותר קוביות להיכנס בשורה אחת */
-        padding: 10px 2px;
+    
+    #init-btn {
+        flex: 1 1 45%;
+        padding: 10px;
         font-size: 14px;
-        min-width: 45px;
-    }
-
-    .special-roll-btn, #init-btn {
-        flex: 1 1 25%; /* היתרון, חיסרון ויוזמה יתחלקו יפה ויקבלו פרופורציה הגיונית */
-        padding: 10px 5px;
-        font-size: 14px;
-        min-width: 70px;
-    }
-}
