@@ -66,3 +66,20 @@ button:disabled { background: #444; opacity: 0.6; }
     #log-container { width: 180px; top: 120px; font-size: 11px; } 
     .dice-btn, #init-btn { flex-grow: 1; padding: 12px 10px; } 
 }
+/* עיצוב הלוגו הראשי במסך הכניסה */
+.main-logo {
+    width: 250px; /* גודל הלוגו במסך הפתיחה */
+    height: auto;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 5px 15px rgba(0,0,0,0.5));
+}
+
+/* עיצוב הלוגו הקטן בפאנל הצדדי */
+.side-logo {
+    width: 80px; /* גודל קטן שמתאים לתפריט הצד */
+    height: auto;
+    display: block;
+    margin: 0 auto 15px auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
