@@ -1,4 +1,3 @@
-
 :root { 
     --primary: #e74c3c; 
     --bg: #1a1a1a; 
@@ -37,6 +36,8 @@ body {
     backdrop-filter: blur(10px);
 }
 
+.main-logo { max-width: 200px; margin-bottom: 20px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
+
 .login-card { 
     background: #34495e; 
     padding: 25px; 
@@ -74,9 +75,66 @@ body {
 
 .role-select { background: #2c3e50; color: white; cursor: pointer; }
 
-/* --- מסך משחק --- */
+.main-join-btn {
+    background: var(--primary); color: white; border: none; padding: 12px;
+    font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;
+    transition: background 0.2s;
+}
+.main-join-btn:hover { background: #c0392b; }
+
+/* --- מסך משחק (עיצוב בסיס למחשב) --- */
 #game-screen { display: none; height: 100%; flex-direction: row; }
 
+/* פאנל צדדי */
+#side-panel {
+    width: 260px;
+    background: rgba(26, 26, 26, 0.95);
+    border-left: 2px solid var(--primary);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    z-index: 10;
+    box-shadow: -5px 0 20px rgba(0,0,0,0.6);
+}
+
+.side-logo { max-width: 120px; margin: 0 auto 20px; display: block; }
+
+#init-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.tracker-item {
+    background: rgba(255,255,255,0.1);
+    padding: 10px;
+    border-radius: 6px;
+    border-right: 4px solid;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.side-btn {
+    background: #444; color: white; border: none; padding: 10px; 
+    border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;
+}
+.side-btn:hover { background: #555; }
+
+/* אזור מרכזי */
+#main-area {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* לוג הטלות */
 #log-container { 
     position: absolute; top: 15px; left: 15px; width: 320px; 
     background-color: var(--parchment);
@@ -86,110 +144,169 @@ body {
     max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
 }
 
+.log-header { font-size: 16px; font-weight: bold; border-bottom: 1px solid rgba(0,0,0,0.2); margin-bottom: 10px; padding-bottom: 5px; }
+
 .log-player-name {
     color: #ffffff !important;
-    font-family: 'Assistant', sans-serif !important;
     font-weight: 800 !important;
     font-size: 1.15em;
     letter-spacing: 0.5px;
     display: inline-block;
+    background: #333;
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
-/* --- מצב קולדאון לכפתורים --- */
+/* תצוגת קוביות מרכזית */
+#dice-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.dice-container { position: relative; width: 180px; height: 180px; }
+#dice-svg { width: 100%; height: 100%; filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6)); }
+#result-text { 
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+    font-size: 45px; font-weight: 900; color: white; text-shadow: 0 0 15px black; 
+}
+
+/* פאנל שליטה (כפתורים) */
+#controls {
+    position: absolute;
+    bottom: 30px;
+    background: rgba(0, 0, 0, 0.75);
+    padding: 15px 20px;
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+    z-index: 100;
+}
+
+.mod-container { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
+#mod-input { width: 55px; padding: 8px; border-radius: 6px; border: none; text-align: center; font-weight: bold; font-size: 16px; }
+
+.dice-btn, .special-roll-btn, #init-btn {
+    background: #2c3e50; color: white; border: 2px solid transparent; 
+    padding: 10px 16px; border-radius: 8px; font-size: 16px; font-weight: bold; 
+    cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.dice-btn:hover { background: var(--primary); transform: translateY(-2px); border-color: white; }
+.special-roll-btn.adv { background: #27ae60; }
+.special-roll-btn.dis { background: #c0392b; }
+#init-btn { background: #f39c12; }
+
+/* מצב קולדאון לכפתורים */
 .cooldown-active {
     filter: grayscale(100%) !important;
     opacity: 0.4 !important;
     cursor: not-allowed !important;
     pointer-events: none !important;
 }
+
+/* אנימציות (נדרש עבור JS) */
+@keyframes shakeAnimation {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    20% { transform: translate(-3px, 0px) rotate(5deg); }
+    40% { transform: translate(3px, 2px) rotate(-5deg); }
+    60% { transform: translate(-3px, 1px) rotate(5deg); }
+    80% { transform: translate(-1px, -1px) rotate(-2deg); }
+    100% { transform: translate(1px, -2px) rotate(0deg); }
+}
+.shake { animation: shakeAnimation 0.4s ease-in-out; }
+.crit-glow { filter: drop-shadow(0 0 30px #ffd700); }
+.screen-shake { animation: shakeAnimation 0.3s ease-in-out; }
+
 /* --- התאמה למובייל (Mobile Responsiveness) --- */
 @media (max-width: 768px) {
-    /* הפיכת המסך לעמודה במקום שורה */
     #game-screen { 
         flex-direction: column; 
         overflow-y: auto;
+        overflow-x: hidden;
     }
 
-    /* פאנל סדר היוזמה - עובר למעלה והופך לנגלל אופקית */
+    /* פאנל יוזמה עובר למעלה */
     #side-panel {
         width: 100%;
         height: auto;
         border-left: none;
         border-bottom: 2px solid var(--primary);
-        order: 1; /* מופיע ראשון */
-        padding: 10px;
-        display: flex;
-        flex-direction: column;
+        order: 1;
+        padding: 15px 10px;
     }
 
+    .side-logo { max-width: 80px; margin: 0 auto 10px; }
+
     #init-list {
-        display: flex;
         flex-direction: row;
-        overflow-x: auto; /* מאפשר לגלול ימינה ושמאלה כשחקנים מתווספים */
-        gap: 15px;
-        padding-bottom: 5px;
+        overflow-x: auto;
+        padding-bottom: 10px;
+        gap: 12px;
     }
 
     .tracker-item {
-        min-width: 120px; /* שומר על רוחב הכרטיסיות כדי שלא יימעכו */
-        border-bottom: 4px solid;
+        min-width: 130px;
         border-right: none !important;
-        padding: 5px;
+        border-bottom: 4px solid;
     }
 
-    /* הלוג - ביטול הריחוף (absolute) כדי שלא יעלה על הקוביות */
+    /* לוג מקבל מקום מסודר ולא מרחף */
     #log-container {
         position: relative; 
         top: 0; 
         left: 0;
         width: 95%;
-        margin: 10px auto;
-        max-height: 180px;
-        order: 2; /* מופיע שני, מתחת ליוזמה */
+        margin: 15px auto;
+        max-height: 200px;
+        order: 2;
     }
 
-    /* אזור המשחק המרכזי */
     #main-area {
         width: 100%;
         justify-content: flex-start;
-        padding-bottom: 160px; /* משאיר מקום לפאנל הכפתורים למטה */
+        padding-bottom: 220px; /* מקום לכפתורים למטה */
         order: 3;
     }
 
     #dice-stage {
-        margin-top: 20px;
+        margin-top: 10px;
     }
 
-    /* כפתורי הקוביות - מקובעים לתחתית המסך */
+    .dice-container { width: 140px; height: 140px; }
+
+    /* פאנל כפתורים נצמד לתחתית ומתפרס */
     #controls {
         position: fixed; 
         bottom: 0;
         left: 0;
         width: 100%;
-        background: rgba(26, 26, 26, 0.95);
-        padding: 15px 10px;
-        display: flex;
+        border-radius: 15px 15px 0 0;
+        background: rgba(20, 20, 20, 0.98);
+        padding: 15px 10px 20px;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 8px;
-        z-index: 100;
-        box-shadow: 0 -5px 20px rgba(0,0,0,0.6);
-        backdrop-filter: blur(5px);
+        border: none;
+        border-top: 2px solid #333;
     }
 
     .mod-container {
         width: 100%;
-        display: flex;
         justify-content: center;
-        align-items: center;
-        margin-bottom: 5px;
+        margin-left: 0;
+        margin-bottom: 8px;
     }
 
-    /* התאמת גודל הכפתורים עצמם */
     .dice-btn, .special-roll-btn, #init-btn {
-        flex: 1 1 20%; /* כפתורים מתפרסים שווה בשווה בשורה */
+        flex: 1 1 22%; 
         padding: 12px 5px;
         font-size: 14px;
-        min-width: 60px;
+        min-width: 65px;
     }
 }
