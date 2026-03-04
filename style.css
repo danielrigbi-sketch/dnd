@@ -135,6 +135,12 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     position: relative;
 }
 
+/* עיצוב ייעודי לכרטיס DM - מינימליסטי */
+.tracker-item.dm-item {
+    background: rgba(0, 0, 0, 0.5);
+    border-right-color: #f1c40f !important; /* זהב לשה"מ */
+}
+
 /* פורטרט דמות */
 .char-portrait {
     width: 45px;
@@ -163,12 +169,25 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
 }
 
-/* כפתורי עריכת HP */
+/* כפתורי עריכת HP עם קלט מספרי */
 .hp-controls {
     display: flex;
     align-items: center;
-    gap: 5px;
-    margin-top: 4px;
+    gap: 4px;
+    background: rgba(0,0,0,0.2);
+    padding: 2px 5px;
+    border-radius: 6px;
+}
+
+.hp-amount-input {
+    width: 35px;
+    background: white;
+    border: none;
+    border-radius: 3px;
+    font-size: 12px;
+    text-align: center;
+    font-weight: bold;
+    color: #333;
 }
 
 .hp-edit-btn {
@@ -176,8 +195,8 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     color: white;
     border: none;
     border-radius: 4px;
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     cursor: pointer;
     font-weight: bold;
     display: flex;
@@ -187,8 +206,8 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 }
 
 .hp-edit-btn:hover { background: #555; }
-.hp-edit-btn.minus { color: var(--primary); }
-.hp-edit-btn.plus { color: var(--success); }
+.hp-edit-btn.minus { color: #ff7675; }
+.hp-edit-btn.plus { color: #55efc4; }
 
 .init-score {
     font-family: 'Assistant', sans-serif;
@@ -307,7 +326,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     #init-list::-webkit-scrollbar { display: none; }
 
     .tracker-item { 
-        min-width: 220px; /* הגדלה נוספת לטובת כפתורי עריכה ופורטרט */
+        min-width: 240px; 
         background: rgba(255,255,255,0.1); 
         font-size: 12px; 
         border-radius: 8px; 
@@ -322,7 +341,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     #main-area { 
         width: 100%; 
         height: 100dvh; 
-        padding-top: 130px; /* הותאם לגובה הפאנל החדש */
+        padding-top: 140px; 
     }
 
     #controls{
