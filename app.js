@@ -298,3 +298,32 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     resultText.classList.add('show');
     addLogEntry(data, time, flavorText);
 });
+
+// --- 6. לוגיקת מודאל תודות ורישיונות ---
+function initCreditsModal() {
+    const modal = document.getElementById("creditsModal");
+    const btn = document.getElementById("openCredits");
+    const closeBtn = document.querySelector(".credits-close");
+
+    if (btn && modal && closeBtn) {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            modal.style.display = "block";
+        };
+        closeBtn.onclick = () => {
+            modal.style.display = "none";
+        };
+        window.addEventListener('click', (event) => {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        });
+    }
+}
+
+// הפעלת המודאל עם טעינת ה-DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCreditsModal);
+} else {
+    initCreditsModal();
+}
