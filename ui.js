@@ -73,7 +73,7 @@ export function updateInitiativeUI(data, currentUserRole) {
                             <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
                         </div>
                         <div style="font-size:0.7em; color:#f3e5ab; margin-top:-2px;">
-                            ${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'}
+                            ${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'} | 👁️ ${i.pp || '10'}
                         </div>
                     </div>
                 </div>
@@ -121,7 +121,7 @@ window.toggleStatusPicker = (name) => {
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 };
 
-// הוספת שורת לוג - תומך כעת גם בהטלות וגם בעדכוני חיים
+// הוספת שורת לוג - צבעים כהים לקריאות על רקע קלף
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -135,36 +135,36 @@ export function addLogEntry(data, time, flavorText) {
     if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
         entry.innerHTML = `
-            <div style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.15); border-left: 4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">
+            <div style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.05); border-left: 4px solid ${isHeal ? '#27ae60' : '#c0392b'};">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="${nameStyle}">${data.cName}</span>
-                    <span style="color: #666; font-size: 10px;">${time}</span>
+                    <span style="color: #444; font-size: 10px;">${time}</span>
                 </div>
-                <div style="color: #fff; margin-top: 5px; font-size: 0.9em; font-style: italic;">"${flavorText}"</div>
+                <div style="color: #1a1a1a; margin-top: 5px; font-size: 0.9em; font-style: italic; font-weight: 600;">"${flavorText}"</div>
             </div>
         `;
     } else if (data.type === "STATUS") {
         entry.innerHTML = `
-            <div style="margin-bottom: 12px; padding: 8px; border-radius: 8px; background: rgba(108, 92, 231, 0.1); border: 1px dashed #6c5ce7; text-align:center;">
-                <span style="font-size:0.9em;">הסטטוס של <strong>${data.cName}</strong> עודכן ל: <span style="color:#a29bfe; font-weight:bold;">${data.status}</span></span>
+            <div style="margin-bottom: 12px; padding: 8px; border-radius: 8px; background: rgba(108, 92, 231, 0.05); border: 1px dashed #6c5ce7; text-align:center;">
+                <span style="font-size:0.9em; color: #1a1a1a;">הסטטוס של <strong>${data.cName}</strong> עודכן ל: <span style="color:#6c5ce7; font-weight:bold;">${data.status}</span></span>
             </div>
         `;
     } else {
-        const modeLabel = data.mode === 'adv' ? '<span style="color:#2ecc71; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#e74c3c; font-weight:bold;">(חיסרון)</span>' : '');
+        const modeLabel = data.mode === 'adv' ? '<span style="color:#27ae60; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#c0392b; font-weight:bold;">(חיסרון)</span>' : '');
         entry.innerHTML = `
-            <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.05); border-radius: 8px;">
+            <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.02); border-radius: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                     <span style="${nameStyle}">${data.cName || 'גיבור'} <small style="font-weight:400; opacity:0.7;">(${data.pName || 'שחקן'})</small></span>
-                     <span style="color: #666; font-size: 11px;">[${time}]</span> 
+                     <span style="${nameStyle}">${data.cName || 'גיבור'}</span>
+                     <span style="color: #444; font-size: 11px;">[${time}]</span> 
                 </div>
-                <div style="color: #eee; margin-top: 4px; line-height: 1.4;">
+                <div style="color: #1a1a1a; margin-top: 4px; line-height: 1.4; font-weight: 600;">
                     הטיל <strong>${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
-                    <span style="color: ${data.res === 20 ? '#f1c40f' : (data.res === 1 ? '#e74c3c' : '#fff')}; font-weight: 900; font-size: 1.3em;">
+                    <span style="color: ${data.res === 20 ? '#d35400' : (data.res === 1 ? '#c0392b' : '#000')}; font-weight: 900; font-size: 1.3em;">
                         ${data.res + (data.mod || 0)}
                     </span>
-                    <small style="opacity: 0.6;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
+                    <small style="opacity: 0.7;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
                 </div>
-                ${flavorText ? `<div style="color: #f3e5ab; font-style: italic; font-size: 12px; margin-top: 6px; opacity: 0.8;">"${flavorText}"</div>` : ""}
+                ${flavorText ? `<div style="color: #4b3621; font-style: italic; font-size: 12px; margin-top: 6px; opacity: 0.9;">"${flavorText}"</div>` : ""}
             </div>
         `;
     }
