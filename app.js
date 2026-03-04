@@ -189,17 +189,17 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     visualContainer.style.display = 'flex';
     resultText.classList.remove('show');
 
+    // ניגון הסאונד המיוחד (1 או 20) מיד עם סיום ההטלה
     playRollSound(data.type, data.res, isMuted);
 
-    setTimeout(() => {
-        const total = (data.res || 0) + (data.mod || 0);
-        const maxVal = parseInt(data.type.replace('d', '')) || 20;
-        const flavorText = getFlavorText(data.type, data.res, total, maxVal);
+    // ללא השהיה: חישוב והצגת התוצאה + כתיבה ללוג באופן מיידי!
+    const total = (data.res || 0) + (data.mod || 0);
+    const maxVal = parseInt(data.type.replace('d', '')) || 20;
+    const flavorText = getFlavorText(data.type, data.res, total, maxVal);
 
-        resultText.innerText = total;
-        resultText.style.color = data.color;
-        resultText.classList.add('show');
-        
-        addLogEntry(data, time, flavorText);
-    }, 1500); 
+    resultText.innerText = total;
+    resultText.style.color = data.color;
+    resultText.classList.add('show');
+    
+    addLogEntry(data, time, flavorText);
 });
