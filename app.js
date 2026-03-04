@@ -1,6 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-import DiceBox from "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/dice-box.es.min.js";
+
+// ייבוא מנוע הקוביות החדש שיצרנו (במקום הספרייה הישירה)
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js";
 
 // שימוש בגרסה מעודכנת של הקבצים למניעת קאש
 import { firebaseConfig } from "./constants.js?v=9";
@@ -10,19 +12,6 @@ import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
-// --- אתחול מנוע 3D Dice (מותאם למסך מלא וקוביות ענק) ---
-const diceBox = new DiceBox({
-    container: "#dice-box-canvas",
-    origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/",
-    assetPath: "assets/",
-    theme: "default",
-    scale: 35, // הגדלה משמעותית כדי שיראו מצוין בנייד ובלפטופ
-    gravity: 4, // כוח משיכה חזק יותר לנחיתה יציבה
-    friction: 0.8,
-    sounds: false,
-    settleTimeout: 3000 // זמן המתנה לעצירת הקובייה
-});
 
 let isDiceBoxReady = false;
 
@@ -85,7 +74,8 @@ document.getElementById('join-btn').onclick = async () => {
     document.getElementById('game-screen').style.display = 'flex';
     
     try {
-        await diceBox.init();
+        // שימוש בפונקציית האתחול מהקובץ החיצוני
+        await initDiceEngine();
         isDiceBoxReady = true;
         console.log("3D Engine Ready");
     } catch (e) {
@@ -119,7 +109,8 @@ window.roll = async (type, isInit = false) => {
         setDiceCooldown(true);
     }
 
-    await diceBox.updateConfig({ themeColor: pColor });
+    // עדכון צבע הקוביות דרך הפונקציה המיובאת
+    await updateDiceColor(pColor);
 
     let finalRes, res1 = null, res2 = null;
 
@@ -131,16 +122,18 @@ window.roll = async (type, isInit = false) => {
     };
 
     try {
-        // ניקוי הקוביות הקודמות מהמסך לפני הטלה חדשה
-        diceBox.clear(); 
+        // ניקוי הקוביות הקודמות מהמסך לפני הטלה חדשה דרך הפונקציה
+        clearDice(); 
 
         if (currentMode !== 'normal' && type === 'd20') {
-            const results = await diceBox.roll("2d20", rollOptions);
+            // קריאה לפונקציית ההטלה החיצונית
+            const results = await roll3DDice("2d20", rollOptions);
             res1 = results[0].value;
             res2 = results[1].value;
             finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
         } else {
-            const results = await diceBox.roll(`1${type}`, rollOptions);
+            // קריאה לפונקציית ההטלה החיצונית
+            const results = await roll3DDice(`1${type}`, rollOptions);
             finalRes = results[0].value;
         }
     } catch (err) {
