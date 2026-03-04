@@ -12,56 +12,6 @@
     <link rel="icon" type="image/jpeg" href="logo.png">
     <link rel="stylesheet" href="style.css?v=10">
     <link rel="stylesheet" href="diceStyles.css">
-
-    <style>
-        /* עיצוב הפוטר */
-        .site-footer {
-            position: fixed;
-            bottom: 5px;
-            width: 100%;
-            text-align: center;
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.4);
-            z-index: 5;
-            pointer-events: none; /* כדי לא להפריע ללחיצות על אלמנטים אחרים */
-        }
-        .site-footer a { 
-            color: rgba(255, 255, 255, 0.6); 
-            text-decoration: underline; 
-            cursor: pointer; 
-            pointer-events: auto;
-        }
-
-        /* עיצוב המודאל */
-        .credits-modal {
-            display: none;
-            position: fixed;
-            z-index: 2000;
-            left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(5px);
-        }
-        .credits-content {
-            background-color: #1a1a1a;
-            color: #ddd;
-            margin: 10% auto;
-            padding: 25px;
-            border: 1px solid #444;
-            width: 85%;
-            max-width: 450px;
-            border-radius: 12px;
-            direction: rtl;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        .credits-close { float: left; cursor: pointer; font-size: 24px; color: #888; }
-        .credits-close:hover { color: #fff; }
-        .credits-content h2 { color: #ff4500; margin-top: 0; font-size: 20px; text-align: center; }
-        .credits-content h3 { color: #d4af37; font-size: 16px; margin-top: 20px; border-bottom: 1px dotted #444; padding-bottom: 5px; }
-        .credits-content ul { list-style: none; padding: 0; margin: 10px 0; }
-        .credits-content li { margin-bottom: 8px; font-size: 14px; line-height: 1.4; }
-        .credits-content a { color: #00aaff; text-decoration: none; }
-        .credits-content a:hover { text-decoration: underline; }
-    </style>
 </head>
 <body id="main-body">
 
@@ -171,44 +121,28 @@
             </div>
         </div>
     </div>
+<footer class="site-footer">
+    CRITROLL &copy; 2026 | <a id="openCredits">תודות ורישיונות</a>
+</footer>
 
-    <footer class="site-footer">
-        CRITROLL &copy; 2026 | <a id="openCredits">תודות ורישיונות</a>
-    </footer>
+<div id="creditsModal" class="credits-modal">
+    <div class="credits-content">
+        <span class="credits-close">&times;</span>
+        <h2>תודות ורישיונות</h2>
+        
+        <h3>🎲 מערכת קוביות</h3>
+        <p><strong>Fantastic Dice</strong> מאת <a href="https://fantasticdice.games/" target="_blank">Frank Ali</a> (MIT).</p>
 
-    <div id="creditsModal" class="credits-modal">
-        <div class="credits-content">
-            <span class="credits-close">&times;</span>
-            <h2>תודות ורישיונות</h2>
-            
-            <h3>🎲 מערכת קוביות</h3>
-            <p><strong>Fantastic Dice</strong> מאת <a href="https://fantasticdice.games/" target="_blank">Frank Ali</a> (MIT).</p>
-
-            <h3>🔊 אפקטים קוליים</h3>
-            <ul>
-                <li><strong>Jingling Heal:</strong> מאת <a href="https://opengameart.org/users/zoltan-mihalyi" target="_blank">Zoltan Mihalyi</a> (CC-BY-SA 3.0).</li>
-                <li><strong>Player Hit:</strong> מאת GreyFrogGames (CC0).</li>
-                <li><strong>Dice Roll:</strong> מאת RPG (CC0).</li>
-                <li><strong>Well Done:</strong> מאת qubodup (CC0).</li>
-                <li><strong>Game Over:</strong> מאת Oiboo (CC0).</li>
-            </ul>
-        </div>
+        <h3>🔊 אפקטים קוליים</h3>
+        <ul>
+            <li><strong>Jingling Heal:</strong> מאת <a href="https://opengameart.org/users/zoltan-mihalyi" target="_blank">Zoltan Mihalyi</a> (CC-BY-SA 3.0).</li>
+            <li><strong>Player Hit:</strong> מאת GreyFrogGames (CC0).</li>
+            <li><strong>2 Dice Roll:</strong> מאת RPG (CC0).</li>
+            <li><strong>Well Done:</strong> מאת qubodup (CC0).</li>
+            <li><strong>Game Over:</strong> מאת Oiboo (CC0).</li>
+        </ul>
     </div>
-
+</div>
     <script type="module" src="app.js?v=10"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const modal = document.getElementById("creditsModal");
-            const btn = document.getElementById("openCredits");
-            const close = document.querySelector(".credits-close");
-
-            btn.onclick = () => modal.style.display = "block";
-            close.onclick = () => modal.style.display = "none";
-            window.onclick = (event) => {
-                if (event.target == modal) modal.style.display = "none";
-            };
-        });
-    </script>
 </body>
 </html>
