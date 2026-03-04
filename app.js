@@ -192,13 +192,23 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     // ניגון הסאונד המיוחד (1 או 20) מיד עם סיום ההטלה
     playRollSound(data.type, data.res, isMuted);
 
-    // ללא השהיה: חישוב והצגת התוצאה + כתיבה ללוג באופן מיידי!
+  // ללא השהיה: חישוב והצגת התוצאה + כתיבה ללוג באופן מיידי!
     const total = (data.res || 0) + (data.mod || 0);
     const maxVal = parseInt(data.type.replace('d', '')) || 20;
     const flavorText = getFlavorText(data.type, data.res, total, maxVal);
 
     resultText.innerText = total;
-    resultText.style.color = data.color;
+    
+    // --- העיצוב החדש: טקסט לבן עם הילת אור בצבע השחקן ---
+    resultText.style.color = 'white'; 
+    // יצירת 3 שכבות של הילה זוהרת בצבע הדיו, פלוס צל שחור קטן מאחור כדי לשמור על קריאות
+    resultText.style.textShadow = `
+        0 0 20px ${data.color}, 
+        0 0 40px ${data.color}, 
+        0 0 80px ${data.color}, 
+        3px 3px 10px rgba(0,0,0,0.9)
+    `;
+    
     resultText.classList.add('show');
     
     addLogEntry(data, time, flavorText);
