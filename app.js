@@ -1,12 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 // ייבוא מנוע הקוביות והממשק
 import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js";
-import { firebaseConfig } from "./constants.js?v=11";
-import { getFlavorText } from "./messages.js?v=11";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound } from "./audio.js?v=11";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=11";
+import { firebaseConfig } from "./constants.js?v=12";
+import { getFlavorText } from "./messages.js?v=12";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound } from "./audio.js?v=12";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=12";
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -16,13 +16,12 @@ let pName = "", cName = "", pColor = "#8B0000", userRole = "player", charPortrai
 let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal'; 
 
-// סאונדים חדשים
+// סאונדים
 const damageSound = new Audio('./damage.mp3');
 const healSound = new Audio('./heal.mp3');
 
-// --- 1. אתחול ובדיקות כניסה ---
+// --- 1. אתחול וטעינת נתונים ---
 window.addEventListener('DOMContentLoaded', () => {
-    // לוגיקת בחירת צבע
     const colorOptions = document.querySelectorAll('.color-opt');
     const colorInput = document.getElementById('user-color');
     const setActiveColor = (color) => {
@@ -39,7 +38,6 @@ window.addEventListener('DOMContentLoaded', () => {
         opt.addEventListener('click', () => setActiveColor(opt.getAttribute('data-color')));
     });
 
-    // טעינת זיכרון מורחב
     const savedStats = {
         pName: localStorage.getItem('critroll_pName'),
         cName: localStorage.getItem('critroll_cName'),
@@ -70,24 +68,19 @@ window.addEventListener('DOMContentLoaded', () => {
     if (savedStats.currHp) document.getElementById('curr-hp').value = savedStats.currHp;
     if (savedStats.portrait) charPortrait = savedStats.portrait;
 
-    // מאזין לשינוי תפקיד (DM/Player)
     document.getElementById('user-role').onchange = toggleRoleFields;
     toggleRoleFields();
 });
 
-// פונקציה להצגת/הסתרת שדות לפי תפקיד
 function toggleRoleFields() {
     const role = document.getElementById('user-role').value;
     const playerFields = document.getElementById('player-only-fields');
     playerFields.style.display = (role === 'dm') ? 'none' : 'block';
 }
 
-// טיפול בהעלאת תמונה (פורטרט)
 document.getElementById('char-portrait').onchange = function(e) {
     const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 600000) return alert("התמונה גדולה מדי! בחר תמונה קטנה מ-500KB");
-
+    if (!file || file.size > 600000) return alert("בחר תמונה קטנה מ-500KB");
     const reader = new FileReader();
     reader.onload = (event) => {
         charPortrait = event.target.result;
@@ -96,7 +89,7 @@ document.getElementById('char-portrait').onchange = function(e) {
     reader.readAsDataURL(file);
 };
 
-// --- 2. הצטרפות למשחק (כולל בדיקת שה"מ) ---
+// --- 2. כניסה למשחק ---
 document.getElementById('join-btn').onclick = async () => {
     pName = document.getElementById('player-name').value.trim();
     userRole = document.getElementById('user-role').value;
@@ -104,13 +97,12 @@ document.getElementById('join-btn').onclick = async () => {
 
     if (userRole === 'player') {
         cName = document.getElementById('char-name').value.trim();
-        if (!pName || !cName) return alert("מלא שם שחקן ודמות!");
+        if (!pName || !cName) return alert("מלא פרטי שחקן ודמות!");
     } else {
         cName = "DM_" + pName;
     }
 
-    // איסוף נתונים לשמירה
-    const stats = {
+    const stats = (userRole === 'player') ? {
         race: document.getElementById('char-race').value,
         class: document.getElementById('char-class').value,
         ac: document.getElementById('char-ac').value,
@@ -118,9 +110,8 @@ document.getElementById('join-btn').onclick = async () => {
         pp: document.getElementById('char-pp').value,
         initBonus: parseInt(document.getElementById('init-bonus').value) || 0,
         maxHp: parseInt(document.getElementById('max-hp').value) || 10,
-        hp: parseInt(document.getElementById('curr-hp').value) || 10,
-        portrait: charPortrait
-    };
+        hp: parseInt(document.getElementById('curr-hp').value) || 10
+    } : {};
 
     localStorage.setItem('critroll_pName', pName);
     localStorage.setItem('critroll_cName', cName);
@@ -134,23 +125,20 @@ document.getElementById('join-btn').onclick = async () => {
 
     try { await initDiceEngine(); isDiceBoxReady = true; } catch (e) {}
 
-    // חשיפת כפתורי ניהול לשה"מ
+    // רק שה"מ רואה כפתורי ניהול
     if (userRole === 'dm') {
         document.getElementById('reset-init-btn').style.display = 'block';
         document.getElementById('master-combat-btn').style.display = 'block';
     }
 
-    // רישום ב-Firebase
     const playerRef = ref(db, 'players/' + cName);
-    const dataToSet = { pName, pColor, userRole, score: 0 };
-    if (userRole === 'player') Object.assign(dataToSet, stats);
-    
+    const dataToSet = { pName, pColor, userRole, portrait: charPortrait, score: 0, ...stats };
     set(playerRef, dataToSet);
     onDisconnect(playerRef).remove();
 
-    const userOnlineRef = ref(db, 'online/' + pName + '_' + cName);
-    set(userOnlineRef, { role: userRole });
-    onDisconnect(userOnlineRef).remove();
+    const onlineRef = ref(db, 'online/' + pName + '_' + cName);
+    set(onlineRef, { role: userRole });
+    onDisconnect(onlineRef).remove();
 
     setTimeout(() => { canAnimate = true; }, 1000);
 };
@@ -191,120 +179,96 @@ window.roll = async (type, isInit = false) => {
     return finalRes + mod;
 };
 
-// --- 4. עריכת חיים, סטטוסים ומיקרו-קופי ---
+// --- 4. עריכה וניהול משחק ---
 
-// פונקציית עזר למיקרו-קופי רנדומלי
-const getHpMicroCopy = (isHeal, char, amount) => {
-    const healMsgs = [`ניצוצות קסם אופפים את ${char}!`, `${char} מרגיש כוחות מתחדשים.`, `מרפא אלוהי נגע ב${char}.` ];
-    const dmgMsgs = [`מכה קשה נחתה על ${char}!`, `האדמה רועדת... ${char} ספג פגיעה.`, `${char} נאנק מכאב.`];
-    const base = isHeal ? healMsgs : dmgMsgs;
-    return base[Math.floor(Math.random() * base.length)] + ` (${Math.abs(amount)} נק')`;
-};
+// שינוי חיים בכמות משתנה
+window.changeHP = (targetCName, isPlus) => {
+    const inputField = document.getElementById(`hp-input-${targetCName}`);
+    const amount = parseInt(inputField.value) || 1;
+    const finalAmount = isPlus ? amount : -amount;
 
-// עדכון HP גלובלי (ייקרא מה-UI)
-window.changeHP = (targetCName, amount) => {
     const pRef = ref(db, 'players/' + targetCName);
-    onValue(pRef, (snap) => {
+    get(pRef).then((snap) => {
         const p = snap.val();
         if (!p) return;
-        const newHp = Math.max(0, Math.min(p.maxHp, (p.hp || 0) + amount));
-        
+        const newHp = Math.max(0, Math.min(p.maxHp, (p.hp || 0) + finalAmount));
         update(pRef, { hp: newHp });
         
-        // שליחת אירוע ללוג
+        const msgs = isPlus ? [`${targetCName} התחזק!`, `מרפא נגע ב${targetCName}`] : [`מכה כואבת ל${targetCName}!`, `${targetCName} ספג פציעה`];
+        const flavor = msgs[Math.floor(Math.random() * msgs.length)] + ` (${Math.abs(amount)} נק')`;
+
         push(ref(db, 'rolls'), {
-            cName: targetCName,
-            type: amount > 0 ? "HEAL" : "DAMAGE",
-            res: Math.abs(amount),
-            newHp: newHp,
-            color: amount > 0 ? "#2ecc71" : "#e74c3c",
-            flavor: getHpMicroCopy(amount > 0, targetCName, amount),
-            ts: Date.now()
+            cName: targetCName, type: isPlus ? "HEAL" : "DAMAGE",
+            res: Math.abs(amount), newHp, color: isPlus ? "#2ecc71" : "#e74c3c",
+            flavor, ts: Date.now()
         });
-
-        // שמירה מקומית אם זה אני
         if (targetCName === cName) localStorage.setItem('critroll_currHp', newHp);
-
-    }, { onlyOnce: true });
+        inputField.value = 1; // איפוס השדה
+    });
 };
 
-// ניהול סטטוסים (ייקרא מה-UI)
 window.toggleStatus = (targetCName, status) => {
-    if (userRole !== 'dm') return; // רק שה"מ מחלק סטטוסים
+    if (userRole !== 'dm') return;
     const pRef = ref(db, 'players/' + targetCName);
-    onValue(pRef, (snap) => {
+    get(pRef).then((snap) => {
         const p = snap.val();
         let statuses = p.statuses || [];
-        if (statuses.includes(status)) {
-            statuses = statuses.filter(s => s !== status);
-        } else {
+        if (statuses.includes(status)) statuses = statuses.filter(s => s !== status);
+        else {
             statuses.push(status);
-            push(ref(db, 'rolls'), { cName: targetCName, type: "STATUS", status: status, ts: Date.now() });
+            push(ref(db, 'rolls'), { cName: targetCName, type: "STATUS", status, ts: Date.now() });
         }
-        update(pRef, { statuses: statuses });
-    }, { onlyOnce: true });
+        update(pRef, { statuses });
+    });
 };
 
-// --- 5. סנכרון כפתורים ואירועים ---
+// --- 5. סנכרון ואירועים ---
 
-// תיקון באג איפוס
 document.getElementById('reset-init-btn').onclick = () => {
-    if (confirm("לאפס יוזמה לכולם?")) {
+    if (userRole !== 'dm') return;
+    if (confirm("לאפס יוזמה?")) {
         remove(ref(db, 'initiative'));
-        onValue(ref(db, 'players'), (snap) => {
-            const players = snap.val();
-            if (players) {
-                Object.keys(players).forEach(name => update(ref(db, 'players/' + name), { score: 0 }));
-            }
-        }, { onlyOnce: true });
-        // ניקוי UI מקומי למניעת "שאריות"
-        updateInitiativeUI(null);
+        get(ref(db, 'players')).then(snap => {
+            const p = snap.val();
+            if(p) Object.keys(p).forEach(n => update(ref(db, 'players/'+n), {score: 0}));
+        });
+        updateInitiativeUI(null, userRole);
     }
 };
 
-// בדיקת שה"מ קיים בחדר
 onValue(ref(db, 'online'), (snapshot) => {
     const online = snapshot.val();
     let dmFound = false;
     if (online) Object.values(online).forEach(u => { if(u.role === 'dm') dmFound = true; });
-    
-    const roleSelect = document.getElementById('user-role');
     const dmMsg = document.getElementById('dm-exists-msg');
+    const roleSelect = document.getElementById('user-role');
     if (dmFound && userRole !== 'dm') {
-        roleSelect.value = 'player';
-        roleSelect.options[1].disabled = true;
-        dmMsg.style.display = 'block';
+        roleSelect.value = 'player'; roleSelect.options[1].disabled = true; dmMsg.style.display = 'block';
     } else {
-        roleSelect.options[1].disabled = false;
-        dmMsg.style.display = 'none';
+        roleSelect.options[1].disabled = false; dmMsg.style.display = 'none';
     }
     document.getElementById('online-count').innerText = online ? Object.keys(online).length : 0;
 });
 
-// מאזיני כפתורים
-document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(activeMode); };
-document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(activeMode); };
-document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊" : "🔇"; };
-document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => window.roll(btn.getAttribute('data-type')); });
-
-// הפעלת מצב קרב
 document.getElementById('master-combat-btn').onclick = () => {
-    const combatRef = ref(db, 'combat_active');
-    onValue(combatRef, (snap) => {
+    if (userRole !== 'dm') return;
+    get(ref(db, 'combat_active')).then(snap => {
         const current = snap.val() || false;
-        set(combatRef, !current);
+        set(ref(db, 'combat_active'), !current);
         if (!current) {
             remove(ref(db, 'initiative'));
-            onValue(ref(db, 'players'), (pSnap) => {
+            get(ref(db, 'players')).then(pSnap => {
                 const p = pSnap.val();
                 if(p) Object.keys(p).forEach(n => update(ref(db, 'players/'+n), {score: 0}));
-            }, {onlyOnce: true});
+            });
         }
-    }, { onlyOnce: true });
+    });
 };
 
-// גלגול יוזמה
 document.getElementById('init-btn').onclick = async () => {
+    const isCombat = await get(ref(db, 'combat_active')).then(s => s.val());
+    if (!isCombat) return alert("השה\"מ טרם פתח את הקרב!");
+    
     const btn = document.getElementById('init-btn');
     const bonus = parseInt(localStorage.getItem('critroll_initBonus')) || 0;
     btn.disabled = true;
@@ -314,14 +278,11 @@ document.getElementById('init-btn').onclick = async () => {
     set(ref(db, 'initiative/' + cName), { score: total, color: pColor, playerName: pName });
 };
 
-// --- 6. עדכוני UI ולוג ---
-
 onValue(ref(db, 'combat_active'), (snap) => {
     const isCombat = snap.val();
     const btn = document.getElementById('init-btn');
-    if (!btn) return;
     if (isCombat) {
-        onValue(ref(db, 'initiative/' + cName), (s) => {
+        onValue(ref(db, 'initiative/' + cName), s => {
             if (s.exists()) { btn.disabled = true; btn.innerText = "✅ רשום"; }
             else { btn.disabled = false; btn.innerText = "⚡ גלגל יוזמה!"; btn.style.opacity = "1"; }
         }, { onlyOnce: true });
@@ -336,7 +297,6 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     const data = snapshot.val();
     if (!data || !canAnimate) return;
 
-    // הפעלת סאונדים לפי אירוע
     if (!isMuted) {
         if (data.type === "DAMAGE") damageSound.play();
         else if (data.type === "HEAL") healSound.play();
@@ -344,21 +304,18 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     }
 
     const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    const resultText = document.getElementById('result-text');
     if (data.type !== "DAMAGE" && data.type !== "HEAL" && data.type !== "STATUS") {
         document.getElementById('empty-state').style.display = 'none';
         document.getElementById('dice-visual').style.display = 'flex';
+        const resultText = document.getElementById('result-text');
         resultText.classList.remove('show');
-        const total = (data.res || 0) + (data.mod || 0);
-        resultText.innerText = total;
+        resultText.innerText = (data.res || 0) + (data.mod || 0);
         resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
         setTimeout(() => resultText.classList.add('show'), 50);
     }
-
     addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res+data.mod), 20));
 });
 
-// לוגיקת מודאל (נשמרת מהקוד הקודם)
 function initCreditsModal() {
     const modal = document.getElementById("creditsModal");
     const btn = document.getElementById("openCredits");
