@@ -32,45 +32,56 @@ export function updateInitiativeUI(data, currentUserRole) {
     if (!data) return;
 
     const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
+    const isDM = currentUserRole === 'dm';
+    const myCName = localStorage.getItem('critroll_cName');
     
-    // מיון לפי יוזמה
+    // מיון לפי יוזמה (הגבוה ביותר למעלה)
     items.sort((a, b) => (b.score || 0) - (a.score || 0)).forEach((i, index) => {
         const div = document.createElement('div');
-        const isDMInData = i.userRole === 'dm'; // האם הכרטיס שייך לשה"מ
-        div.className = `tracker-item ${isDMInData ? 'dm-item' : ''}`;
+        const isThisCharDM = i.userRole === 'dm';
+        div.className = `tracker-item ${isThisCharDM ? 'dm-item' : ''}`;
         
         const playerColor = i.pColor || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
         
-        const isDM = currentUserRole === 'dm'; // האם הצופה הנוכחי הוא שה"מ
-        const isOwner = localStorage.getItem('critroll_cName') === i.name;
-        
-        // חלק עליון: פורטרט ושם (משותף לכולם)
-        let html = `
-            <div style="display:flex; gap:10px; align-items:center;">
-                <img src="${i.portrait || 'https://via.placeholder.com/50'}" class="char-portrait" alt="Portrait">
-                <div style="flex:1;">
-                    <div style="font-weight:900; font-size:1.1em; color: white; display:flex; justify-content:space-between;">
-                        <span>${i.score > 0 ? (index + 1) + '. ' : ''}${isDMInData ? 'שליט המבוך' : i.name}</span>
-                        ${!isDMInData ? `<span class="init-score">${i.score > 0 ? i.score : '--'}</span>` : ''}
-                    </div>
-                    <div style="font-size:0.7em; color: #f3e5ab; margin-top: -2px;">
-                        ${isDMInData ? `(${i.pName})` : `${i.race || ''} ${i.class || ''}`}
+        // --- מבנה כרטיס שה"מ (DM) ---
+        if (isThisCharDM) {
+            div.innerHTML = `
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <img src="${i.portrait || 'logo.png'}" class="char-portrait" style="border-color:#f1c40f;">
+                    <div>
+                        <div style="font-weight:900; color:#f1c40f; font-size:1.1em;">שליט המבוך</div>
+                        <div style="font-size:0.75em; opacity:0.8; color:white;">${i.pName}</div>
                     </div>
                 </div>
-            </div>
-        `;
-
-        // חלק תחתון: סטטים וחיים (רק לשחקנים, לא לשה"מ)
-        if (!isDMInData) {
+            `;
+        } 
+        // --- מבנה כרטיס שחקן (Player) ---
+        else {
             const hpPercent = (i.hp / i.maxHp) * 100;
             const isDead = i.hp <= 0;
+            const isOwner = myCName === i.name;
 
-            html += `
-                <div style="margin-top:8px; ${isDead ? 'opacity: 0.6;' : ''}">
+            div.innerHTML = `
+                <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
+                    <img src="${i.portrait || 'https://via.placeholder.com/50'}" class="char-portrait">
+                    <div style="flex:1;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:900; color:white; font-size:1.1em;">
+                                ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}
+                            </span>
+                            <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
+                        </div>
+                        <div style="font-size:0.7em; color:#f3e5ab; margin-top:-2px;">
+                            ${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'}
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:8px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                         <span style="font-size:10px; font-weight:bold; color:${hpPercent > 30 ? '#2ecc71' : '#ff7675'}">
-                            ❤️ ${i.hp}/${i.maxHp} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'}
+                            ❤️ ${i.hp}/${i.maxHp}
                         </span>
                         ${(isDM || isOwner) ? `
                             <div class="hp-controls">
@@ -80,14 +91,14 @@ export function updateInitiativeUI(data, currentUserRole) {
                             </div>
                         ` : ''}
                     </div>
-                    <div style="background: #333; height: 6px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-                        <div style="width: ${hpPercent}%; height: 100%; background: ${hpPercent > 30 ? '#2ecc71' : '#e74c3c'}; transition: width 0.4s ease-out;"></div>
+                    <div style="background:#333; height:6px; border-radius:3px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
+                        <div style="width:${hpPercent}%; height:100%; background:${hpPercent > 30 ? '#2ecc71' : '#e74c3c'}; transition: width 0.4s ease-out;"></div>
                     </div>
                 </div>
 
                 <div class="status-container">
                     ${(i.statuses || []).map(s => `<span class="status-badge" style="background:#636e72">${s}</span>`).join('')}
-                    ${isDM ? `<button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; cursor:pointer; font-size:12px; padding:0;">✨+</button>` : ''}
+                    ${isDM ? `<button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>` : ''}
                 </div>
 
                 <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
@@ -100,17 +111,17 @@ export function updateInitiativeUI(data, currentUserRole) {
             `;
             if (isDead) div.style.background = "rgba(231, 76, 60, 0.15)";
         }
-
-        div.innerHTML = html;
         list.appendChild(div);
     });
 }
 
+// פונקציית עזר לפתיחת בורר הסטטוסים
 window.toggleStatusPicker = (name) => {
     const el = document.getElementById(`status-picker-${name}`);
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 };
 
+// הוספת שורת לוג - תומך כעת גם בהטלות וגם בעדכוני חיים
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -162,6 +173,7 @@ export function addLogEntry(data, time, flavorText) {
     if (log.children.length > 30) log.removeChild(log.lastChild);
 }
 
+// ניהול נראות כפתורים בזמן קולדאון
 export function setDiceCooldown(isActive) {
     const buttons = document.querySelectorAll('.dice-btn, #init-btn, .special-roll-btn');
     buttons.forEach(btn => {
