@@ -9,7 +9,7 @@ import { firebaseConfig } from "./constants.js?v=9";
 import { getFlavorText } from "./messages.js?v=9";
 import { unlockAudio, playRollSound, stopAllSounds } from "./audio.js?v=9";
 import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=9";
-
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound } from "./audio.js?v=9";
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
