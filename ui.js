@@ -24,17 +24,15 @@ export function updateModeUI(activeMode) {
 }
 
 // עדכון רשימת המשתתפים (Party Dashboard)
-export function updateInitiativeUI(data) {
+export function updateInitiativeUI(data, currentUserRole) {
     const list = document.getElementById('init-list');
     if (!list) return;
 
     list.innerHTML = "";
     if (!data) return;
 
-    // הפיכת האובייקט למערך ומיון לפי היוזמה (score)
     const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
     
-    // מיון: אלו שגילגלו יוזמה למעלה, השאר למטה בסדר אלפביתי
     items.sort((a, b) => (b.score || 0) - (a.score || 0)).forEach((i, index) => {
         const div = document.createElement('div');
         div.className = 'tracker-item';
@@ -44,43 +42,76 @@ export function updateInitiativeUI(data) {
         
         const hpPercent = (i.hp / i.maxHp) * 100;
         const isDead = i.hp <= 0;
+        const isDM = currentUserRole === 'dm';
+        
+        // בדיקה אם המשתמש הנוכחי הוא בעל הדמות
+        const isOwner = localStorage.getItem('critroll_cName') === i.name;
+
+        // בניית תגי סטטוס
+        const statusHtml = (i.statuses || []).map(s => {
+            const colors = {
+                'מורעל': '#2ecc71', 'מוקסם': '#e84393', 'מעולף': '#2d3436', 
+                'מפוחד': '#6c5ce7', 'משותק': '#0984e3', 'מרוסן': '#d35400',
+                'מוחרש': '#636e72', 'עיוור': '#2d3436', 'מוטה': '#e67e22', 'המום': '#f1c40f'
+            };
+            return `<span class="status-badge" style="background:${colors[s] || '#636e72'}">${s}</span>`;
+        }).join('');
 
         div.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; ${isDead ? 'opacity: 0.6;' : ''}">
-                <div>
-                    <div style="font-weight:900; font-size:1.1em; color: white;">
-                        ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}
-                        <span style="font-weight:400; font-size:0.75em; opacity:0.8;">(${i.pName || 'שחקן'})</span>
+            <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
+                <img src="${i.portrait || 'https://via.placeholder.com/50'}" class="char-portrait" alt="Portrait">
+                <div style="flex:1;">
+                    <div style="font-weight:900; font-size:1.1em; color: white; display:flex; justify-content:space-between;">
+                        <span>${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}</span>
+                        <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
                     </div>
-                    <div style="font-size:0.75em; color: #f3e5ab; margin-top: 1px;">
-                        ${i.race || ''} ${i.class || ''}
-                    </div>
-                </div>
-                <div style="text-align:left;">
-                    <div class="init-score" style="font-size:1.4em; color:${i.score > 0 ? '#f3e5ab' : '#555'};">
-                        ${i.score > 0 ? i.score : '--'}
+                    <div style="font-size:0.7em; color: #f3e5ab; margin-top: -2px;">
+                        ${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'}
                     </div>
                 </div>
             </div>
 
-            <div style="background: #333; height: 7px; border-radius: 4px; margin: 8px 0 4px 0; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-                <div style="width: ${hpPercent}%; height: 100%; background: ${hpPercent > 30 ? '#2ecc71' : '#e74c3c'}; transition: width 0.4s ease-out;"></div>
+            <div style="margin-top:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-size:10px; font-weight:bold; color:${hpPercent > 30 ? '#2ecc71' : '#ff7675'}">HP: ${i.hp}/${i.maxHp}</span>
+                    ${(isDM || isOwner) ? `
+                        <div class="hp-controls">
+                            <button class="hp-edit-btn minus" onclick="window.changeHP('${i.name}', -1)">-</button>
+                            <button class="hp-edit-btn plus" onclick="window.changeHP('${i.name}', 1)">+</button>
+                        </div>
+                    ` : ''}
+                </div>
+                <div style="background: #333; height: 6px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="width: ${hpPercent}%; height: 100%; background: ${hpPercent > 30 ? '#2ecc71' : '#e74c3c'}; transition: width 0.4s ease-out;"></div>
+                </div>
             </div>
 
-            <div style="display: flex; justify-content: space-between; font-size: 0.8em; font-weight: bold; margin-top: 4px;">
-                <span title="דירוג שריון">🛡️ ${i.ac || '10'}</span>
-                <span title="הבחנה פסיבית">👁️ ${i.pp || '10'}</span>
-                <span title="מהירות">🏃 ${i.speed || '30'}ft</span>
-                <span style="color:${hpPercent > 30 ? '#2ecc71' : '#ff7675'}">❤️ ${i.hp}/${i.maxHp}</span>
+            <div class="status-container">
+                ${statusHtml}
+                ${isDM ? `<button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; cursor:pointer; font-size:12px; padding:0;">🛡️+</button>` : ''}
+            </div>
+
+            <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px;">
+                    ${['מורעל', 'מוקסם', 'מעולף', 'מפוחד', 'משותק', 'מרוסן', 'עיוור', 'מוטה', 'המום'].map(s => 
+                        `<button onclick="window.toggleStatus('${i.name}', '${s}'); this.parentElement.parentElement.style.display='none';" style="font-size:10px; padding:3px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer;">${s}</button>`
+                    ).join('')}
+                </div>
             </div>
         `;
         
-        if (isDead) div.style.background = "rgba(231, 76, 60, 0.1)";
+        if (isDead) div.style.background = "rgba(231, 76, 60, 0.15)";
         list.appendChild(div);
     });
 }
 
-// הוספת שורת לוג - תומך כעת גם בהטלות וגם בעדכוני חיים
+// פונקציית עזר לפתיחת בורר הסטטוסים
+window.toggleStatusPicker = (name) => {
+    const el = document.getElementById(`status-picker-${name}`);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
+
+// הוספת שורת לוג - תומך כעת גם בהטלות, עדכוני חיים וסטטוסים
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -89,18 +120,9 @@ export function addLogEntry(data, time, flavorText) {
     entry.className = 'log-entry';
     
     const userColor = data.color || '#8B0000';
-    const isHpUpdate = data.type === "DAMAGE" || data.type === "HEAL";
+    const nameStyle = `color: #ffffff !important; font-family: 'Assistant', sans-serif !important; font-weight: 800; font-size: 1.1em; text-shadow: 1px 1px 2px #000, 0 0 10px ${userColor}aa;`;
 
-    const nameStyle = `
-        color: #ffffff !important;
-        font-family: 'Assistant', sans-serif !important;
-        font-weight: 800 !important;
-        font-size: 1.1em;
-        text-shadow: 1px 1px 2px #000, 0 0 10px ${userColor}aa;
-    `;
-
-    if (isHpUpdate) {
-        // עיצוב הודעת עדכון חיים
+    if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
         entry.innerHTML = `
             <div style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.15); border-left: 4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">
@@ -108,24 +130,23 @@ export function addLogEntry(data, time, flavorText) {
                     <span style="${nameStyle}">${data.cName}</span>
                     <span style="color: #666; font-size: 10px;">${time}</span>
                 </div>
-                <div style="color: #fff; margin-top: 5px; font-size: 0.95em;">
-                    ${isHeal ? '✨ קיבל ריפוי של' : '💥 ספג נזק של'} 
-                    <strong style="color:${isHeal ? '#2ecc71' : '#ff7675'}; font-size: 1.2em;">${data.res}</strong> נקודות.
-                    <div style="font-size: 0.8em; opacity: 0.8; margin-top: 2px;">חיים נותרו: ${data.newHp}</div>
-                </div>
+                <div style="color: #fff; margin-top: 5px; font-size: 0.9em; font-style: italic;">"${flavorText}"</div>
+            </div>
+        `;
+    } else if (data.type === "STATUS") {
+        entry.innerHTML = `
+            <div style="margin-bottom: 12px; padding: 8px; border-radius: 8px; background: rgba(108, 92, 231, 0.1); border: 1px dashed #6c5ce7; text-align:center;">
+                <span style="font-size:0.9em;">הסטטוס של <strong>${data.cName}</strong> עודכן ל: <span style="color:#a29bfe; font-weight:bold;">${data.status}</span></span>
             </div>
         `;
     } else {
-        // עיצוב הטלת קוביות רגילה (הקוד הקיים שלך)
         const modeLabel = data.mode === 'adv' ? '<span style="color:#2ecc71; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#e74c3c; font-weight:bold;">(חיסרון)</span>' : '');
-        
         entry.innerHTML = `
             <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.05); border-radius: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                      <span style="${nameStyle}">${data.cName || 'גיבור'} <small style="font-weight:400; opacity:0.7;">(${data.pName || 'שחקן'})</small></span>
                      <span style="color: #666; font-size: 11px;">[${time}]</span> 
                 </div>
-                
                 <div style="color: #eee; margin-top: 4px; line-height: 1.4;">
                     הטיל <strong>${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
                     <span style="color: ${data.res === 20 ? '#f1c40f' : (data.res === 1 ? '#e74c3c' : '#fff')}; font-weight: 900; font-size: 1.3em;">
