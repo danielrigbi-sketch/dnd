@@ -25,7 +25,7 @@ body {
     background-color: #2c1e16; 
 }
 
-/* --- מסך כניסה (מעודכן לשדות החדשים) --- */
+/* --- מסך כניסה --- */
 #login-screen { 
     position: fixed; 
     inset: 0; 
@@ -50,10 +50,9 @@ body {
     box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
     display: flex;
     flex-direction: column;
-    gap: 10px; /* צמצום המרווח בגלל ריבוי השדות */
+    gap: 10px;
 }
 
-/* עדכון: תמיכה גם ב-number וגם ב-text */
 .login-card input, .role-select { 
     width: 100%; 
     padding: 10px; 
@@ -65,7 +64,6 @@ body {
     color: #333;
 }
 
-/* ביטול חיצי מספרים בדפדפנים */
 input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 .color-picker-section { text-align: center; padding: 5px 0; }
@@ -115,14 +113,13 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     padding-left: 5px;
 }
 
-/* כרטיס דמות ב-Dashboard */
 .tracker-item{
     background: rgba(44, 62, 80, 0.4);
     padding: 12px;
     border-radius: 8px;
     border-right: 4px solid;
     display: flex;
-    flex-direction: column; /* שינוי ל-column כדי להכיל את המבנה החדש */
+    flex-direction: column; 
     gap: 4px;
     transition: all 0.3s ease;
     border: 1px solid rgba(255,255,255,0.05);
@@ -220,7 +217,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .dice-btn:hover { background: var(--primary); transform: translateY(-2px); }
 .special-roll-btn.adv { background: #27ae60; }
 .special-roll-btn.dis { background: #c0392b; }
-#init-btn { background: #f39c12; flex: 1; } /* הכפתור יתפוס את השטח הפנוי */
+#init-btn { background: #f39c12; flex: 1; } 
 
 #init-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -240,17 +237,16 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
         overflow-x: auto; 
         gap: 10px; 
         padding-bottom: 5px;
-        scrollbar-width: none; /* הסתרת סקולבר ב-Firefox */
+        scrollbar-width: none;
     }
-    #init-list::-webkit-scrollbar { display: none; } /* הסתרת סקולבר ב-Chrome/Safari */
+    #init-list::-webkit-scrollbar { display: none; }
 
     .tracker-item { 
-        min-width: 180px; /* הגדלנו כדי שכל נתוני ה-HP וה-AC ייכנסו */
+        min-width: 180px; 
         background: rgba(255,255,255,0.1); 
         font-size: 12px; 
         border-radius: 8px; 
         border-right: 4px solid;
-        border-bottom: none;
     }
 
     #log-container{
@@ -261,7 +257,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     #main-area { 
         width: 100%; 
         height: 100dvh; 
-        padding-top: 110px; /* מקום לפאנל העליון שגדל */
+        padding-top: 110px;
     }
 
     #controls{
@@ -279,20 +275,22 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     .mod-container { grid-area: mod; background: #333; border-radius: 8px; height: 100%; justify-content: center; }
     #init-btn { grid-area: init; margin: 0; height: 100%; }
 }
-/* Footer & Credits Modal */
+
+/* --- עדכון Footer ותודות (תיקון נראות) --- */
 .site-footer {
     position: fixed;
     bottom: 5px;
+    left: 0;
     width: 100%;
     text-align: center;
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.4);
-    z-index: 5;
+    color: rgba(255, 255, 255, 0.7); /* צבע בהיר יותר */
+    z-index: 10000; /* ציפה מעל הקנבס ותפריטים אחרים */
     pointer-events: none;
 }
 
 .site-footer a { 
-    color: rgba(255, 255, 255, 0.6); 
+    color: #00aaff; /* צבע כחול בולט לקישור */
     text-decoration: underline; 
     cursor: pointer; 
     pointer-events: auto;
@@ -301,7 +299,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .credits-modal {
     display: none;
     position: fixed;
-    z-index: 2000;
+    z-index: 11000; /* מעל הפוטר */
     left: 0; top: 0; width: 100%; height: 100%;
     background-color: rgba(0, 0, 0, 0.9);
     backdrop-filter: blur(5px);
