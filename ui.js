@@ -40,13 +40,18 @@ export function updateInitiativeUI(data) {
 
     const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
     
-    items.sort((a, b) => b.score - a.score).forEach(i => {
+    // עדכון: הוספת index כדי להציג את המקום בסדר היוזמה
+    items.sort((a, b) => b.score - a.score).forEach((i, index) => {
         const div = document.createElement('div');
         div.className = 'tracker-item';
         const playerColor = i.color || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
+        
+        // עדכון מבנה הטקסט: הוספת מספר סידורי ושם השחקן בסוגריים
         div.innerHTML = `
-            <span style="font-weight:bold; font-family: 'Assistant', sans-serif;">${i.name}</span>
+            <span style="font-weight:bold; font-family: 'Assistant', sans-serif;">
+                ${index + 1}. ${i.name} (${i.playerName || 'שחקן'})
+            </span>
             <span class="init-score">${i.score}</span>
         `;
         list.appendChild(div);
