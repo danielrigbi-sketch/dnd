@@ -11,6 +11,7 @@
     
     <link rel="icon" type="image/jpeg" href="logo.png">
     <link rel="stylesheet" href="style.css?v=8">
+    <link rel="stylesheet" href="diceStyles.css">
 </head>
 <body id="main-body">
 
@@ -60,40 +61,45 @@
         </div>
 
         <div id="main-area">
-            <div id="log-container">
-                <div class="log-header">לוג הטלות:</div>
-                <div id="roll-log"></div>
-            </div>
-
-            <div id="dice-stage">
-                <div id="dice-box-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></div>
+            <div id="game-layout">
                 
-                <!-- NEW: Safe Center Container (minimal change) -->
-                <div id="center-stage">
-                    <div id="dice-visual" style="display: none;">
-                        <div id="result-text"></div>
+                <div id="dice-arena">
+                    
+                    <div id="log-container">
+                        <div class="log-header">לוג הטלות:</div>
+                        <div id="roll-log"></div>
                     </div>
-                    <div id="empty-state" style="color:#555; font-style: italic; position: relative; z-index: 10;">ממתין להטלה...</div>
-                </div>
-            </div>
 
-            <div id="controls">
-                <div class="mod-container">
-                    <span style="font-size: 14px; color: var(--parchment); margin-left: 5px;">תוסף:</span>
-                    <input type="number" id="mod-input" value="0">
+                    <div id="dice-box-canvas"></div>
+                    
+                    <div id="center-stage">
+                        <div id="dice-visual" style="display: none;">
+                            <div id="result-text"></div>
+                        </div>
+                        <div id="empty-state" style="color:#555; font-style: italic; position: relative; z-index: 10;">ממתין להטלה...</div>
+                    </div>
+
+                </div>
+
+                <div id="controls">
+                    <div class="mod-container">
+                        <span style="font-size: 14px; color: var(--parchment); margin-left: 5px;">תוסף:</span>
+                        <input type="number" id="mod-input" value="0">
+                    </div>
+                    
+                    <button id="init-btn">⚡ יוזמה</button>
+
+                    <button class="dice-btn" data-type="d4">D4</button>
+                    <button class="dice-btn" data-type="d6">D6</button>
+                    <button class="dice-btn" data-type="d8">D8</button>
+                    <button class="dice-btn" data-type="d10">D10</button>
+                    <button class="dice-btn" data-type="d12">D12</button>
+                    <button class="dice-btn" data-type="d20">D20</button>
+                    
+                    <button id="adv-btn" class="special-roll-btn adv">יתרון</button>
+                    <button id="dis-btn" class="special-roll-btn dis">חיסרון</button>
                 </div>
                 
-                <button id="init-btn">⚡ יוזמה</button>
-
-                <button class="dice-btn" data-type="d4">D4</button>
-                <button class="dice-btn" data-type="d6">D6</button>
-                <button class="dice-btn" data-type="d8">D8</button>
-                <button class="dice-btn" data-type="d10">D10</button>
-                <button class="dice-btn" data-type="d12">D12</button>
-                <button class="dice-btn" data-type="d20">D20</button>
-                
-                <button id="adv-btn" class="special-roll-btn adv">יתרון</button>
-                <button id="dis-btn" class="special-roll-btn dis">חיסרון</button>
             </div>
         </div>
     </div>
