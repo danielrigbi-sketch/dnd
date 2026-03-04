@@ -23,14 +23,17 @@ export function unlockAudio() {
 }
 
 // ניגון סאונד בהתאם לתוצאה
+// ניגון סאונד בהתאם לתוצאה (רק לתוצאות מיוחדות, הגלגול עצמו מנוהל על ידי מנוע ה-3D)
 export function playRollSound(type, res, isMuted) {
     if (isMuted) return;
+    
+    // עוצרים סאונדים מיוחדים קודמים אם יש
     stopAllSounds();
+    
     if (type === 'd20' && res === 20) {
         critSound.play().catch(() => {});
     } else if (type === 'd20' && res === 1) {
         failSound.play().catch(() => {});
-    } else {
-        rollSound.play().catch(() => {});
     }
+    // הוסר ה-else שניגן את rollSound.play(), כי מנוע התלת-ממד עושה את זה תוך כדי תנועה!
 }
