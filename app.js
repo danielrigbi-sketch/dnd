@@ -109,7 +109,16 @@ window.roll = async (type, isInit = false) => {
         isCooldown = true;
         setDiceCooldown(true);
     }
+if (!isInit) {
+        isCooldown = true;
+        setDiceCooldown(true);
+    }
 
+    // הפעלת סאונד הגלגול שלך מיד ברגע הלחיצה!
+    playStartRollSound(isMuted);
+
+    // עדכון צבע הקוביות דרך הפונקציה המיובאת
+    await updateDiceColor(pColor);
     // עדכון צבע הקוביות דרך הפונקציה המיובאת
     await updateDiceColor(pColor);
 
