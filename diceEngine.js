@@ -7,15 +7,15 @@ let diceBox;
 // פונקציית האתחול - נקרא לה פעם אחת כשהאפליקציה עולה
 export async function initDiceEngine() {
     diceBox = new DiceBox({
-        container: "#dice-box-canvas", // מצביע לקונטיינר שיהיה בתוך הזירה
+        container: "#dice-box-canvas",
         origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/",
-        assetPath: "assets/",
+        assetPath: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/assets/", // הכתובת המלאה לרשת
         theme: "default",
-        scale: 8, // הגדלה משמעותית כדי שיראו מצוין בנייד ובלפטופ
-        gravity: 4, // כוח משיכה חזק יותר לנחיתה יציבה
+        scale: 10, 
+        gravity: 4,
         friction: 0.8,
-        sounds: true,
-        settleTimeout: 3000 // זמן המתנה לעצירת הקובייה
+        sounds: true, // המנוע ינגן את צלילי הפגיעה מהרשת
+        settleTimeout: 3000
     });
 
     await diceBox.init();
