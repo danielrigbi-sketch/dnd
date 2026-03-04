@@ -3,10 +3,10 @@ import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remov
 
 // ייבוא מנוע הקוביות והממשק
 import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js";
-import { firebaseConfig } from "./constants.js?v=12";
-import { getFlavorText } from "./messages.js?v=12";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=12";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=12";
+import { firebaseConfig } from "./constants.js?v=13";
+import { getFlavorText } from "./messages.js?v=13";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=13";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=13";
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -122,7 +122,6 @@ document.getElementById('join-btn').onclick = async () => {
     try { await initDiceEngine(); isDiceBoxReady = true; } catch (e) {}
 
     if (userRole === 'dm') {
-        document.getElementById('reset-init-btn').style.display = 'block';
         document.getElementById('master-combat-btn').style.display = 'block';
     }
 
@@ -138,7 +137,7 @@ document.getElementById('join-btn').onclick = async () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- 3. לוגיקת הטלה מתוקנת ---
+// --- 3. לוגיקת הטלה ---
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     if (!isDiceBoxReady) return;
@@ -151,7 +150,6 @@ window.roll = async (type, isInit = false) => {
 
     let finalRes, res1 = null, res2 = null;
     try {
-        // תמיכה ביתרון/חיסרון לכל סוגי הקוביות
         if (currentMode !== 'normal') {
             const results = await roll3DDice(`2${type}`);
             res1 = results[0].value; res2 = results[1].value;
@@ -221,37 +219,35 @@ window.toggleStatus = (targetCName, status) => {
 
 // --- 5. סנכרון ואירועים ---
 
-document.getElementById('reset-init-btn').onclick = () => {
-    if (userRole !== 'dm') return;
-    if (confirm("לאפס יוזמה?")) {
-        remove(ref(db, 'initiative'));
-        get(ref(db, 'players')).then(snap => {
-            const p = snap.val();
-            if(p) Object.keys(p).forEach(n => update(ref(db, 'players/'+n), {score: 0}));
-        });
-    }
-};
-
 document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(activeMode); };
 document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(activeMode); };
 document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊" : "🔇"; };
 
-// חיבור כפתורי הקוביות - התיקון הקריטי!
 document.querySelectorAll('.dice-btn').forEach(btn => {
     btn.onclick = () => window.roll(btn.getAttribute('data-type'));
 });
 
+// כפתור ניהול מאוחד: פתיחת יוזמה / סיום קרב ואיפוס
 document.getElementById('master-combat-btn').onclick = () => {
     if (userRole !== 'dm') return;
     get(ref(db, 'combat_active')).then(snap => {
-        const current = snap.val() || false;
-        set(ref(db, 'combat_active'), !current);
-        if (!current) {
-            remove(ref(db, 'initiative'));
-            get(ref(db, 'players')).then(pSnap => {
-                const p = pSnap.val();
-                if(p) Object.keys(p).forEach(n => update(ref(db, 'players/'+n), {score: 0}));
-            });
+        const currentCombatState = snap.val() || false;
+        
+        if (!currentCombatState) {
+            // פתיחת קרב
+            set(ref(db, 'combat_active'), true);
+        } else {
+            // סיום קרב ואיפוס (החלפת כפתור האיפוס הישן)
+            if (confirm("לסיים קרב ולאפס יוזמה לכולם?")) {
+                set(ref(db, 'combat_active'), false);
+                remove(ref(db, 'initiative'));
+                get(ref(db, 'players')).then(pSnap => {
+                    const players = pSnap.val();
+                    if(players) {
+                        Object.keys(players).forEach(n => update(ref(db, 'players/'+n), {score: 0}));
+                    }
+                });
+            }
         }
     });
 };
@@ -263,7 +259,6 @@ document.getElementById('init-btn').onclick = async () => {
     const btn = document.getElementById('init-btn');
     btn.disabled = true;
     const rollResult = await window.roll('d20', true); 
-    // בגלל ש-window.roll כבר כולל בתוכו את המוד (initBonus), אנחנו לא צריכים להוסיף שוב
     update(ref(db, 'players/' + cName), { score: rollResult });
     set(ref(db, 'initiative/' + cName), { score: rollResult, color: pColor, playerName: pName });
 };
@@ -271,15 +266,29 @@ document.getElementById('init-btn').onclick = async () => {
 // --- 6. עדכוני UI ולוג ---
 
 onValue(ref(db, 'combat_active'), (snap) => {
-    const isCombat = snap.val();
-    const btn = document.getElementById('init-btn');
+    const isCombat = snap.val() || false;
+    const initBtn = document.getElementById('init-btn');
+    const masterBtn = document.getElementById('master-combat-btn');
+
+    // עדכון כפתור שחקן
     if (isCombat) {
         onValue(ref(db, 'initiative/' + cName), s => {
-            if (s.exists()) { btn.disabled = true; btn.innerText = "✅ רשום"; }
-            else { btn.disabled = false; btn.innerText = "⚡ גלגל יוזמה!"; btn.style.opacity = "1"; }
+            if (s.exists()) { initBtn.disabled = true; initBtn.innerText = "✅ רשום"; }
+            else { initBtn.disabled = false; initBtn.innerText = "⚡ גלגל יוזמה!"; initBtn.style.opacity = "1"; }
         }, { onlyOnce: true });
     } else {
-        btn.disabled = true; btn.innerText = "⌛ ממתין לקרב"; btn.style.opacity = "0.3";
+        initBtn.disabled = true; initBtn.innerText = "⌛ ממתין לקרב"; initBtn.style.opacity = "0.3";
+    }
+
+    // עדכון כפתור שה"מ (DM)
+    if (userRole === 'dm') {
+        if (isCombat) {
+            masterBtn.innerText = "🚩 סיום קרב ואיפוס";
+            masterBtn.style.background = "var(--danger)";
+        } else {
+            masterBtn.innerText = "⚔️ פתח יוזמה";
+            masterBtn.style.background = "#27ae60";
+        }
     }
 });
 
@@ -298,12 +307,20 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
     if (data.type !== "DAMAGE" && data.type !== "HEAL" && data.type !== "STATUS") {
         document.getElementById('empty-state').style.display = 'none';
-        document.getElementById('dice-visual').style.display = 'flex';
+        const diceVisual = document.getElementById('dice-visual');
         const resultText = document.getElementById('result-text');
+        
+        diceVisual.style.display = 'flex';
         resultText.classList.remove('show');
         resultText.innerText = (data.res || 0) + (data.mod || 0);
         resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
         setTimeout(() => resultText.classList.add('show'), 50);
+
+        // העלמת התוצאה אחרי 4 שניות
+        setTimeout(() => {
+            resultText.classList.remove('show');
+            setTimeout(() => { diceVisual.style.display = 'none'; }, 500);
+        }, 4000);
     }
     addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res+data.mod), 20));
 });
