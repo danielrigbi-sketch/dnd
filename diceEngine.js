@@ -12,10 +12,10 @@ export async function initDiceEngine() {
         assetPath: "assets/",
         theme: "default",
         scale: 8, // הגדלה משמעותית כדי שיראו מצוין בנייד ובלפטופ
-        gravity: 4, // כוח משיכה חזק יותר לנחיתה יציבה
-        friction: 0.8,
+        gravity: 2, // כוח משיכה חזק יותר לנחיתה יציבה
+        friction: 0.5,
         sounds: false,
-        settleTimeout: 3000 // זמן המתנה לעצירת הקובייה
+        settleTimeout: 5000 // זמן המתנה לעצירת הקובייה
     });
 
     await diceBox.init();
