@@ -98,6 +98,7 @@ document.getElementById('join-btn').onclick = async () => {
 };
 
 // --- לוגיקת ההטלה המעודכנת (עם ניקוי שולחן וזריקה חזקה למרכז) ---
+// --- לוגיקת ההטלה המעודכנת (מתוקנת מבאג ההיעלמות) ---
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     if (!isDiceBoxReady) return console.warn("מנוע הקוביות עדיין בטעינה...");
@@ -114,26 +115,17 @@ window.roll = async (type, isInit = false) => {
 
     let finalRes, res1 = null, res2 = null;
 
-    // הגדרות זריקה מרכזיות
-    const rollOptions = {
-        force: 15, // זריקה חזקה יותר
-        distribute: true, // פיזור טוב של הקוביות במרכז
-        direction: { x: 0, y: 0, z: -1 } 
-    };
-
     try {
-        // ניקוי הקוביות הקודמות מהמסך לפני הטלה חדשה דרך הפונקציה
-        clearDice(); 
+        // הערה: הוסרו rollOptions והקריאה ל-clearDice() שגרמו לקריסת המנוע.
+        // אנו סומכים על הגדרות הזריקה למרכז וניקוי המסך האוטומטי של הספרייה.
 
         if (currentMode !== 'normal' && type === 'd20') {
-            // קריאה לפונקציית ההטלה החיצונית
-            const results = await roll3DDice("2d20", rollOptions);
+            const results = await roll3DDice("2d20");
             res1 = results[0].value;
             res2 = results[1].value;
             finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
         } else {
-            // קריאה לפונקציית ההטלה החיצונית
-            const results = await roll3DDice(`1${type}`, rollOptions);
+            const results = await roll3DDice(`1${type}`);
             finalRes = results[0].value;
         }
     } catch (err) {
