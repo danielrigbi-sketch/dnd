@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
     <link rel="icon" type="image/jpeg" href="logo.png">
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="style.css?v=12">
     <link rel="stylesheet" href="diceStyles.css">
 </head>
 <body id="main-body">
@@ -27,14 +27,19 @@
                 <div id="dm-exists-msg" style="display:none; color:#ff7675; font-size:11px; margin-top:5px; text-align:center; font-weight:bold;">⚠️ יש כבר שה"מ בחדר</div>
             </div>
 
-            <input type="text" id="player-name" placeholder="שם השחקן" autocomplete="off">
+            <input type="text" id="player-name" placeholder="שם השחקן (האמיתי)" autocomplete="off">
+
+            <div style="margin: 5px 0 10px 0; text-align: center; border: 1px dashed rgba(255,255,255,0.2); padding: 10px; border-radius: 8px;">
+                <label for="char-portrait" style="display: block; font-size: 12px; margin-bottom: 5px; color: #ccc;">תמונת פרופיל / דמות:</label>
+                <input type="file" id="char-portrait" accept="image/*" style="font-size: 11px; color: white; background: transparent; border: none; width: 100%;">
+            </div>
 
             <div id="player-only-fields">
-                <input type="text" id="char-name" placeholder="שם הדמות" autocomplete="off">
+                <input type="text" id="char-name" placeholder="שם הדמות במשחק" autocomplete="off">
 
                 <div style="display: flex; gap: 5px; width: 100%; margin-bottom: 10px;">
                     <select id="char-race" style="width: 50%;">
-                        <option value="" disabled selected>בחר גזע</option>
+                        <option value="" disabled selected>גזע</option>
                         <option value="אדם">אדם</option>
                         <option value="אלף">אלף</option>
                         <option value="גמד">גמד</option>
@@ -46,7 +51,7 @@
                         <option value="טיפלינג">טיפלינג</option>
                     </select>
                     <select id="char-class" style="width: 50%;">
-                        <option value="" disabled selected>בחר מקצוע</option>
+                        <option value="" disabled selected>מקצוע</option>
                         <option value="ברברי">ברברי</option>
                         <option value="פייטן">פייטן</option>
                         <option value="כוהן">כוהן</option>
@@ -73,15 +78,10 @@
                     <input type="number" id="max-hp" placeholder="HP מקסימום" style="width: 50%;">
                     <input type="number" id="curr-hp" placeholder="HP נוכחי" style="width: 50%;">
                 </div>
-
-                <div style="margin-bottom: 10px; text-align: center;">
-                    <label for="char-portrait" style="display: block; font-size: 12px; margin-bottom: 5px; color: #ccc;">תמונת דמות (עד 500KB):</label>
-                    <input type="file" id="char-portrait" accept="image/*" style="font-size: 11px; color: white; background: transparent; border: none;">
-                </div>
             </div>
 
             <div class="color-picker-section">
-                <span class="picker-label">בחר צבע דיו:</span>
+                <span class="picker-label">בחר צבע דיו לקוביות:</span>
                 <div id="color-palette" class="palette-grid">
                     <div class="color-opt active" data-color="#8B0000" style="background:#8B0000;"></div>
                     <div class="color-opt" data-color="#006400" style="background:#006400;"></div>
@@ -107,7 +107,7 @@
                 <div class="online-status">מחוברים: <span id="online-count">0</span></div>
                 <div class="side-buttons-row">
                     <button id="master-combat-btn" class="side-btn" style="display:none; background:#2c3e50;">⚔️ פתח יוזמה</button>
-                    <button id="reset-init-btn" class="side-btn">🗑️ איפוס</button>
+                    <button id="reset-init-btn" class="side-btn" style="display:none;">🗑️ איפוס</button>
                     <button id="mute-btn" class="side-btn">🔇</button>
                 </div>
             </div>
@@ -117,7 +117,6 @@
             <div id="game-layout">
                 
                 <div id="dice-arena">
-                    
                     <div id="log-container">
                         <div class="log-header">לוג אירועים:</div>
                         <div id="roll-log"></div>
@@ -131,7 +130,6 @@
                         </div>
                         <div id="empty-state" style="color:#555; font-style: italic; position: relative; z-index: 10;">ממתין להטלה...</div>
                     </div>
-
                 </div>
 
                 <div id="controls">
@@ -165,21 +163,17 @@
         <div class="credits-content">
             <span class="credits-close">&times;</span>
             <h2>תודות ורישיונות</h2>
-            
             <h3>🎲 מערכת קוביות</h3>
-            <p><strong>Fantastic Dice</strong> מאת <a href="https://fantasticdice.games/" target="_blank">Frank Ali</a> (MIT).</p>
-
+            <p><strong>Fantastic Dice</strong> מאת Frank Ali (MIT).</p>
             <h3>🔊 אפקטים קוליים</h3>
             <ul>
                 <li><strong>Jingling Heal:</strong> מאת Zoltan Mihalyi (CC-BY-SA 3.0).</li>
                 <li><strong>Player Hit:</strong> מאת GreyFrogGames (CC0).</li>
                 <li><strong>2 Dice Roll:</strong> מאת RPG (CC0).</li>
-                <li><strong>Well Done:</strong> מאת qubodup (CC0).</li>
-                <li><strong>Game Over:</strong> מאת Oiboo (CC0).</li>
             </ul>
         </div>
     </div>
 
-    <script type="module" src="app.js?v=11"></script>
+    <script type="module" src="app.js?v=12"></script>
 </body>
 </html>
