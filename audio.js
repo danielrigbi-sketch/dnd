@@ -1,12 +1,16 @@
-const rollSound = new Audio('./dice.mp3');
-const critSound = new Audio('./crit.mp3');
-const failSound = new Audio('./fail.mp3');
+// audio.js - ניהול סאונד CritRoll
 
-let rollSoundTimeout; // משתנה לשמירת הטיימר כדי שנוכל לבטל אותו במידת הצורך
+const rollSound = new Audio('./dice-3.wav');
+const critSound = new Audio('./17.mp3');
+const failSound = new Audio('./game_over_bad_chest.wav');
+const healSound = new Audio('./heal.wav');
+const damageSound = new Audio('./playerhit.mp3');
+
+let rollSoundTimeout; 
 
 // פונקציית עזר לעצירת כל הסאונדים
 export function stopAllSounds() {
-    [rollSound, critSound, failSound].forEach(s => {
+    [rollSound, critSound, failSound, healSound, damageSound].forEach(s => {
         s.pause();
         s.currentTime = 0;
     });
@@ -14,7 +18,7 @@ export function stopAllSounds() {
 
 // "שחרור" האודיו בנייד בצורה שקטה
 export function unlockAudio() {
-    [rollSound, critSound, failSound].forEach(s => {
+    [rollSound, critSound, failSound, healSound, damageSound].forEach(s => {
         s.muted = true;
         s.play().then(() => {
             s.pause();
@@ -24,33 +28,39 @@ export function unlockAudio() {
     });
 }
 
-// ניגון סאונד הגלגול עם דיליי של שנייה מרגע הלחיצה
+// ניגון סאונד הגלגול עם דיליי (מסונכרן לאנימציה)
 export function playStartRollSound(isMuted) {
     if (isMuted) return;
     
-    // מיד עוצרים סאונדים קודמים שאולי מתנגנים
     stopAllSounds();
-    
-    // אם יש טיימר קודם שעדיין לא הפעיל את הסאונד (לחיצות מהירות), נבטל אותו
     if (rollSoundTimeout) clearTimeout(rollSoundTimeout);
     
-    // מפעילים טיימר של 1000 מילישניות (שנייה אחת) לפני הניגון
+    // דיליי של 500 מילישניות מרגיש טבעי יותר עם נפילת הקוביות
     rollSoundTimeout = setTimeout(() => {
         rollSound.play().catch(() => {});
-    }, 1000); 
+    }, 500); 
 }
 
 // ניגון סאונד בהתאם לתוצאה (רק ל-20 או 1)
 export function playRollSound(type, res, isMuted) {
     if (isMuted) return;
     
-    // עוצרים את טיימר הגלגול אם איכשהו הוא עדיין באוויר
     if (rollSoundTimeout) clearTimeout(rollSoundTimeout);
-    stopAllSounds();
     
     if (type === 'd20' && res === 20) {
         critSound.play().catch(() => {});
     } else if (type === 'd20' && res === 1) {
         failSound.play().catch(() => {});
     }
+}
+
+// פונקציות סאונד למכניקת חיים
+export function playHealSound(isMuted) {
+    if (isMuted) return;
+    healSound.play().catch(() => {});
+}
+
+export function playDamageSound(isMuted) {
+    if (isMuted) return;
+    damageSound.play().catch(() => {});
 }
