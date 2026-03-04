@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
     <link rel="icon" type="image/jpeg" href="logo.png">
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
     <link rel="stylesheet" href="diceStyles.css">
 </head>
 <body id="main-body">
@@ -70,7 +70,7 @@
                 <div style="display: flex; gap: 5px; width: 100%; margin-bottom: 10px;">
                     <input type="number" id="char-ac" placeholder="AC" title="דירוג שריון" style="width: 25%;">
                     <input type="number" id="char-speed" placeholder="מהירות" title="תנועה" style="width: 25%;">
-                    <input type="number" id="char-pp" placeholder="הבחנה פסיבית" title="הבחנה פסיבית" style="width: 25%;">
+                    <input type="number" id="char-pp" placeholder="PP" title="הבחנה פסיבית" style="width: 25%;">
                     <input type="number" id="init-bonus" placeholder="יוזמה+" title="בונוס יוזמה" style="width: 25%;">
                 </div>
 
@@ -106,8 +106,7 @@
             <div class="side-footer">
                 <div class="online-status">מחוברים: <span id="online-count">0</span></div>
                 <div class="side-buttons-row">
-                    <button id="master-combat-btn" class="side-btn" style="display:none; background:#2c3e50;">⚔️ פתח יוזמה</button>
-                    <button id="reset-init-btn" class="side-btn" style="display:none;">🗑️ איפוס</button>
+                    <button id="master-combat-btn" class="side-btn" style="display:none;"></button>
                     <button id="mute-btn" class="side-btn">🔇</button>
                 </div>
             </div>
@@ -174,6 +173,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=12"></script>
+    <script type="module" src="app.js?v=13"></script>
 </body>
 </html>
