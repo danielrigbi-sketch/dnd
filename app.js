@@ -74,7 +74,6 @@ document.getElementById('join-btn').onclick = async () => {
     document.getElementById('game-screen').style.display = 'flex';
     
     try {
-        // שימוש בפונקציית האתחול מהקובץ החיצוני
         await initDiceEngine();
         isDiceBoxReady = true;
         console.log("3D Engine Ready");
@@ -97,7 +96,7 @@ document.getElementById('join-btn').onclick = async () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- לוגיקת ההטלה המעודכנת (מתוקנת מבאג ההיעלמות) ---
+// --- לוגיקת ההטלה המעודכנת ---
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     if (!isDiceBoxReady) return console.warn("מנוע הקוביות עדיין בטעינה...");
@@ -109,18 +108,12 @@ window.roll = async (type, isInit = false) => {
         setDiceCooldown(true);
     }
 
-    // הפעלת סאונד הגלגול מיד ברגע הלחיצה
     playStartRollSound(isMuted);
-
-    // עדכון צבע הקוביות דרך הפונקציה המיובאת
     await updateDiceColor(pColor);
 
     let finalRes, res1 = null, res2 = null;
 
     try {
-        // הערה: הוסרו rollOptions והקריאה ל-clearDice() שגרמו לקריסת המנוע.
-        // אנו סומכים על הגדרות הזריקה למרכז וניקוי המסך האוטומטי של הספרייה.
-
         if (currentMode !== 'normal' && type === 'd20') {
             const results = await roll3DDice("2d20");
             res1 = results[0].value;
@@ -162,7 +155,11 @@ document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; docume
 document.getElementById('reset-init-btn').onclick = () => { if(confirm("לאפס יוזמה?")) remove(ref(db, 'initiative')); };
 document.querySelectorAll('.dice-btn').forEach(btn => { btn.onclick = () => window.roll(btn.getAttribute('data-type')); });
 
+// עדכון: נטרול מיידי של כפתור היוזמה בלחיצה
 document.getElementById('init-btn').onclick = async () => { 
+    const btn = document.getElementById('init-btn');
+    btn.disabled = true; // נטרול למניעת לחיצות כפולות בזמן הגלגול
+    
     const total = await window.roll('d20', true); 
     set(ref(db, 'initiative/' + (cName || pName)), { score: total, color: pColor, playerName: pName }); 
 };
@@ -173,8 +170,28 @@ onValue(ref(db, 'online'), (snapshot) => {
     if (countEl) countEl.innerText = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
 });
 
+// עדכון: ניהול מצב הכפתור בהתאם לנתוני היוזמה בשרת
 onValue(ref(db, 'initiative'), (snapshot) => {
-    updateInitiativeUI(snapshot.val());
+    const data = snapshot.val();
+    updateInitiativeUI(data);
+
+    const initBtn = document.getElementById('init-btn');
+    if (initBtn) {
+        // בדיקה אם הדמות כבר קיימת ברשימת היוזמה ב-Firebase
+        const isAlreadyIn = data && (data[cName] || data[pName]);
+
+        if (isAlreadyIn) {
+            initBtn.disabled = true;
+            initBtn.innerText = "✅ רשום";
+            initBtn.style.opacity = "0.5";
+            initBtn.style.cursor = "not-allowed";
+        } else {
+            initBtn.disabled = false;
+            initBtn.innerText = "⚡ יוזמה";
+            initBtn.style.opacity = "1";
+            initBtn.style.cursor = "pointer";
+        }
+    }
 });
 
 onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
@@ -189,19 +206,15 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     visualContainer.style.display = 'flex';
     resultText.classList.remove('show');
 
-    // ניגון הסאונד המיוחד (1 או 20) מיד עם סיום ההטלה
     playRollSound(data.type, data.res, isMuted);
 
-  // ללא השהיה: חישוב והצגת התוצאה + כתיבה ללוג באופן מיידי!
     const total = (data.res || 0) + (data.mod || 0);
     const maxVal = parseInt(data.type.replace('d', '')) || 20;
     const flavorText = getFlavorText(data.type, data.res, total, maxVal);
 
     resultText.innerText = total;
     
-    // --- העיצוב החדש: טקסט לבן עם הילת אור בצבע השחקן ---
     resultText.style.color = 'white'; 
-    // יצירת 3 שכבות של הילה זוהרת בצבע הדיו, פלוס צל שחור קטן מאחור כדי לשמור על קריאות
     resultText.style.textShadow = `
         0 0 20px ${data.color}, 
         0 0 40px ${data.color}, 
@@ -210,6 +223,5 @@ onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
     `;
     
     resultText.classList.add('show');
-    
     addLogEntry(data, time, flavorText);
 });
