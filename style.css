@@ -4,11 +4,11 @@
     --parchment: #f3e5ab; 
     --ink: #2c1e16;
 
-    /* DESKTOP: push center left + slightly down */
-    --safe-top: 40px;       /* דוחף למטה */
-    --safe-bottom: 110px;   /* פחות bottom => המרכז יורד */
+    /* DESKTOP: push center left + slightly down - נשמר למקרה שיש בו שימוש אחר, למרות שהמרכוז עכשיו אוטומטי */
+    --safe-top: 40px;       
+    --safe-bottom: 110px;   
     --safe-left: 0px;
-    --safe-right: 520px;    /* יותר right => המרכז הולך שמאלה */
+    --safe-right: 520px;    
 }
 
 * { 
@@ -23,9 +23,7 @@ body {
     overflow: hidden; 
     height: 100dvh; 
     background-color: #2c1e16; 
-    background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); 
-    background-size: cover; 
-    background-position: center; 
+    /* הרקע הוסר מכאן והועבר ל-#dice-arena כדי שיופיע רק בזירת הקוביות */
 }
 
 /* --- מסך כניסה --- */
@@ -138,12 +136,29 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    /* הוסרו align-items ו-justify-content כדי לאפשר ל-game-layout למלא את השטח */
     z-index: auto;
 }
 
+/* --- הגדרות ה-Layout החדשות (Flexbox) --- */
+#game-layout {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+#dice-arena {
+    flex-grow: 1; /* תופס את כל השטח מעל לפאנל הבקרה */
+    position: relative;
+    overflow: hidden;
+    background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); 
+    background-size: cover; 
+    background-position: center;
+}
+
 #log-container{ 
+    /* הלוג ממוקם כעת ביחס לזירת הקוביות עצמה */
     position: absolute; top: 15px; left: 15px; width: 320px; 
     background-color: var(--parchment);
     background-image: url('https://www.transparenttextures.com/patterns/parchment.png');
@@ -152,41 +167,13 @@ body {
     max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
 }
 
-/* --- אזור הקוביות התלת-ממדיות (SAFE AREA) --- */
-#dice-box-canvas{
-    position: fixed;
-    top: var(--safe-top);
-    left: var(--safe-left);
-    right: var(--safe-right);
-    bottom: var(--safe-bottom);
+/* אזור הקוביות הישן - הושעה בהערה! 
+   הגדרות אלו נוהלו בעבר מול כל המסך וכעת נמצאות ב-diceStyles.css
 
-    width: auto !important;
-    height: auto !important;
-
-    pointer-events: none;
-    z-index: 70; /* מתחת ל-center-stage/תוצאה ומתחת ל-controls */
-    display: block !important;
-}
-
-#dice-stage{
-    position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 95;
-}
-
-/* --- Safe Center Container (FIXED CENTERING) --- */
-#center-stage{
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
-    pointer-events: none;
-    z-index: 95;
-}
+#dice-box-canvas{ position: fixed; ... }
+#dice-stage{ position: fixed; ... }
+#center-stage{ position: absolute; ... }
+*/
 
 #dice-visual{
     display: flex;
@@ -194,7 +181,6 @@ body {
     justify-content: center;
 }
 
-/* (נשאר אצלך, לא מזיק, אבל כבר לא בשימוש ב-HTML החדש) */
 .dice-container{ 
     position: absolute; 
     top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -218,11 +204,10 @@ body {
 }
 
 #controls{
-    position: absolute;
-    bottom: 30px;
+    /* הוסרו position: absolute ו-bottom כדי שיזרום טבעי תחת הזירה */
     background: rgba(0, 0, 0, 0.75);
     padding: 15px 20px;
-    border-radius: 12px;
+    border-radius: 12px; /* בדסקטופ עדיין ייראה קצת צף בזכות ה-padding העוטף אם תרצה */
     backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
@@ -256,8 +241,8 @@ body {
 /* --- התאמה למובייל (Mobile Responsiveness) --- */
 @media (max-width: 768px){
     :root{
-        --safe-top: 190px;     /* דוחף מתחת לסדר יוזמה + לוג */
-        --safe-bottom: 270px;  /* מעל controls */
+        --safe-top: 190px;     
+        --safe-bottom: 270px;  
         --safe-left: 0px;
         --safe-right: 0px;
     }
@@ -276,14 +261,21 @@ body {
     .tracker-item { min-width: 100px; background: rgba(255,255,255,0.1); font-size: 12px; border-radius: 4px; border-right: none !important; }
 
     #log-container{
-        position: absolute; top: 75px; left: 10px; width: 160px; max-height: 120px;
+        /* עודכן המיקום כדי שיהיה יחסי לזירה החדשה, ולא יידחף למטה מדי */
+        position: absolute; top: 10px; left: 10px; width: 160px; max-height: 120px;
         background-color: rgba(243, 229, 171, 0.85); font-size: 11px; padding: 8px; z-index: 50;
     }
 
-    #main-area { width: 100%; height: 100vh; padding-bottom: 220px; padding-top: 50px; }
+    #main-area { 
+        width: 100%; 
+        height: 100dvh; 
+        /* הוסר ה-padding-bottom הקשיח של 220px! ה-Flexbox עכשיו מחשב הכל לבד */
+        padding-top: 85px; /* שומר מקום לפאנל העליון (סדר היוזמה) שמרחף באבסולוט */
+    }
 
     #controls{
-        position: fixed; bottom: 0; left: 0; width: 100%; 
+        /* הוסרו position: fixed ו-bottom. אלמנט זה פשוט יזרום לסוף המסך בטבעיות */
+        width: 100%; 
         background: #1a1a1a; border-top: 3px solid var(--primary);
         border-radius: 15px 15px 0 0; padding: 10px; 
         display: grid; 
