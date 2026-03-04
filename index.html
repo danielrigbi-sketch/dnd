@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     
     <link rel="icon" type="image/jpeg" href="logo.png">
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=11">
     <link rel="stylesheet" href="diceStyles.css">
 </head>
 <body id="main-body">
@@ -18,24 +18,66 @@
     <div id="login-screen">
         <img src="logo.png" alt="CritRoll Logo" class="main-logo">
         <div class="login-card">
+            
+            <div class="role-section">
+                <select id="user-role" class="role-select">
+                    <option value="player">שחקן</option>
+                    <option value="dm">שליט מבוך (DM)</option>
+                </select>
+                <div id="dm-exists-msg" style="display:none; color:#ff7675; font-size:11px; margin-top:5px; text-align:center; font-weight:bold;">⚠️ יש כבר שה"מ בחדר</div>
+            </div>
+
             <input type="text" id="player-name" placeholder="שם השחקן" autocomplete="off">
-            <input type="text" id="char-name" placeholder="שם הדמות" autocomplete="off">
 
-            <div style="display: flex; gap: 5px; width: 100%;">
-                <input type="text" id="char-race" placeholder="גזע" style="width: 50%;">
-                <input type="text" id="char-class" placeholder="מקצוע" style="width: 50%;">
-            </div>
+            <div id="player-only-fields">
+                <input type="text" id="char-name" placeholder="שם הדמות" autocomplete="off">
 
-            <div style="display: flex; gap: 5px; width: 100%;">
-                <input type="number" id="char-ac" placeholder="AC" title="דירוג שריון" style="width: 25%;">
-                <input type="number" id="char-speed" placeholder="מהירות" title="תנועה" style="width: 25%;">
-                <input type="number" id="char-pp" placeholder="P.P" title="הבחנה פסיבית" style="width: 25%;">
-                <input type="number" id="init-bonus" placeholder="יוזמה+" title="בונוס יוזמה" style="width: 25%;">
-            </div>
+                <div style="display: flex; gap: 5px; width: 100%; margin-bottom: 10px;">
+                    <select id="char-race" style="width: 50%;">
+                        <option value="" disabled selected>בחר גזע</option>
+                        <option value="אדם">אדם</option>
+                        <option value="אלף">אלף</option>
+                        <option value="גמד">גמד</option>
+                        <option value="זוטון">זוטון</option>
+                        <option value="דרקוני">דרקוני</option>
+                        <option value="ננס">ננס</option>
+                        <option value="חצי-אלף">חצי-אלף</option>
+                        <option value="חצי-אורק">חצי-אורק</option>
+                        <option value="טיפלינג">טיפלינג</option>
+                    </select>
+                    <select id="char-class" style="width: 50%;">
+                        <option value="" disabled selected>בחר מקצוע</option>
+                        <option value="ברברי">ברברי</option>
+                        <option value="פייטן">פייטן</option>
+                        <option value="כוהן">כוהן</option>
+                        <option value="דרואיד">דרואיד</option>
+                        <option value="לוחם">לוחם</option>
+                        <option value="נזיר">נזיר</option>
+                        <option value="פלאדין">פלאדין</option>
+                        <option value="סייר">סייר</option>
+                        <option value="נוכל">נוכל</option>
+                        <option value="מכשף">מכשף</option>
+                        <option value="אשף">אשף</option>
+                        <option value="וורלוק">וורלוק</option>
+                    </select>
+                </div>
 
-            <div style="display: flex; gap: 5px; width: 100%;">
-                <input type="number" id="max-hp" placeholder="HP מקסימום" style="width: 50%;">
-                <input type="number" id="curr-hp" placeholder="HP נוכחי" style="width: 50%;">
+                <div style="display: flex; gap: 5px; width: 100%; margin-bottom: 10px;">
+                    <input type="number" id="char-ac" placeholder="AC" title="דירוג שריון" style="width: 25%;">
+                    <input type="number" id="char-speed" placeholder="מהירות" title="תנועה" style="width: 25%;">
+                    <input type="number" id="char-pp" placeholder="הבחנה פסיבית" title="הבחנה פסיבית" style="width: 25%;">
+                    <input type="number" id="init-bonus" placeholder="יוזמה+" title="בונוס יוזמה" style="width: 25%;">
+                </div>
+
+                <div style="display: flex; gap: 5px; width: 100%; margin-bottom: 10px;">
+                    <input type="number" id="max-hp" placeholder="HP מקסימום" style="width: 50%;">
+                    <input type="number" id="curr-hp" placeholder="HP נוכחי" style="width: 50%;">
+                </div>
+
+                <div style="margin-bottom: 10px; text-align: center;">
+                    <label for="char-portrait" style="display: block; font-size: 12px; margin-bottom: 5px; color: #ccc;">תמונת דמות (עד 500KB):</label>
+                    <input type="file" id="char-portrait" accept="image/*" style="font-size: 11px; color: white; background: transparent; border: none;">
+                </div>
             </div>
 
             <div class="color-picker-section">
@@ -49,13 +91,6 @@
                     <div class="color-opt" data-color="#2F4F4F" style="background:#2F4F4F;"></div>
                 </div>
                 <input type="hidden" id="user-color" value="#8B0000">
-            </div>
-
-            <div class="role-section">
-                <select id="user-role" class="role-select">
-                    <option value="player">שחקן</option>
-                    <option value="dm">שליט מבוך (DM)</option>
-                </select>
             </div>
 
             <button id="join-btn" class="main-join-btn">הצטרף להרפתקה</button>
@@ -121,28 +156,30 @@
             </div>
         </div>
     </div>
-<footer class="site-footer">
-    CRITROLL &copy; 2026 | <a id="openCredits">תודות ורישיונות</a>
-</footer>
 
-<div id="creditsModal" class="credits-modal">
-    <div class="credits-content">
-        <span class="credits-close">&times;</span>
-        <h2>תודות ורישיונות</h2>
-        
-        <h3>🎲 מערכת קוביות</h3>
-        <p><strong>Fantastic Dice</strong> מאת <a href="https://fantasticdice.games/" target="_blank">Frank Ali</a> (MIT).</p>
+    <footer class="site-footer">
+        CRITROLL &copy; 2026 | <a id="openCredits" style="cursor:pointer; text-decoration: underline;">תודות ורישיונות</a>
+    </footer>
 
-        <h3>🔊 אפקטים קוליים</h3>
-        <ul>
-            <li><strong>Jingling Heal:</strong> מאת <a href="https://opengameart.org/users/zoltan-mihalyi" target="_blank">Zoltan Mihalyi</a> (CC-BY-SA 3.0).</li>
-            <li><strong>Player Hit:</strong> מאת GreyFrogGames (CC0).</li>
-            <li><strong>2 Dice Roll:</strong> מאת RPG (CC0).</li>
-            <li><strong>Well Done:</strong> מאת qubodup (CC0).</li>
-            <li><strong>Game Over:</strong> מאת Oiboo (CC0).</li>
-        </ul>
+    <div id="creditsModal" class="credits-modal">
+        <div class="credits-content">
+            <span class="credits-close">&times;</span>
+            <h2>תודות ורישיונות</h2>
+            
+            <h3>🎲 מערכת קוביות</h3>
+            <p><strong>Fantastic Dice</strong> מאת <a href="https://fantasticdice.games/" target="_blank">Frank Ali</a> (MIT).</p>
+
+            <h3>🔊 אפקטים קוליים</h3>
+            <ul>
+                <li><strong>Jingling Heal:</strong> מאת Zoltan Mihalyi (CC-BY-SA 3.0).</li>
+                <li><strong>Player Hit:</strong> מאת GreyFrogGames (CC0).</li>
+                <li><strong>2 Dice Roll:</strong> מאת RPG (CC0).</li>
+                <li><strong>Well Done:</strong> מאת qubodup (CC0).</li>
+                <li><strong>Game Over:</strong> מאת Oiboo (CC0).</li>
+            </ul>
+        </div>
     </div>
-</div>
-    <script type="module" src="app.js?v=10"></script>
+
+    <script type="module" src="app.js?v=11"></script>
 </body>
 </html>
