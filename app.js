@@ -7,9 +7,9 @@ import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEn
 // שימוש בגרסה מעודכנת של הקבצים למניעת קאש
 import { firebaseConfig } from "./constants.js?v=9";
 import { getFlavorText } from "./messages.js?v=9";
-import { unlockAudio, playRollSound, stopAllSounds } from "./audio.js?v=9";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=9";
 import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound } from "./audio.js?v=9";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=9";
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -97,7 +97,6 @@ document.getElementById('join-btn').onclick = async () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- לוגיקת ההטלה המעודכנת (עם ניקוי שולחן וזריקה חזקה למרכז) ---
 // --- לוגיקת ההטלה המעודכנת (מתוקנת מבאג ההיעלמות) ---
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
@@ -109,16 +108,10 @@ window.roll = async (type, isInit = false) => {
         isCooldown = true;
         setDiceCooldown(true);
     }
-if (!isInit) {
-        isCooldown = true;
-        setDiceCooldown(true);
-    }
 
-    // הפעלת סאונד הגלגול שלך מיד ברגע הלחיצה!
+    // הפעלת סאונד הגלגול מיד ברגע הלחיצה
     playStartRollSound(isMuted);
 
-    // עדכון צבע הקוביות דרך הפונקציה המיובאת
-    await updateDiceColor(pColor);
     // עדכון צבע הקוביות דרך הפונקציה המיובאת
     await updateDiceColor(pColor);
 
