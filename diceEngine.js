@@ -14,7 +14,7 @@ export async function initDiceEngine() {
         scale: 8, // הגדלה משמעותית כדי שיראו מצוין בנייד ובלפטופ
         gravity: 4, // כוח משיכה חזק יותר לנחיתה יציבה
         friction: 0.8,
-        sounds: true,
+        sounds: false,
         settleTimeout: 3000 // זמן המתנה לעצירת הקובייה
     });
 
