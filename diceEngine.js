@@ -11,7 +11,7 @@ export async function initDiceEngine() {
         origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/",
         assetPath: "assets/",
         theme: "default",
-        scale: 35, // הגדלה משמעותית כדי שיראו מצוין בנייד ובלפטופ
+        scale: 8, // הגדלה משמעותית כדי שיראו מצוין בנייד ובלפטופ
         gravity: 4, // כוח משיכה חזק יותר לנחיתה יציבה
         friction: 0.8,
         sounds: false,
