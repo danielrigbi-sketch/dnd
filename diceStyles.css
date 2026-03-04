@@ -1,0 +1,33 @@
+/* diceStyles.css - עיצוב השכבות השקופות של זירת הקוביות */
+
+/* קונטיינר הקוביות התלת-ממדיות */
+#dice-box-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 90;
+    pointer-events: none; /* קריטי: מאפשר לחיצה על הלוג שנמצא מתחת לקוביות */
+}
+
+/* במת התוצאה המרכזית (המספר שמופיע לאחר ההטלה) */
+#center-stage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100; /* חייב להיות מעל הקוביות עצמן */
+    pointer-events: none;
+    
+    /* פלקסבוקס פנימי שמבטיח מרכוז הרמטי של התוצאה בדיוק באמצע הזירה */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* מוודא שהאלמנט הויזואלי עצמו לא חוסם קליקים בטעות */
+#dice-visual {
+    pointer-events: none;
+}
