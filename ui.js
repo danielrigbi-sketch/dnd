@@ -26,8 +26,18 @@ export function updateModeUI(activeMode) {
 // עדכון רשימת היוזמה
 export function updateInitiativeUI(data) {
     const list = document.getElementById('init-list');
-    if (!list || !data) return;
+    
+    // אם האלמנט לא קיים ב-DOM, אין מה להמשיך
+    if (!list) return;
+
+    // צעד קריטי: מנקים את הרשימה בכל מקרה! 
+    // זה מה שיגרום לרשימה להיעלם מיד כשה-DM עושה איפוס
     list.innerHTML = "";
+
+    // עכשיו בודקים אם יש נתונים. אם אין (data הוא null), פשוט עוצרים כאן
+    // אחרי שהרשימה כבר נוקתה מהמסך.
+    if (!data) return;
+
     const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
     
     items.sort((a, b) => b.score - a.score).forEach(i => {
