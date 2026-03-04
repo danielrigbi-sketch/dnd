@@ -121,7 +121,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     padding-left: 5px;
 }
 
-/* כרטיס דמות משופר */
 .tracker-item{
     background: rgba(44, 62, 80, 0.4);
     padding: 12px;
@@ -135,14 +134,12 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     position: relative;
 }
 
-/* עיצוב ייעודי לכרטיס DM - מינימליסטי וזהוב */
 .tracker-item.dm-item {
     background: rgba(0, 0, 0, 0.5);
-    border-right-color: #f1c40f !important; /* זהב לשה"מ */
+    border-right-color: #f1c40f !important;
     border: 1px solid rgba(241, 196, 15, 0.2);
 }
 
-/* פורטרט דמות */
 .char-portrait {
     width: 45px;
     height: 45px;
@@ -153,7 +150,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     flex-shrink: 0;
 }
 
-/* ניהול סטטוסים */
 .status-container {
     display: flex;
     flex-wrap: wrap;
@@ -172,7 +168,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     background: #636e72;
 }
 
-/* כפתורי עריכת HP עם קלט מספרי */
 .hp-controls {
     display: flex;
     align-items: center;
@@ -210,7 +205,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     font-size: 14px;
 }
 
-.hp-edit-btn:hover { background: #555; }
 .hp-edit-btn.minus { color: #ff7675; }
 .hp-edit-btn.plus { color: #55efc4; }
 
@@ -234,20 +228,12 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;
     font-size: 13px;
 }
-.side-btn:hover { background: #455a64; }
 
 #main-area{
     flex: 1;
     position: relative;
     display: flex;
     flex-direction: column;
-}
-
-#game-layout {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    width: 100%;
 }
 
 #dice-arena {
@@ -260,31 +246,39 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     background-position: center;
 }
 
-#log-container{ 
+/* --- עדכון קריאות לוג --- */
+#log-container { 
     position: absolute; top: 15px; left: 15px; width: 320px; 
     background-color: var(--parchment);
     background-image: url('https://www.transparenttextures.com/patterns/parchment.png');
-    color: var(--ink); padding: 15px; border-radius: 8px; text-align: right; 
+    padding: 15px; border-radius: 8px; text-align: right; 
     box-shadow: 5px 10px 25px rgba(0,0,0,0.5); font-size: 13px; 
     max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
 }
 
-#result-text{ 
+.log-header { color: var(--ink); font-weight: 800; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 8px; }
+
+.log-entry {
+    color: #1a1a1a !important; /* טקסט כהה לקריאות מקסימלית */
+    margin-bottom: 12px;
+    line-height: 1.3;
+}
+
+#result-text { 
     font-size: clamp(80px, 15vw, 150px);
     font-weight: 900; 
     color: white; 
     text-shadow: 0 0 30px black, 0 0 10px black; 
     opacity: 0; 
     transform: scale(0.3);
-    transition: opacity 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
-                transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    transition: opacity 0.5s ease-in-out, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
 }
-#result-text.show{ 
+#result-text.show { 
     opacity: 1; 
     transform: scale(1);
 }
 
-#controls{
+#controls {
     background: rgba(0, 0, 0, 0.85);
     padding: 15px 20px;
     backdrop-filter: blur(8px);
@@ -309,18 +303,19 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .special-roll-btn.dis { background: #c0392b; }
 #init-btn { background: #f39c12; flex: 1; } 
 
-#init-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-/* --- התאמה למובייל --- */
+/* --- התאמה למובייל משופרת --- */
 @media (max-width: 768px){
     #game-screen { flex-direction: column; }
 
     #side-panel{
         width: 100%; height: auto; border: none; 
         background: rgba(0,0,0,0.9);
-        position: absolute; top: 0; padding: 10px; z-index: 80;
+        position: absolute; top: 0; padding: 5px 10px; z-index: 80;
         border-bottom: 2px solid var(--primary);
     }
+
+    /* הסרת הלוגו במובייל */
+    .side-logo { display: none !important; }
 
     #init-list { 
         flex-direction: row; 
@@ -336,18 +331,17 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
         background: rgba(255,255,255,0.1); 
         font-size: 12px; 
         border-radius: 8px; 
-        border-right: 4px solid;
     }
 
-    #log-container{
-        position: absolute; top: 120px; left: 10px; width: 180px; max-height: 100px;
+    #log-container {
+        position: absolute; top: 110px; left: 10px; width: 180px; max-height: 100px;
         padding: 8px; font-size: 11px;
     }
 
     #main-area { 
         width: 100%; 
         height: 100dvh; 
-        padding-top: 140px; 
+        padding-top: 110px; /* מרווח מותאם ללא לוגו */
     }
 
     #controls{
@@ -381,8 +375,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 
 .site-footer a { 
     color: #00aaff;
-    text-decoration: underline; 
-    cursor: pointer; 
     pointer-events: auto;
 }
 
@@ -405,13 +397,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     max-width: 450px;
     border-radius: 12px;
     direction: rtl;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5);
 }
 
 .credits-close { float: left; cursor: pointer; font-size: 24px; color: #888; }
 .credits-close:hover { color: #fff; }
-.credits-content h2 { color: #ff4500; margin-top: 0; font-size: 20px; text-align: center; }
-.credits-content h3 { color: #d4af37; font-size: 16px; margin-top: 20px; border-bottom: 1px dotted #444; padding-bottom: 5px; }
-.credits-content ul { list-style: none; padding: 0; margin: 10px 0; }
-.credits-content li { margin-bottom: 8px; font-size: 14px; line-height: 1.4; }
-.credits-content a { color: #00aaff; text-decoration: none; }
