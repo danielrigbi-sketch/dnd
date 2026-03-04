@@ -135,10 +135,11 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     position: relative;
 }
 
-/* עיצוב ייעודי לכרטיס DM - מינימליסטי */
+/* עיצוב ייעודי לכרטיס DM - מינימליסטי וזהוב */
 .tracker-item.dm-item {
     background: rgba(0, 0, 0, 0.5);
     border-right-color: #f1c40f !important; /* זהב לשה"מ */
+    border: 1px solid rgba(241, 196, 15, 0.2);
 }
 
 /* פורטרט דמות */
@@ -158,6 +159,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 5px;
+    min-height: 20px;
 }
 
 .status-badge {
@@ -167,6 +169,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     font-weight: bold;
     color: white;
     text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+    background: #636e72;
 }
 
 /* כפתורי עריכת HP עם קלט מספרי */
@@ -174,20 +177,21 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     display: flex;
     align-items: center;
     gap: 4px;
-    background: rgba(0,0,0,0.2);
-    padding: 2px 5px;
+    background: rgba(0,0,0,0.3);
+    padding: 2px 4px;
     border-radius: 6px;
 }
 
 .hp-amount-input {
-    width: 35px;
+    width: 32px;
     background: white;
     border: none;
     border-radius: 3px;
-    font-size: 12px;
+    font-size: 11px;
     text-align: center;
     font-weight: bold;
     color: #333;
+    padding: 2px 0;
 }
 
 .hp-edit-btn {
@@ -195,14 +199,15 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     color: white;
     border: none;
     border-radius: 4px;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     cursor: pointer;
     font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: background 0.2s;
+    font-size: 14px;
 }
 
 .hp-edit-btn:hover { background: #555; }
@@ -217,6 +222,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     border-radius: 4px;
     min-width: 35px;
     text-align: center;
+    color: var(--parchment);
 }
 
 .side-footer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
@@ -326,7 +332,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     #init-list::-webkit-scrollbar { display: none; }
 
     .tracker-item { 
-        min-width: 240px; 
+        min-width: 250px; 
         background: rgba(255,255,255,0.1); 
         font-size: 12px; 
         border-radius: 8px; 
