@@ -10,8 +10,65 @@ let isDiceBoxReady = false;
 let pName = "", cName = "", pColor = "#8B0000", userRole = "player", charPortrait = "";
 let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal'; 
+let activeRoller = null; // משתנה ששומר את זהות הדמות שהשה"מ שולט בה כרגע
+
+const npcDatabase = {
+    "goblin": { name: "גובלין", hp: 7, init: 2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=goblin&backgroundColor=c0392b" },
+    "skeleton": { name: "שלד", hp: 13, init: 2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=skeleton&backgroundColor=bdc3c7" },
+    "zombie": { name: "זומבי", hp: 22, init: -2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=zombie&backgroundColor=27ae60" },
+    "orc": { name: "אורק", hp: 15, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=orc&backgroundColor=2c3e50" },
+    "wolf": { name: "זאב נורא", hp: 37, init: 2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=wolf&backgroundColor=7f8c8d" },
+    "bandit": { name: "שודד", hp: 11, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=bandit&backgroundColor=f39c12" },
+    "spider": { name: "עכביש ענק", hp: 26, init: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=spider&backgroundColor=8e44ad" },
+    "dragon": { name: "דרקון צעיר", hp: 110, init: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=dragon&backgroundColor=e67e22" },
+    "owlbear": { name: "דוב-ינשוף", hp: 59, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=owlbear&backgroundColor=8b4513" },
+    "troll": { name: "טרול", hp: 84, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=troll&backgroundColor=16a085" },
+    "beholder": { name: "ביהולדר", hp: 180, init: 2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=beholder&backgroundColor=9b59b6" },
+    "mindflayer": { name: "מצליף מוח", hp: 71, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=mindflayer&backgroundColor=8e44ad" },
+    "vampire": { name: "ערפד", hp: 144, init: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=vampire&backgroundColor=c0392b" },
+    "lich": { name: "ליץ'", hp: 135, init: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=lich&backgroundColor=2c3e50" },
+    
+    "human_m": { name: "אדם (זכר)", hp: 10, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f" },
+    "elf_m": { name: "אלף (זכר)", hp: 10, init: 2, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=elf_m&backgroundColor=2ecc71" },
+    "dwarf_m": { name: "גמד (זכר)", hp: 12, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=dwarf_m&backgroundColor=e67e22" },
+    "halfling_m": { name: "זוטון (זכר)", hp: 8, init: 2, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halfling_m&backgroundColor=f39c12" },
+    "dragonborn_m": { name: "דרקוני (זכר)", hp: 12, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=dragonborn_m&backgroundColor=c0392b" },
+    "gnome_m": { name: "ננס (זכר)", hp: 8, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=gnome_m&backgroundColor=9b59b6" },
+    "halfelf_m": { name: "חצי-אלף (זכר)", hp: 10, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halfelf_m&backgroundColor=1abc9c" },
+    "halforc_m": { name: "חצי-אורק (זכר)", hp: 12, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halforc_m&backgroundColor=34495e" },
+    "tiefling_m": { name: "טיפלינג (זכר)", hp: 10, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=tiefling_m&backgroundColor=c0392b" },
+    
+    "human_f": { name: "אדם (נקבה)", hp: 10, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=human_f&backgroundColor=f1c40f" },
+    "elf_f": { name: "אלפית (נקבה)", hp: 10, init: 2, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=elf_f&backgroundColor=2ecc71" },
+    "dwarf_f": { name: "גמדה (נקבה)", hp: 12, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=dwarf_f&backgroundColor=e67e22" },
+    "halfling_f": { name: "זוטונית (נקבה)", hp: 8, init: 2, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halfling_f&backgroundColor=f39c12" },
+    "dragonborn_f": { name: "דרקונית (נקבה)", hp: 12, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=dragonborn_f&backgroundColor=c0392b" },
+    "gnome_f": { name: "ננסית (נקבה)", hp: 8, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=gnome_f&backgroundColor=9b59b6" },
+    "halfelf_f": { name: "חצי-אלפית (נקבה)", hp: 10, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halfelf_f&backgroundColor=1abc9c" },
+    "halforc_f": { name: "חצי-אורקית (נקבה)", hp: 12, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halforc_f&backgroundColor=34495e" },
+    "tiefling_f": { name: "טיפלינגית (נקבה)", hp: 10, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=tiefling_f&backgroundColor=c0392b" }
+};
 
 window.addEventListener('DOMContentLoaded', () => {
+    // טעינת גלריית התמונות למסך ההתחברות
+    const portraitContainer = document.getElementById('login-portraits');
+    if (portraitContainer) {
+        Object.keys(npcDatabase).forEach(key => {
+            const data = npcDatabase[key];
+            const img = document.createElement('img');
+            img.src = data.img;
+            img.className = 'preset-portrait-btn';
+            img.title = data.name;
+            img.onclick = () => {
+                document.querySelectorAll('.preset-portrait-btn').forEach(btn => btn.classList.remove('active'));
+                img.classList.add('active');
+                charPortrait = img.src;
+                document.getElementById('char-portrait').value = ""; // מאפס בחירת קובץ אם הייתה
+            };
+            portraitContainer.appendChild(img);
+        });
+    }
+
     const colorOptions = document.querySelectorAll('.color-opt');
     const colorInput = document.getElementById('user-color');
     const setActiveColor = (color) => {
@@ -74,6 +131,7 @@ document.getElementById('char-portrait').onchange = function(e) {
     const reader = new FileReader();
     reader.onload = (event) => {
         charPortrait = event.target.result;
+        document.querySelectorAll('.preset-portrait-btn').forEach(btn => btn.classList.remove('active')); // מבטל בחירת גלריה
         localStorage.setItem('critroll_portrait', charPortrait);
     };
     reader.readAsDataURL(file);
@@ -89,6 +147,7 @@ document.getElementById('join-btn').onclick = async () => {
         if (!pName || !cName) return alert("מלא פרטי שחקן ודמות!");
     } else {
         cName = "DM_" + pName;
+        if(!charPortrait) charPortrait = "assets/logo.png";
     }
 
     const stats = (userRole === 'player') ? {
@@ -106,6 +165,7 @@ document.getElementById('join-btn').onclick = async () => {
     localStorage.setItem('critroll_cName', cName);
     localStorage.setItem('critroll_pColor', pColor);
     localStorage.setItem('critroll_role', userRole);
+    if (charPortrait) localStorage.setItem('critroll_portrait', charPortrait);
     if(userRole === 'player') Object.keys(stats).forEach(k => localStorage.setItem('critroll_' + k, stats[k]));
 
     unlockAudio();
@@ -124,6 +184,29 @@ document.getElementById('join-btn').onclick = async () => {
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
+// פונקציית השליטה של השה"מ במפלצות (Impersonation)
+window.impersonate = async (targetCName) => {
+    if (userRole !== 'dm') return;
+    const p = await db.getPlayerData(targetCName);
+    if (!p) return;
+    
+    activeRoller = {
+        cName: targetCName,
+        pName: "שליט המבוך", 
+        color: p.pColor || "#c0392b"
+    };
+    
+    document.getElementById('active-roller-banner').style.display = 'flex';
+    document.getElementById('active-roller-name').innerText = targetCName;
+    updateDiceColor(activeRoller.color); // מחליף את צבע הקוביות לצבע המפלצת
+};
+
+document.getElementById('reset-roller-btn').onclick = () => {
+    activeRoller = null;
+    document.getElementById('active-roller-banner').style.display = 'none';
+    updateDiceColor(pColor); // מחזיר לצבע המקורי של השה"מ
+};
+
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     if (!isDiceBoxReady) return;
@@ -132,7 +215,19 @@ window.roll = async (type, isInit = false) => {
     if (!isInit) { isCooldown = true; setDiceCooldown(true); }
 
     playStartRollSound(isMuted);
-    await updateDiceColor(pColor);
+    
+    // קביעת זהות המגלגל (האם זה השה"מ הרגיל, השחקן, או שה"מ ששולט במפלצת)
+    let rollCName = cName;
+    let rollPName = pName;
+    let rollColor = pColor;
+
+    if (userRole === 'dm' && activeRoller && !isInit) {
+        rollCName = activeRoller.cName;
+        rollPName = activeRoller.pName;
+        rollColor = activeRoller.color;
+    } else {
+        await updateDiceColor(pColor);
+    }
 
     let finalRes, res1 = null, res2 = null;
     try {
@@ -151,7 +246,7 @@ window.roll = async (type, isInit = false) => {
     }
 
     const mod = (isInit) ? (parseInt(localStorage.getItem('critroll_initBonus')) || 0) : (parseInt(document.getElementById('mod-input').value) || 0);
-    const rollData = { pName, cName, type, res: finalRes, mod, color: pColor, mode: currentMode, ts: Date.now() };
+    const rollData = { pName: rollPName, cName: rollCName, type, res: finalRes, mod, color: rollColor, mode: currentMode, ts: Date.now() };
     if (res1 !== null) { rollData.res1 = res1; rollData.res2 = res2; }
 
     db.saveRollToDB(rollData);
@@ -204,27 +299,27 @@ window.removeNPC = (targetCName) => {
     if (userRole !== 'dm') return;
     if (confirm(`האם אתה בטוח שברצונך למחוק את ${targetCName} מהלוח?`)) {
         db.removePlayerFromDB(targetCName);
+        if (activeRoller && activeRoller.cName === targetCName) {
+            document.getElementById('reset-roller-btn').click();
+        }
+    }
+};
+
+window.toggleVisibility = (targetCName, currentHiddenStatus) => {
+    if (userRole !== 'dm') return;
+    const newStatus = !currentHiddenStatus;
+    db.updatePlayerVisibilityInDB(targetCName, newStatus);
+    
+    if (!newStatus) {
+        db.saveRollToDB({
+            cName: "שליט המבוך", type: "STATUS", status: `חשף מהצללים את 👁️ ${targetCName}!`, ts: Date.now()
+        });
     }
 };
 
 document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(activeMode); };
 document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(activeMode); };
 document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊" : "🔇"; };
-
-// ==========================================
-// ניהול מפלצות לשה"מ (NPC Generator)
-// ==========================================
-
-const npcDatabase = {
-    "goblin": { name: "גובלין", hp: 7, init: 2, img: "https://cdn-icons-png.flaticon.com/512/3408/3408509.png" },
-    "skeleton": { name: "שלד", hp: 13, init: 2, img: "https://cdn-icons-png.flaticon.com/512/1043/1043372.png" },
-    "zombie": { name: "זומבי", hp: 22, init: -2, img: "https://cdn-icons-png.flaticon.com/512/3408/3408546.png" },
-    "orc": { name: "אורק", hp: 15, init: 1, img: "https://cdn-icons-png.flaticon.com/512/1703/1703061.png" },
-    "wolf": { name: "זאב נורא", hp: 37, init: 2, img: "https://cdn-icons-png.flaticon.com/512/3504/3504481.png" },
-    "bandit": { name: "שודד", hp: 11, init: 1, img: "https://cdn-icons-png.flaticon.com/512/2613/2613149.png" },
-    "spider": { name: "עכביש ענק", hp: 26, init: 3, img: "https://cdn-icons-png.flaticon.com/512/1673/1673181.png" },
-    "dragon": { name: "דרקון צעיר", hp: 110, init: 4, img: "https://cdn-icons-png.flaticon.com/512/1531/1531858.png" }
-};
 
 document.getElementById('npc-preset').addEventListener('change', (e) => {
     const val = e.target.value;
@@ -244,9 +339,11 @@ document.getElementById('add-npc-btn').onclick = () => {
     if (userRole !== 'dm') return;
     const presetVal = document.getElementById('npc-preset').value;
     const baseName = document.getElementById('npc-name').value.trim() || "מפלצת";
+    const npcClass = document.getElementById('npc-class').value.trim();
     const npcHp = parseInt(document.getElementById('npc-hp').value) || 10;
     const npcInitBonus = parseInt(document.getElementById('npc-init').value) || 0;
     const count = parseInt(document.getElementById('npc-count').value) || 1;
+    const isHidden = document.getElementById('npc-hidden').checked;
 
     let portrait = "https://via.placeholder.com/50/c0392b/ffffff?text=NPC";
     if (presetVal !== 'custom' && npcDatabase[presetVal]) {
@@ -254,28 +351,25 @@ document.getElementById('add-npc-btn').onclick = () => {
     }
 
     for(let i = 1; i <= count; i++) {
-        // אם מוסיפים יותר מאחד, מוסיפים מספר סידורי לשם (גובלין 1, גובלין 2)
         const finalName = count > 1 ? `${baseName} ${i}` : baseName;
-        
-        // גלגול יוזמה אוטומטי (D20 + תוסף)
         const d20 = Math.floor(Math.random() * 20) + 1;
         const finalInit = d20 + npcInitBonus;
 
-        const stats = { maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10 };
+        const stats = { maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10, isHidden: isHidden };
+        if (npcClass) stats.class = npcClass;
         
         db.joinPlayerToDB(finalName, "DM", "#c0392b", "npc", portrait, stats);
         db.setPlayerInitiativeInDB(finalName, "DM", finalInit, "#c0392b");
         
-        // דיווח ללוג שהמפלצת נוספה (עם הפירוט של היוזמה)
-        const time = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        const hiddenText = isHidden ? " (מוסתרת)" : "";
         db.saveRollToDB({
-            cName: "שליט המבוך", type: "STATUS", status: `הוסיף את ⚔️ ${finalName} (יוזמה: ${finalInit})`, ts: Date.now()
+            cName: "שליט המבוך", type: "STATUS", status: `הוסיף את ⚔️ ${finalName}${hiddenText} [יוזמה: ${finalInit}]`, ts: Date.now()
         });
     }
 
-    // איפוס השדות אחרי ההוספה
     document.getElementById('npc-preset').value = "custom";
     document.getElementById('npc-name').value = "";
+    document.getElementById('npc-class').value = "";
     document.getElementById('npc-hp').value = "";
     document.getElementById('npc-init').value = "";
     document.getElementById('npc-count').value = "1";
@@ -333,7 +427,7 @@ db.listenToCombatStatus((isCombat) => {
     }
 });
 
-db.listenToPlayers((playersData) => updateInitiativeUI(playersData, userRole));
+db.listenToPlayers((playersData) => updateInitiativeUI(playersData, userRole, activeRoller));
 
 db.listenToNewRolls((data) => {
     if (!data || !canAnimate) return;
