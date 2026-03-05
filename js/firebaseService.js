@@ -12,7 +12,7 @@ const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 // ==========================================
-// User Authentication Functions - NEW!
+// User Authentication Functions
 // ==========================================
 
 export function loginWithGoogle() {
@@ -30,7 +30,24 @@ export function listenToAuthState(callback) {
 }
 
 // ==========================================
-// Database Write Functions (Kept as prep for the next stage)
+// Vault & Character Management (NEW)
+// ==========================================
+
+export function saveCharacterToVault(uid, charData) {
+    // Creates a unique ID for the new character under the user's specific folder
+    const newCharRef = push(ref(db, `users/${uid}/characters`));
+    return set(newCharRef, charData);
+}
+
+export function listenToUserCharacters(uid, callback) {
+    // Listens for any changes in the user's character vault and updates the UI
+    onValue(ref(db, `users/${uid}/characters`), (snapshot) => {
+        callback(snapshot.val());
+    });
+}
+
+// ==========================================
+// Game Room Functions (Prepared for later)
 // ==========================================
 
 export function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats) {
