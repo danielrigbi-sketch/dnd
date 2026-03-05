@@ -1,10 +1,10 @@
 // app.js - Main Game Controller
 
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=102";
-import { getFlavorText } from "./messages.js?v=102";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=102";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=102";
-import * as db from "./firebaseService.js?v=102";
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=103";
+import { getFlavorText } from "./messages.js?v=103";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=103";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=103";
+import * as db from "./firebaseService.js?v=103";
 
 // =====================================================================
 // GLOBALS
@@ -25,22 +25,18 @@ const npcDatabase = {
 // =====================================================================
 
 export async function startGame(role, charData, roomCode) {
-    // 1. Set the room code first
     db.setRoom(roomCode);
     userRole = role;
 
-    // 2. Hide Lobby completely, show Game Screen
     const lobbyWrapper = document.getElementById('lobby-wrapper');
     if (lobbyWrapper) lobbyWrapper.style.display = 'none';
 
     const gameScreen = document.getElementById('game-screen');
     if (gameScreen) gameScreen.style.display = 'flex';
 
-    // 3. Update Room Header
     const titleHeader = document.querySelector('#side-panel h3');
     if(titleHeader) titleHeader.innerText = `חבורת ההרפתקנים (חדר: ${roomCode})`;
 
-    // 4. Initialize Role specific data
     if (userRole === 'player') {
         pName = document.getElementById('user-display-name')?.innerText || "Player";
         cName = charData.name;
@@ -62,10 +58,8 @@ export async function startGame(role, charData, roomCode) {
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
     }
 
-    // 5. THE FIX: NOW we start listening to the database, because we are in the correct room!
     setupDatabaseListeners();
 
-    // 6. Safely initialize the 3D dice
     unlockAudio();
     try {
         await initDiceEngine();
@@ -128,6 +122,55 @@ window.roll = async (type, isInit = false) => {
         setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
     }
     return finalRes + mod;
+};
+
+// NEW: Smart Macro Roller
+window.rollMacro = async (targetCName, attackName, bonus) => {
+    if (isCooldown || !isDiceBoxReady) return;
+
+    const currentMode = activeMode;
+    isCooldown = true; setDiceCooldown(true);
+    playStartRollSound(isMuted);
+
+    const p = await db.getPlayerData(targetCName);
+    const macroColor = p ? (p.pColor || "#c0392b") : "#e74c3c";
+    const macroPName = p ? p.pName : "System";
+
+    await updateDiceColor(macroColor);
+
+    let finalRes, res1 = null, res2 = null;
+    try {
+        if (currentMode !== 'normal') {
+            const results = await roll3DDice(`2d20`);
+            res1 = results[0].value; res2 = results[1].value;
+            finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
+        } else {
+            const results = await roll3DDice(`1d20`);
+            finalRes = results[0].value;
+        }
+    } catch (err) {
+        isCooldown = false; setDiceCooldown(false); return;
+    }
+
+    const flavorText = `מבצע התקפת ${attackName}!`;
+    
+    const rollData = { 
+        pName: macroPName, 
+        cName: targetCName, 
+        type: 'd20', 
+        res: finalRes, 
+        mod: parseInt(bonus) || 0, 
+        color: macroColor, 
+        mode: currentMode, 
+        flavor: flavorText,
+        ts: Date.now() 
+    };
+    if (res1 !== null) { rollData.res1 = res1; rollData.res2 = res2; }
+
+    db.saveRollToDB(rollData);
+
+    activeMode = 'normal'; updateModeUI(activeMode);
+    setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
 window.changeHP = async (targetCName, isPlus) => {
@@ -299,7 +342,6 @@ window.addNPC = () => {
         db.saveRollToDB({ cName: "שליט המבוך", type: "STATUS", status: `הוסיף את ⚔️ ${finalName}${hiddenText} [יוזמה: ${finalInit}]`, ts: Date.now() });
     }
     
-    // Reset Form
     if(document.getElementById('npc-preset')) document.getElementById('npc-preset').value = "custom";
     if(document.getElementById('npc-name')) document.getElementById('npc-name').value = "";
     if(document.getElementById('npc-class')) document.getElementById('npc-class').value = "";
@@ -314,7 +356,7 @@ window.roll3DDice = roll3DDice;
 
 
 // =====================================================================
-// DB LISTENERS (WRAPPED IN A FUNCTION)
+// DB LISTENERS
 // =====================================================================
 
 function setupDatabaseListeners() {
