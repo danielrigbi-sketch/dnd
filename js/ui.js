@@ -34,12 +34,23 @@ export function updateInitiativeUI(data, currentUserRole) {
     const myCName = localStorage.getItem('critroll_cName');
     
     items.sort((a, b) => (b.score || 0) - (a.score || 0)).forEach((i, index) => {
+        
+        // סינון חכם: אם הדמות מוסתרת, היוזר הוא לא שה"מ וזו לא הדמות שלו עצמו - אל תרנדר בכלל!
+        if (i.isHidden && !isDM && i.name !== myCName) return; 
+
         const div = document.createElement('div');
         const isThisCharDM = i.userRole === 'dm';
         div.className = `tracker-item ${isThisCharDM ? 'dm-item' : ''}`;
         
         const playerColor = i.pColor || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
+        
+        // סגנון מיוחד למפלצות מוסתרות שרק השה"מ רואה
+        if (i.isHidden) {
+            div.style.opacity = '0.6';
+            div.style.borderStyle = 'dashed';
+            div.style.background = 'rgba(0, 0, 0, 0.7)';
+        }
         
         if (isThisCharDM) {
             div.innerHTML = `
@@ -57,8 +68,9 @@ export function updateInitiativeUI(data, currentUserRole) {
             const isOwner = myCName === i.name;
             const isNPC = i.userRole === 'npc';
             
-            // כפתור מחיקה שמופיע רק לשה"מ
-            const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 5px;" title="מחק מהלוח">🗑️</button>` : '';
+            // כפתורי הניהול של השה"מ
+            const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;" title="מחק מהלוח">🗑️</button>` : '';
+            const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;" title="${i.isHidden ? 'חשוף לשחקנים' : 'הסתר משחקנים'}">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
 
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
@@ -68,8 +80,9 @@ export function updateInitiativeUI(data, currentUserRole) {
                             <span style="font-weight:900; color:white; font-size:1.1em;">
                                 ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}
                             </span>
-                            <div style="display:flex; align-items:center; gap:5px;">
+                            <div style="display:flex; align-items:center; gap:2px;">
                                 <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
+                                ${visibilityBtn}
                                 ${deleteBtn}
                             </div>
                         </div>
@@ -145,7 +158,7 @@ export function addLogEntry(data, time, flavorText) {
     } else if (data.type === "STATUS") {
         entry.innerHTML = `
             <div style="margin-bottom: 12px; padding: 8px; border-radius: 8px; background: rgba(108, 92, 231, 0.1); border: 1px dashed #6c5ce7; text-align:center;">
-                <span style="font-size:0.9em; color: var(--ink);">הסטטוס של <strong>${data.cName}</strong> עודכן ל: <span style="color:#6c5ce7; font-weight:bold;">${data.status}</span></span>
+                <span style="font-size:0.9em; color: var(--ink);"><strong>${data.cName}</strong>: <span style="color:#6c5ce7; font-weight:bold;">${data.status}</span></span>
             </div>
         `;
     } else {
