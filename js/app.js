@@ -1,10 +1,10 @@
-// app.js - Main Game Controller (HARDWIRED VERSION)
+// app.js - Main Game Controller
 
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=101";
-import { getFlavorText } from "./messages.js?v=101";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=101";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=101";
-import * as db from "./firebaseService.js?v=101";
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=102";
+import { getFlavorText } from "./messages.js?v=102";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=102";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=102";
+import * as db from "./firebaseService.js?v=102";
 
 // =====================================================================
 // GLOBALS
@@ -25,18 +25,22 @@ const npcDatabase = {
 // =====================================================================
 
 export async function startGame(role, charData, roomCode) {
+    // 1. Set the room code first
     db.setRoom(roomCode);
     userRole = role;
 
+    // 2. Hide Lobby completely, show Game Screen
     const lobbyWrapper = document.getElementById('lobby-wrapper');
     if (lobbyWrapper) lobbyWrapper.style.display = 'none';
 
     const gameScreen = document.getElementById('game-screen');
     if (gameScreen) gameScreen.style.display = 'flex';
 
+    // 3. Update Room Header
     const titleHeader = document.querySelector('#side-panel h3');
     if(titleHeader) titleHeader.innerText = `חבורת ההרפתקנים (חדר: ${roomCode})`;
 
+    // 4. Initialize Role specific data
     if (userRole === 'player') {
         pName = document.getElementById('user-display-name')?.innerText || "Player";
         cName = charData.name;
@@ -58,6 +62,10 @@ export async function startGame(role, charData, roomCode) {
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
     }
 
+    // 5. THE FIX: NOW we start listening to the database, because we are in the correct room!
+    setupDatabaseListeners();
+
+    // 6. Safely initialize the 3D dice
     unlockAudio();
     try {
         await initDiceEngine();
@@ -291,6 +299,7 @@ window.addNPC = () => {
         db.saveRollToDB({ cName: "שליט המבוך", type: "STATUS", status: `הוסיף את ⚔️ ${finalName}${hiddenText} [יוזמה: ${finalInit}]`, ts: Date.now() });
     }
     
+    // Reset Form
     if(document.getElementById('npc-preset')) document.getElementById('npc-preset').value = "custom";
     if(document.getElementById('npc-name')) document.getElementById('npc-name').value = "";
     if(document.getElementById('npc-class')) document.getElementById('npc-class').value = "";
@@ -305,74 +314,77 @@ window.roll3DDice = roll3DDice;
 
 
 // =====================================================================
-// DB LISTENERS
+// DB LISTENERS (WRAPPED IN A FUNCTION)
 // =====================================================================
-db.listenToCombatStatus((isCombat) => {
-    const btn = document.getElementById('init-btn');
-    const dmBtn = document.getElementById('master-combat-btn');
-    if (userRole === 'dm' && dmBtn) {
-        dmBtn.innerText = isCombat ? "🛑 סיים קרב ואיפוס" : "⚔️ פתח יוזמה";
-        dmBtn.style.background = isCombat ? "#c0392b" : "#2c3e50";
-    }
-    if (isCombat) {
-        db.listenToPlayerInitiative(cName, (exists) => {
-            if (btn) {
-                btn.disabled = exists;
-                btn.innerText = exists ? "✅ רשום" : "⚡ גלגל יוזמה!";
-                btn.style.opacity = exists ? "0.5" : "1";
-            }
-        });
-    } else {
-        if (btn) { btn.disabled = true; btn.innerText = "⌛ ממתין לקרב"; btn.style.opacity = "0.3"; }
-    }
-});
 
-db.listenToPlayers((playersData) => updateInitiativeUI(playersData, userRole, activeRoller));
-
-db.listenToNewRolls((data) => {
-    if (!data || !canAnimate) return;
-
-    if (!isMuted) {
-        if (data.type === "DAMAGE") playDamageSound(isMuted);
-        else if (data.type === "HEAL") playHealSound(isMuted);
-        else playRollSound(data.type, data.res, isMuted);
-    }
-
-    const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-
-    if (data.type !== "DAMAGE" && data.type !== "HEAL" && data.type !== "STATUS") {
-        const emptyState = document.getElementById('empty-state');
-        const diceVisual = document.getElementById('dice-visual');
-        const resultText = document.getElementById('result-text');
-        const arena = document.getElementById('dice-arena');
-
-        if(emptyState) emptyState.style.display = 'none';
-        if(diceVisual) diceVisual.style.display = 'flex';
-
-        if(resultText && arena) {
-            resultText.classList.remove('show', 'crit-success-text', 'crit-fail-text');
-            arena.classList.remove('vfx-crit-success', 'vfx-crit-fail', 'vfx-shake');
-            void arena.offsetWidth;
-
-            resultText.innerText = (data.res || 0) + (data.mod || 0);
-            resultText.style.color = "white";
-            resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
-
-            if (data.type === 'd20') {
-                if (data.res === 20) {
-                    arena.classList.add('vfx-crit-success');
-                    resultText.classList.add('crit-success-text');
-                    resultText.style.textShadow = ""; resultText.style.color = "";
-                } else if (data.res === 1) {
-                    arena.classList.add('vfx-crit-fail', 'vfx-shake');
-                    resultText.classList.add('crit-fail-text');
-                    resultText.style.textShadow = ""; resultText.style.color = "";
-                }
-            }
-            setTimeout(() => resultText.classList.add('show'), 50);
-            setTimeout(() => resultText.classList.remove('show'), 4000);
+function setupDatabaseListeners() {
+    db.listenToCombatStatus((isCombat) => {
+        const btn = document.getElementById('init-btn');
+        const dmBtn = document.getElementById('master-combat-btn');
+        if (userRole === 'dm' && dmBtn) {
+            dmBtn.innerText = isCombat ? "🛑 סיים קרב ואיפוס" : "⚔️ פתח יוזמה";
+            dmBtn.style.background = isCombat ? "#c0392b" : "#2c3e50";
         }
-    }
+        if (isCombat) {
+            db.listenToPlayerInitiative(cName, (exists) => {
+                if (btn) {
+                    btn.disabled = exists;
+                    btn.innerText = exists ? "✅ רשום" : "⚡ גלגל יוזמה!";
+                    btn.style.opacity = exists ? "0.5" : "1";
+                }
+            });
+        } else {
+            if (btn) { btn.disabled = true; btn.innerText = "⌛ ממתין לקרב"; btn.style.opacity = "0.3"; }
+        }
+    });
 
-    addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res+data.mod), 20));
-});
+    db.listenToPlayers((playersData) => updateInitiativeUI(playersData, userRole, activeRoller));
+
+    db.listenToNewRolls((data) => {
+        if (!data || !canAnimate) return;
+
+        if (!isMuted) {
+            if (data.type === "DAMAGE") playDamageSound(isMuted);
+            else if (data.type === "HEAL") playHealSound(isMuted);
+            else playRollSound(data.type, data.res, isMuted);
+        }
+
+        const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+
+        if (data.type !== "DAMAGE" && data.type !== "HEAL" && data.type !== "STATUS") {
+            const emptyState = document.getElementById('empty-state');
+            const diceVisual = document.getElementById('dice-visual');
+            const resultText = document.getElementById('result-text');
+            const arena = document.getElementById('dice-arena');
+
+            if(emptyState) emptyState.style.display = 'none';
+            if(diceVisual) diceVisual.style.display = 'flex';
+
+            if(resultText && arena) {
+                resultText.classList.remove('show', 'crit-success-text', 'crit-fail-text');
+                arena.classList.remove('vfx-crit-success', 'vfx-crit-fail', 'vfx-shake');
+                void arena.offsetWidth;
+
+                resultText.innerText = (data.res || 0) + (data.mod || 0);
+                resultText.style.color = "white";
+                resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
+
+                if (data.type === 'd20') {
+                    if (data.res === 20) {
+                        arena.classList.add('vfx-crit-success');
+                        resultText.classList.add('crit-success-text');
+                        resultText.style.textShadow = ""; resultText.style.color = "";
+                    } else if (data.res === 1) {
+                        arena.classList.add('vfx-crit-fail', 'vfx-shake');
+                        resultText.classList.add('crit-fail-text');
+                        resultText.style.textShadow = ""; resultText.style.color = "";
+                    }
+                }
+                setTimeout(() => resultText.classList.add('show'), 50);
+                setTimeout(() => resultText.classList.remove('show'), 4000);
+            }
+        }
+
+        addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res+data.mod), 20));
+    });
+}
