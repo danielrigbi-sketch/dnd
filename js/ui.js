@@ -1,6 +1,5 @@
 // ui.js
 
-// עדכון ויזואלי של כפתורי יתרון/חיסרון
 export function updateModeUI(activeMode) {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
@@ -23,7 +22,6 @@ export function updateModeUI(activeMode) {
     }
 }
 
-// עדכון רשימת המשתתפים (Party Dashboard)
 export function updateInitiativeUI(data, currentUserRole) {
     const list = document.getElementById('init-list');
     if (!list) return;
@@ -35,7 +33,6 @@ export function updateInitiativeUI(data, currentUserRole) {
     const isDM = currentUserRole === 'dm';
     const myCName = localStorage.getItem('critroll_cName');
     
-    // מיון לפי יוזמה (הגבוה ביותר למעלה)
     items.sort((a, b) => (b.score || 0) - (a.score || 0)).forEach((i, index) => {
         const div = document.createElement('div');
         const isThisCharDM = i.userRole === 'dm';
@@ -44,7 +41,6 @@ export function updateInitiativeUI(data, currentUserRole) {
         const playerColor = i.pColor || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
         
-        // --- מבנה כרטיס שה"מ (DM) ---
         if (isThisCharDM) {
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center;">
@@ -55,9 +51,7 @@ export function updateInitiativeUI(data, currentUserRole) {
                     </div>
                 </div>
             `;
-        } 
-        // --- מבנה כרטיס שחקן (Player) ---
-        else {
+        } else {
             const hpPercent = (i.hp / i.maxHp) * 100;
             const isDead = i.hp <= 0;
             const isOwner = myCName === i.name;
@@ -73,7 +67,7 @@ export function updateInitiativeUI(data, currentUserRole) {
                             <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
                         </div>
                         <div style="font-size:0.7em; color:#f3e5ab; margin-top:-2px;">
-                            ${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'}
+                            ${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'} | 👁️ ${i.pp || '10'}
                         </div>
                     </div>
                 </div>
@@ -115,13 +109,11 @@ export function updateInitiativeUI(data, currentUserRole) {
     });
 }
 
-// פונקציית עזר לפתיחת בורר הסטטוסים
 window.toggleStatusPicker = (name) => {
     const el = document.getElementById(`status-picker-${name}`);
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 };
 
-// הוספת שורת לוג - תומך כעת גם בהטלות וגם בעדכוני חיים
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -130,41 +122,41 @@ export function addLogEntry(data, time, flavorText) {
     entry.className = 'log-entry';
     
     const userColor = data.color || '#8B0000';
-    const nameStyle = `color: #ffffff !important; font-family: 'Assistant', sans-serif !important; font-weight: 800; font-size: 1.1em; text-shadow: 1px 1px 2px #000, 0 0 10px ${userColor}aa;`;
+    const nameStyle = `color: ${userColor} !important; font-family: 'Assistant', sans-serif !important; font-weight: 900; font-size: 1.1em; text-shadow: none;`;
 
     if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
         entry.innerHTML = `
-            <div style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.15); border-left: 4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">
+            <div style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.05); border-left: 4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="${nameStyle}">${data.cName}</span>
                     <span style="color: #666; font-size: 10px;">${time}</span>
                 </div>
-                <div style="color: #fff; margin-top: 5px; font-size: 0.9em; font-style: italic;">"${flavorText}"</div>
+                <div style="color: var(--ink); margin-top: 5px; font-size: 0.9em; font-style: italic; font-weight: 600;">"${flavorText}"</div>
             </div>
         `;
     } else if (data.type === "STATUS") {
         entry.innerHTML = `
             <div style="margin-bottom: 12px; padding: 8px; border-radius: 8px; background: rgba(108, 92, 231, 0.1); border: 1px dashed #6c5ce7; text-align:center;">
-                <span style="font-size:0.9em;">הסטטוס של <strong>${data.cName}</strong> עודכן ל: <span style="color:#a29bfe; font-weight:bold;">${data.status}</span></span>
+                <span style="font-size:0.9em; color: var(--ink);">הסטטוס של <strong>${data.cName}</strong> עודכן ל: <span style="color:#6c5ce7; font-weight:bold;">${data.status}</span></span>
             </div>
         `;
     } else {
-        const modeLabel = data.mode === 'adv' ? '<span style="color:#2ecc71; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#e74c3c; font-weight:bold;">(חיסרון)</span>' : '');
+        const modeLabel = data.mode === 'adv' ? '<span style="color:#27ae60; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#c0392b; font-weight:bold;">(חיסרון)</span>' : '');
         entry.innerHTML = `
-            <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.05); border-radius: 8px;">
+            <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.4); border-radius: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                     <span style="${nameStyle}">${data.cName || 'גיבור'} <small style="font-weight:400; opacity:0.7;">(${data.pName || 'שחקן'})</small></span>
+                     <span style="${nameStyle}">${data.cName || 'גיבור'} <small style="font-weight:600; color:#555;">(${data.pName || 'שחקן'})</small></span>
                      <span style="color: #666; font-size: 11px;">[${time}]</span> 
                 </div>
-                <div style="color: #eee; margin-top: 4px; line-height: 1.4;">
+                <div style="color: var(--ink); margin-top: 4px; line-height: 1.4; font-weight: 600;">
                     הטיל <strong>${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
-                    <span style="color: ${data.res === 20 ? '#f1c40f' : (data.res === 1 ? '#e74c3c' : '#fff')}; font-weight: 900; font-size: 1.3em;">
+                    <span style="color: ${data.res === 20 ? '#b8860b' : (data.res === 1 ? '#c0392b' : 'var(--ink)')}; font-weight: 900; font-size: 1.3em;">
                         ${data.res + (data.mod || 0)}
                     </span>
-                    <small style="opacity: 0.6;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
+                    <small style="opacity: 0.8; font-weight: normal;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
                 </div>
-                ${flavorText ? `<div style="color: #f3e5ab; font-style: italic; font-size: 12px; margin-top: 6px; opacity: 0.8;">"${flavorText}"</div>` : ""}
+                ${flavorText ? `<div style="color: #444; font-style: italic; font-size: 12px; margin-top: 6px;">"${flavorText}"</div>` : ""}
             </div>
         `;
     }
@@ -173,7 +165,6 @@ export function addLogEntry(data, time, flavorText) {
     if (log.children.length > 30) log.removeChild(log.lastChild);
 }
 
-// ניהול נראות כפתורים בזמן קולדאון
 export function setDiceCooldown(isActive) {
     const buttons = document.querySelectorAll('.dice-btn, #init-btn, .special-roll-btn');
     buttons.forEach(btn => {
