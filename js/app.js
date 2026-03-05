@@ -1,10 +1,11 @@
 // app.js - Main Game Controller
 
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=104";
-import { getFlavorText } from "./messages.js?v=104";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=104";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=104";
-import * as db from "./firebaseService.js?v=104";
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=109";
+import { getFlavorText } from "./messages.js?v=109";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=109";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=109";
+import * as db from "./firebaseService.js?v=109";
+import { t } from "./i18n.js?v=109";
 
 // =====================================================================
 // GLOBALS
@@ -15,22 +16,21 @@ let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal';
 let activeRoller = null;
 
-// FULL MONSTER MANUAL RESTORED!
 const npcDatabase = {
-    "goblin": { name: "גובלין", hp: 7, init: 2, melee: 4, ranged: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=goblin&backgroundColor=c0392b" },
-    "skeleton": { name: "שלד", hp: 13, init: 2, melee: 4, ranged: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=skeleton&backgroundColor=bdc3c7" },
-    "zombie": { name: "זומבי", hp: 22, init: -2, melee: 3, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=zombie&backgroundColor=27ae60" },
-    "orc": { name: "אורק", hp: 15, init: 1, melee: 5, ranged: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=orc&backgroundColor=2c3e50" },
-    "wolf": { name: "זאב נורא", hp: 37, init: 2, melee: 5, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=wolf&backgroundColor=7f8c8d" },
-    "bandit": { name: "שודד", hp: 11, init: 1, melee: 3, ranged: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=bandit&backgroundColor=f39c12" },
-    "spider": { name: "עכביש ענק", hp: 26, init: 3, melee: 5, ranged: 5, img: "https://api.dicebear.com/8.x/bottts/svg?seed=spider&backgroundColor=8e44ad" },
-    "owlbear": { name: "דוב-ינשוף", hp: 59, init: 1, melee: 7, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=owlbear&backgroundColor=8b4513" },
-    "troll": { name: "טרול", hp: 84, init: 1, melee: 7, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=troll&backgroundColor=16a085" },
-    "vampire": { name: "ערפד", hp: 144, init: 4, melee: 9, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=vampire&backgroundColor=c0392b" },
-    "dragon": { name: "דרקון צעיר", hp: 110, init: 4, melee: 7, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=dragon&backgroundColor=e67e22" },
-    "beholder": { name: "ביהולדר", hp: 180, init: 2, melee: 5, ranged: 12, img: "https://api.dicebear.com/8.x/bottts/svg?seed=beholder&backgroundColor=9b59b6" },
-    "mindflayer": { name: "מצליף מוח", hp: 71, init: 1, melee: 7, ranged: 7, img: "https://api.dicebear.com/8.x/bottts/svg?seed=mindflayer&backgroundColor=8e44ad" },
-    "lich": { name: "ליץ'", hp: 135, init: 3, melee: 9, ranged: 12, img: "https://api.dicebear.com/8.x/bottts/svg?seed=lich&backgroundColor=2c3e50" }
+    "goblin": { hp: 7, init: 2, melee: 4, meleeDmg: '1d6', ranged: 4, rangedDmg: '1d6', img: "https://api.dicebear.com/8.x/bottts/svg?seed=goblin&backgroundColor=c0392b" },
+    "skeleton": { hp: 13, init: 2, melee: 4, meleeDmg: '1d6', ranged: 4, rangedDmg: '1d6', img: "https://api.dicebear.com/8.x/bottts/svg?seed=skeleton&backgroundColor=bdc3c7" },
+    "zombie": { hp: 22, init: -2, melee: 3, meleeDmg: '1d6', ranged: 0, rangedDmg: '0', img: "https://api.dicebear.com/8.x/bottts/svg?seed=zombie&backgroundColor=27ae60" },
+    "orc": { hp: 15, init: 1, melee: 5, meleeDmg: '1d12', ranged: 3, rangedDmg: '1d6', img: "https://api.dicebear.com/8.x/bottts/svg?seed=orc&backgroundColor=2c3e50" },
+    "wolf": { hp: 37, init: 2, melee: 5, meleeDmg: '2d4', ranged: 0, rangedDmg: '0', img: "https://api.dicebear.com/8.x/bottts/svg?seed=wolf&backgroundColor=7f8c8d" },
+    "bandit": { hp: 11, init: 1, melee: 3, meleeDmg: '1d6', ranged: 3, rangedDmg: '1d8', img: "https://api.dicebear.com/8.x/bottts/svg?seed=bandit&backgroundColor=f39c12" },
+    "spider": { hp: 26, init: 3, melee: 5, meleeDmg: '1d8', ranged: 5, rangedDmg: '0', img: "https://api.dicebear.com/8.x/bottts/svg?seed=spider&backgroundColor=8e44ad" },
+    "owlbear": { hp: 59, init: 1, melee: 7, meleeDmg: '2d8', ranged: 0, rangedDmg: '0', img: "https://api.dicebear.com/8.x/bottts/svg?seed=owlbear&backgroundColor=8b4513" },
+    "troll": { hp: 84, init: 1, melee: 7, meleeDmg: '2d6', ranged: 0, rangedDmg: '0', img: "https://api.dicebear.com/8.x/bottts/svg?seed=troll&backgroundColor=16a085" },
+    "vampire": { hp: 144, init: 4, melee: 9, meleeDmg: '1d8', ranged: 0, rangedDmg: '0', img: "https://api.dicebear.com/8.x/bottts/svg?seed=vampire&backgroundColor=c0392b" },
+    "dragon": { hp: 110, init: 4, melee: 7, meleeDmg: '2d10', ranged: 0, rangedDmg: '0', img: "https://api.dicebear.com/8.x/bottts/svg?seed=dragon&backgroundColor=e67e22" },
+    "beholder": { hp: 180, init: 2, melee: 5, meleeDmg: '1d6', ranged: 12, rangedDmg: '2d8', img: "https://api.dicebear.com/8.x/bottts/svg?seed=beholder&backgroundColor=9b59b6" },
+    "mindflayer": { hp: 71, init: 1, melee: 7, meleeDmg: '2d10', ranged: 7, rangedDmg: '0', img: "https://api.dicebear.com/8.x/bottts/svg?seed=mindflayer&backgroundColor=8e44ad" },
+    "lich": { hp: 135, init: 3, melee: 9, meleeDmg: '3d6', ranged: 12, rangedDmg: '4d6', img: "https://api.dicebear.com/8.x/bottts/svg?seed=lich&backgroundColor=2c3e50" }
 };
 
 // =====================================================================
@@ -48,7 +48,7 @@ export async function startGame(role, charData, roomCode) {
     if (gameScreen) gameScreen.style.display = 'flex';
 
     const titleHeader = document.querySelector('#side-panel h3');
-    if(titleHeader) titleHeader.innerText = `חבורת ההרפתקנים (חדר: ${roomCode})`;
+    if(titleHeader) titleHeader.innerText = `${t('party_title')} (${roomCode})`;
 
     if (userRole === 'player') {
         pName = document.getElementById('user-display-name')?.innerText || "Player";
@@ -119,9 +119,7 @@ window.roll = async (type, isInit = false) => {
             finalRes = results[0].value;
         }
     } catch (err) {
-        isCooldown = false;
-        setDiceCooldown(false);
-        return;
+        isCooldown = false; setDiceCooldown(false); return;
     }
 
     const mod = (isInit) ? (parseInt(localStorage.getItem('critroll_initBonus')) || 0) : (parseInt(document.getElementById('mod-input')?.value) || 0);
@@ -164,24 +162,43 @@ window.rollMacro = async (targetCName, attackName, bonus) => {
         isCooldown = false; setDiceCooldown(false); return;
     }
 
-    const flavorText = `מבצע התקפת ${attackName}!`;
+    const flavorText = `${t('log_attack')} ${attackName}!`;
     
-    const rollData = { 
-        pName: macroPName, 
-        cName: targetCName, 
-        type: 'd20', 
-        res: finalRes, 
-        mod: parseInt(bonus) || 0, 
-        color: macroColor, 
-        mode: currentMode, 
-        flavor: flavorText,
-        ts: Date.now() 
-    };
+    const rollData = { pName: macroPName, cName: targetCName, type: 'd20', res: finalRes, mod: parseInt(bonus) || 0, color: macroColor, mode: currentMode, flavor: flavorText, ts: Date.now() };
     if (res1 !== null) { rollData.res1 = res1; rollData.res2 = res2; }
 
     db.saveRollToDB(rollData);
 
     activeMode = 'normal'; updateModeUI(activeMode);
+    setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
+};
+
+window.rollDamageMacro = async (targetCName, attackName, diceString, bonus) => {
+    if (isCooldown || !isDiceBoxReady) return;
+    if (!diceString || diceString === '0') return alert(t('alert_no_dmg'));
+
+    isCooldown = true; setDiceCooldown(true);
+    playStartRollSound(isMuted);
+
+    const p = await db.getPlayerData(targetCName);
+    const macroColor = p ? (p.pColor || "#c0392b") : "#e74c3c";
+    const macroPName = p ? p.pName : "System";
+
+    await updateDiceColor(macroColor);
+
+    let finalRes = 0;
+    try {
+        const results = await roll3DDice(diceString);
+        finalRes = results.reduce((sum, die) => sum + die.value, 0);
+    } catch (err) {
+        isCooldown = false; setDiceCooldown(false); return;
+    }
+
+    const flavorText = `${t('log_roll_dmg')} ${attackName}!`;
+    
+    const rollData = { pName: macroPName, cName: targetCName, type: diceString, res: finalRes, mod: parseInt(bonus) || 0, color: macroColor, mode: 'normal', flavor: flavorText, ts: Date.now() };
+
+    db.saveRollToDB(rollData);
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
@@ -196,12 +213,8 @@ window.changeHP = async (targetCName, isPlus) => {
 
     db.updatePlayerHPInDB(targetCName, newHp);
 
-    const flavor = (isPlus ? "זוכה לריפוי!" : "סופג פגיעה!") + ` (${amount} נק')`;
-    db.saveRollToDB({
-        cName: targetCName, type: isPlus ? "HEAL" : "DAMAGE",
-        res: amount, newHp, color: isPlus ? "#2ecc71" : "#e74c3c",
-        flavor, ts: Date.now()
-    });
+    const flavor = (isPlus ? t('log_heals') : t('log_takes_dmg')) + ` (${amount} ${t('log_points')})`;
+    db.saveRollToDB({ cName: targetCName, type: isPlus ? "HEAL" : "DAMAGE", res: amount, newHp, color: isPlus ? "#2ecc71" : "#e74c3c", flavor, ts: Date.now() });
     if(inputField) inputField.value = 1;
 };
 
@@ -222,7 +235,7 @@ window.toggleStatus = async (targetCName, status) => {
 
 window.removeNPC = (targetCName) => {
     if (userRole !== 'dm') return;
-    if (confirm(`האם אתה בטוח שברצונך למחוק את ${targetCName} מהלוח?`)) {
+    if (confirm(t('alert_delete_npc_1') + targetCName + t('alert_delete_npc_2'))) {
         db.removePlayerFromDB(targetCName);
         if (activeRoller && activeRoller.cName === targetCName) {
             window.resetRoller();
@@ -234,19 +247,14 @@ window.toggleVisibility = (targetCName, currentHiddenStatus) => {
     if (userRole !== 'dm') return;
     const newStatus = !currentHiddenStatus;
     db.updatePlayerVisibilityInDB(targetCName, newStatus);
-
-    if (!newStatus) {
-        db.saveRollToDB({
-            cName: "שליט המבוך", type: "STATUS", status: `חשף מהצללים את 👁️ ${targetCName}!`, ts: Date.now()
-        });
-    }
+    if (!newStatus) db.saveRollToDB({ cName: "DM", type: "STATUS", status: `${t('log_revealed')} ${targetCName}!`, ts: Date.now() });
 };
 
 window.impersonate = async (targetCName) => {
     if (userRole !== 'dm') return;
     const p = await db.getPlayerData(targetCName);
     if (!p) return;
-    activeRoller = { cName: targetCName, pName: "שליט המבוך", color: p.pColor || "#c0392b" };
+    activeRoller = { cName: targetCName, pName: "DM", color: p.pColor || "#c0392b" };
 
     const banner = document.getElementById('active-roller-banner');
     const nameEl = document.getElementById('active-roller-name');
@@ -270,14 +278,14 @@ window.setMode = (mode) => {
 window.toggleMute = () => {
     isMuted = !isMuted;
     const btn = document.getElementById('mute-btn');
-    if(btn) btn.innerText = isMuted ? "🔊" : "🔇 השתק סאונד";
+    if(btn) btn.innerText = isMuted ? t('unmute_sound') : t('mute_sound');
 };
 
 window.toggleCombat = async () => {
     if (userRole !== 'dm') return;
     const current = await db.getCombatStatus();
     if (current) {
-        if (confirm("האם אתה בטוח שברצונך לסיים את הקרב ולאפס את היוזמה?")) {
+        if (confirm(t('alert_end_combat'))) {
             db.setCombatStatus(false);
             db.resetInitiativeInDB();
         }
@@ -288,7 +296,7 @@ window.toggleCombat = async () => {
 
 window.rollInit = async () => {
     const isCombat = await db.getCombatStatus();
-    if (!isCombat) return alert("השה\"מ טרם פתח את הקרב!");
+    if (!isCombat) return alert(t('alert_not_started'));
     const btn = document.getElementById('init-btn');
     if(btn) btn.disabled = true;
     const rollResult = await window.roll('d20', true);
@@ -300,34 +308,47 @@ window.handlePresetChange = (val) => {
     const hpEl = document.getElementById('npc-hp');
     const initEl = document.getElementById('npc-init');
     const meleeEl = document.getElementById('npc-melee');
+    const meleeDmgEl = document.getElementById('npc-melee-dmg');
     const rangedEl = document.getElementById('npc-ranged');
+    const rangedDmgEl = document.getElementById('npc-ranged-dmg');
 
     if(val === 'custom') {
         if(nameEl) nameEl.value = "";
         if(hpEl) hpEl.value = "";
         if(initEl) initEl.value = "";
         if(meleeEl) meleeEl.value = "";
+        if(meleeDmgEl) meleeDmgEl.value = "";
         if(rangedEl) rangedEl.value = "";
+        if(rangedDmgEl) rangedDmgEl.value = "";
     } else {
         const data = npcDatabase[val];
         if(!data) return;
-        if(nameEl) nameEl.value = data.name;
+        if(nameEl) nameEl.value = t("mon_" + val);
         if(hpEl) hpEl.value = data.hp;
         if(initEl) initEl.value = data.init;
         if(meleeEl) meleeEl.value = data.melee || 0;
+        if(meleeDmgEl) meleeDmgEl.value = data.meleeDmg || '1d4';
         if(rangedEl) rangedEl.value = data.ranged || 0;
+        if(rangedDmgEl) rangedDmgEl.value = data.rangedDmg || '1d4';
     }
 };
 
 window.addNPC = () => {
     if (userRole !== 'dm') return;
     const presetVal = document.getElementById('npc-preset')?.value;
-    const baseName = document.getElementById('npc-name')?.value.trim() || "מפלצת";
+    
+    let baseName = document.getElementById('npc-name')?.value.trim();
+    if (!baseName) {
+        baseName = presetVal !== 'custom' ? t("mon_" + presetVal) : t("default_monster");
+    }
+
     const npcClass = document.getElementById('npc-class')?.value.trim();
     const npcHp = parseInt(document.getElementById('npc-hp')?.value) || 10;
     const npcInitBonus = parseInt(document.getElementById('npc-init')?.value) || 0;
     const npcMelee = parseInt(document.getElementById('npc-melee')?.value) || 0;
+    const npcMeleeDmg = document.getElementById('npc-melee-dmg')?.value || '1d6';
     const npcRanged = parseInt(document.getElementById('npc-ranged')?.value) || 0;
+    const npcRangedDmg = document.getElementById('npc-ranged-dmg')?.value || '1d6';
     const count = parseInt(document.getElementById('npc-count')?.value) || 1;
     const isHidden = document.getElementById('npc-hidden')?.checked;
 
@@ -343,15 +364,15 @@ window.addNPC = () => {
 
         const stats = {
             maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10,
-            isHidden: isHidden, melee: npcMelee, ranged: npcRanged
+            isHidden: isHidden, melee: npcMelee, meleeDmg: npcMeleeDmg, ranged: npcRanged, rangedDmg: npcRangedDmg
         };
         if (npcClass) stats.class = npcClass;
 
         db.joinPlayerToDB(finalName, "DM", "#c0392b", "npc", portrait, stats);
         db.setPlayerInitiativeInDB(finalName, "DM", finalInit, "#c0392b");
 
-        const hiddenText = isHidden ? " (מוסתרת)" : "";
-        db.saveRollToDB({ cName: "שליט המבוך", type: "STATUS", status: `הוסיף את ⚔️ ${finalName}${hiddenText} [יוזמה: ${finalInit}]`, ts: Date.now() });
+        const hiddenText = isHidden ? t('log_hidden_tag') : "";
+        db.saveRollToDB({ cName: "DM", type: "STATUS", status: `${t('log_added')} ${finalName}${hiddenText} [${t('log_init')} ${finalInit}]`, ts: Date.now() });
     }
     
     if(document.getElementById('npc-preset')) document.getElementById('npc-preset').value = "custom";
@@ -360,7 +381,9 @@ window.addNPC = () => {
     if(document.getElementById('npc-hp')) document.getElementById('npc-hp').value = "";
     if(document.getElementById('npc-init')) document.getElementById('npc-init').value = "";
     if(document.getElementById('npc-melee')) document.getElementById('npc-melee').value = "";
+    if(document.getElementById('npc-melee-dmg')) document.getElementById('npc-melee-dmg').value = "";
     if(document.getElementById('npc-ranged')) document.getElementById('npc-ranged').value = "";
+    if(document.getElementById('npc-ranged-dmg')) document.getElementById('npc-ranged-dmg').value = "";
     if(document.getElementById('npc-count')) document.getElementById('npc-count').value = "1";
 };
 
@@ -375,19 +398,19 @@ function setupDatabaseListeners() {
         const btn = document.getElementById('init-btn');
         const dmBtn = document.getElementById('master-combat-btn');
         if (userRole === 'dm' && dmBtn) {
-            dmBtn.innerText = isCombat ? "🛑 סיים קרב ואיפוס" : "⚔️ פתח יוזמה";
+            dmBtn.innerText = isCombat ? t('end_combat') : t('open_combat');
             dmBtn.style.background = isCombat ? "#c0392b" : "#2c3e50";
         }
         if (isCombat) {
             db.listenToPlayerInitiative(cName, (exists) => {
                 if (btn) {
                     btn.disabled = exists;
-                    btn.innerText = exists ? "✅ רשום" : "⚡ גלגל יוזמה!";
+                    btn.innerText = exists ? t('registered') : t('roll_init_btn');
                     btn.style.opacity = exists ? "0.5" : "1";
                 }
             });
         } else {
-            if (btn) { btn.disabled = true; btn.innerText = "⌛ ממתין לקרב"; btn.style.opacity = "0.3"; }
+            if (btn) { btn.disabled = true; btn.innerText = t('waiting_combat'); btn.style.opacity = "0.3"; }
         }
     });
 
