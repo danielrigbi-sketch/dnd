@@ -1,391 +1,321 @@
-:root { 
-    --primary: #e74c3c; 
-    --bg: #1a1a1a; 
-    --parchment: #f3e5ab; 
-    --ink: #2c1e16;
-    --success: #2ecc71;
-    --warning: #f39c12;
-    --danger: #c0392b;
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    --safe-top: 40px;       
-    --safe-bottom: 110px;   
-    --safe-left: 0px;
-    --safe-right: 520px;    
+// ייבוא מנוע הקוביות והממשק
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js";
+import { firebaseConfig } from "./constants.js?v=12";
+import { getFlavorText } from "./messages.js?v=12";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=12";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=12";
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let isDiceBoxReady = false;
+let pName = "", cName = "", pColor = "#8B0000", userRole = "player", charPortrait = "";
+let isMuted = false, isCooldown = false, canAnimate = false;
+let activeMode = 'normal'; 
+
+// --- 1. אתחול וטעינת נתונים ---
+window.addEventListener('DOMContentLoaded', () => {
+    const colorOptions = document.querySelectorAll('.color-opt');
+    const colorInput = document.getElementById('user-color');
+    const setActiveColor = (color) => {
+        colorOptions.forEach(opt => {
+            if (opt.getAttribute('data-color') === color) {
+                colorOptions.forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                if(colorInput) colorInput.value = color;
+                pColor = color;
+            }
+        });
+    };
+    colorOptions.forEach(opt => {
+        opt.addEventListener('click', () => setActiveColor(opt.getAttribute('data-color')));
+    });
+
+    const savedStats = {
+        pName: localStorage.getItem('critroll_pName'),
+        cName: localStorage.getItem('critroll_cName'),
+        color: localStorage.getItem('critroll_pColor'),
+        role: localStorage.getItem('critroll_role'),
+        race: localStorage.getItem('critroll_race'),
+        class: localStorage.getItem('critroll_class'),
+        ac: localStorage.getItem('critroll_ac'),
+        speed: localStorage.getItem('critroll_speed'),
+        pp: localStorage.getItem('critroll_pp'),
+        initBonus: localStorage.getItem('critroll_initBonus'),
+        maxHp: localStorage.getItem('critroll_maxHp'),
+        currHp: localStorage.getItem('critroll_currHp'),
+        portrait: localStorage.getItem('critroll_portrait')
+    };
+
+    if (savedStats.pName) document.getElementById('player-name').value = savedStats.pName;
+    if (savedStats.cName) document.getElementById('char-name').value = savedStats.cName;
+    if (savedStats.role) document.getElementById('user-role').value = savedStats.role;
+    if (savedStats.color) setActiveColor(savedStats.color);
+    if (savedStats.race) document.getElementById('char-race').value = savedStats.race;
+    if (savedStats.class) document.getElementById('char-class').value = savedStats.class;
+    if (savedStats.ac) document.getElementById('char-ac').value = savedStats.ac;
+    if (savedStats.speed) document.getElementById('char-speed').value = savedStats.speed;
+    if (savedStats.pp) document.getElementById('char-pp').value = savedStats.pp;
+    if (savedStats.initBonus) document.getElementById('init-bonus').value = savedStats.initBonus;
+    if (savedStats.maxHp) document.getElementById('max-hp').value = savedStats.maxHp;
+    if (savedStats.currHp) document.getElementById('curr-hp').value = savedStats.currHp;
+    if (savedStats.portrait) charPortrait = savedStats.portrait;
+
+    document.getElementById('user-role').onchange = toggleRoleFields;
+    toggleRoleFields();
+});
+
+function toggleRoleFields() {
+    const role = document.getElementById('user-role').value;
+    const playerFields = document.getElementById('player-only-fields');
+    playerFields.style.display = (role === 'dm') ? 'none' : 'block';
 }
 
-* { 
-    box-sizing: border-box; 
-    -webkit-tap-highlight-color: transparent; 
-    font-family: 'Assistant', sans-serif !important;
-}
+document.getElementById('char-portrait').onchange = function(e) {
+    const file = e.target.files[0];
+    if (!file || file.size > 600000) return alert("בחר תמונה קטנה מ-500KB");
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        charPortrait = event.target.result;
+        localStorage.setItem('critroll_portrait', charPortrait);
+    };
+    reader.readAsDataURL(file);
+};
 
-html, body { 
-    height: 100%;
-    margin: 0;
-    padding: 0;
-}
+// --- 2. כניסה למשחק ---
+document.getElementById('join-btn').onclick = async () => {
+    pName = document.getElementById('player-name').value.trim();
+    userRole = document.getElementById('user-role').value;
+    pColor = document.getElementById('user-color').value;
 
-body { 
-    color: white; 
-    overflow: hidden; 
-    height: 100dvh; 
-    background-color: #2c1e16; 
-}
-
-/* --- מסך כניסה --- */
-#login-screen { 
-    position: fixed; 
-    inset: 0; 
-    background: rgba(44, 62, 80, 0.95); 
-    z-index: 1000; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    align-items: center; 
-    padding: 20px; 
-    backdrop-filter: blur(10px);
-}
-
-.main-logo { max-width: 180px; margin-bottom: 15px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
-
-.login-card { 
-    background: #34495e; 
-    padding: 20px; 
-    border-radius: 12px; 
-    width: 100%; 
-    max-width: 380px; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.login-card input, .login-card select, .role-select { 
-    width: 100%; 
-    padding: 10px; 
-    border-radius: 6px; 
-    border: 1px solid rgba(0,0,0,0.2); 
-    font-size: 15px; 
-    text-align: center; 
-    background: white;
-    color: #333;
-}
-
-#player-only-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-
-.color-picker-section { text-align: center; padding: 5px 0; }
-.picker-label { color: white; display: block; margin-bottom: 8px; font-size: 13px; opacity: 0.9; }
-.palette-grid { display: flex; justify-content: center; gap: 10px; }
-
-.color-opt{
-    width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
-    border: 2px solid rgba(255,255,255,0.3); transition: all 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3); flex-shrink: 0;
-}
-
-.color-opt.active { transform: scale(1.2); border-color: white; box-shadow: 0 0 12px rgba(255,255,255,0.6); }
-
-.role-select { background: #2c3e50; color: white; cursor: pointer; }
-
-.main-join-btn{
-    background: var(--primary); color: white; border: none; padding: 14px;
-    font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;
-    transition: background 0.2s; margin-top: 10px;
-}
-.main-join-btn:hover { background: #c0392b; }
-
-/* --- מסך משחק --- */
-#game-screen { 
-    display: none; 
-    height: 100dvh; 
-    flex-direction: row; 
-    width: 100%;
-}
-
-#side-panel{
-    width: 280px;
-    height: 100%;
-    background: rgba(26, 26, 26, 0.98);
-    border-left: 2px solid var(--primary);
-    display: flex;
-    flex-direction: column;
-    padding: 15px;
-    z-index: 20;
-    box-shadow: -5px 0 20px rgba(0,0,0,0.6);
-}
-
-.side-logo { max-width: 100px; margin: 0 auto 15px; display: block; }
-
-#init-list{
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-bottom: 15px;
-    padding-left: 5px;
-}
-
-.tracker-item{
-    background: rgba(44, 62, 80, 0.4);
-    padding: 12px;
-    border-radius: 8px;
-    border-right: 4px solid;
-    display: flex;
-    flex-direction: column; 
-    gap: 4px;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255,255,255,0.05);
-    position: relative;
-}
-
-.tracker-item.dm-item {
-    background: rgba(0, 0, 0, 0.5);
-    border-right-color: #f1c40f !important;
-    border: 1px solid rgba(241, 196, 15, 0.2);
-}
-
-.char-portrait {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--parchment);
-    background: #333;
-    flex-shrink: 0;
-}
-
-.status-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 5px;
-    min-height: 20px;
-}
-
-.status-badge {
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: bold;
-    color: white;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
-    background: #636e72;
-}
-
-.hp-controls {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba(0,0,0,0.3);
-    padding: 2px 4px;
-    border-radius: 6px;
-}
-
-.hp-amount-input {
-    width: 32px;
-    background: white;
-    border: none;
-    border-radius: 3px;
-    font-size: 11px;
-    text-align: center;
-    font-weight: bold;
-    color: #333;
-    padding: 2px 0;
-}
-
-.hp-edit-btn {
-    background: #444;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    width: 22px;
-    height: 22px;
-    cursor: pointer;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-    font-size: 14px;
-}
-
-.hp-edit-btn.minus { color: #ff7675; }
-.hp-edit-btn.plus { color: #55efc4; }
-
-.init-score {
-    font-family: 'Assistant', sans-serif;
-    font-weight: 900;
-    background: rgba(0,0,0,0.3);
-    padding: 2px 8px;
-    border-radius: 4px;
-    min-width: 35px;
-    text-align: center;
-    color: var(--parchment);
-}
-
-.side-footer { margin-top: auto; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
-.online-status { font-size: 11px; opacity: 0.5; text-align: center; }
-.side-buttons-row { display: flex; flex-direction: column; gap: 5px; }
-
-.side-btn{
-    background: #34495e; color: white; border: none; padding: 10px; 
-    border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;
-    font-size: 13px;
-}
-
-#main-area{
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    position: relative;
-}
-
-#game-layout {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    width: 100%;
-}
-
-#dice-arena {
-    flex: 1;
-    width: 100%;
-    position: relative;
-    overflow: hidden;
-    background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); 
-    background-size: cover; 
-    background-position: center;
-}
-
-#log-container { 
-    position: absolute; top: 15px; left: 15px; width: 320px; 
-    background-color: var(--parchment);
-    background-image: url('https://www.transparenttextures.com/patterns/parchment.png');
-    padding: 15px; border-radius: 8px; text-align: right; 
-    box-shadow: 5px 10px 25px rgba(0,0,0,0.5); font-size: 13px; 
-    max-height: 45%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d;
-}
-
-.log-header { color: var(--ink); font-weight: 800; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 8px; }
-
-.log-entry {
-    color: #1a1a1a !important;
-    margin-bottom: 12px;
-    line-height: 1.3;
-}
-
-#result-text { 
-    font-size: clamp(80px, 15vw, 150px);
-    font-weight: 900; 
-    color: white; 
-    text-shadow: 0 0 30px black, 0 0 10px black; 
-    opacity: 0; 
-    transform: scale(0.3);
-    transition: opacity 0.5s ease-in-out, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-}
-#result-text.show { 
-    opacity: 1; 
-    transform: scale(1);
-}
-
-#controls {
-    background: rgba(0, 0, 0, 0.85);
-    padding: 15px 20px;
-    backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    z-index: 100;
-    border-top: 2px solid var(--primary);
-}
-
-.mod-container { display: flex; align-items: center; gap: 8px; }
-#mod-input { width: 55px; padding: 8px; border-radius: 6px; border: none; text-align: center; font-weight: bold; font-size: 16px; background: white; color: black; }
-
-.dice-btn, .special-roll-btn, #init-btn{
-    background: #2c3e50; color: white; border: 1px solid rgba(255,255,255,0.1); 
-    padding: 10px 16px; border-radius: 8px; font-size: 16px; font-weight: bold; 
-    cursor: pointer; transition: all 0.2s;
-}
-
-.dice-btn:hover { background: var(--primary); transform: translateY(-2px); }
-.special-roll-btn.adv { background: #27ae60; }
-.special-roll-btn.dis { background: #c0392b; }
-#init-btn { background: #f39c12; flex: 1; } 
-
-/* --- התאמה למובייל משופרת --- */
-@media (max-width: 768px){
-    #game-screen { flex-direction: column; }
-
-    #side-panel{
-        width: 100%; height: auto; border: none; 
-        background: rgba(0,0,0,0.9);
-        position: relative; top: 0; padding: 5px 10px; z-index: 80;
-        border-bottom: 2px solid var(--primary);
+    if (userRole === 'player') {
+        cName = document.getElementById('char-name').value.trim();
+        if (!pName || !cName) return alert("מלא פרטי שחקן ודמות!");
+    } else {
+        cName = "DM_" + pName;
     }
 
-    .side-logo { display: none !important; }
+    const stats = (userRole === 'player') ? {
+        race: document.getElementById('char-race').value,
+        class: document.getElementById('char-class').value,
+        ac: document.getElementById('char-ac').value,
+        speed: document.getElementById('char-speed').value,
+        pp: document.getElementById('char-pp').value,
+        initBonus: parseInt(document.getElementById('init-bonus').value) || 0,
+        maxHp: parseInt(document.getElementById('max-hp').value) || 10,
+        hp: parseInt(document.getElementById('curr-hp').value) || 10
+    } : {};
 
-    #init-list { 
-        flex-direction: row; 
-        overflow-x: auto; 
-        gap: 10px; 
-        padding-bottom: 5px;
-        scrollbar-width: none;
-    }
-    #init-list::-webkit-scrollbar { display: none; }
+    localStorage.setItem('critroll_pName', pName);
+    localStorage.setItem('critroll_cName', cName);
+    localStorage.setItem('critroll_pColor', pColor);
+    localStorage.setItem('critroll_role', userRole);
+    if(userRole === 'player') Object.keys(stats).forEach(k => localStorage.setItem('critroll_' + k, stats[k]));
 
-    .tracker-item { 
-        min-width: 250px; 
-        background: rgba(255,255,255,0.1); 
-        font-size: 12px; 
-        border-radius: 8px; 
-    }
+    unlockAudio();
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'flex';
 
-    #log-container {
-        position: absolute; top: 10px; left: 10px; width: 180px; max-height: 100px;
-        padding: 8px; font-size: 11px;
-    }
+    try { await initDiceEngine(); isDiceBoxReady = true; } catch (e) {}
 
-    #main-area { 
-        width: 100%; 
-        height: 100%; 
-        padding-top: 0; 
-    }
-
-    #controls{
-        width: 100%; 
-        padding: 8px; 
-        display: grid; 
-        grid-template-areas: 
-            "mod init init"
-            "d4 d6 d8"
-            "d10 d12 d20"
-            "adv adv dis";
-        grid-template-columns: 1fr 1fr 1fr; gap: 6px;
+    if (userRole === 'dm') {
+        document.getElementById('reset-init-btn').style.display = 'block';
+        document.getElementById('master-combat-btn').style.display = 'block';
     }
 
-    .mod-container { grid-area: mod; background: #333; border-radius: 8px; height: 100%; justify-content: center; }
-    #init-btn { grid-area: init; margin: 0; height: 100%; }
+    const playerRef = ref(db, 'players/' + cName);
+    const dataToSet = { pName, pColor, userRole, portrait: charPortrait, score: 0, ...stats };
+    set(playerRef, dataToSet);
+    onDisconnect(playerRef).remove();
+
+    const onlineRef = ref(db, 'online/' + pName + '_' + cName);
+    set(onlineRef, { role: userRole });
+    onDisconnect(onlineRef).remove();
+
+    setTimeout(() => { canAnimate = true; }, 1000);
+};
+
+// --- 3. לוגיקת הטלה מתוקנת ---
+window.roll = async (type, isInit = false) => {
+    if (isCooldown && !isInit) return;
+    if (!isDiceBoxReady) return;
+
+    const currentMode = isInit ? 'normal' : activeMode;
+    if (!isInit) { isCooldown = true; setDiceCooldown(true); }
+
+    playStartRollSound(isMuted);
+    await updateDiceColor(pColor);
+
+    let finalRes, res1 = null, res2 = null;
+    try {
+        // תמיכה ביתרון/חיסרון לכל סוגי הקוביות
+        if (currentMode !== 'normal') {
+            const results = await roll3DDice(`2${type}`);
+            res1 = results[0].value; res2 = results[1].value;
+            finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
+        } else {
+            const results = await roll3DDice(`1${type}`);
+            finalRes = results[0].value;
+        }
+    } catch (err) { 
+        isCooldown = false; 
+        setDiceCooldown(false); 
+        return; 
+    }
+
+    const mod = (isInit) ? (parseInt(localStorage.getItem('critroll_initBonus')) || 0) : (parseInt(document.getElementById('mod-input').value) || 0);
+    const rollData = { pName, cName, type, res: finalRes, mod, color: pColor, mode: currentMode, ts: Date.now() };
+    if (res1 !== null) { rollData.res1 = res1; rollData.res2 = res2; }
+
+    push(ref(db, 'rolls'), rollData);
+
+    if (!isInit) {
+        activeMode = 'normal'; updateModeUI(activeMode);
+        setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
+    }
+    return finalRes + mod;
+};
+
+// --- 4. עריכה וניהול משחק ---
+
+window.changeHP = (targetCName, isPlus) => {
+    const inputField = document.getElementById(`hp-input-${targetCName}`);
+    const amount = parseInt(inputField.value) || 1;
+    const finalAmount = isPlus ? amount : -amount;
+
+    const pRef = ref(db, 'players/' + targetCName);
+    get(pRef).then((snap) => {
+        const p = snap.val();
+        if (!p) return;
+        const newHp = Math.max(0, Math.min(p.maxHp, (p.hp || 0) + finalAmount));
+        update(pRef, { hp: newHp });
+        
+        const flavor = (isPlus ? "זוכה לריפוי!" : "סופג פגיעה!") + ` (${amount} נק')`;
+        push(ref(db, 'rolls'), {
+            cName: targetCName, type: isPlus ? "HEAL" : "DAMAGE",
+            res: amount, newHp, color: isPlus ? "#2ecc71" : "#e74c3c",
+            flavor, ts: Date.now()
+        });
+        if (targetCName === cName) localStorage.setItem('critroll_currHp', newHp);
+        inputField.value = 1; 
+    });
+};
+
+window.toggleStatus = (targetCName, status) => {
+    if (userRole !== 'dm') return;
+    const pRef = ref(db, 'players/' + targetCName);
+    get(pRef).then((snap) => {
+        const p = snap.val();
+        let statuses = p.statuses || [];
+        if (statuses.includes(status)) statuses = statuses.filter(s => s !== status);
+        else {
+            statuses.push(status);
+            push(ref(db, 'rolls'), { cName: targetCName, type: "STATUS", status, ts: Date.now() });
+        }
+        update(pRef, { statuses });
+    });
+};
+
+// --- 5. סנכרון ואירועים ---
+
+document.getElementById('reset-init-btn').onclick = () => {
+    if (userRole !== 'dm') return;
+    if (confirm("לאפס יוזמה?")) {
+        remove(ref(db, 'initiative'));
+        get(ref(db, 'players')).then(snap => {
+            const p = snap.val();
+            if(p) Object.keys(p).forEach(n => update(ref(db, 'players/'+n), {score: 0}));
+        });
+    }
+};
+
+document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(activeMode); };
+document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(activeMode); };
+document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊" : "🔇"; };
+
+// חיבור כפתורי הקוביות - התיקון הקריטי!
+document.querySelectorAll('.dice-btn').forEach(btn => {
+    btn.onclick = () => window.roll(btn.getAttribute('data-type'));
+});
+
+document.getElementById('master-combat-btn').onclick = () => {
+    if (userRole !== 'dm') return;
+    get(ref(db, 'combat_active')).then(snap => {
+        const current = snap.val() || false;
+        set(ref(db, 'combat_active'), !current);
+        if (!current) {
+            remove(ref(db, 'initiative'));
+            get(ref(db, 'players')).then(pSnap => {
+                const p = pSnap.val();
+                if(p) Object.keys(p).forEach(n => update(ref(db, 'players/'+n), {score: 0}));
+            });
+        }
+    });
+};
+
+document.getElementById('init-btn').onclick = async () => {
+    const isCombat = await get(ref(db, 'combat_active')).then(s => s.val());
+    if (!isCombat) return alert("השה\"מ טרם פתח את הקרב!");
+    
+    const btn = document.getElementById('init-btn');
+    btn.disabled = true;
+    const rollResult = await window.roll('d20', true); 
+    // בגלל ש-window.roll כבר כולל בתוכו את המוד (initBonus), אנחנו לא צריכים להוסיף שוב
+    update(ref(db, 'players/' + cName), { score: rollResult });
+    set(ref(db, 'initiative/' + cName), { score: rollResult, color: pColor, playerName: pName });
+};
+
+// --- 6. עדכוני UI ולוג ---
+
+onValue(ref(db, 'combat_active'), (snap) => {
+    const isCombat = snap.val();
+    const btn = document.getElementById('init-btn');
+    if (isCombat) {
+        onValue(ref(db, 'initiative/' + cName), s => {
+            if (s.exists()) { btn.disabled = true; btn.innerText = "✅ רשום"; }
+            else { btn.disabled = false; btn.innerText = "⚡ גלגל יוזמה!"; btn.style.opacity = "1"; }
+        }, { onlyOnce: true });
+    } else {
+        btn.disabled = true; btn.innerText = "⌛ ממתין לקרב"; btn.style.opacity = "0.3";
+    }
+});
+
+onValue(ref(db, 'players'), (snapshot) => updateInitiativeUI(snapshot.val(), userRole));
+
+onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => {
+    const data = snapshot.val();
+    if (!data || !canAnimate) return;
+
+    if (!isMuted) {
+        if (data.type === "DAMAGE") playDamageSound(isMuted);
+        else if (data.type === "HEAL") playHealSound(isMuted);
+        else playRollSound(data.type, data.res, isMuted);
+    }
+
+    const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    if (data.type !== "DAMAGE" && data.type !== "HEAL" && data.type !== "STATUS") {
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('dice-visual').style.display = 'flex';
+        const resultText = document.getElementById('result-text');
+        resultText.classList.remove('show');
+        resultText.innerText = (data.res || 0) + (data.mod || 0);
+        resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
+        setTimeout(() => resultText.classList.add('show'), 50);
+    }
+    addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res+data.mod), 20));
+});
+
+function initCreditsModal() {
+    const modal = document.getElementById("creditsModal");
+    const btn = document.getElementById("openCredits");
+    const closeBtn = document.querySelector(".credits-close");
+    if (btn && modal && closeBtn) {
+        btn.onclick = (e) => { e.preventDefault(); modal.style.display = "block"; };
+        closeBtn.onclick = () => modal.style.display = "none";
+        window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; };
+    }
 }
-
-/* --- פוטר --- */
-.site-footer {
-    position: fixed;
-    bottom: 5px;
-    left: 0;
-    width: 100%;
-    text-align: center;
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.7);
-    z-index: 10000;
-    pointer-events: none;
-}
+initCreditsModal();
