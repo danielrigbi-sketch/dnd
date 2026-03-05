@@ -1,4 +1,4 @@
-// app.js - הבקר הראשי (Controller)
+// app.js - Main Game Controller
 
 import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js";
 import { getFlavorText } from "./messages.js";
@@ -7,184 +7,75 @@ import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "
 import * as db from "./firebaseService.js";
 
 let isDiceBoxReady = false;
-let pName = "", cName = "", pColor = "#8B0000", userRole = "player", charPortrait = "";
+let pName = "", cName = "", pColor = "#3498db", userRole = "player", charPortrait = "";
 let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal'; 
-let activeRoller = null; // משתנה ששומר את זהות הדמות שהשה"מ שולט בה כרגע
+let activeRoller = null;
 
+// The Database of Monsters remains here for the DM Panel
 const npcDatabase = {
-    "goblin": { name: "גובלין", hp: 7, init: 2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=goblin&backgroundColor=c0392b" },
-    "skeleton": { name: "שלד", hp: 13, init: 2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=skeleton&backgroundColor=bdc3c7" },
-    "zombie": { name: "זומבי", hp: 22, init: -2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=zombie&backgroundColor=27ae60" },
-    "orc": { name: "אורק", hp: 15, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=orc&backgroundColor=2c3e50" },
-    "wolf": { name: "זאב נורא", hp: 37, init: 2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=wolf&backgroundColor=7f8c8d" },
-    "bandit": { name: "שודד", hp: 11, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=bandit&backgroundColor=f39c12" },
-    "spider": { name: "עכביש ענק", hp: 26, init: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=spider&backgroundColor=8e44ad" },
-    "dragon": { name: "דרקון צעיר", hp: 110, init: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=dragon&backgroundColor=e67e22" },
-    "owlbear": { name: "דוב-ינשוף", hp: 59, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=owlbear&backgroundColor=8b4513" },
-    "troll": { name: "טרול", hp: 84, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=troll&backgroundColor=16a085" },
-    "beholder": { name: "ביהולדר", hp: 180, init: 2, img: "https://api.dicebear.com/8.x/bottts/svg?seed=beholder&backgroundColor=9b59b6" },
-    "mindflayer": { name: "מצליף מוח", hp: 71, init: 1, img: "https://api.dicebear.com/8.x/bottts/svg?seed=mindflayer&backgroundColor=8e44ad" },
-    "vampire": { name: "ערפד", hp: 144, init: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=vampire&backgroundColor=c0392b" },
-    "lich": { name: "ליץ'", hp: 135, init: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=lich&backgroundColor=2c3e50" },
-    
-    "human_m": { name: "אדם (זכר)", hp: 10, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f" },
-    "elf_m": { name: "אלף (זכר)", hp: 10, init: 2, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=elf_m&backgroundColor=2ecc71" },
-    "dwarf_m": { name: "גמד (זכר)", hp: 12, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=dwarf_m&backgroundColor=e67e22" },
-    "halfling_m": { name: "זוטון (זכר)", hp: 8, init: 2, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halfling_m&backgroundColor=f39c12" },
-    "dragonborn_m": { name: "דרקוני (זכר)", hp: 12, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=dragonborn_m&backgroundColor=c0392b" },
-    "gnome_m": { name: "ננס (זכר)", hp: 8, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=gnome_m&backgroundColor=9b59b6" },
-    "halfelf_m": { name: "חצי-אלף (זכר)", hp: 10, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halfelf_m&backgroundColor=1abc9c" },
-    "halforc_m": { name: "חצי-אורק (זכר)", hp: 12, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halforc_m&backgroundColor=34495e" },
-    "tiefling_m": { name: "טיפלינג (זכר)", hp: 10, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=tiefling_m&backgroundColor=c0392b" },
-    
-    "human_f": { name: "אדם (נקבה)", hp: 10, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=human_f&backgroundColor=f1c40f" },
-    "elf_f": { name: "אלפית (נקבה)", hp: 10, init: 2, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=elf_f&backgroundColor=2ecc71" },
-    "dwarf_f": { name: "גמדה (נקבה)", hp: 12, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=dwarf_f&backgroundColor=e67e22" },
-    "halfling_f": { name: "זוטונית (נקבה)", hp: 8, init: 2, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halfling_f&backgroundColor=f39c12" },
-    "dragonborn_f": { name: "דרקונית (נקבה)", hp: 12, init: 0, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=dragonborn_f&backgroundColor=c0392b" },
-    "gnome_f": { name: "ננסית (נקבה)", hp: 8, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=gnome_f&backgroundColor=9b59b6" },
-    "halfelf_f": { name: "חצי-אלפית (נקבה)", hp: 10, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halfelf_f&backgroundColor=1abc9c" },
-    "halforc_f": { name: "חצי-אורקית (נקבה)", hp: 12, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=halforc_f&backgroundColor=34495e" },
-    "tiefling_f": { name: "טיפלינגית (נקבה)", hp: 10, init: 1, img: "https://api.dicebear.com/8.x/adventurer/svg?seed=tiefling_f&backgroundColor=c0392b" }
+    "goblin": { name: "גובלין", hp: 7, init: 2, melee: 4, ranged: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=goblin&backgroundColor=c0392b" },
+    "skeleton": { name: "שלד", hp: 13, init: 2, melee: 4, ranged: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=skeleton&backgroundColor=bdc3c7" },
+    "zombie": { name: "זומבי", hp: 22, init: -2, melee: 3, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=zombie&backgroundColor=27ae60" },
+    "orc": { name: "אורק", hp: 15, init: 1, melee: 5, ranged: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=orc&backgroundColor=2c3e50" },
+    "wolf": { name: "זאב נורא", hp: 37, init: 2, melee: 5, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=wolf&backgroundColor=7f8c8d" },
+    "bandit": { name: "שודד", hp: 11, init: 1, melee: 3, ranged: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=bandit&backgroundColor=f39c12" },
+    "spider": { name: "עכביש ענק", hp: 26, init: 3, melee: 5, ranged: 5, img: "https://api.dicebear.com/8.x/bottts/svg?seed=spider&backgroundColor=8e44ad" },
+    "dragon": { name: "דרקון צעיר", hp: 110, init: 4, melee: 7, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=dragon&backgroundColor=e67e22" },
+    "owlbear": { name: "דוב-ינשוף", hp: 59, init: 1, melee: 7, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=owlbear&backgroundColor=8b4513" },
+    "troll": { name: "טרול", hp: 84, init: 1, melee: 7, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=troll&backgroundColor=16a085" },
+    "beholder": { name: "ביהולדר", hp: 180, init: 2, melee: 5, ranged: 12, img: "https://api.dicebear.com/8.x/bottts/svg?seed=beholder&backgroundColor=9b59b6" },
+    "mindflayer": { name: "מצליף מוח", hp: 71, init: 1, melee: 7, ranged: 7, img: "https://api.dicebear.com/8.x/bottts/svg?seed=mindflayer&backgroundColor=8e44ad" },
+    "vampire": { name: "ערפד", hp: 144, init: 4, melee: 9, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=vampire&backgroundColor=c0392b" },
+    "lich": { name: "ליץ'", hp: 135, init: 3, melee: 9, ranged: 12, img: "https://api.dicebear.com/8.x/bottts/svg?seed=lich&backgroundColor=2c3e50" }
 };
 
-window.addEventListener('DOMContentLoaded', () => {
-    // טעינת גלריית התמונות למסך ההתחברות
-    const portraitContainer = document.getElementById('login-portraits');
-    if (portraitContainer) {
-        Object.keys(npcDatabase).forEach(key => {
-            const data = npcDatabase[key];
-            const img = document.createElement('img');
-            img.src = data.img;
-            img.className = 'preset-portrait-btn';
-            img.title = data.name;
-            img.onclick = () => {
-                document.querySelectorAll('.preset-portrait-btn').forEach(btn => btn.classList.remove('active'));
-                img.classList.add('active');
-                charPortrait = img.src;
-                document.getElementById('char-portrait').value = ""; // מאפס בחירת קובץ אם הייתה
-            };
-            portraitContainer.appendChild(img);
-        });
-    }
+// =====================================================================
+// NEW: Start Game Function (Called from lobby.js)
+// =====================================================================
+export async function startGame(role, charData, roomCode) {
+    db.setRoom(roomCode); // Point database to this specific room!
+    userRole = role;
+    
+    // Update the UI header to show the room code
+    const titleHeader = document.querySelector('#side-panel h3');
+    if(titleHeader) titleHeader.innerText = `חבורת ההרפתקנים (חדר: ${roomCode})`;
 
-    const colorOptions = document.querySelectorAll('.color-opt');
-    const colorInput = document.getElementById('user-color');
-    const setActiveColor = (color) => {
-        colorOptions.forEach(opt => {
-            if (opt.getAttribute('data-color') === color) {
-                colorOptions.forEach(o => o.classList.remove('active'));
-                opt.classList.add('active');
-                if(colorInput) colorInput.value = color;
-                pColor = color;
-            }
-        });
-    };
-    colorOptions.forEach(opt => {
-        opt.addEventListener('click', () => setActiveColor(opt.getAttribute('data-color')));
-    });
-
-    const savedStats = {
-        pName: localStorage.getItem('critroll_pName'),
-        cName: localStorage.getItem('critroll_cName'),
-        color: localStorage.getItem('critroll_pColor'),
-        role: localStorage.getItem('critroll_role'),
-        race: localStorage.getItem('critroll_race'),
-        class: localStorage.getItem('critroll_class'),
-        ac: localStorage.getItem('critroll_ac'),
-        speed: localStorage.getItem('critroll_speed'),
-        pp: localStorage.getItem('critroll_pp'),
-        initBonus: localStorage.getItem('critroll_initBonus'),
-        maxHp: localStorage.getItem('critroll_maxHp'),
-        currHp: localStorage.getItem('critroll_currHp'),
-        portrait: localStorage.getItem('critroll_portrait')
-    };
-
-    if (savedStats.pName) document.getElementById('player-name').value = savedStats.pName;
-    if (savedStats.cName) document.getElementById('char-name').value = savedStats.cName;
-    if (savedStats.role) document.getElementById('user-role').value = savedStats.role;
-    if (savedStats.color) setActiveColor(savedStats.color);
-    if (savedStats.race) document.getElementById('char-race').value = savedStats.race;
-    if (savedStats.class) document.getElementById('char-class').value = savedStats.class;
-    if (savedStats.ac) document.getElementById('char-ac').value = savedStats.ac;
-    if (savedStats.speed) document.getElementById('char-speed').value = savedStats.speed;
-    if (savedStats.pp) document.getElementById('char-pp').value = savedStats.pp;
-    if (savedStats.initBonus) document.getElementById('init-bonus').value = savedStats.initBonus;
-    if (savedStats.maxHp) document.getElementById('max-hp').value = savedStats.maxHp;
-    if (savedStats.currHp) document.getElementById('curr-hp').value = savedStats.currHp;
-    if (savedStats.portrait) charPortrait = savedStats.portrait;
-
-    document.getElementById('user-role').onchange = toggleRoleFields;
-    toggleRoleFields();
-});
-
-function toggleRoleFields() {
-    const role = document.getElementById('user-role').value;
-    const playerFields = document.getElementById('player-only-fields');
-    playerFields.style.display = (role === 'dm') ? 'none' : 'block';
-}
-
-document.getElementById('char-portrait').onchange = function(e) {
-    const file = e.target.files[0];
-    if (!file || file.size > 600000) return alert("בחר תמונה קטנה מ-500KB");
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        charPortrait = event.target.result;
-        document.querySelectorAll('.preset-portrait-btn').forEach(btn => btn.classList.remove('active')); // מבטל בחירת גלריה
-        localStorage.setItem('critroll_portrait', charPortrait);
-    };
-    reader.readAsDataURL(file);
-};
-
-document.getElementById('join-btn').onclick = async () => {
-    pName = document.getElementById('player-name').value.trim();
-    userRole = document.getElementById('user-role').value;
-    pColor = document.getElementById('user-color').value;
-
-    if (userRole === 'player') {
-        cName = document.getElementById('char-name').value.trim();
-        if (!pName || !cName) return alert("מלא פרטי שחקן ודמות!");
-    } else {
-        cName = "DM_" + pName;
-        if(!charPortrait) charPortrait = "assets/logo.png";
-    }
-
-    const stats = (userRole === 'player') ? {
-        race: document.getElementById('char-race').value,
-        class: document.getElementById('char-class').value,
-        ac: document.getElementById('char-ac').value,
-        speed: document.getElementById('char-speed').value,
-        pp: document.getElementById('char-pp').value,
-        initBonus: parseInt(document.getElementById('init-bonus').value) || 0,
-        maxHp: parseInt(document.getElementById('max-hp').value) || 10,
-        hp: parseInt(document.getElementById('curr-hp').value) || 10
-    } : {};
-
-    localStorage.setItem('critroll_pName', pName);
-    localStorage.setItem('critroll_cName', cName);
-    localStorage.setItem('critroll_pColor', pColor);
-    localStorage.setItem('critroll_role', userRole);
-    if (charPortrait) localStorage.setItem('critroll_portrait', charPortrait);
-    if(userRole === 'player') Object.keys(stats).forEach(k => localStorage.setItem('critroll_' + k, stats[k]));
-
-    unlockAudio();
-    document.getElementById('login-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
 
-    try { await initDiceEngine(); isDiceBoxReady = true; } catch (e) { console.error(e); }
+    if (userRole === 'player') {
+        pName = document.getElementById('user-display-name').innerText;
+        cName = charData.name;
+        pColor = "#3498db"; // Default player color for now
+        charPortrait = charData.portrait;
+        
+        // Save the char data locally so dice rolls can read initBonus easily
+        localStorage.setItem('critroll_initBonus', charData.initBonus || 0);
 
-    if (userRole === 'dm') {
+        db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, charData);
+    } else {
+        // DM Setup
+        pName = document.getElementById('user-display-name').innerText;
+        cName = "DM_" + pName;
+        pColor = "#c0392b";
+        charPortrait = document.getElementById('user-avatar').src;
+        
         document.getElementById('master-combat-btn').style.display = 'block';
         document.getElementById('dm-npc-controls').style.display = 'flex';
+        
+        db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
     }
 
-    db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats);
-
+    unlockAudio();
+    try { await initDiceEngine(); isDiceBoxReady = true; } catch (e) { console.error(e); }
     setTimeout(() => { canAnimate = true; }, 1000);
-};
+}
 
-// פונקציית השליטה של השה"מ במפלצות (Impersonation)
+
+// =====================================================================
+// Game Mechanics & Listeners
+// =====================================================================
+
 window.impersonate = async (targetCName) => {
     if (userRole !== 'dm') return;
     const p = await db.getPlayerData(targetCName);
@@ -198,13 +89,13 @@ window.impersonate = async (targetCName) => {
     
     document.getElementById('active-roller-banner').style.display = 'flex';
     document.getElementById('active-roller-name').innerText = targetCName;
-    updateDiceColor(activeRoller.color); // מחליף את צבע הקוביות לצבע המפלצת
+    updateDiceColor(activeRoller.color); 
 };
 
 document.getElementById('reset-roller-btn').onclick = () => {
     activeRoller = null;
     document.getElementById('active-roller-banner').style.display = 'none';
-    updateDiceColor(pColor); // מחזיר לצבע המקורי של השה"מ
+    updateDiceColor(pColor); 
 };
 
 window.roll = async (type, isInit = false) => {
@@ -216,7 +107,6 @@ window.roll = async (type, isInit = false) => {
 
     playStartRollSound(isMuted);
     
-    // קביעת זהות המגלגל (האם זה השה"מ הרגיל, השחקן, או שה"מ ששולט במפלצת)
     let rollCName = cName;
     let rollPName = pName;
     let rollColor = pColor;
@@ -275,8 +165,6 @@ window.changeHP = async (targetCName, isPlus) => {
         res: amount, newHp, color: isPlus ? "#2ecc71" : "#e74c3c",
         flavor, ts: Date.now()
     });
-
-    if (targetCName === cName) localStorage.setItem('critroll_currHp', newHp);
     inputField.value = 1; 
 };
 
@@ -327,11 +215,16 @@ document.getElementById('npc-preset').addEventListener('change', (e) => {
         document.getElementById('npc-name').value = "";
         document.getElementById('npc-hp').value = "";
         document.getElementById('npc-init').value = "";
+        document.getElementById('npc-melee').value = "";
+        document.getElementById('npc-ranged').value = "";
     } else {
         const data = npcDatabase[val];
+        if(!data) return;
         document.getElementById('npc-name').value = data.name;
         document.getElementById('npc-hp').value = data.hp;
         document.getElementById('npc-init').value = data.init;
+        document.getElementById('npc-melee').value = data.melee || 0;
+        document.getElementById('npc-ranged').value = data.ranged || 0;
     }
 });
 
@@ -342,6 +235,9 @@ document.getElementById('add-npc-btn').onclick = () => {
     const npcClass = document.getElementById('npc-class').value.trim();
     const npcHp = parseInt(document.getElementById('npc-hp').value) || 10;
     const npcInitBonus = parseInt(document.getElementById('npc-init').value) || 0;
+    const npcMelee = parseInt(document.getElementById('npc-melee').value) || 0;
+    const npcRanged = parseInt(document.getElementById('npc-ranged').value) || 0;
+    
     const count = parseInt(document.getElementById('npc-count').value) || 1;
     const isHidden = document.getElementById('npc-hidden').checked;
 
@@ -355,7 +251,10 @@ document.getElementById('add-npc-btn').onclick = () => {
         const d20 = Math.floor(Math.random() * 20) + 1;
         const finalInit = d20 + npcInitBonus;
 
-        const stats = { maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10, isHidden: isHidden };
+        const stats = { 
+            maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10, 
+            isHidden: isHidden, melee: npcMelee, ranged: npcRanged
+        };
         if (npcClass) stats.class = npcClass;
         
         db.joinPlayerToDB(finalName, "DM", "#c0392b", "npc", portrait, stats);
@@ -372,6 +271,8 @@ document.getElementById('add-npc-btn').onclick = () => {
     document.getElementById('npc-class').value = "";
     document.getElementById('npc-hp').value = "";
     document.getElementById('npc-init').value = "";
+    document.getElementById('npc-melee').value = "";
+    document.getElementById('npc-ranged').value = "";
     document.getElementById('npc-count').value = "1";
 };
 
@@ -403,6 +304,7 @@ document.getElementById('init-btn').onclick = async () => {
     db.setPlayerInitiativeInDB(cName, pName, rollResult, pColor);
 };
 
+// Listeners Setup
 db.listenToCombatStatus((isCombat) => {
     const btn = document.getElementById('init-btn');
     const dmBtn = document.getElementById('master-combat-btn');
