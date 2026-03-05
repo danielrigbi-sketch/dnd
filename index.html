@@ -8,9 +8,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="assets/logo.png">
-    <link rel="stylesheet" href="css/style.css?v=13">
+    <link rel="stylesheet" href="css/style.css?v=14">
 </head>
-<body id="main-body" style="display: flex; justify-content: center; align-items: center; background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); background-size: cover; background-position: center;">
+<body id="main-body" style="display: flex; justify-content: center; align-items: center; background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); background-size: cover; background-position: center; margin: 0; height: 100vh;">
 
     <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.7); z-index: 0;"></div>
 
@@ -29,7 +29,7 @@
         
         <header style="background: #2c3e50; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e74c3c;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <img id="user-avatar" src="assets/logo.png" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #f1c40f;">
+                <img id="user-avatar" src="assets/logo.png" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #f1c40f; object-fit: cover;">
                 <div>
                     <div style="color: #f1c40f; font-weight: bold; font-size: 16px;">שלום, <span id="user-display-name">הרפתקן</span></div>
                     <div style="color: #aaa; font-size: 12px;" id="user-email">email@example.com</div>
@@ -38,11 +38,10 @@
             <button id="logout-btn" style="background: transparent; color: #ff7675; border: 1px solid #ff7675; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">התנתק</button>
         </header>
 
-        <div style="display: flex; flex-direction: column; md:flex-row; padding: 20px; gap: 20px;">
+        <div style="display: flex; flex-direction: row; flex-wrap: wrap; padding: 20px; gap: 20px;">
             
-            <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px dashed #666;">
+            <div style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px dashed #666;">
                 <h3 style="color: white; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">🎲 חדר משחק</h3>
-                
                 <div style="margin-bottom: 20px;">
                     <div style="color: #ccc; font-size: 13px; margin-bottom: 8px;">שחקן: כניסה לחדר קיים</div>
                     <div style="display: flex; gap: 5px;">
@@ -50,29 +49,93 @@
                         <button id="join-room-btn" style="background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">היכנס</button>
                     </div>
                 </div>
-
                 <div style="border-top: 1px dashed #555; padding-top: 15px;">
                     <div style="color: #ccc; font-size: 13px; margin-bottom: 8px;">שליט מבוך: פתיחת חדר חדש</div>
                     <button id="create-room-btn" style="width: 100%; background: #2c3e50; color: white; border: 1px solid #34495e; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">👑 פתח חדר כ-DM</button>
                 </div>
             </div>
 
-            <div style="flex: 1; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px dashed #666;">
+            <div style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px dashed #666;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
                     <h3 style="color: white; margin: 0;">🛡️ הכספת שלי</h3>
-                    <button id="new-char-btn" style="background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;">+ דמות חדשה</button>
+                    <button id="new-char-btn" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;">+ דמות חדשה</button>
                 </div>
-                
-                <div id="vault-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 200px; overflow-y: auto; padding-right: 5px;">
-                    <div style="text-align: center; color: #888; font-style: italic; padding: 20px 0;">
-                        עדיין אין לך דמויות בכספת.<br>צור את הדמות הראשונה שלך!
-                    </div>
+                <div id="vault-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
                     </div>
             </div>
 
         </div>
     </div>
 
-    <script type="module" src="js/lobby.js?v=1"></script>
+    <div id="char-builder-modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center; padding: 20px;">
+        <div style="background: #2c3e50; width: 100%; max-width: 450px; border-radius: 12px; padding: 20px; border: 2px solid #f39c12; max-height: 95vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.9);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
+                <h2 style="margin: 0; color: #f1c40f; font-size: 20px;">יצירת דמות חדשה</h2>
+                <button id="close-builder-btn" style="background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+
+            <div style="margin-bottom: 15px; text-align: center;">
+                <div style="font-size: 12px; color: #ccc; margin-bottom: 5px;">בחר דיוקן מהמאגר:</div>
+                <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                    <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f" class="builder-portrait-btn">
+                    <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=elf_f&backgroundColor=2ecc71" class="builder-portrait-btn">
+                    <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=dwarf_m&backgroundColor=e67e22" class="builder-portrait-btn">
+                    <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=tiefling_f&backgroundColor=c0392b" class="builder-portrait-btn">
+                    <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=halfelf_m&backgroundColor=1abc9c" class="builder-portrait-btn">
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="text" id="cb-name" class="builder-input" placeholder="שם הדמות" autocomplete="off">
+                
+                <div style="display: flex; gap: 5px;">
+                    <select id="cb-race" class="builder-input" style="width: 50%;">
+                        <option value="" disabled selected>גזע</option>
+                        <option value="אדם">אדם</option>
+                        <option value="אלף">אלף</option>
+                        <option value="גמד">גמד</option>
+                        <option value="זוטון">זוטון</option>
+                        <option value="דרקוני">דרקוני</option>
+                        <option value="ננס">ננס</option>
+                        <option value="חצי-אלף">חצי-אלף</option>
+                        <option value="חצי-אורק">חצי-אורק</option>
+                        <option value="טיפלינג">טיפלינג</option>
+                    </select>
+                    <select id="cb-class" class="builder-input" style="width: 50%;">
+                        <option value="" disabled selected>מקצוע</option>
+                        <option value="ברברי">ברברי</option>
+                        <option value="פייטן">פייטן</option>
+                        <option value="כוהן">כוהן</option>
+                        <option value="דרואיד">דרואיד</option>
+                        <option value="לוחם">לוחם</option>
+                        <option value="נזיר">נזיר</option>
+                        <option value="פלאדין">פלאדין</option>
+                        <option value="סייר">סייר</option>
+                        <option value="נוכל">נוכל</option>
+                        <option value="מכשף">מכשף</option>
+                        <option value="אשף">אשף</option>
+                        <option value="וורלוק">וורלוק</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="cb-ac" class="builder-input" placeholder="AC" title="דירוג שריון" style="width: 25%;">
+                    <input type="number" id="cb-speed" class="builder-input" placeholder="מהירות" style="width: 25%;">
+                    <input type="number" id="cb-pp" class="builder-input" placeholder="PP" title="הבחנה פסיבית" style="width: 25%;">
+                    <input type="number" id="cb-init" class="builder-input" placeholder="יוזמה+" title="בונוס יוזמה" style="width: 25%;">
+                </div>
+
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="cb-hp" class="builder-input" placeholder="נקודות פגיעה (HP)" style="width: 33%;">
+                    <input type="number" id="cb-melee" class="builder-input" placeholder="תוסף קפא״פ+" style="width: 33%;">
+                    <input type="number" id="cb-ranged" class="builder-input" placeholder="תוסף מרחוק+" style="width: 33%;">
+                </div>
+
+                <button id="save-char-btn" style="background: #27ae60; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px;">שמור לכספת</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/lobby.js?v=2"></script>
 </body>
 </html>
