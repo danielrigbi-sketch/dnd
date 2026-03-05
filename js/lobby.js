@@ -1,6 +1,6 @@
 // lobby.js - Welcome screen and Authentication Controller
 
-import * as db from "./firebaseService.js?v=102";
+import * as db from "./firebaseService.js?v=103";
 import { startGame } from "./app.js?v=102";
 
 const authScreen = document.getElementById('auth-screen');
