@@ -22,7 +22,7 @@ export function updateModeUI(activeMode) {
     }
 }
 
-export function updateInitiativeUI(data, currentUserRole) {
+export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
     const list = document.getElementById('init-list');
     if (!list) return;
 
@@ -35,17 +35,21 @@ export function updateInitiativeUI(data, currentUserRole) {
     
     items.sort((a, b) => (b.score || 0) - (a.score || 0)).forEach((i, index) => {
         
-        // סינון חכם: אם הדמות מוסתרת, היוזר הוא לא שה"מ וזו לא הדמות שלו עצמו - אל תרנדר בכלל!
         if (i.isHidden && !isDM && i.name !== myCName) return; 
 
         const div = document.createElement('div');
         const isThisCharDM = i.userRole === 'dm';
-        div.className = `tracker-item ${isThisCharDM ? 'dm-item' : ''}`;
+        
+        // הדגשת הדמות שאנחנו שולטים בה כרגע
+        let extraClasses = '';
+        if (isThisCharDM) extraClasses = 'dm-item';
+        if (activeRoller && activeRoller.cName === i.name) extraClasses += ' active-control';
+        
+        div.className = `tracker-item ${extraClasses}`;
         
         const playerColor = i.pColor || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
         
-        // סגנון מיוחד למפלצות מוסתרות שרק השה"מ רואה
         if (i.isHidden) {
             div.style.opacity = '0.6';
             div.style.borderStyle = 'dashed';
@@ -71,6 +75,15 @@ export function updateInitiativeUI(data, currentUserRole) {
             // כפתורי הניהול של השה"מ
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;" title="מחק מהלוח">🗑️</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;" title="${i.isHidden ? 'חשוף לשחקנים' : 'הסתר משחקנים'}">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
+            const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;" title="גלגל בשם דמות זו">🎭</button>` : '';
+
+            // טקסט תחתון מותאם
+            let subtext = '';
+            if (isNPC) {
+                subtext = `⚔️ ${i.class ? i.class : 'מפלצת'}`;
+            } else {
+                subtext = `${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'} | 👁️ ${i.pp || '10'}`;
+            }
 
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
@@ -82,12 +95,13 @@ export function updateInitiativeUI(data, currentUserRole) {
                             </span>
                             <div style="display:flex; align-items:center; gap:2px;">
                                 <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
+                                ${impersonateBtn}
                                 ${visibilityBtn}
                                 ${deleteBtn}
                             </div>
                         </div>
                         <div style="font-size:0.7em; color:#f3e5ab; margin-top:-2px;">
-                            ${isNPC ? '⚔️ מפלצת' : `${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'} | 👁️ ${i.pp || '10'}`}
+                            ${subtext}
                         </div>
                     </div>
                 </div>
