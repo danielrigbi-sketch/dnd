@@ -1,17 +1,11 @@
 // ui.js
 
-// Global variable to track which card is currently expanded
 let expandedCardId = null;
 
-// Global helper to toggle the card expansion without reloading the DB
 window.toggleCardExpand = (name) => {
     expandedCardId = expandedCardId === name ? null : name;
-    
-    // Close all currently open details
     document.querySelectorAll('.card-details').forEach(el => el.classList.remove('open'));
     document.querySelectorAll('.expand-btn').forEach(el => el.classList.remove('open'));
-    
-    // If we just clicked one to open it, add the class
     if (expandedCardId) {
         const detailsObj = document.getElementById(`details-${name}`);
         const btnObj = document.getElementById(`expand-btn-${name}`);
@@ -65,7 +59,6 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
         if (activeRoller && activeRoller.cName === i.name) extraClasses += ' active-control';
         
         div.className = `tracker-item ${extraClasses}`;
-        
         const playerColor = i.pColor || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
         
@@ -90,16 +83,16 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
             const isDead = i.hp <= 0;
             const isOwner = myCName === i.name;
             const isNPC = i.userRole === 'npc';
-            
-            // Check if this specific card should be rendered open based on our global variable
             const isOpen = expandedCardId === i.name;
             
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;" title="מחק מהלוח">🗑️</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;" title="${i.isHidden ? 'חשוף לשחקנים' : 'הסתר משחקנים'}">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;" title="גלגל בשם דמות זו">🎭</button>` : '';
 
-            // Cleaned up the subtext to just show race/class
             let subtext = isNPC ? `⚔️ ${i.class ? i.class : 'מפלצת'}` : `${i.race || ''} ${i.class || ''}`;
+
+            // Privacy check: Only DM or Owner can see the inner stats and macros
+            const canViewStats = isDM || isOwner;
 
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
@@ -155,17 +148,27 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                 </div>
 
                 <div id="details-${i.name}" class="card-details ${isOpen ? 'open' : ''}">
-                    <div class="stats-grid">
-                        <div class="stat-box"><span>הגנה</span>🛡️ ${i.ac || 10}</div>
-                        <div class="stat-box"><span>מהירות</span>🏃 ${i.speed || 30}</div>
-                        <div class="stat-box"><span>הבחנה</span>👁️ ${i.pp || 10}</div>
-                        <div class="stat-box"><span>יוזמה</span>⚡ ${i.initBonus >= 0 ? '+'+(i.initBonus||0) : i.initBonus}</div>
-                        <div class="stat-box" style="color:#e74c3c;"><span>קפא״פ</span>⚔️ ${i.melee >= 0 ? '+'+(i.melee||0) : i.melee}</div>
-                        <div class="stat-box" style="color:#3498db;"><span>מרחוק</span>🏹 ${i.ranged >= 0 ? '+'+(i.ranged||0) : i.ranged}</div>
-                    </div>
-                    <div style="margin-top:10px; padding-top:10px; border-top: 1px dashed rgba(255,255,255,0.1); text-align:center; font-size:10px; color:#aaa; font-style:italic;">
-                        * אזור פקודות מאקרו והתקפות ייבנה כאן *
-                    </div>
+                    ${canViewStats ? `
+                        <div class="stats-grid">
+                            <div class="stat-box"><span>הגנה</span>🛡️ ${i.ac || 10}</div>
+                            <div class="stat-box"><span>מהירות</span>🏃 ${i.speed || 30}</div>
+                            <div class="stat-box"><span>הבחנה</span>👁️ ${i.pp || 10}</div>
+                            <div class="stat-box"><span>יוזמה</span>⚡ ${i.initBonus >= 0 ? '+'+(i.initBonus||0) : i.initBonus}</div>
+                            <div class="stat-box" style="color:#e74c3c;"><span>קפא״פ</span>⚔️ ${i.melee >= 0 ? '+'+(i.melee||0) : i.melee}</div>
+                            <div class="stat-box" style="color:#3498db;"><span>מרחוק</span>🏹 ${i.ranged >= 0 ? '+'+(i.ranged||0) : i.ranged}</div>
+                        </div>
+                        <div style="margin-top:10px; padding-top:10px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                            <div style="font-size:10px; color:#aaa; margin-bottom:5px;">התקפות מהירות:</div>
+                            <div style="display:flex; gap:5px;">
+                                <button class="macro-btn melee" onclick="window.rollMacro('${i.name}', 'קפא״פ', ${i.melee || 0})">⚔️ קפא״פ</button>
+                                <button class="macro-btn" onclick="window.rollMacro('${i.name}', 'מרחוק', ${i.ranged || 0})">🏹 מרחוק</button>
+                            </div>
+                        </div>
+                    ` : `
+                        <div style="text-align:center; padding:10px 0; color:#888; font-style:italic; font-size:11px;">
+                            הנתונים של ${i.name} מוסתרים.
+                        </div>
+                    `}
                 </div>
             `;
             if (isDead) div.style.background = "rgba(231, 76, 60, 0.15)";
@@ -185,7 +188,6 @@ export function addLogEntry(data, time, flavorText) {
 
     const entry = document.createElement('div');
     entry.className = 'log-entry';
-    
     const userColor = data.color || '#8B0000';
     const nameStyle = `color: ${userColor} !important; font-family: 'Assistant', sans-serif !important; font-weight: 900; font-size: 1.1em; text-shadow: none;`;
 
@@ -231,7 +233,7 @@ export function addLogEntry(data, time, flavorText) {
 }
 
 export function setDiceCooldown(isActive) {
-    const buttons = document.querySelectorAll('.dice-btn, #init-btn, .special-roll-btn');
+    const buttons = document.querySelectorAll('.dice-btn, #init-btn, .special-roll-btn, .macro-btn');
     buttons.forEach(btn => {
         btn.disabled = isActive;
         btn.style.filter = isActive ? "grayscale(100%)" : "none";
