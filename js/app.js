@@ -1,10 +1,10 @@
 // app.js - Main Game Controller
 
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js";
-import { getFlavorText } from "./messages.js";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js";
-import * as db from "./firebaseService.js";
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=100";
+import { getFlavorText } from "./messages.js?v=100";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=100";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=100";
+import * as db from "./firebaseService.js?v=100";
 
 // =====================================================================
 // GLOBALS
@@ -21,7 +21,7 @@ const npcDatabase = {
 };
 
 // =====================================================================
-// CORE GAME MECHANICS (Explicitly attached to window immediately)
+// CORE GAME MECHANICS
 // =====================================================================
 
 window.roll = async (type, isInit = false) => {
@@ -148,7 +148,7 @@ window.roll3DDice = roll3DDice;
 
 
 // =====================================================================
-// START GAME FUNCTION (Triggered by lobby.js)
+// START GAME FUNCTION
 // =====================================================================
 
 export async function startGame(role, charData, roomCode) {
@@ -197,7 +197,7 @@ export async function startGame(role, charData, roomCode) {
 
 
 // =====================================================================
-// UI BINDINGS (Waits for DOM to be ready to prevent null errors)
+// UI BINDINGS
 // =====================================================================
 document.addEventListener('DOMContentLoaded', () => {
     
