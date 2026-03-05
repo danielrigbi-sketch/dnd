@@ -1,25 +1,21 @@
 // lobby.js - Welcome screen and Authentication Controller
 
-import * as db from "./firebaseService.js?v=106";
-import { startGame } from "./app.js?v=106";
-// NEW: Import our translation engine
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=106";
+import * as db from "./firebaseService.js?v=109";
+import { startGame } from "./app.js?v=109";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=109";
 
-// Initialize Language Toggle Button
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
 
 langToggleBtn.onclick = () => {
     const newLang = getLang() === 'he' ? 'en' : 'he';
-    setLanguage(newLang); // This updates the DOM and the Layout Direction automatically!
+    setLanguage(newLang); 
     langToggleBtn.innerText = newLang === 'he' ? 'English' : 'עברית';
     
-    // Re-render the vault cards to update their inner texts
     if(currentUserUid) {
         renderVault(currentVaultCharacters);
     }
 };
-
 
 const authScreen = document.getElementById('auth-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
@@ -39,7 +35,6 @@ let currentUserUid = null;
 let selectedPortrait = "";
 let currentVaultCharacters = {};
 
-// We run updateDOM once right away to ensure the placeholder texts translate on first load
 updateDOM();
 
 db.listenToAuthState((user) => {
@@ -74,11 +69,19 @@ function renderVault(characters) {
         const c = characters[charId];
         const card = document.createElement('div');
         card.className = 'vault-card';
+        
+        const raceStr = c.race || "";
+        const classStr = c.class || "";
+        
+        const hasHebrew = /[\u0590-\u05FF]/;
+        const displayRace = hasHebrew.test(raceStr) ? raceStr : t("race_" + raceStr.toLowerCase());
+        const displayClass = hasHebrew.test(classStr) ? classStr : t("class_" + classStr.toLowerCase());
+
         card.innerHTML = `
             <img src="${c.portrait || 'assets/logo.png'}" class="vault-card-img">
             <div class="vault-card-info">
                 <div class="vault-card-name">${c.name}</div>
-                <div class="vault-card-sub">${t("race_" + (c.race||"").toLowerCase())} ${t("class_" + (c.class||"").toLowerCase())}</div>
+                <div class="vault-card-sub">${displayRace} ${displayClass}</div>
             </div>
             <button class="vault-select-btn" data-charid="${charId}">${t("select_btn")}</button>
         `;
@@ -92,7 +95,7 @@ function renderVault(characters) {
             const roomCodeInput = document.getElementById('room-code-input');
             const roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "CRIT";
             
-            langToggleBtn.style.display = 'none'; // Hide the toggle inside the game room for now
+            langToggleBtn.style.display = 'none'; 
             if(lobbyScreen) lobbyScreen.style.display = 'none';
             startGame('player', selectedChar, roomCode);
         };
@@ -203,7 +206,7 @@ if(createRoomBtn) {
         const randomCode = Math.floor(1000 + Math.random() * 9000).toString(); 
         alert(`${t('alert_room_created')} ${randomCode}`);
         
-        langToggleBtn.style.display = 'none'; // Hide the toggle inside the game room for now
+        langToggleBtn.style.display = 'none';
         if(lobbyScreen) lobbyScreen.style.display = 'none';
         startGame('dm', null, randomCode);
     };
