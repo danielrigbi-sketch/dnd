@@ -121,7 +121,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     padding-left: 5px;
 }
 
-/* כרטיס דמות משופר */
 .tracker-item{
     background: rgba(44, 62, 80, 0.4);
     padding: 12px;
@@ -135,14 +134,12 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     position: relative;
 }
 
-/* עיצוב ייעודי לכרטיס DM - מינימליסטי וזהוב */
 .tracker-item.dm-item {
     background: rgba(0, 0, 0, 0.5);
-    border-right-color: #f1c40f !important; /* זהב לשה"מ */
+    border-right-color: #f1c40f !important;
     border: 1px solid rgba(241, 196, 15, 0.2);
 }
 
-/* פורטרט דמות */
 .char-portrait {
     width: 45px;
     height: 45px;
@@ -153,7 +150,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     flex-shrink: 0;
 }
 
-/* ניהול סטטוסים */
 .status-container {
     display: flex;
     flex-wrap: wrap;
@@ -172,7 +168,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     background: #636e72;
 }
 
-/* כפתורי עריכת HP עם קלט מספרי */
 .hp-controls {
     display: flex;
     align-items: center;
@@ -321,6 +316,8 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
         position: absolute; top: 0; padding: 10px; z-index: 80;
         border-bottom: 2px solid var(--primary);
     }
+
+    .side-logo { display: none; }
 
     #init-list { 
         flex-direction: row; 
