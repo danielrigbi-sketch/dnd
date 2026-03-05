@@ -1,5 +1,25 @@
 // ui.js
 
+// Global variable to track which card is currently expanded
+let expandedCardId = null;
+
+// Global helper to toggle the card expansion without reloading the DB
+window.toggleCardExpand = (name) => {
+    expandedCardId = expandedCardId === name ? null : name;
+    
+    // Close all currently open details
+    document.querySelectorAll('.card-details').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.expand-btn').forEach(el => el.classList.remove('open'));
+    
+    // If we just clicked one to open it, add the class
+    if (expandedCardId) {
+        const detailsObj = document.getElementById(`details-${name}`);
+        const btnObj = document.getElementById(`expand-btn-${name}`);
+        if (detailsObj) detailsObj.classList.add('open');
+        if (btnObj) btnObj.classList.add('open');
+    }
+};
+
 export function updateModeUI(activeMode) {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
@@ -40,7 +60,6 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
         const div = document.createElement('div');
         const isThisCharDM = i.userRole === 'dm';
         
-        // הדגשת הדמות שאנחנו שולטים בה כרגע
         let extraClasses = '';
         if (isThisCharDM) extraClasses = 'dm-item';
         if (activeRoller && activeRoller.cName === i.name) extraClasses += ' active-control';
@@ -72,18 +91,15 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
             const isOwner = myCName === i.name;
             const isNPC = i.userRole === 'npc';
             
-            // כפתורי הניהול של השה"מ
+            // Check if this specific card should be rendered open based on our global variable
+            const isOpen = expandedCardId === i.name;
+            
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;" title="מחק מהלוח">🗑️</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;" title="${i.isHidden ? 'חשוף לשחקנים' : 'הסתר משחקנים'}">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;" title="גלגל בשם דמות זו">🎭</button>` : '';
 
-            // טקסט תחתון מותאם
-            let subtext = '';
-            if (isNPC) {
-                subtext = `⚔️ ${i.class ? i.class : 'מפלצת'}`;
-            } else {
-                subtext = `${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'} | 👁️ ${i.pp || '10'}`;
-            }
+            // Cleaned up the subtext to just show race/class
+            let subtext = isNPC ? `⚔️ ${i.class ? i.class : 'מפלצת'}` : `${i.race || ''} ${i.class || ''}`;
 
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
@@ -94,14 +110,15 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                                 ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}
                             </span>
                             <div style="display:flex; align-items:center; gap:2px;">
-                                <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
-                                ${impersonateBtn}
-                                ${visibilityBtn}
-                                ${deleteBtn}
+                                <span class="init-score" style="margin-left: 5px;">${i.score > 0 ? i.score : '--'}</span>
+                                <button id="expand-btn-${i.name}" class="expand-btn ${isOpen ? 'open' : ''}" onclick="window.toggleCardExpand('${i.name}')">▼</button>
                             </div>
                         </div>
-                        <div style="font-size:0.7em; color:#f3e5ab; margin-top:-2px;">
-                            ${subtext}
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                            <div style="font-size:0.7em; color:#f3e5ab;">${subtext}</div>
+                            <div style="display:flex; align-items:center; gap:2px;">
+                                ${impersonateBtn} ${visibilityBtn} ${deleteBtn}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -134,6 +151,20 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                         ${['מורעל', 'מוקסם', 'מעולף', 'מפוחד', 'משותק', 'מרוסן', 'עיוור', 'מוטה', 'המום'].map(s => 
                             `<button onclick="window.toggleStatus('${i.name}', '${s}'); this.parentElement.parentElement.style.display='none';" style="font-size:10px; padding:3px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer;">${s}</button>`
                         ).join('')}
+                    </div>
+                </div>
+
+                <div id="details-${i.name}" class="card-details ${isOpen ? 'open' : ''}">
+                    <div class="stats-grid">
+                        <div class="stat-box"><span>הגנה</span>🛡️ ${i.ac || 10}</div>
+                        <div class="stat-box"><span>מהירות</span>🏃 ${i.speed || 30}</div>
+                        <div class="stat-box"><span>הבחנה</span>👁️ ${i.pp || 10}</div>
+                        <div class="stat-box"><span>יוזמה</span>⚡ ${i.initBonus >= 0 ? '+'+(i.initBonus||0) : i.initBonus}</div>
+                        <div class="stat-box" style="color:#e74c3c;"><span>קפא״פ</span>⚔️ ${i.melee >= 0 ? '+'+(i.melee||0) : i.melee}</div>
+                        <div class="stat-box" style="color:#3498db;"><span>מרחוק</span>🏹 ${i.ranged >= 0 ? '+'+(i.ranged||0) : i.ranged}</div>
+                    </div>
+                    <div style="margin-top:10px; padding-top:10px; border-top: 1px dashed rgba(255,255,255,0.1); text-align:center; font-size:10px; color:#aaa; font-style:italic;">
+                        * אזור פקודות מאקרו והתקפות ייבנה כאן *
                     </div>
                 </div>
             `;
