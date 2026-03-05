@@ -4,14 +4,13 @@ import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEn
 import { getFlavorText } from "./messages.js";
 import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js";
 import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js";
-import * as db from "./firebaseService.js"; // ייבוא שירות מסד הנתונים החדש שיצרנו
+import * as db from "./firebaseService.js";
 
 let isDiceBoxReady = false;
 let pName = "", cName = "", pColor = "#8B0000", userRole = "player", charPortrait = "";
 let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal'; 
 
-// --- 1. אתחול וטעינת נתונים ---
 window.addEventListener('DOMContentLoaded', () => {
     const colorOptions = document.querySelectorAll('.color-opt');
     const colorInput = document.getElementById('user-color');
@@ -80,7 +79,6 @@ document.getElementById('char-portrait').onchange = function(e) {
     reader.readAsDataURL(file);
 };
 
-// --- 2. כניסה למשחק ---
 document.getElementById('join-btn').onclick = async () => {
     pName = document.getElementById('player-name').value.trim();
     userRole = document.getElementById('user-role').value;
@@ -117,17 +115,14 @@ document.getElementById('join-btn').onclick = async () => {
     try { await initDiceEngine(); isDiceBoxReady = true; } catch (e) { console.error(e); }
 
     if (userRole === 'dm') {
-        document.getElementById('reset-init-btn').style.display = 'block';
         document.getElementById('master-combat-btn').style.display = 'block';
     }
 
-    // שימוש בשירות ה-Firebase החדש במקום כתיבה ישירה למסד
     db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats);
 
     setTimeout(() => { canAnimate = true; }, 1000);
 };
 
-// --- 3. לוגיקת הטלה מתוקנת ---
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
     if (!isDiceBoxReady) return;
@@ -158,7 +153,6 @@ window.roll = async (type, isInit = false) => {
     const rollData = { pName, cName, type, res: finalRes, mod, color: pColor, mode: currentMode, ts: Date.now() };
     if (res1 !== null) { rollData.res1 = res1; rollData.res2 = res2; }
 
-    // שמירת ההטלה דרך הקובץ הייעודי
     db.saveRollToDB(rollData);
 
     if (!isInit) {
@@ -167,8 +161,6 @@ window.roll = async (type, isInit = false) => {
     }
     return finalRes + mod;
 };
-
-// --- 4. עריכה וניהול משחק ---
 
 window.changeHP = async (targetCName, isPlus) => {
     const inputField = document.getElementById(`hp-input-${targetCName}`);
@@ -207,6 +199,97 @@ window.toggleStatus = async (targetCName, status) => {
     db.updatePlayerStatusesInDB(targetCName, statuses);
 };
 
-// --- 5. סנכרון ואירועים ---
+document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(activeMode); };
+document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(activeMode); };
+document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊" : "🔇"; };
 
-document.getElementById('reset-init-btn
+document.querySelectorAll('.dice-btn').forEach(btn => {
+    btn.onclick = () => window.roll(btn.getAttribute('data-type'));
+});
+
+document.getElementById('master-combat-btn').onclick = async () => {
+    if (userRole !== 'dm') return;
+    const current = await db.getCombatStatus();
+    
+    if (current) {
+        if (confirm("האם אתה בטוח שברצונך לסיים את הקרב ולאפס את היוזמה?")) {
+            db.setCombatStatus(false);
+            db.resetInitiativeInDB();
+        }
+    } else {
+        db.setCombatStatus(true);
+    }
+};
+
+document.getElementById('init-btn').onclick = async () => {
+    const isCombat = await db.getCombatStatus();
+    if (!isCombat) return alert("השה\"מ טרם פתח את הקרב!");
+    
+    const btn = document.getElementById('init-btn');
+    btn.disabled = true;
+    const rollResult = await window.roll('d20', true); 
+    db.setPlayerInitiativeInDB(cName, pName, rollResult, pColor);
+};
+
+db.listenToCombatStatus((isCombat) => {
+    const btn = document.getElementById('init-btn');
+    const dmBtn = document.getElementById('master-combat-btn');
+    
+    if (userRole === 'dm') {
+        if (isCombat) {
+            dmBtn.innerText = "🛑 סיים קרב ואיפוס";
+            dmBtn.style.background = "#c0392b";
+        } else {
+            dmBtn.innerText = "⚔️ פתח יוזמה";
+            dmBtn.style.background = "#2c3e50";
+        }
+    }
+
+    if (isCombat) {
+        db.listenToPlayerInitiative(cName, (exists) => {
+            if (exists) { btn.disabled = true; btn.innerText = "✅ רשום"; }
+            else { btn.disabled = false; btn.innerText = "⚡ גלגל יוזמה!"; btn.style.opacity = "1"; }
+        });
+    } else {
+        btn.disabled = true; btn.innerText = "⌛ ממתין לקרב"; btn.style.opacity = "0.3";
+    }
+});
+
+db.listenToPlayers((playersData) => updateInitiativeUI(playersData, userRole));
+
+db.listenToNewRolls((data) => {
+    if (!data || !canAnimate) return;
+
+    if (!isMuted) {
+        if (data.type === "DAMAGE") playDamageSound(isMuted);
+        else if (data.type === "HEAL") playHealSound(isMuted);
+        else playRollSound(data.type, data.res, isMuted);
+    }
+
+    const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    if (data.type !== "DAMAGE" && data.type !== "HEAL" && data.type !== "STATUS") {
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('dice-visual').style.display = 'flex';
+        const resultText = document.getElementById('result-text');
+        resultText.classList.remove('show');
+        resultText.innerText = (data.res || 0) + (data.mod || 0);
+        resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
+        setTimeout(() => resultText.classList.add('show'), 50);
+        
+        // תיקון: העלמת הספרה הגדולה לאחר 4 שניות
+        setTimeout(() => resultText.classList.remove('show'), 4000);
+    }
+    addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res+data.mod), 20));
+});
+
+function initCreditsModal() {
+    const modal = document.getElementById("creditsModal");
+    const btn = document.getElementById("openCredits");
+    const closeBtn = document.querySelector(".credits-close");
+    if (btn && modal && closeBtn) {
+        btn.onclick = (e) => { e.preventDefault(); modal.style.display = "block"; };
+        closeBtn.onclick = () => modal.style.display = "none";
+        window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; };
+    }
+}
+initCreditsModal();
