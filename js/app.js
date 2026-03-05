@@ -1,10 +1,10 @@
-// app.js - Main Game Controller
+// app.js - Main Game Controller (HARDWIRED VERSION)
 
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=100";
-import { getFlavorText } from "./messages.js?v=100";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=100";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=100";
-import * as db from "./firebaseService.js?v=100";
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=101";
+import { getFlavorText } from "./messages.js?v=101";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=101";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=101";
+import * as db from "./firebaseService.js?v=101";
 
 // =====================================================================
 // GLOBALS
@@ -21,7 +21,55 @@ const npcDatabase = {
 };
 
 // =====================================================================
-// CORE GAME MECHANICS
+// START GAME FUNCTION
+// =====================================================================
+
+export async function startGame(role, charData, roomCode) {
+    db.setRoom(roomCode);
+    userRole = role;
+
+    const lobbyWrapper = document.getElementById('lobby-wrapper');
+    if (lobbyWrapper) lobbyWrapper.style.display = 'none';
+
+    const gameScreen = document.getElementById('game-screen');
+    if (gameScreen) gameScreen.style.display = 'flex';
+
+    const titleHeader = document.querySelector('#side-panel h3');
+    if(titleHeader) titleHeader.innerText = `חבורת ההרפתקנים (חדר: ${roomCode})`;
+
+    if (userRole === 'player') {
+        pName = document.getElementById('user-display-name')?.innerText || "Player";
+        cName = charData.name;
+        pColor = "#3498db";
+        charPortrait = charData.portrait;
+        localStorage.setItem('critroll_initBonus', charData.initBonus || 0);
+        db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, charData);
+    } else {
+        pName = document.getElementById('user-display-name')?.innerText || "DM";
+        cName = "DM_" + pName;
+        pColor = "#c0392b";
+        charPortrait = document.getElementById('user-avatar')?.src || "assets/logo.png";
+
+        const combatBtn = document.getElementById('master-combat-btn');
+        const npcControls = document.getElementById('dm-npc-controls');
+        if(combatBtn) combatBtn.style.display = 'block';
+        if(npcControls) npcControls.style.display = 'flex';
+
+        db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
+    }
+
+    unlockAudio();
+    try {
+        await initDiceEngine();
+        isDiceBoxReady = true;
+    } catch (e) {
+        console.error("Dice engine failed to load:", e);
+    }
+    setTimeout(() => { canAnimate = true; }, 1000);
+}
+
+// =====================================================================
+// HARDWIRED WINDOW FUNCTIONS (Called directly from HTML onclick)
 // =====================================================================
 
 window.roll = async (type, isInit = false) => {
@@ -114,7 +162,7 @@ window.removeNPC = (targetCName) => {
     if (confirm(`האם אתה בטוח שברצונך למחוק את ${targetCName} מהלוח?`)) {
         db.removePlayerFromDB(targetCName);
         if (activeRoller && activeRoller.cName === targetCName) {
-            document.getElementById('reset-roller-btn')?.click();
+            window.resetRoller();
         }
     }
 };
@@ -144,187 +192,117 @@ window.impersonate = async (targetCName) => {
     updateDiceColor(activeRoller.color);
 };
 
+window.resetRoller = () => {
+    activeRoller = null;
+    const banner = document.getElementById('active-roller-banner');
+    if(banner) banner.style.display = 'none';
+    updateDiceColor(pColor);
+};
+
+window.setMode = (mode) => { 
+    activeMode = (activeMode === mode) ? 'normal' : mode; 
+    updateModeUI(activeMode); 
+};
+
+window.toggleMute = () => {
+    isMuted = !isMuted;
+    const btn = document.getElementById('mute-btn');
+    if(btn) btn.innerText = isMuted ? "🔊" : "🔇 השתק סאונד";
+};
+
+window.toggleCombat = async () => {
+    if (userRole !== 'dm') return;
+    const current = await db.getCombatStatus();
+    if (current) {
+        if (confirm("האם אתה בטוח שברצונך לסיים את הקרב ולאפס את היוזמה?")) {
+            db.setCombatStatus(false);
+            db.resetInitiativeInDB();
+        }
+    } else {
+        db.setCombatStatus(true);
+    }
+};
+
+window.rollInit = async () => {
+    const isCombat = await db.getCombatStatus();
+    if (!isCombat) return alert("השה\"מ טרם פתח את הקרב!");
+    const btn = document.getElementById('init-btn');
+    if(btn) btn.disabled = true;
+    const rollResult = await window.roll('d20', true);
+    db.setPlayerInitiativeInDB(cName, pName, rollResult, pColor);
+};
+
+window.handlePresetChange = (val) => {
+    const nameEl = document.getElementById('npc-name');
+    const hpEl = document.getElementById('npc-hp');
+    const initEl = document.getElementById('npc-init');
+    const meleeEl = document.getElementById('npc-melee');
+    const rangedEl = document.getElementById('npc-ranged');
+
+    if(val === 'custom') {
+        if(nameEl) nameEl.value = "";
+        if(hpEl) hpEl.value = "";
+        if(initEl) initEl.value = "";
+        if(meleeEl) meleeEl.value = "";
+        if(rangedEl) rangedEl.value = "";
+    } else {
+        const data = npcDatabase[val];
+        if(!data) return;
+        if(nameEl) nameEl.value = data.name;
+        if(hpEl) hpEl.value = data.hp;
+        if(initEl) initEl.value = data.init;
+        if(meleeEl) meleeEl.value = data.melee || 0;
+        if(rangedEl) rangedEl.value = data.ranged || 0;
+    }
+};
+
+window.addNPC = () => {
+    if (userRole !== 'dm') return;
+    const presetVal = document.getElementById('npc-preset')?.value;
+    const baseName = document.getElementById('npc-name')?.value.trim() || "מפלצת";
+    const npcClass = document.getElementById('npc-class')?.value.trim();
+    const npcHp = parseInt(document.getElementById('npc-hp')?.value) || 10;
+    const npcInitBonus = parseInt(document.getElementById('npc-init')?.value) || 0;
+    const npcMelee = parseInt(document.getElementById('npc-melee')?.value) || 0;
+    const npcRanged = parseInt(document.getElementById('npc-ranged')?.value) || 0;
+    const count = parseInt(document.getElementById('npc-count')?.value) || 1;
+    const isHidden = document.getElementById('npc-hidden')?.checked;
+
+    let portrait = "https://via.placeholder.com/50/c0392b/ffffff?text=NPC";
+    if (presetVal !== 'custom' && npcDatabase[presetVal]) {
+        portrait = npcDatabase[presetVal].img;
+    }
+
+    for(let i = 1; i <= count; i++) {
+        const finalName = count > 1 ? `${baseName} ${i}` : baseName;
+        const d20 = Math.floor(Math.random() * 20) + 1;
+        const finalInit = d20 + npcInitBonus;
+
+        const stats = {
+            maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10,
+            isHidden: isHidden, melee: npcMelee, ranged: npcRanged
+        };
+        if (npcClass) stats.class = npcClass;
+
+        db.joinPlayerToDB(finalName, "DM", "#c0392b", "npc", portrait, stats);
+        db.setPlayerInitiativeInDB(finalName, "DM", finalInit, "#c0392b");
+
+        const hiddenText = isHidden ? " (מוסתרת)" : "";
+        db.saveRollToDB({ cName: "שליט המבוך", type: "STATUS", status: `הוסיף את ⚔️ ${finalName}${hiddenText} [יוזמה: ${finalInit}]`, ts: Date.now() });
+    }
+    
+    if(document.getElementById('npc-preset')) document.getElementById('npc-preset').value = "custom";
+    if(document.getElementById('npc-name')) document.getElementById('npc-name').value = "";
+    if(document.getElementById('npc-class')) document.getElementById('npc-class').value = "";
+    if(document.getElementById('npc-hp')) document.getElementById('npc-hp').value = "";
+    if(document.getElementById('npc-init')) document.getElementById('npc-init').value = "";
+    if(document.getElementById('npc-melee')) document.getElementById('npc-melee').value = "";
+    if(document.getElementById('npc-ranged')) document.getElementById('npc-ranged').value = "";
+    if(document.getElementById('npc-count')) document.getElementById('npc-count').value = "1";
+};
+
 window.roll3DDice = roll3DDice;
 
-
-// =====================================================================
-// START GAME FUNCTION
-// =====================================================================
-
-export async function startGame(role, charData, roomCode) {
-    db.setRoom(roomCode);
-    userRole = role;
-
-    const lobbyWrapper = document.getElementById('lobby-wrapper');
-    if (lobbyWrapper) lobbyWrapper.style.display = 'none';
-
-    const gameScreen = document.getElementById('game-screen');
-    if (gameScreen) gameScreen.style.display = 'flex';
-
-    const titleHeader = document.querySelector('#side-panel h3');
-    if(titleHeader) titleHeader.innerText = `חבורת ההרפתקנים (חדר: ${roomCode})`;
-
-    if (userRole === 'player') {
-        pName = document.getElementById('user-display-name')?.innerText || "Player";
-        cName = charData.name;
-        pColor = "#3498db";
-        charPortrait = charData.portrait;
-        localStorage.setItem('critroll_initBonus', charData.initBonus || 0);
-        db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, charData);
-    } else {
-        pName = document.getElementById('user-display-name')?.innerText || "DM";
-        cName = "DM_" + pName;
-        pColor = "#c0392b";
-        charPortrait = document.getElementById('user-avatar')?.src || "assets/logo.png";
-
-        const combatBtn = document.getElementById('master-combat-btn');
-        const npcControls = document.getElementById('dm-npc-controls');
-        if(combatBtn) combatBtn.style.display = 'block';
-        if(npcControls) npcControls.style.display = 'flex';
-
-        db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
-    }
-
-    unlockAudio();
-    try {
-        await initDiceEngine();
-        isDiceBoxReady = true;
-    } catch (e) {
-        console.error("Dice engine failed to load:", e);
-    }
-    setTimeout(() => { canAnimate = true; }, 1000);
-}
-
-
-// =====================================================================
-// UI BINDINGS
-// =====================================================================
-document.addEventListener('DOMContentLoaded', () => {
-    
-    function safeBindClick(elementId, callback) {
-        const el = document.getElementById(elementId);
-        if (el) el.addEventListener('click', callback);
-    }
-
-    safeBindClick('reset-roller-btn', () => {
-        activeRoller = null;
-        const banner = document.getElementById('active-roller-banner');
-        if(banner) banner.style.display = 'none';
-        updateDiceColor(pColor);
-    });
-
-    safeBindClick('adv-btn', () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(activeMode); });
-    safeBindClick('dis-btn', () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(activeMode); });
-    safeBindClick('mute-btn', () => {
-        isMuted = !isMuted;
-        const btn = document.getElementById('mute-btn');
-        if(btn) btn.innerText = isMuted ? "🔊" : "🔇";
-    });
-
-    const presetSelect = document.getElementById('npc-preset');
-    if (presetSelect) {
-        presetSelect.addEventListener('change', (e) => {
-            const val = e.target.value;
-            const nameEl = document.getElementById('npc-name');
-            const hpEl = document.getElementById('npc-hp');
-            const initEl = document.getElementById('npc-init');
-            const meleeEl = document.getElementById('npc-melee');
-            const rangedEl = document.getElementById('npc-ranged');
-
-            if(val === 'custom') {
-                if(nameEl) nameEl.value = "";
-                if(hpEl) hpEl.value = "";
-                if(initEl) initEl.value = "";
-                if(meleeEl) meleeEl.value = "";
-                if(rangedEl) rangedEl.value = "";
-            } else {
-                const data = npcDatabase[val];
-                if(!data) return;
-                if(nameEl) nameEl.value = data.name;
-                if(hpEl) hpEl.value = data.hp;
-                if(initEl) initEl.value = data.init;
-                if(meleeEl) meleeEl.value = data.melee || 0;
-                if(rangedEl) rangedEl.value = data.ranged || 0;
-            }
-        });
-    }
-
-    safeBindClick('add-npc-btn', () => {
-        if (userRole !== 'dm') return;
-        const presetVal = document.getElementById('npc-preset')?.value;
-        const baseName = document.getElementById('npc-name')?.value.trim() || "מפלצת";
-        const npcClass = document.getElementById('npc-class')?.value.trim();
-        const npcHp = parseInt(document.getElementById('npc-hp')?.value) || 10;
-        const npcInitBonus = parseInt(document.getElementById('npc-init')?.value) || 0;
-        const npcMelee = parseInt(document.getElementById('npc-melee')?.value) || 0;
-        const npcRanged = parseInt(document.getElementById('npc-ranged')?.value) || 0;
-        const count = parseInt(document.getElementById('npc-count')?.value) || 1;
-        const isHidden = document.getElementById('npc-hidden')?.checked;
-
-        let portrait = "https://via.placeholder.com/50/c0392b/ffffff?text=NPC";
-        if (presetVal !== 'custom' && npcDatabase[presetVal]) {
-            portrait = npcDatabase[presetVal].img;
-        }
-
-        for(let i = 1; i <= count; i++) {
-            const finalName = count > 1 ? `${baseName} ${i}` : baseName;
-            const d20 = Math.floor(Math.random() * 20) + 1;
-            const finalInit = d20 + npcInitBonus;
-
-            const stats = {
-                maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10,
-                isHidden: isHidden, melee: npcMelee, ranged: npcRanged
-            };
-            if (npcClass) stats.class = npcClass;
-
-            db.joinPlayerToDB(finalName, "DM", "#c0392b", "npc", portrait, stats);
-            db.setPlayerInitiativeInDB(finalName, "DM", finalInit, "#c0392b");
-
-            const hiddenText = isHidden ? " (מוסתרת)" : "";
-            db.saveRollToDB({ cName: "שליט המבוך", type: "STATUS", status: `הוסיף את ⚔️ ${finalName}${hiddenText} [יוזמה: ${finalInit}]`, ts: Date.now() });
-        }
-        
-        if(document.getElementById('npc-preset')) document.getElementById('npc-preset').value = "custom";
-        if(document.getElementById('npc-name')) document.getElementById('npc-name').value = "";
-        if(document.getElementById('npc-class')) document.getElementById('npc-class').value = "";
-        if(document.getElementById('npc-hp')) document.getElementById('npc-hp').value = "";
-        if(document.getElementById('npc-init')) document.getElementById('npc-init').value = "";
-        if(document.getElementById('npc-melee')) document.getElementById('npc-melee').value = "";
-        if(document.getElementById('npc-ranged')) document.getElementById('npc-ranged').value = "";
-        if(document.getElementById('npc-count')) document.getElementById('npc-count').value = "1";
-    });
-
-    safeBindClick('master-combat-btn', async () => {
-        if (userRole !== 'dm') return;
-        const current = await db.getCombatStatus();
-        if (current) {
-            if (confirm("האם אתה בטוח שברצונך לסיים את הקרב ולאפס את היוזמה?")) {
-                db.setCombatStatus(false);
-                db.resetInitiativeInDB();
-            }
-        } else {
-            db.setCombatStatus(true);
-        }
-    });
-
-    safeBindClick('init-btn', async () => {
-        const isCombat = await db.getCombatStatus();
-        if (!isCombat) return alert("השה\"מ טרם פתח את הקרב!");
-        const btn = document.getElementById('init-btn');
-        if(btn) btn.disabled = true;
-        const rollResult = await window.roll('d20', true);
-        db.setPlayerInitiativeInDB(cName, pName, rollResult, pColor);
-    });
-
-    document.querySelectorAll('.dice-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if(typeof window.roll === 'function') {
-                window.roll(btn.getAttribute('data-type'));
-            }
-        });
-    });
-
-});
 
 // =====================================================================
 // DB LISTENERS
