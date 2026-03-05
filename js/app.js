@@ -116,7 +116,6 @@ document.getElementById('join-btn').onclick = async () => {
 
     if (userRole === 'dm') {
         document.getElementById('master-combat-btn').style.display = 'block';
-        // הצגת מנהל המפלצות רק לשה"מ
         document.getElementById('dm-npc-controls').style.display = 'flex';
     }
 
@@ -201,7 +200,6 @@ window.toggleStatus = async (targetCName, status) => {
     db.updatePlayerStatusesInDB(targetCName, statuses);
 };
 
-// פונקציית מחיקת שחקן/מפלצת מהלוח (לשה"מ בלבד)
 window.removeNPC = (targetCName) => {
     if (userRole !== 'dm') return;
     if (confirm(`האם אתה בטוח שברצונך למחוק את ${targetCName} מהלוח?`)) {
@@ -213,24 +211,74 @@ document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode ==
 document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(activeMode); };
 document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊" : "🔇"; };
 
-// כפתור הוספת מפלצת (NPC)
+// ==========================================
+// ניהול מפלצות לשה"מ (NPC Generator)
+// ==========================================
+
+const npcDatabase = {
+    "goblin": { name: "גובלין", hp: 7, init: 2, img: "https://cdn-icons-png.flaticon.com/512/3408/3408509.png" },
+    "skeleton": { name: "שלד", hp: 13, init: 2, img: "https://cdn-icons-png.flaticon.com/512/1043/1043372.png" },
+    "zombie": { name: "זומבי", hp: 22, init: -2, img: "https://cdn-icons-png.flaticon.com/512/3408/3408546.png" },
+    "orc": { name: "אורק", hp: 15, init: 1, img: "https://cdn-icons-png.flaticon.com/512/1703/1703061.png" },
+    "wolf": { name: "זאב נורא", hp: 37, init: 2, img: "https://cdn-icons-png.flaticon.com/512/3504/3504481.png" },
+    "bandit": { name: "שודד", hp: 11, init: 1, img: "https://cdn-icons-png.flaticon.com/512/2613/2613149.png" },
+    "spider": { name: "עכביש ענק", hp: 26, init: 3, img: "https://cdn-icons-png.flaticon.com/512/1673/1673181.png" },
+    "dragon": { name: "דרקון צעיר", hp: 110, init: 4, img: "https://cdn-icons-png.flaticon.com/512/1531/1531858.png" }
+};
+
+document.getElementById('npc-preset').addEventListener('change', (e) => {
+    const val = e.target.value;
+    if(val === 'custom') {
+        document.getElementById('npc-name').value = "";
+        document.getElementById('npc-hp').value = "";
+        document.getElementById('npc-init').value = "";
+    } else {
+        const data = npcDatabase[val];
+        document.getElementById('npc-name').value = data.name;
+        document.getElementById('npc-hp').value = data.hp;
+        document.getElementById('npc-init').value = data.init;
+    }
+});
+
 document.getElementById('add-npc-btn').onclick = () => {
     if (userRole !== 'dm') return;
-    const npcName = document.getElementById('npc-name').value.trim();
+    const presetVal = document.getElementById('npc-preset').value;
+    const baseName = document.getElementById('npc-name').value.trim() || "מפלצת";
     const npcHp = parseInt(document.getElementById('npc-hp').value) || 10;
-    const npcInit = parseInt(document.getElementById('npc-init').value) || 0;
+    const npcInitBonus = parseInt(document.getElementById('npc-init').value) || 0;
+    const count = parseInt(document.getElementById('npc-count').value) || 1;
 
-    if (!npcName) return alert("חובה להזין שם מפלצת!");
+    let portrait = "https://via.placeholder.com/50/c0392b/ffffff?text=NPC";
+    if (presetVal !== 'custom' && npcDatabase[presetVal]) {
+        portrait = npcDatabase[presetVal].img;
+    }
 
-    const stats = { maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10 };
-    
-    // מוסיפים למסד עם תפקיד 'npc' כדי שנזהה שזו מפלצת
-    db.joinPlayerToDB(npcName, "DM", "#c0392b", "npc", "https://via.placeholder.com/50/c0392b/ffffff?text=NPC", stats);
-    db.setPlayerInitiativeInDB(npcName, "DM", npcInit, "#c0392b");
+    for(let i = 1; i <= count; i++) {
+        // אם מוסיפים יותר מאחד, מוסיפים מספר סידורי לשם (גובלין 1, גובלין 2)
+        const finalName = count > 1 ? `${baseName} ${i}` : baseName;
+        
+        // גלגול יוזמה אוטומטי (D20 + תוסף)
+        const d20 = Math.floor(Math.random() * 20) + 1;
+        const finalInit = d20 + npcInitBonus;
 
+        const stats = { maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10 };
+        
+        db.joinPlayerToDB(finalName, "DM", "#c0392b", "npc", portrait, stats);
+        db.setPlayerInitiativeInDB(finalName, "DM", finalInit, "#c0392b");
+        
+        // דיווח ללוג שהמפלצת נוספה (עם הפירוט של היוזמה)
+        const time = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        db.saveRollToDB({
+            cName: "שליט המבוך", type: "STATUS", status: `הוסיף את ⚔️ ${finalName} (יוזמה: ${finalInit})`, ts: Date.now()
+        });
+    }
+
+    // איפוס השדות אחרי ההוספה
+    document.getElementById('npc-preset').value = "custom";
     document.getElementById('npc-name').value = "";
     document.getElementById('npc-hp').value = "";
     document.getElementById('npc-init').value = "";
+    document.getElementById('npc-count').value = "1";
 };
 
 document.querySelectorAll('.dice-btn').forEach(btn => {
