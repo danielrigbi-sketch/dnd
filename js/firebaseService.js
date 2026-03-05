@@ -1,14 +1,36 @@
-// firebaseService.js - ניהול התקשורת מול מסד הנתונים
+// firebaseService.js - Database and Authentication communication management
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { firebaseConfig } from "./constants.js";
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 // ==========================================
-// פונקציות כתיבה (שליחת נתונים למסד)
+// User Authentication Functions - NEW!
+// ==========================================
+
+export function loginWithGoogle() {
+    return signInWithPopup(auth, googleProvider);
+}
+
+export function logoutUser() {
+    return signOut(auth);
+}
+
+export function listenToAuthState(callback) {
+    onAuthStateChanged(auth, (user) => {
+        callback(user);
+    });
+}
+
+// ==========================================
+// Database Write Functions (Kept as prep for the next stage)
 // ==========================================
 
 export function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats) {
@@ -18,35 +40,17 @@ export function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, sta
     
     if (userRole !== 'npc') {
         onDisconnect(playerRef).remove();
-    }
-
-    if (userRole !== 'npc') {
         const onlineRef = ref(db, 'online/' + pName + '_' + cName);
         set(onlineRef, { role: userRole });
         onDisconnect(onlineRef).remove();
     }
 }
 
-export function saveRollToDB(rollData) {
-    push(ref(db, 'rolls'), rollData);
-}
-
-export async function getPlayerData(cName) {
-    const snap = await get(ref(db, 'players/' + cName));
-    return snap.val();
-}
-
-export function updatePlayerHPInDB(cName, newHp) {
-    update(ref(db, 'players/' + cName), { hp: newHp });
-}
-
-export function updatePlayerStatusesInDB(cName, statuses) {
-    update(ref(db, 'players/' + cName), { statuses });
-}
-
-export function updatePlayerVisibilityInDB(cName, isHidden) {
-    update(ref(db, 'players/' + cName), { isHidden: isHidden });
-}
+export function saveRollToDB(rollData) { push(ref(db, 'rolls'), rollData); }
+export async function getPlayerData(cName) { const snap = await get(ref(db, 'players/' + cName)); return snap.val(); }
+export function updatePlayerHPInDB(cName, newHp) { update(ref(db, 'players/' + cName), { hp: newHp }); }
+export function updatePlayerStatusesInDB(cName, statuses) { update(ref(db, 'players/' + cName), { statuses }); }
+export function updatePlayerVisibilityInDB(cName, isHidden) { update(ref(db, 'players/' + cName), { isHidden: isHidden }); }
 
 export async function resetInitiativeInDB() {
     remove(ref(db, 'initiative'));
@@ -57,41 +61,22 @@ export async function resetInitiativeInDB() {
     }
 }
 
-export async function getCombatStatus() {
-    const snap = await get(ref(db, 'combat_active'));
-    return snap.val() || false;
-}
-
-export function setCombatStatus(isActive) {
-    set(ref(db, 'combat_active'), isActive);
-}
-
+export async function getCombatStatus() { const snap = await get(ref(db, 'combat_active')); return snap.val() || false; }
+export function setCombatStatus(isActive) { set(ref(db, 'combat_active'), isActive); }
 export function setPlayerInitiativeInDB(cName, pName, score, pColor) {
     update(ref(db, 'players/' + cName), { score: score });
     set(ref(db, 'initiative/' + cName), { score: score, color: pColor, playerName: pName });
 }
-
 export function removePlayerFromDB(cName) {
     remove(ref(db, 'players/' + cName));
     remove(ref(db, 'initiative/' + cName));
 }
 
 // ==========================================
-// פונקציות האזנה (קריאת נתונים בזמן אמת)
+// Listener Functions
 // ==========================================
 
-export function listenToCombatStatus(callback) {
-    onValue(ref(db, 'combat_active'), (snap) => callback(snap.val()));
-}
-
-export function listenToPlayerInitiative(cName, callback) {
-    onValue(ref(db, 'initiative/' + cName), (snap) => callback(snap.exists()), { onlyOnce: true });
-}
-
-export function listenToPlayers(callback) {
-    onValue(ref(db, 'players'), (snapshot) => callback(snapshot.val()));
-}
-
-export function listenToNewRolls(callback) {
-    onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => callback(snapshot.val()));
-}
+export function listenToCombatStatus(callback) { onValue(ref(db, 'combat_active'), (snap) => callback(snap.val())); }
+export function listenToPlayerInitiative(cName, callback) { onValue(ref(db, 'initiative/' + cName), (snap) => callback(snap.exists()), { onlyOnce: true }); }
+export function listenToPlayers(callback) { onValue(ref(db, 'players'), (snapshot) => callback(snapshot.val())); }
+export function listenToNewRolls(callback) { onChildAdded(query(ref(db, 'rolls'), limitToLast(1)), (snapshot) => callback(snapshot.val())); }
