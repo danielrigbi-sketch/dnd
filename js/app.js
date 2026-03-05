@@ -1,10 +1,10 @@
 // app.js - Main Game Controller
 
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=103";
-import { getFlavorText } from "./messages.js?v=103";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=103";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=103";
-import * as db from "./firebaseService.js?v=103";
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=104";
+import { getFlavorText } from "./messages.js?v=104";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=104";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=104";
+import * as db from "./firebaseService.js?v=104";
 
 // =====================================================================
 // GLOBALS
@@ -15,9 +15,22 @@ let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal';
 let activeRoller = null;
 
+// FULL MONSTER MANUAL RESTORED!
 const npcDatabase = {
     "goblin": { name: "גובלין", hp: 7, init: 2, melee: 4, ranged: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=goblin&backgroundColor=c0392b" },
-    "skeleton": { name: "שלד", hp: 13, init: 2, melee: 4, ranged: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=skeleton&backgroundColor=bdc3c7" }
+    "skeleton": { name: "שלד", hp: 13, init: 2, melee: 4, ranged: 4, img: "https://api.dicebear.com/8.x/bottts/svg?seed=skeleton&backgroundColor=bdc3c7" },
+    "zombie": { name: "זומבי", hp: 22, init: -2, melee: 3, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=zombie&backgroundColor=27ae60" },
+    "orc": { name: "אורק", hp: 15, init: 1, melee: 5, ranged: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=orc&backgroundColor=2c3e50" },
+    "wolf": { name: "זאב נורא", hp: 37, init: 2, melee: 5, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=wolf&backgroundColor=7f8c8d" },
+    "bandit": { name: "שודד", hp: 11, init: 1, melee: 3, ranged: 3, img: "https://api.dicebear.com/8.x/bottts/svg?seed=bandit&backgroundColor=f39c12" },
+    "spider": { name: "עכביש ענק", hp: 26, init: 3, melee: 5, ranged: 5, img: "https://api.dicebear.com/8.x/bottts/svg?seed=spider&backgroundColor=8e44ad" },
+    "owlbear": { name: "דוב-ינשוף", hp: 59, init: 1, melee: 7, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=owlbear&backgroundColor=8b4513" },
+    "troll": { name: "טרול", hp: 84, init: 1, melee: 7, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=troll&backgroundColor=16a085" },
+    "vampire": { name: "ערפד", hp: 144, init: 4, melee: 9, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=vampire&backgroundColor=c0392b" },
+    "dragon": { name: "דרקון צעיר", hp: 110, init: 4, melee: 7, ranged: 0, img: "https://api.dicebear.com/8.x/bottts/svg?seed=dragon&backgroundColor=e67e22" },
+    "beholder": { name: "ביהולדר", hp: 180, init: 2, melee: 5, ranged: 12, img: "https://api.dicebear.com/8.x/bottts/svg?seed=beholder&backgroundColor=9b59b6" },
+    "mindflayer": { name: "מצליף מוח", hp: 71, init: 1, melee: 7, ranged: 7, img: "https://api.dicebear.com/8.x/bottts/svg?seed=mindflayer&backgroundColor=8e44ad" },
+    "lich": { name: "ליץ'", hp: 135, init: 3, melee: 9, ranged: 12, img: "https://api.dicebear.com/8.x/bottts/svg?seed=lich&backgroundColor=2c3e50" }
 };
 
 // =====================================================================
@@ -71,7 +84,7 @@ export async function startGame(role, charData, roomCode) {
 }
 
 // =====================================================================
-// HARDWIRED WINDOW FUNCTIONS (Called directly from HTML onclick)
+// HARDWIRED WINDOW FUNCTIONS
 // =====================================================================
 
 window.roll = async (type, isInit = false) => {
@@ -124,7 +137,6 @@ window.roll = async (type, isInit = false) => {
     return finalRes + mod;
 };
 
-// NEW: Smart Macro Roller
 window.rollMacro = async (targetCName, attackName, bonus) => {
     if (isCooldown || !isDiceBoxReady) return;
 
@@ -353,7 +365,6 @@ window.addNPC = () => {
 };
 
 window.roll3DDice = roll3DDice;
-
 
 // =====================================================================
 // DB LISTENERS
