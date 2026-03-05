@@ -30,8 +30,13 @@
             <input type="text" id="player-name" placeholder="שם השחקן (האמיתי)" autocomplete="off">
 
             <div style="margin: 5px 0 10px 0; text-align: center; border: 1px dashed rgba(255,255,255,0.2); padding: 10px; border-radius: 8px;">
-                <label for="char-portrait" style="display: block; font-size: 12px; margin-bottom: 5px; color: #ccc;">תמונת פרופיל / דמות:</label>
+                <label for="char-portrait" style="display: block; font-size: 12px; margin-bottom: 5px; color: #ccc;">תמונת פרופיל / העלה תמונה משלך:</label>
                 <input type="file" id="char-portrait" accept="image/*" style="font-size: 11px; color: white; background: transparent; border: none; width: 100%;">
+                
+                <div style="font-size: 11px; color: #aaa; margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 5px;">או בחר דמות מהמאגר:</div>
+                <div id="login-portraits" class="palette-grid" style="margin-top: 8px; max-height: 90px; overflow-y: auto; padding-bottom: 5px;">
+                    </div>
+                <input type="hidden" id="selected-preset-portrait" value="">
             </div>
 
             <div id="player-only-fields">
@@ -100,25 +105,69 @@
     <div id="game-screen">
         <div id="side-panel">
             <img src="assets/logo.png" alt="Small Logo" class="side-logo">
-            <h3 style="margin:0 0 10px 0; font-size: 16px;">חבורת ההרפתקנים</h3>
+            <h3 style="margin:0 0 10px 0; font-size: 16px; text-align:center;">חבורת ההרפתקנים</h3>
+            
+            <div id="active-roller-banner">
+                <span>🎭 מגלגל כעת בתור:</span>
+                <span id="active-roller-name" style="color:#f1c40f;">שליט המבוך</span>
+                <button id="reset-roller-btn" style="background:none; border:none; color:white; font-size:12px; cursor:pointer; text-decoration:underline;">(חזור)</button>
+            </div>
+
             <div id="init-list"></div>
             
             <div id="dm-npc-controls" style="display:none; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px; background:rgba(0,0,0,0.4); border-radius:8px; border:1px dashed rgba(241, 196, 15, 0.5);">
-                <div style="font-size: 12px; color: #f1c40f; font-weight: bold; text-align: center;">ניהול מפלצות (DM)</div>
+                <div style="font-size: 12px; color: #f1c40f; font-weight: bold; text-align: center;">מאגר מפלצות ודמויות (DM)</div>
                 
                 <select id="npc-preset" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:100%; text-align:center; background:#fff; color:#333;">
-                    <option value="custom">-- מפלצת מותאמת אישית --</option>
-                    <option value="goblin">גובלין (Goblin)</option>
-                    <option value="skeleton">שלד (Skeleton)</option>
-                    <option value="zombie">זומבי (Zombie)</option>
-                    <option value="orc">אורק (Orc)</option>
-                    <option value="wolf">זאב נורא (Dire Wolf)</option>
-                    <option value="bandit">שודד (Bandit)</option>
-                    <option value="spider">עכביש ענק (Giant Spider)</option>
-                    <option value="dragon">דרקון צעיר (Young Dragon)</option>
+                    <option value="custom">-- דמות מותאמת אישית --</option>
+                    
+                    <optgroup label="מפלצות וחיות">
+                        <option value="goblin">גובלין (Goblin)</option>
+                        <option value="skeleton">שלד (Skeleton)</option>
+                        <option value="zombie">זומבי (Zombie)</option>
+                        <option value="orc">אורק (Orc)</option>
+                        <option value="wolf">זאב נורא (Dire Wolf)</option>
+                        <option value="bandit">שודד (Bandit)</option>
+                        <option value="spider">עכביש ענק (Giant Spider)</option>
+                        <option value="dragon">דרקון צעיר (Young Dragon)</option>
+                        <option value="owlbear">דוב-ינשוף (Owlbear)</option>
+                        <option value="troll">טרול (Troll)</option>
+                        <option value="beholder">ביהולדר (Beholder)</option>
+                        <option value="mindflayer">מצליף מוח (Mind Flayer)</option>
+                        <option value="vampire">ערפד (Vampire)</option>
+                        <option value="lich">ליץ' (Lich)</option>
+                    </optgroup>
+
+                    <optgroup label="גזעים - זכר">
+                        <option value="human_m">אדם (זכר)</option>
+                        <option value="elf_m">אלף (זכר)</option>
+                        <option value="dwarf_m">גמד (זכר)</option>
+                        <option value="halfling_m">זוטון (זכר)</option>
+                        <option value="dragonborn_m">דרקוני (זכר)</option>
+                        <option value="gnome_m">ננס (זכר)</option>
+                        <option value="halfelf_m">חצי-אלף (זכר)</option>
+                        <option value="halforc_m">חצי-אורק (זכר)</option>
+                        <option value="tiefling_m">טיפלינג (זכר)</option>
+                    </optgroup>
+
+                    <optgroup label="גזעים - נקבה">
+                        <option value="human_f">אדם (נקבה)</option>
+                        <option value="elf_f">אלפית (נקבה)</option>
+                        <option value="dwarf_f">גמדה (נקבה)</option>
+                        <option value="halfling_f">זוטונית (נקבה)</option>
+                        <option value="dragonborn_f">דרקונית (נקבה)</option>
+                        <option value="gnome_f">ננסית (נקבה)</option>
+                        <option value="halfelf_f">חצי-אלפית (נקבה)</option>
+                        <option value="halforc_f">חצי-אורקית (נקבה)</option>
+                        <option value="tiefling_f">טיפלינגית (נקבה)</option>
+                    </optgroup>
                 </select>
 
-                <input type="text" id="npc-name" placeholder="שם המפלצת" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:100%; text-align:center; background:#fff; color:#333;" autocomplete="off">
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="npc-name" placeholder="שם ספציפי (לדוג: גרוק)" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;" autocomplete="off">
+                    <input type="text" id="npc-class" placeholder="מקצוע (אופציונלי)" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;" autocomplete="off">
+                </div>
+
                 <div style="display:flex; gap:5px;">
                     <input type="number" id="npc-hp" placeholder="חיים" title="נקודות פגיעה" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
                     <input type="number" id="npc-init" placeholder="תוסף יוזמה+" title="תוסף יוזמה" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
