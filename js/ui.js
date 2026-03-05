@@ -48,7 +48,7 @@ export function updateInitiativeUI(data, currentUserRole) {
         if (isThisCharDM) {
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center;">
-                    <img src="${i.portrait || 'logo.png'}" class="char-portrait" style="border-color:#f1c40f;">
+                    <img src="${i.portrait || 'assets/logo.png'}" class="char-portrait" style="border-color:#f1c40f;">
                     <div>
                         <div style="font-weight:900; color:#f1c40f; font-size:1.1em;">שליט המבוך</div>
                         <div style="font-size:0.75em; opacity:0.8; color:white;">${i.pName}</div>
