@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,18 +9,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="assets/logo.png">
     
-    <link rel="stylesheet" href="css/style.css?v=104">
+    <link rel="stylesheet" href="css/style.css?v=106">
     <link rel="stylesheet" href="css/diceStyles.css">
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
+
+    <button id="lang-toggle-btn" style="position: absolute; top: 15px; left: 15px; z-index: 2000; background: rgba(0,0,0,0.6); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">English</button>
 
     <div id="lobby-wrapper" style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); background-size: cover; background-position: center; z-index: 1000;">
         <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.7); z-index: 0;"></div>
 
         <div id="auth-screen" style="position: relative; z-index: 10; text-align: center; background: rgba(44, 62, 80, 0.9); padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); border: 2px solid #e74c3c; width: 90%; max-width: 400px;">
             <img src="assets/logo.png" alt="CritRoll Logo" style="max-width: 180px; margin-bottom: 20px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));">
-            <h1 style="color: white; margin-bottom: 10px; font-size: 24px;">ברוכים הבאים ל-CritRoll 2.0</h1>
-            <p style="color: #ccc; margin-bottom: 30px; font-size: 14px;">התחבר כדי לגשת לכספת הדמויות והחדרים שלך.</p>
+            <h1 data-i18n="app_title" style="color: white; margin-bottom: 10px; font-size: 24px;"></h1>
+            <p data-i18n="app_desc" style="color: #ccc; margin-bottom: 30px; font-size: 14px;"></p>
             
             <button id="google-login-btn" style="background: white; color: #333; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; transition: 0.2s;">
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width:20px; height:20px;">
@@ -29,7 +31,7 @@
                     <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
                     <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.2-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
                 </svg>
-                התחבר באמצעות Google
+                <span data-i18n="login_google"></span>
             </button>
         </div>
 
@@ -38,34 +40,34 @@
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <img id="user-avatar" src="assets/logo.png" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #f1c40f; object-fit: cover;">
                     <div>
-                        <div style="color: #f1c40f; font-weight: bold; font-size: 16px;">שלום, <span id="user-display-name">הרפתקן</span></div>
-                        <div style="color: #aaa; font-size: 12px;" id="user-email">email@example.com</div>
+                        <div style="color: #f1c40f; font-weight: bold; font-size: 16px;"><span data-i18n="hello"></span>, <span id="user-display-name"></span></div>
+                        <div style="color: #aaa; font-size: 12px;" id="user-email"></div>
                     </div>
                 </div>
-                <button id="logout-btn" style="background: transparent; color: #ff7675; border: 1px solid #ff7675; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">התנתק</button>
+                <button id="logout-btn" data-i18n="logout" style="background: transparent; color: #ff7675; border: 1px solid #ff7675; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;"></button>
             </header>
 
             <div style="display: flex; flex-direction: row; flex-wrap: wrap; padding: 20px; gap: 20px;">
                 <div style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px dashed #666;">
-                    <h3 style="color: white; margin: 0; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;">🎲 חדר משחק</h3>
+                    <h3 data-i18n="game_room_title" style="color: white; margin: 0; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px;"></h3>
                     <div style="margin-bottom: 20px;">
-                        <div style="color: #ccc; font-size: 13px; margin-bottom: 8px;">שחקן: כניסה לחדר קיים</div>
+                        <div data-i18n="player_join_title" style="color: #ccc; font-size: 13px; margin-bottom: 8px;"></div>
                         <div style="display: flex; gap: 5px;">
-                            <input type="text" id="room-code-input" placeholder="קוד חדר" style="flex: 1; padding: 10px; border-radius: 6px; border: none; text-align: center; font-size: 16px; font-weight: bold;">
-                            <button id="join-room-btn" style="background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; display: none;">היכנס</button>
+                            <input type="text" id="room-code-input" data-i18n="room_code_ph" style="flex: 1; padding: 10px; border-radius: 6px; border: none; text-align: center; font-size: 16px; font-weight: bold;">
+                            <button id="join-room-btn" data-i18n="join_btn" style="background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; display: none;"></button>
                         </div>
-                        <div style="font-size: 11px; color: #aaa; margin-top: 5px;">* בחר דמות מהכספת שלך כדי להיכנס.</div>
+                        <div data-i18n="vault_hint" style="font-size: 11px; color: #aaa; margin-top: 5px;"></div>
                     </div>
                     <div style="border-top: 1px dashed #555; padding-top: 15px;">
-                        <div style="color: #ccc; font-size: 13px; margin-bottom: 8px;">שליט מבוך: פתיחת חדר חדש</div>
-                        <button id="create-room-btn" style="width: 100%; background: #2c3e50; color: white; border: 1px solid #34495e; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">👑 פתח חדר כ-DM</button>
+                        <div data-i18n="dm_create_title" style="color: #ccc; font-size: 13px; margin-bottom: 8px;"></div>
+                        <button id="create-room-btn" data-i18n="create_room_btn" style="width: 100%; background: #2c3e50; color: white; border: 1px solid #34495e; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;"></button>
                     </div>
                 </div>
 
                 <div style="flex: 1; min-width: 250px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 8px; border: 1px dashed #666;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
-                        <h3 style="color: white; margin: 0;">🛡️ הכספת שלי</h3>
-                        <button id="new-char-btn" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;">+ דמות חדשה</button>
+                        <h3 data-i18n="vault_title" style="color: white; margin: 0;"></h3>
+                        <button id="new-char-btn" data-i18n="new_char_btn" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;"></button>
                     </div>
                     <div id="vault-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
                         </div>
@@ -77,12 +79,12 @@
     <div id="char-builder-modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1100; justify-content: center; align-items: center; padding: 20px;">
         <div style="background: #2c3e50; width: 100%; max-width: 450px; border-radius: 12px; padding: 20px; border: 2px solid #f39c12; max-height: 95vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.9);">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
-                <h2 style="margin: 0; color: #f1c40f; font-size: 20px;">יצירת דמות חדשה</h2>
+                <h2 data-i18n="cb_title" style="margin: 0; color: #f1c40f; font-size: 20px;"></h2>
                 <button id="close-builder-btn" style="background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer;">&times;</button>
             </div>
 
             <div style="margin-bottom: 15px; text-align: center;">
-                <div style="font-size: 12px; color: #ccc; margin-bottom: 5px;">בחר דיוקן מהמאגר:</div>
+                <div data-i18n="cb_portrait" style="font-size: 12px; color: #ccc; margin-bottom: 5px;"></div>
                 <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
                     <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f" class="builder-portrait-btn">
                     <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=elf_f&backgroundColor=2ecc71" class="builder-portrait-btn">
@@ -93,37 +95,55 @@
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <input type="text" id="cb-name" class="builder-input" placeholder="שם הדמות" autocomplete="off">
+                <input type="text" id="cb-name" class="builder-input" data-i18n="cb_name_ph" autocomplete="off">
                 <div style="display: flex; gap: 5px;">
                     <select id="cb-race" class="builder-input" style="width: 50%;">
-                        <option value="" disabled selected>גזע</option>
-                        <option value="אדם">אדם</option>
-                        <option value="אלף">אלף</option>
-                        <option value="גמד">גמד</option>
+                        <option value="" disabled selected data-i18n="cb_race"></option>
+                        <option value="Human" data-i18n="race_human"></option>
+                        <option value="Elf" data-i18n="race_elf"></option>
+                        <option value="Dwarf" data-i18n="race_dwarf"></option>
                     </select>
                     <select id="cb-class" class="builder-input" style="width: 50%;">
-                        <option value="" disabled selected>מקצוע</option>
-                        <option value="לוחם">לוחם</option>
-                        <option value="קוסם">קוסם</option>
-                        <option value="נוכל">נוכל</option>
-                        <option value="כוהן">כוהן</option>
+                        <option value="" disabled selected data-i18n="cb_class"></option>
+                        <option value="Fighter" data-i18n="class_fighter"></option>
+                        <option value="Wizard" data-i18n="class_wizard"></option>
+                        <option value="Rogue" data-i18n="class_rogue"></option>
+                        <option value="Cleric" data-i18n="class_cleric"></option>
                     </select>
                 </div>
 
                 <div style="display: flex; gap: 5px;">
-                    <input type="number" id="cb-ac" class="builder-input" placeholder="AC" title="דירוג שריון" style="width: 25%;">
-                    <input type="number" id="cb-speed" class="builder-input" placeholder="מהירות" style="width: 25%;">
-                    <input type="number" id="cb-pp" class="builder-input" placeholder="PP" title="הבחנה פסיבית" style="width: 25%;">
-                    <input type="number" id="cb-init" class="builder-input" placeholder="יוזמה+" title="בונוס יוזמה" style="width: 25%;">
+                    <input type="number" id="cb-ac" class="builder-input" data-i18n="cb_ac" style="width: 25%;">
+                    <input type="number" id="cb-speed" class="builder-input" data-i18n="cb_speed" style="width: 25%;">
+                    <input type="number" id="cb-pp" class="builder-input" data-i18n="cb_pp" style="width: 25%;">
+                    <input type="number" id="cb-init" class="builder-input" data-i18n="cb_init" style="width: 25%;">
                 </div>
 
                 <div style="display: flex; gap: 5px;">
-                    <input type="number" id="cb-hp" class="builder-input" placeholder="נקודות פגיעה (HP)" style="width: 33%;">
-                    <input type="number" id="cb-melee" class="builder-input" placeholder="תוסף קפא״פ+" style="width: 33%;">
-                    <input type="number" id="cb-ranged" class="builder-input" placeholder="תוסף מרחוק+" style="width: 33%;">
+                    <input type="number" id="cb-hp" class="builder-input" data-i18n="cb_hp" style="width: 100%;">
                 </div>
 
-                <button id="save-char-btn" style="background: #27ae60; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px;">שמור לכספת</button>
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="cb-melee" class="builder-input" data-i18n="cb_melee" style="width: 25%;">
+                    <select id="cb-melee-dmg" class="builder-input" style="width: 25%;">
+                        <option value="1d4">1d4</option>
+                        <option value="1d6" selected>1d6</option>
+                        <option value="1d8">1d8</option>
+                        <option value="1d10">1d10</option>
+                        <option value="1d12">1d12</option>
+                        <option value="2d6">2d6</option>
+                    </select>
+                    <input type="number" id="cb-ranged" class="builder-input" data-i18n="cb_ranged" style="width: 25%;">
+                    <select id="cb-ranged-dmg" class="builder-input" style="width: 25%;">
+                        <option value="1d4">1d4</option>
+                        <option value="1d6" selected>1d6</option>
+                        <option value="1d8">1d8</option>
+                        <option value="1d10">1d10</option>
+                        <option value="1d12">1d12</option>
+                    </select>
+                </div>
+
+                <button id="save-char-btn" data-i18n="cb_save_btn" style="background: #27ae60; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px;"></button>
             </div>
         </div>
     </div>
@@ -169,10 +189,14 @@
                     <input type="number" id="npc-init" placeholder="יוזמה+" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
                     <input type="number" id="npc-count" placeholder="כמות" value="1" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
                 </div>
+                
                 <div style="display:flex; gap:5px;">
-                    <input type="number" id="npc-melee" placeholder="קפא״פ+" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
-                    <input type="number" id="npc-ranged" placeholder="מרחוק+" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-melee" placeholder="קפא״פ+" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-melee-dmg" placeholder="קוביית נזק" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-ranged" placeholder="מרחוק+" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-ranged-dmg" placeholder="קוביית נזק" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
                 </div>
+
                 <div style="display:flex; align-items:center; justify-content:center; gap:5px; margin-top:4px;">
                     <input type="checkbox" id="npc-hidden" checked style="width:auto; margin:0; cursor:pointer;">
                     <label for="npc-hidden" style="color:#eee; font-size:12px; cursor:pointer;">הסתר מהשחקנים</label>
@@ -231,6 +255,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/lobby.js?v=104"></script>
+    <script type="module" src="js/lobby.js?v=106"></script>
 </body>
 </html>
