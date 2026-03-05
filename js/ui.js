@@ -55,6 +55,10 @@ export function updateInitiativeUI(data, currentUserRole) {
             const hpPercent = (i.hp / i.maxHp) * 100;
             const isDead = i.hp <= 0;
             const isOwner = myCName === i.name;
+            const isNPC = i.userRole === 'npc';
+            
+            // כפתור מחיקה שמופיע רק לשה"מ
+            const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 5px;" title="מחק מהלוח">🗑️</button>` : '';
 
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
@@ -64,10 +68,13 @@ export function updateInitiativeUI(data, currentUserRole) {
                             <span style="font-weight:900; color:white; font-size:1.1em;">
                                 ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}
                             </span>
-                            <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
+                            <div style="display:flex; align-items:center; gap:5px;">
+                                <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
+                                ${deleteBtn}
+                            </div>
                         </div>
                         <div style="font-size:0.7em; color:#f3e5ab; margin-top:-2px;">
-                            ${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'} | 👁️ ${i.pp || '10'}
+                            ${isNPC ? '⚔️ מפלצת' : `${i.race || ''} ${i.class || ''} | 🛡️ ${i.ac || '10'} | 🏃 ${i.speed || '30'} | 👁️ ${i.pp || '10'}`}
                         </div>
                     </div>
                 </div>
