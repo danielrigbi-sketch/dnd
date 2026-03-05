@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="assets/logo.png">
     
-    <link rel="stylesheet" href="css/style.css?v=108">
+    <link rel="stylesheet" href="css/style.css?v=109">
     <link rel="stylesheet" href="css/diceStyles.css">
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
@@ -151,63 +151,63 @@
     <div id="game-screen" style="display: none; height: 100%; flex-direction: row; width: 100%;">
         <div id="side-panel">
             <img src="assets/logo.png" alt="Small Logo" class="side-logo">
-            <h3 style="margin:0 0 10px 0; font-size: 16px; text-align:center;">חבורת ההרפתקנים</h3>
+            <h3 data-i18n="party_title" style="margin:0 0 10px 0; font-size: 16px; text-align:center;"></h3>
             
             <div id="active-roller-banner">
-                <span>🎭 מגלגל כעת בתור:</span>
-                <span id="active-roller-name" style="color:#f1c40f;">שליט המבוך</span>
-                <button id="reset-roller-btn" onclick="window.resetRoller()" style="background:none; border:none; color:white; font-size:12px; cursor:pointer; text-decoration:underline;">(חזור)</button>
+                <span data-i18n="rolling_as"></span>&nbsp;
+                <span id="active-roller-name" style="color:#f1c40f;"></span>
+                <button id="reset-roller-btn" onclick="window.resetRoller()" data-i18n="back_btn" style="background:none; border:none; color:white; font-size:12px; cursor:pointer; text-decoration:underline;"></button>
             </div>
 
             <div id="init-list"></div>
             
             <div id="dm-npc-controls" style="display:none; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px; background:rgba(0,0,0,0.4); border-radius:8px; border:1px dashed rgba(241, 196, 15, 0.5);">
-                <div style="font-size: 12px; color: #f1c40f; font-weight: bold; text-align: center;">מאגר מפלצות ודמויות (DM)</div>
+                <div data-i18n="dm_panel_title" style="font-size: 12px; color: #f1c40f; font-weight: bold; text-align: center;"></div>
                 <select id="npc-preset" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:100%; text-align:center; background:#fff; color:#333;" onchange="window.handlePresetChange(this.value)">
-                    <option value="custom">-- דמות מותאמת אישית --</option>
-                    <option value="goblin">גובלין (Goblin)</option>
-                    <option value="skeleton">שלד (Skeleton)</option>
-                    <option value="zombie">זומבי (Zombie)</option>
-                    <option value="bandit">שודד (Bandit)</option>
-                    <option value="orc">אורק (Orc)</option>
-                    <option value="wolf">זאב נורא (Dire Wolf)</option>
-                    <option value="spider">עכביש ענק (Giant Spider)</option>
-                    <option value="owlbear">דוב-ינשוף (Owlbear)</option>
-                    <option value="troll">טרול (Troll)</option>
-                    <option value="mindflayer">מצליף מוח (Mind Flayer)</option>
-                    <option value="vampire">ערפד (Vampire)</option>
-                    <option value="dragon">דרקון צעיר (Young Dragon)</option>
-                    <option value="beholder">ביהולדר (Beholder)</option>
-                    <option value="lich">ליץ' (Lich)</option>
+                    <option value="custom" data-i18n="custom_npc"></option>
+                    <option value="goblin" data-i18n="mon_goblin"></option>
+                    <option value="skeleton" data-i18n="mon_skeleton"></option>
+                    <option value="zombie" data-i18n="mon_zombie"></option>
+                    <option value="bandit" data-i18n="mon_bandit"></option>
+                    <option value="orc" data-i18n="mon_orc"></option>
+                    <option value="wolf" data-i18n="mon_wolf"></option>
+                    <option value="spider" data-i18n="mon_spider"></option>
+                    <option value="owlbear" data-i18n="mon_owlbear"></option>
+                    <option value="troll" data-i18n="mon_troll"></option>
+                    <option value="mindflayer" data-i18n="mon_mindflayer"></option>
+                    <option value="vampire" data-i18n="mon_vampire"></option>
+                    <option value="dragon" data-i18n="mon_dragon"></option>
+                    <option value="beholder" data-i18n="mon_beholder"></option>
+                    <option value="lich" data-i18n="mon_lich"></option>
                 </select>
                 <div style="display:flex; gap:5px;">
-                    <input type="text" id="npc-name" placeholder="שם ספציפי" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
-                    <input type="text" id="npc-class" placeholder="מקצוע (אופציונלי)" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-name" data-i18n="ph_specific_name" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-class" data-i18n="ph_class_opt" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
                 </div>
                 <div style="display:flex; gap:5px;">
-                    <input type="number" id="npc-hp" placeholder="חיים" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
-                    <input type="number" id="npc-init" placeholder="יוזמה+" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
-                    <input type="number" id="npc-count" placeholder="כמות" value="1" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-hp" data-i18n="ph_hp" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-init" data-i18n="ph_init" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-count" data-i18n="ph_count" value="1" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
                 </div>
                 
                 <div style="display:flex; gap:5px;">
-                    <input type="number" id="npc-melee" placeholder="קפא״פ+" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
-                    <input type="text" id="npc-melee-dmg" placeholder="קוביית נזק" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
-                    <input type="number" id="npc-ranged" placeholder="מרחוק+" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
-                    <input type="text" id="npc-ranged-dmg" placeholder="קוביית נזק" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-melee" data-i18n="ph_melee" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-melee-dmg" data-i18n="ph_melee_dmg" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-ranged" data-i18n="ph_ranged" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-ranged-dmg" data-i18n="ph_ranged_dmg" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
                 </div>
 
                 <div style="display:flex; align-items:center; justify-content:center; gap:5px; margin-top:4px;">
                     <input type="checkbox" id="npc-hidden" checked style="width:auto; margin:0; cursor:pointer;">
-                    <label for="npc-hidden" style="color:#eee; font-size:12px; cursor:pointer;">הסתר מהשחקנים</label>
+                    <label for="npc-hidden" data-i18n="hide_from_players" style="color:#eee; font-size:12px; cursor:pointer;"></label>
                 </div>
-                <button id="add-npc-btn" class="side-btn" style="background:#27ae60; padding:6px; font-size: 12px; margin-top:4px;" onclick="window.addNPC()">➕ הוסף וגלגל יוזמה</button>
+                <button id="add-npc-btn" class="side-btn" data-i18n="add_npc_roll" style="background:#27ae60; padding:6px; font-size: 12px; margin-top:4px;" onclick="window.addNPC()"></button>
             </div>
 
             <div class="side-footer">
                 <div class="side-buttons-row">
-                    <button id="master-combat-btn" class="side-btn" style="display:none; background:#2c3e50;" onclick="window.toggleCombat()">⚔️ פתח יוזמה</button>
-                    <button id="mute-btn" class="side-btn" onclick="window.toggleMute()">🔇 השתק סאונד</button>
+                    <button id="master-combat-btn" class="side-btn" data-i18n="open_combat" style="display:none; background:#2c3e50;" onclick="window.toggleCombat()"></button>
+                    <button id="mute-btn" class="side-btn" data-i18n="mute_sound" onclick="window.toggleMute()"></button>
                 </div>
             </div>
         </div>
@@ -216,27 +216,27 @@
             <div id="game-layout">
                 <div id="dice-arena">
                     <div id="log-container">
-                        <div class="log-header">לוג אירועים:</div>
+                        <div class="log-header" data-i18n="event_log"></div>
                         <div id="roll-log"></div>
                     </div>
                     <div id="dice-box-canvas"></div>
                     <div id="center-stage">
                         <div id="dice-visual" style="display: none;"><div id="result-text"></div></div>
-                        <div id="empty-state" style="color:#555; font-style: italic; position: relative; z-index: 10;">ממתין להטלה...</div>
+                        <div id="empty-state" data-i18n="waiting_roll" style="color:#555; font-style: italic; position: relative; z-index: 10;"></div>
                     </div>
                 </div>
                 
                 <div id="controls">
                     <div class="mod-container">
-                        <span style="font-size: 14px; color: var(--parchment); margin-left: 5px;">תוסף:</span>
+                        <span data-i18n="mod_label" style="font-size: 14px; color: var(--parchment); margin-left: 5px;"></span>
                         <input type="number" id="mod-input" value="0">
                     </div>
-                    <button id="init-btn" disabled style="opacity: 0.3;" onclick="window.rollInit()">⌛ ממתין לקרב</button>
+                    <button id="init-btn" data-i18n="waiting_combat" disabled style="opacity: 0.3;" onclick="window.rollInit()"></button>
                     
-                    <button id="open-dice-menu" class="special-roll-btn" style="background:#3498db; flex: 0.5;" onclick="document.getElementById('custom-dice-menu').style.display='flex'">🎲 קוביות</button>
+                    <button id="open-dice-menu" data-i18n="dice_menu" class="special-roll-btn" style="background:#3498db; flex: 0.5;" onclick="document.getElementById('custom-dice-menu').style.display='flex'"></button>
                     
-                    <button id="adv-btn" class="special-roll-btn adv" onclick="window.setMode('adv')">יתרון</button>
-                    <button id="dis-btn" class="special-roll-btn dis" onclick="window.setMode('dis')">חיסרון</button>
+                    <button id="adv-btn" data-i18n="adv" class="special-roll-btn adv" onclick="window.setMode('adv')"></button>
+                    <button id="dis-btn" data-i18n="dis" class="special-roll-btn dis" onclick="window.setMode('dis')"></button>
 
                     <div id="custom-dice-menu">
                         <div style="width:100%; text-align:left; margin-bottom:5px;">
@@ -255,6 +255,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/lobby.js?v=108"></script>
+    <script type="module" src="js/lobby.js?v=109"></script>
 </body>
 </html>
