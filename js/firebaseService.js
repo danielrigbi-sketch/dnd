@@ -4,7 +4,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { firebaseConfig } from "./constants.js";
 
-// אתחול Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -17,7 +16,6 @@ export function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, sta
     const dataToSet = { pName, pColor, userRole, portrait: charPortrait, score: 0, ...stats };
     set(playerRef, dataToSet);
     
-    // מפלצות (NPC) נוצרות על ידי השה"מ, ולכן לא נרצה שיימחקו אם הוא מרפרש את העמוד
     if (userRole !== 'npc') {
         onDisconnect(playerRef).remove();
     }
@@ -46,6 +44,10 @@ export function updatePlayerStatusesInDB(cName, statuses) {
     update(ref(db, 'players/' + cName), { statuses });
 }
 
+export function updatePlayerVisibilityInDB(cName, isHidden) {
+    update(ref(db, 'players/' + cName), { isHidden: isHidden });
+}
+
 export async function resetInitiativeInDB() {
     remove(ref(db, 'initiative'));
     const snap = await get(ref(db, 'players'));
@@ -69,7 +71,6 @@ export function setPlayerInitiativeInDB(cName, pName, score, pColor) {
     set(ref(db, 'initiative/' + cName), { score: score, color: pColor, playerName: pName });
 }
 
-// פונקציה חדשה: מחיקת שחקן/מפלצת מהמסד
 export function removePlayerFromDB(cName) {
     remove(ref(db, 'players/' + cName));
     remove(ref(db, 'initiative/' + cName));
