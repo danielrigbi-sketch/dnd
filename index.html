@@ -105,12 +105,26 @@
             
             <div id="dm-npc-controls" style="display:none; flex-direction:column; gap:8px; margin-bottom:15px; padding:12px; background:rgba(0,0,0,0.4); border-radius:8px; border:1px dashed rgba(241, 196, 15, 0.5);">
                 <div style="font-size: 12px; color: #f1c40f; font-weight: bold; text-align: center;">ניהול מפלצות (DM)</div>
-                <input type="text" id="npc-name" placeholder="שם המפלצת (לדוג: גובלין 1)" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:100%; text-align:center; background:#fff; color:#333;" autocomplete="off">
+                
+                <select id="npc-preset" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:100%; text-align:center; background:#fff; color:#333;">
+                    <option value="custom">-- מפלצת מותאמת אישית --</option>
+                    <option value="goblin">גובלין (Goblin)</option>
+                    <option value="skeleton">שלד (Skeleton)</option>
+                    <option value="zombie">זומבי (Zombie)</option>
+                    <option value="orc">אורק (Orc)</option>
+                    <option value="wolf">זאב נורא (Dire Wolf)</option>
+                    <option value="bandit">שודד (Bandit)</option>
+                    <option value="spider">עכביש ענק (Giant Spider)</option>
+                    <option value="dragon">דרקון צעיר (Young Dragon)</option>
+                </select>
+
+                <input type="text" id="npc-name" placeholder="שם המפלצת" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:100%; text-align:center; background:#fff; color:#333;" autocomplete="off">
                 <div style="display:flex; gap:5px;">
-                    <input type="number" id="npc-hp" placeholder="חיים" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
-                    <input type="number" id="npc-init" placeholder="יוזמה" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-hp" placeholder="חיים" title="נקודות פגיעה" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-init" placeholder="תוסף יוזמה+" title="תוסף יוזמה" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-count" placeholder="כמות" title="כמות להוספה" value="1" min="1" max="20" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
                 </div>
-                <button id="add-npc-btn" class="side-btn" style="background:#27ae60; padding:6px; font-size: 12px;">➕ הוסף ללוח</button>
+                <button id="add-npc-btn" class="side-btn" style="background:#27ae60; padding:6px; font-size: 12px;">➕ הוסף וגלגל יוזמה</button>
             </div>
 
             <div class="side-footer">
