@@ -119,3 +119,20 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .vfx-shake { animation: screenShake 0.4s; }
 #result-text.crit-success-text.show { color: #f1c40f !important; text-shadow: 0 0 40px #f1c40f, 0 0 20px #e67e22, 3px 3px 10px rgba(0,0,0,0.9) !important; transform: scale(1.3); }
 #result-text.crit-fail-text.show { color: #e74c3c !important; text-shadow: 0 0 40px #e74c3c, 0 0 20px #c0392b, 3px 3px 10px rgba(0,0,0,0.9) !important; transform: scale(0.9); }
+/* --- Floating Dice Menu --- */
+#custom-dice-menu {
+    display: none; position: absolute; bottom: 70px; right: 20px; 
+    background: rgba(0,0,0,0.95); padding: 15px; border-radius: 12px; 
+    border: 2px solid #3498db; gap: 8px; flex-wrap: wrap; 
+    width: 180px; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    z-index: 200; animation: fadeInDown 0.2s ease;
+}
+
+/* --- Macro Attack Buttons --- */
+.macro-btn {
+    flex: 1; background: rgba(52, 152, 219, 0.2); border: 1px solid #3498db; color: white;
+    padding: 8px 4px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s;
+}
+.macro-btn:hover { background: rgba(52, 152, 219, 0.5); transform: translateY(-1px); }
+.macro-btn.melee { border-color: #e74c3c; background: rgba(231, 76, 60, 0.2); }
+.macro-btn.melee:hover { background: rgba(231, 76, 60, 0.5); }
