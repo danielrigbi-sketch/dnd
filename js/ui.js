@@ -1,5 +1,7 @@
 // ui.js
 
+import { t } from "./i18n.js?v=109";
+
 let expandedCardId = null;
 
 window.toggleCardExpand = (name) => {
@@ -73,7 +75,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                 <div style="display:flex; gap:10px; align-items:center;">
                     <img src="${i.portrait || 'assets/logo.png'}" class="char-portrait" style="border-color:#f1c40f;">
                     <div>
-                        <div style="font-weight:900; color:#f1c40f; font-size:1.1em;">שליט המבוך</div>
+                        <div style="font-weight:900; color:#f1c40f; font-size:1.1em;">DM</div>
                         <div style="font-size:0.75em; opacity:0.8; color:white;">${i.pName}</div>
                     </div>
                 </div>
@@ -85,13 +87,18 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
             const isNPC = i.userRole === 'npc';
             const isOpen = expandedCardId === i.name;
             
-            const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;" title="מחק מהלוח">🗑️</button>` : '';
-            const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;" title="${i.isHidden ? 'חשוף לשחקנים' : 'הסתר משחקנים'}">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
-            const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;" title="גלגל בשם דמות זו">🎭</button>` : '';
+            const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">🗑️</button>` : '';
+            const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
+            const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
 
-            let subtext = isNPC ? `⚔️ ${i.class ? i.class : 'מפלצת'}` : `${i.race || ''} ${i.class || ''}`;
+            // Handle legacy data and translate subtext
+            const raceStr = i.race || "";
+            const classStr = i.class || "";
+            const hasHebrew = /[\u0590-\u05FF]/;
+            const displayRace = hasHebrew.test(raceStr) ? raceStr : t("race_" + raceStr.toLowerCase());
+            const displayClass = hasHebrew.test(classStr) ? classStr : t("class_" + classStr.toLowerCase());
 
-            // Privacy check: Only DM or Owner can see the inner stats and macros
+            let subtext = isNPC ? `⚔️ ${i.class ? i.class : t("default_monster")}` : `${displayRace} ${displayClass}`;
             const canViewStats = isDM || isOwner;
 
             div.innerHTML = `
@@ -103,7 +110,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                                 ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}
                             </span>
                             <div style="display:flex; align-items:center; gap:2px;">
-                                <span class="init-score" style="margin-left: 5px;">${i.score > 0 ? i.score : '--'}</span>
+                                <span class="init-score" style="margin-left: 5px; margin-right: 5px;">${i.score > 0 ? i.score : '--'}</span>
                                 <button id="expand-btn-${i.name}" class="expand-btn ${isOpen ? 'open' : ''}" onclick="window.toggleCardExpand('${i.name}')">▼</button>
                             </div>
                         </div>
@@ -141,7 +148,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
 
                 <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px;">
-                        ${['מורעל', 'מוקסם', 'מעולף', 'מפוחד', 'משותק', 'מרוסן', 'עיוור', 'מוטה', 'המום'].map(s => 
+                        ${['Poisoned', 'Charmed', 'Unconscious', 'Frightened', 'Paralyzed', 'Restrained', 'Blinded', 'Prone', 'Stunned'].map(s => 
                             `<button onclick="window.toggleStatus('${i.name}', '${s}'); this.parentElement.parentElement.style.display='none';" style="font-size:10px; padding:3px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer;">${s}</button>`
                         ).join('')}
                     </div>
@@ -150,23 +157,29 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                 <div id="details-${i.name}" class="card-details ${isOpen ? 'open' : ''}">
                     ${canViewStats ? `
                         <div class="stats-grid">
-                            <div class="stat-box"><span>הגנה</span>🛡️ ${i.ac || 10}</div>
-                            <div class="stat-box"><span>מהירות</span>🏃 ${i.speed || 30}</div>
-                            <div class="stat-box"><span>הבחנה</span>👁️ ${i.pp || 10}</div>
-                            <div class="stat-box"><span>יוזמה</span>⚡ ${i.initBonus >= 0 ? '+'+(i.initBonus||0) : i.initBonus}</div>
-                            <div class="stat-box" style="color:#e74c3c;"><span>קפא״פ</span>⚔️ ${i.melee >= 0 ? '+'+(i.melee||0) : i.melee}</div>
-                            <div class="stat-box" style="color:#3498db;"><span>מרחוק</span>🏹 ${i.ranged >= 0 ? '+'+(i.ranged||0) : i.ranged}</div>
+                            <div class="stat-box"><span>${t('card_defense')}</span>🛡️ ${i.ac || 10}</div>
+                            <div class="stat-box"><span>${t('card_speed')}</span>🏃 ${i.speed || 30}</div>
+                            <div class="stat-box"><span>${t('card_perc')}</span>👁️ ${i.pp || 10}</div>
+                            <div class="stat-box"><span>${t('card_init')}</span>⚡ ${i.initBonus >= 0 ? '+'+(i.initBonus||0) : i.initBonus}</div>
+                            <div class="stat-box" style="color:#e74c3c;"><span>${t('card_melee')}</span>⚔️ ${i.melee >= 0 ? '+'+(i.melee||0) : i.melee}</div>
+                            <div class="stat-box" style="color:#3498db;"><span>${t('card_ranged')}</span>🏹 ${i.ranged >= 0 ? '+'+(i.ranged||0) : i.ranged}</div>
                         </div>
                         <div style="margin-top:10px; padding-top:10px; border-top: 1px dashed rgba(255,255,255,0.1);">
-                            <div style="font-size:10px; color:#aaa; margin-bottom:5px;">התקפות מהירות:</div>
-                            <div style="display:flex; gap:5px;">
-                                <button class="macro-btn melee" onclick="window.rollMacro('${i.name}', 'קפא״פ', ${i.melee || 0})">⚔️ קפא״פ</button>
-                                <button class="macro-btn" onclick="window.rollMacro('${i.name}', 'מרחוק', ${i.ranged || 0})">🏹 מרחוק</button>
+                            <div style="font-size:10px; color:#aaa; margin-bottom:5px;">${t('card_macros_title')}</div>
+                            <div style="display:flex; flex-direction:column; gap:5px;">
+                                <div style="display:flex; gap:5px;">
+                                    <button class="macro-btn melee" onclick="window.rollMacro('${i.name}', '${t('card_melee')}', ${i.melee || 0})">⚔️ ${t('macro_attack')}</button>
+                                    <button class="macro-btn" style="background:rgba(192, 57, 43, 0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_melee')}', '${i.meleeDmg || '1d6'}', ${i.melee || 0})">🩸 ${t('macro_dmg')} (${i.meleeDmg || '1d6'})</button>
+                                </div>
+                                <div style="display:flex; gap:5px;">
+                                    <button class="macro-btn" onclick="window.rollMacro('${i.name}', '${t('card_ranged')}', ${i.ranged || 0})">🏹 ${t('macro_attack')}</button>
+                                    <button class="macro-btn" style="background:rgba(192, 57, 43, 0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_ranged')}', '${i.rangedDmg || '1d6'}', ${i.ranged || 0})">🩸 ${t('macro_dmg')} (${i.rangedDmg || '1d6'})</button>
+                                </div>
                             </div>
                         </div>
                     ` : `
                         <div style="text-align:center; padding:10px 0; color:#888; font-style:italic; font-size:11px;">
-                            הנתונים של ${i.name} מוסתרים.
+                            ${t('hidden_data')}
                         </div>
                     `}
                 </div>
@@ -209,15 +222,15 @@ export function addLogEntry(data, time, flavorText) {
             </div>
         `;
     } else {
-        const modeLabel = data.mode === 'adv' ? '<span style="color:#27ae60; font-weight:bold;">(יתרון)</span>' : (data.mode === 'dis' ? '<span style="color:#c0392b; font-weight:bold;">(חיסרון)</span>' : '');
+        const modeLabel = data.mode === 'adv' ? `<span style="color:#27ae60; font-weight:bold;">(${t('adv')})</span>` : (data.mode === 'dis' ? `<span style="color:#c0392b; font-weight:bold;">(${t('dis')})</span>` : '');
         entry.innerHTML = `
             <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.4); border-radius: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                     <span style="${nameStyle}">${data.cName || 'גיבור'} <small style="font-weight:600; color:#555;">(${data.pName || 'שחקן'})</small></span>
+                     <span style="${nameStyle}">${data.cName || 'Player'} <small style="font-weight:600; color:#555;">(${data.pName || 'User'})</small></span>
                      <span style="color: #666; font-size: 11px;">[${time}]</span> 
                 </div>
                 <div style="color: var(--ink); margin-top: 4px; line-height: 1.4; font-weight: 600;">
-                    הטיל <strong>${data.type.toUpperCase()}</strong> ${modeLabel} וקיבל 
+                    ${t('log_rolled')} <strong>${data.type.toUpperCase()}</strong> ${modeLabel} ${t('log_and_got')} 
                     <span style="color: ${data.res === 20 ? '#b8860b' : (data.res === 1 ? '#c0392b' : 'var(--ink)')}; font-weight: 900; font-size: 1.3em;">
                         ${data.res + (data.mod || 0)}
                     </span>
