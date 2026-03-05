@@ -48,11 +48,13 @@ body {
     padding: 20px; 
     border-radius: 12px; 
     width: 100%; 
-    max-width: 380px; 
+    max-width: 420px; 
     box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .login-card input, .login-card select, .role-select { 
@@ -76,7 +78,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 
 .color-picker-section { text-align: center; padding: 5px 0; }
 .picker-label { color: white; display: block; margin-bottom: 8px; font-size: 13px; opacity: 0.9; }
-.palette-grid { display: flex; justify-content: center; gap: 10px; }
+.palette-grid { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 
 .color-opt{
     width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
@@ -85,6 +87,16 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 }
 
 .color-opt.active { transform: scale(1.2); border-color: white; box-shadow: 0 0 12px rgba(255,255,255,0.6); }
+
+/* עיצוב בחירת דיוקנאות מובנים */
+.preset-portrait-btn {
+    width: 45px; height: 45px; border-radius: 50%; cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.2); transition: 0.2s;
+    object-fit: cover; background: #222;
+}
+.preset-portrait-btn:hover { border-color: #aaa; transform: scale(1.05); }
+.preset-portrait-btn.active { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; transform: scale(1.15); }
+
 
 .role-select { background: #2c3e50; color: white; cursor: pointer; }
 
@@ -98,8 +110,9 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 /* --- מסך משחק --- */
 #game-screen { display: none; height: 100%; flex-direction: row; }
 
+/* הגדלנו את הפאנל הימני מ-280 ל-360 פיקסלים */
 #side-panel{
-    width: 280px;
+    width: 360px;
     background: rgba(26, 26, 26, 0.98);
     border-left: 2px solid var(--primary);
     display: flex;
@@ -109,7 +122,25 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     box-shadow: -5px 0 20px rgba(0,0,0,0.6);
 }
 
-.side-logo { max-width: 100px; margin: 0 auto 15px; display: block; }
+.side-logo { max-width: 120px; margin: 0 auto 15px; display: block; }
+
+/* באנר שליטה אקטיבית לשה"מ */
+#active-roller-banner {
+    background: linear-gradient(135deg, #8e44ad, #9b59b6);
+    color: white;
+    padding: 8px;
+    text-align: center;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid #d2b4de;
+}
 
 #init-list{
     flex: 1;
@@ -138,6 +169,12 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     background: rgba(0, 0, 0, 0.5);
     border-right-color: #f1c40f !important;
     border: 1px solid rgba(241, 196, 15, 0.2);
+}
+
+.tracker-item.active-control {
+    background: rgba(142, 68, 173, 0.3);
+    border: 1px solid #9b59b6;
+    box-shadow: 0 0 15px rgba(142, 68, 173, 0.5);
 }
 
 .char-portrait {
@@ -253,7 +290,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); 
     background-size: cover; 
     background-position: center;
-    /* הוספנו פה מעבר הדרגתי שיהיה נעים לאנימציות */
     transition: box-shadow 0.3s ease;
 }
 
@@ -420,7 +456,6 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 /* --- אפקטים ויזואליים (VFX) ל-20 טבעי ול-1 טבעי --- */
 /* ==================================================== */
 
-/* רעידת מסך */
 @keyframes screenShake {
     0% { transform: translate(2px, 2px) rotate(0deg); }
     10% { transform: translate(-2px, -3px) rotate(-1deg); }
@@ -435,34 +470,30 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     100% { transform: translate(2px, -3px) rotate(-1deg); }
 }
 
-/* הילת זהב לזירה (20 טבעי) */
 @keyframes critGlow {
     0% { box-shadow: inset 0 0 0px rgba(241, 196, 15, 0); }
     20% { box-shadow: inset 0 0 150px rgba(241, 196, 15, 0.8); }
     100% { box-shadow: inset 0 0 0px rgba(241, 196, 15, 0); }
 }
 
-/* הילת דם לזירה (1 טבעי) */
 @keyframes failRed {
     0% { box-shadow: inset 0 0 0px rgba(231, 76, 60, 0); }
     20% { box-shadow: inset 0 0 150px rgba(231, 76, 60, 0.9); }
     100% { box-shadow: inset 0 0 0px rgba(231, 76, 60, 0); }
 }
 
-/* המחלקות שנצמיד מהג'אווה סקריפט לאזור הזירה */
 .vfx-crit-success { animation: critGlow 3s ease-out; }
 .vfx-crit-fail { animation: failRed 3s ease-out; }
 .vfx-shake { animation: screenShake 0.4s; }
 
-/* התנהגות מיוחדת למספר עצמו כשהוא בפנים */
 #result-text.crit-success-text.show {
     color: #f1c40f !important;
     text-shadow: 0 0 40px #f1c40f, 0 0 20px #e67e22, 3px 3px 10px rgba(0,0,0,0.9) !important;
-    transform: scale(1.3); /* המספר קופץ אפילו יותר גדול מבד"כ */
+    transform: scale(1.3); 
 }
 
 #result-text.crit-fail-text.show {
     color: #e74c3c !important;
     text-shadow: 0 0 40px #e74c3c, 0 0 20px #c0392b, 3px 3px 10px rgba(0,0,0,0.9) !important;
-    transform: scale(0.9); /* המספר נראה מעט מכווץ ועלוב */
+    transform: scale(0.9); 
 }
