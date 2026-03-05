@@ -116,6 +116,8 @@ document.getElementById('join-btn').onclick = async () => {
 
     if (userRole === 'dm') {
         document.getElementById('master-combat-btn').style.display = 'block';
+        // הצגת מנהל המפלצות רק לשה"מ
+        document.getElementById('dm-npc-controls').style.display = 'flex';
     }
 
     db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats);
@@ -199,9 +201,37 @@ window.toggleStatus = async (targetCName, status) => {
     db.updatePlayerStatusesInDB(targetCName, statuses);
 };
 
+// פונקציית מחיקת שחקן/מפלצת מהלוח (לשה"מ בלבד)
+window.removeNPC = (targetCName) => {
+    if (userRole !== 'dm') return;
+    if (confirm(`האם אתה בטוח שברצונך למחוק את ${targetCName} מהלוח?`)) {
+        db.removePlayerFromDB(targetCName);
+    }
+};
+
 document.getElementById('adv-btn').onclick = () => { activeMode = (activeMode === 'adv') ? 'normal' : 'adv'; updateModeUI(activeMode); };
 document.getElementById('dis-btn').onclick = () => { activeMode = (activeMode === 'dis') ? 'normal' : 'dis'; updateModeUI(activeMode); };
 document.getElementById('mute-btn').onclick = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔊" : "🔇"; };
+
+// כפתור הוספת מפלצת (NPC)
+document.getElementById('add-npc-btn').onclick = () => {
+    if (userRole !== 'dm') return;
+    const npcName = document.getElementById('npc-name').value.trim();
+    const npcHp = parseInt(document.getElementById('npc-hp').value) || 10;
+    const npcInit = parseInt(document.getElementById('npc-init').value) || 0;
+
+    if (!npcName) return alert("חובה להזין שם מפלצת!");
+
+    const stats = { maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10 };
+    
+    // מוסיפים למסד עם תפקיד 'npc' כדי שנזהה שזו מפלצת
+    db.joinPlayerToDB(npcName, "DM", "#c0392b", "npc", "https://via.placeholder.com/50/c0392b/ffffff?text=NPC", stats);
+    db.setPlayerInitiativeInDB(npcName, "DM", npcInit, "#c0392b");
+
+    document.getElementById('npc-name').value = "";
+    document.getElementById('npc-hp').value = "";
+    document.getElementById('npc-init').value = "";
+};
 
 document.querySelectorAll('.dice-btn').forEach(btn => {
     btn.onclick = () => window.roll(btn.getAttribute('data-type'));
@@ -268,7 +298,6 @@ db.listenToNewRolls((data) => {
 
     const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
     
-    // טיפול בהצגת התוצאה המרכזית ואפקטים ויזואליים
     if (data.type !== "DAMAGE" && data.type !== "HEAL" && data.type !== "STATUS") {
         document.getElementById('empty-state').style.display = 'none';
         document.getElementById('dice-visual').style.display = 'flex';
@@ -276,26 +305,21 @@ db.listenToNewRolls((data) => {
         const resultText = document.getElementById('result-text');
         const arena = document.getElementById('dice-arena');
         
-        // 1. ניקוי אפקטים קודמים
         resultText.classList.remove('show', 'crit-success-text', 'crit-fail-text');
         arena.classList.remove('vfx-crit-success', 'vfx-crit-fail', 'vfx-shake');
         
-        // טריק קטן ש"מכריח" את הדפדפן להבין שהאנימציה התאפסה
         void arena.offsetWidth; 
 
-        // 2. עדכון התוצאה
         resultText.innerText = (data.res || 0) + (data.mod || 0);
         
-        // עיצוב ברירת מחדל
         resultText.style.color = "white";
         resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
         
-        // 3. הוספת המחלקות החדשות אם יצא 20 או 1 בקוביה של 20
         if (data.type === 'd20') {
             if (data.res === 20) {
                 arena.classList.add('vfx-crit-success');
                 resultText.classList.add('crit-success-text');
-                resultText.style.textShadow = ""; // נאפס כדי שה-CSS המיוחד ייקח פיקוד
+                resultText.style.textShadow = "";
                 resultText.style.color = ""; 
             } else if (data.res === 1) {
                 arena.classList.add('vfx-crit-fail', 'vfx-shake');
