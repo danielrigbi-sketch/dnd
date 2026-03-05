@@ -1,6 +1,7 @@
 // lobby.js - Welcome screen and Authentication Controller
 
 import * as db from "./firebaseService.js";
+import { startGame } from "./app.js"; // Importing the new function to start the game!
 
 const authScreen = document.getElementById('auth-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
@@ -18,8 +19,8 @@ const vaultList = document.getElementById('vault-list');
 
 let currentUserUid = null;
 let selectedPortrait = "";
+let currentVaultCharacters = {}; // Store characters to easily access them when "Select" is clicked
 
-// 1. Authentication Listener
 db.listenToAuthState((user) => {
     if (user) {
         currentUserUid = user.uid;
@@ -30,7 +31,6 @@ db.listenToAuthState((user) => {
         userEmail.innerText = user.email || "";
         if (user.photoURL) userAvatar.src = user.photoURL;
 
-        // Fetch user's characters from the Vault
         db.listenToUserCharacters(user.uid, renderVault);
     } else {
         currentUserUid = null;
@@ -39,9 +39,9 @@ db.listenToAuthState((user) => {
     }
 });
 
-// 2. Render Vault Characters
 function renderVault(characters) {
     vaultList.innerHTML = "";
+    currentVaultCharacters = characters || {};
     
     if (!characters) {
         vaultList.innerHTML = `<div style="text-align: center; color: #888; font-style: italic; padding: 20px 0;">עדיין אין לך דמויות בכספת.<br>צור את הדמות הראשונה שלך!</div>`;
@@ -58,13 +58,25 @@ function renderVault(characters) {
                 <div class="vault-card-name">${c.name}</div>
                 <div class="vault-card-sub">${c.race} ${c.class}</div>
             </div>
-            <button class="vault-select-btn" onclick="alert('בשלב הבא כפתור זה יכניס אותך לחדר עם הדמות הזו!')">בחר</button>
+            <button class="vault-select-btn" data-charid="${charId}">בחר</button>
         `;
         vaultList.appendChild(card);
     });
+
+    // Add click listeners to the "Select" buttons
+    document.querySelectorAll('.vault-select-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            const charId = e.target.getAttribute('data-charid');
+            const selectedChar = currentVaultCharacters[charId];
+            const roomCode = document.getElementById('room-code-input').value.trim() || "CRIT";
+            
+            // Hide lobby and launch the game as a player
+            lobbyScreen.style.display = 'none';
+            startGame('player', selectedChar, roomCode);
+        };
+    });
 }
 
-// 3. Login / Logout
 loginBtn.addEventListener('click', async () => {
     try {
         loginBtn.innerText = "מתחבר...";
@@ -72,7 +84,7 @@ loginBtn.addEventListener('click', async () => {
         await db.loginWithGoogle();
     } catch (error) {
         console.error("Login Error:", error);
-        alert("אופס! ההתחברות נכשלה.");
+        alert("אופס! ההתחברות נכשלה. ודא שאישרת את גוגל במסוף הפיירבייס.");
         loginBtn.innerText = "התחבר באמצעות Google";
         loginBtn.disabled = false;
     }
@@ -82,12 +94,10 @@ logoutBtn.addEventListener('click', async () => {
     try { await db.logoutUser(); } catch (error) { console.error(error); }
 });
 
-// 4. Character Builder Modal Logic
 document.getElementById('new-char-btn').onclick = () => {
     builderModal.style.display = 'flex';
     selectedPortrait = "";
     document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
-    // Clear inputs
     document.querySelectorAll('.builder-input').forEach(input => input.value = '');
 };
 
@@ -95,7 +105,6 @@ closeBuilderBtn.onclick = () => {
     builderModal.style.display = 'none';
 };
 
-// Handle Portrait Selection in Builder
 document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
     btn.onclick = () => {
         document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
@@ -104,7 +113,6 @@ document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
     };
 });
 
-// Save Character to Cloud
 saveCharBtn.onclick = async () => {
     if (!currentUserUid) return;
 
@@ -137,19 +145,9 @@ saveCharBtn.onclick = async () => {
     }
 
     const charData = {
-        name,
-        race: charRace,
-        class: charClass,
-        ac: parseInt(ac),
-        speed: parseInt(speed),
-        pp: parseInt(pp),
-        initBonus: parseInt(init),
-        maxHp: parseInt(hp),
-        hp: parseInt(hp),
-        melee: parseInt(melee),
-        ranged: parseInt(ranged),
-        portrait: selectedPortrait,
-        createdAt: Date.now()
+        name, race: charRace, class: charClass, ac: parseInt(ac), speed: parseInt(speed),
+        pp: parseInt(pp), initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
+        melee: parseInt(melee), ranged: parseInt(ranged), portrait: selectedPortrait, createdAt: Date.now()
     };
 
     saveCharBtn.innerText = "שומר...";
@@ -167,11 +165,12 @@ saveCharBtn.onclick = async () => {
     }
 };
 
-// Lobby Buttons (Placeholders)
+// Start Game as DM
 document.getElementById('create-room-btn').onclick = () => {
-    alert("בשלב הבא נייצר לך חדר DM משלך!");
-};
-
-document.getElementById('join-room-btn').onclick = () => {
-    alert("בשלב הבא תוכל לבחור דמות מהכספת ולהיכנס איתה לחדר המשחק!");
+    // Generate a random 4-digit room code
+    const randomCode = Math.floor(1000 + Math.random() * 9000).toString(); 
+    alert(`החדר שלך נוצר בהצלחה! 👑\nקוד החדר להזמנת שחקנים הוא: ${randomCode}`);
+    
+    lobbyScreen.style.display = 'none';
+    startGame('dm', null, randomCode);
 };
