@@ -22,40 +22,14 @@ body {
     background-color: #2c1e16; 
 }
 
-/* Base styles needed across the app */
 input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* Builder Modal & Lobby Inputs */
-.builder-input {
-    width: 100%; 
-    padding: 10px; 
-    border-radius: 6px; 
-    border: 1px solid rgba(0,0,0,0.2); 
-    font-size: 14px; 
-    text-align: center; 
-    background: white;
-    color: #333;
-}
-
-.builder-portrait-btn {
-    width: 50px; height: 50px; border-radius: 50%; cursor: pointer;
-    border: 2px solid rgba(255,255,255,0.2); transition: 0.2s;
-    object-fit: cover; background: #222;
-}
+.builder-input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.2); font-size: 14px; text-align: center; background: white; color: #333; }
+.builder-portrait-btn { width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: 0.2s; object-fit: cover; background: #222; }
 .builder-portrait-btn:hover { border-color: #aaa; transform: scale(1.05); }
 .builder-portrait-btn.active { border-color: #f1c40f; box-shadow: 0 0 10px #f1c40f; transform: scale(1.15); }
 
-/* Vault Card Styles */
-.vault-card {
-    display: flex;
-    align-items: center;
-    background: rgba(44, 62, 80, 0.6);
-    padding: 10px;
-    border-radius: 8px;
-    gap: 12px;
-    border: 1px solid rgba(255,255,255,0.1);
-    transition: 0.2s;
-}
+.vault-card { display: flex; align-items: center; background: rgba(44, 62, 80, 0.6); padding: 10px; border-radius: 8px; gap: 12px; border: 1px solid rgba(255,255,255,0.1); transition: 0.2s; }
 .vault-card:hover { background: rgba(44, 62, 80, 0.9); }
 .vault-card-img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--parchment); background: #333; }
 .vault-card-info { flex: 1; }
@@ -64,14 +38,9 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .vault-select-btn { background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; }
 .vault-select-btn:hover { background: #2980b9; }
 
-/* Custom Scrollbar for Vault */
 #vault-list::-webkit-scrollbar { width: 6px; }
 #vault-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
 #vault-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
-
-/* ==================================================== */
-/* Old Game Screen Styles (Kept safe for the next phase) */
-/* ==================================================== */
 
 #game-screen { display: none; height: 100%; flex-direction: row; }
 #side-panel{ width: 360px; background: rgba(26, 26, 26, 0.98); border-left: 2px solid var(--primary); display: flex; flex-direction: column; padding: 15px; z-index: 20; box-shadow: -5px 0 20px rgba(0,0,0,0.6); }
@@ -81,7 +50,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 
 #init-list{ flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; padding-left: 5px; }
 
-.tracker-item{ background: rgba(44, 62, 80, 0.4); padding: 12px; border-radius: 8px; border-right: 4px solid; display: flex; flex-direction: column; gap: 4px; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.05); position: relative; }
+.tracker-item{ background: rgba(44, 62, 80, 0.4); padding: 12px; border-radius: 8px; border-right: 4px solid; display: flex; flex-direction: column; gap: 6px; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.05); position: relative; }
 .tracker-item.dm-item { background: rgba(0, 0, 0, 0.5); border-right-color: #f1c40f !important; border: 1px solid rgba(241, 196, 15, 0.2); }
 .tracker-item.active-control { background: rgba(142, 68, 173, 0.3); border: 1px solid #9b59b6; box-shadow: 0 0 15px rgba(142, 68, 173, 0.5); }
 .char-portrait { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--parchment); background: #333; flex-shrink: 0; }
@@ -116,6 +85,31 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .special-roll-btn.dis { background: #c0392b; }
 #init-btn { background: #f39c12; flex: 1; } 
 #init-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ==================================================== */
+/* --- Expandable Card Styles (NEW) --- */
+/* ==================================================== */
+
+.expand-btn {
+    background: rgba(255,255,255,0.1); border: none; color: white; cursor: pointer;
+    font-size: 12px; padding: 4px 8px; border-radius: 4px; transition: 0.3s; margin-right: auto;
+}
+.expand-btn:hover { background: rgba(255,255,255,0.2); }
+.expand-btn.open { transform: rotate(180deg); background: var(--primary); }
+
+.card-details {
+    display: none; background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 6px;
+    margin-top: 5px; border: 1px inset rgba(255,255,255,0.1); animation: fadeInDown 0.3s ease;
+}
+.card-details.open { display: block; }
+
+.stats-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; color: #f3e5ab; font-size: 11px;
+}
+.stat-box { background: rgba(255,255,255,0.05); padding: 6px; border-radius: 4px; text-align: center; border: 1px solid rgba(255,255,255,0.1); font-weight: bold; }
+.stat-box span { display: block; font-size: 9px; color: #aaa; font-weight: normal; margin-bottom: 2px; }
+
+@keyframes fadeInDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
 @keyframes screenShake { 0% { transform: translate(2px, 2px) rotate(0deg); } 10% { transform: translate(-2px, -3px) rotate(-1deg); } 20% { transform: translate(-4px, 0px) rotate(1deg); } 30% { transform: translate(4px, 3px) rotate(0deg); } 40% { transform: translate(2px, -2px) rotate(1deg); } 50% { transform: translate(-2px, 3px) rotate(-1deg); } 60% { transform: translate(-4px, 2px) rotate(0deg); } 70% { transform: translate(4px, 2px) rotate(-1deg); } 80% { transform: translate(-2px, -2px) rotate(1deg); } 90% { transform: translate(2px, 3px) rotate(0deg); } 100% { transform: translate(2px, -3px) rotate(-1deg); } }
 @keyframes critGlow { 0% { box-shadow: inset 0 0 0px rgba(241, 196, 15, 0); } 20% { box-shadow: inset 0 0 150px rgba(241, 196, 15, 0.8); } 100% { box-shadow: inset 0 0 0px rgba(241, 196, 15, 0); } }
