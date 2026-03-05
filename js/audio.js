@@ -1,10 +1,10 @@
 // audio.js - ניהול סאונד CritRoll
 
-const rollSound = new Audio('./dice-3.wav');
-const critSound = new Audio('./17.mp3');
-const failSound = new Audio('./game_over_bad_chest.wav');
-const healSound = new Audio('./heal.wav');
-const damageSound = new Audio('./playerhit.mp3');
+const rollSound = new Audio('assets/dice-3.wav');
+const critSound = new Audio('assets/17.mp3');
+const failSound = new Audio('assets/game_over_bad_chest.wav');
+const healSound = new Audio('assets/heal.wav');
+const damageSound = new Audio('assets/playerhit.mp3');
 
 let rollSoundTimeout; 
 
