@@ -267,18 +267,48 @@ db.listenToNewRolls((data) => {
     }
 
     const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    
+    // טיפול בהצגת התוצאה המרכזית ואפקטים ויזואליים
     if (data.type !== "DAMAGE" && data.type !== "HEAL" && data.type !== "STATUS") {
         document.getElementById('empty-state').style.display = 'none';
         document.getElementById('dice-visual').style.display = 'flex';
-        const resultText = document.getElementById('result-text');
-        resultText.classList.remove('show');
-        resultText.innerText = (data.res || 0) + (data.mod || 0);
-        resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
-        setTimeout(() => resultText.classList.add('show'), 50);
         
-        // תיקון: העלמת הספרה הגדולה לאחר 4 שניות
+        const resultText = document.getElementById('result-text');
+        const arena = document.getElementById('dice-arena');
+        
+        // 1. ניקוי אפקטים קודמים
+        resultText.classList.remove('show', 'crit-success-text', 'crit-fail-text');
+        arena.classList.remove('vfx-crit-success', 'vfx-crit-fail', 'vfx-shake');
+        
+        // טריק קטן ש"מכריח" את הדפדפן להבין שהאנימציה התאפסה
+        void arena.offsetWidth; 
+
+        // 2. עדכון התוצאה
+        resultText.innerText = (data.res || 0) + (data.mod || 0);
+        
+        // עיצוב ברירת מחדל
+        resultText.style.color = "white";
+        resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
+        
+        // 3. הוספת המחלקות החדשות אם יצא 20 או 1 בקוביה של 20
+        if (data.type === 'd20') {
+            if (data.res === 20) {
+                arena.classList.add('vfx-crit-success');
+                resultText.classList.add('crit-success-text');
+                resultText.style.textShadow = ""; // נאפס כדי שה-CSS המיוחד ייקח פיקוד
+                resultText.style.color = ""; 
+            } else if (data.res === 1) {
+                arena.classList.add('vfx-crit-fail', 'vfx-shake');
+                resultText.classList.add('crit-fail-text');
+                resultText.style.textShadow = "";
+                resultText.style.color = "";
+            }
+        }
+
+        setTimeout(() => resultText.classList.add('show'), 50);
         setTimeout(() => resultText.classList.remove('show'), 4000);
     }
+    
     addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res+data.mod), 20));
 });
 
