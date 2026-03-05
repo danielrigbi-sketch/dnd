@@ -1,7 +1,25 @@
 // lobby.js - Welcome screen and Authentication Controller
 
-import * as db from "./firebaseService.js?v=103";
-import { startGame } from "./app.js?v=102";
+import * as db from "./firebaseService.js?v=106";
+import { startGame } from "./app.js?v=106";
+// NEW: Import our translation engine
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=106";
+
+// Initialize Language Toggle Button
+const langToggleBtn = document.getElementById('lang-toggle-btn');
+langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
+
+langToggleBtn.onclick = () => {
+    const newLang = getLang() === 'he' ? 'en' : 'he';
+    setLanguage(newLang); // This updates the DOM and the Layout Direction automatically!
+    langToggleBtn.innerText = newLang === 'he' ? 'English' : 'עברית';
+    
+    // Re-render the vault cards to update their inner texts
+    if(currentUserUid) {
+        renderVault(currentVaultCharacters);
+    }
+};
+
 
 const authScreen = document.getElementById('auth-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
@@ -21,13 +39,16 @@ let currentUserUid = null;
 let selectedPortrait = "";
 let currentVaultCharacters = {};
 
+// We run updateDOM once right away to ensure the placeholder texts translate on first load
+updateDOM();
+
 db.listenToAuthState((user) => {
     if (user) {
         currentUserUid = user.uid;
         if(authScreen) authScreen.style.display = 'none';
         if(lobbyScreen) lobbyScreen.style.display = 'block';
         
-        if(userDisplayName) userDisplayName.innerText = user.displayName || "הרפתקן";
+        if(userDisplayName) userDisplayName.innerText = user.displayName || "Player";
         if(userEmail) userEmail.innerText = user.email || "";
         if (user.photoURL && userAvatar) userAvatar.src = user.photoURL;
 
@@ -44,8 +65,8 @@ function renderVault(characters) {
     vaultList.innerHTML = "";
     currentVaultCharacters = characters || {};
     
-    if (!characters) {
-        vaultList.innerHTML = `<div style="text-align: center; color: #888; font-style: italic; padding: 20px 0;">עדיין אין לך דמויות בכספת.<br>צור את הדמות הראשונה שלך!</div>`;
+    if (!characters || Object.keys(characters).length === 0) {
+        vaultList.innerHTML = `<div style="text-align: center; color: #888; font-style: italic; padding: 20px 0;">${t("empty_vault")}</div>`;
         return;
     }
 
@@ -57,9 +78,9 @@ function renderVault(characters) {
             <img src="${c.portrait || 'assets/logo.png'}" class="vault-card-img">
             <div class="vault-card-info">
                 <div class="vault-card-name">${c.name}</div>
-                <div class="vault-card-sub">${c.race} ${c.class}</div>
+                <div class="vault-card-sub">${t("race_" + (c.race||"").toLowerCase())} ${t("class_" + (c.class||"").toLowerCase())}</div>
             </div>
-            <button class="vault-select-btn" data-charid="${charId}">בחר</button>
+            <button class="vault-select-btn" data-charid="${charId}">${t("select_btn")}</button>
         `;
         vaultList.appendChild(card);
     });
@@ -71,6 +92,7 @@ function renderVault(characters) {
             const roomCodeInput = document.getElementById('room-code-input');
             const roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "CRIT";
             
+            langToggleBtn.style.display = 'none'; // Hide the toggle inside the game room for now
             if(lobbyScreen) lobbyScreen.style.display = 'none';
             startGame('player', selectedChar, roomCode);
         };
@@ -80,12 +102,12 @@ function renderVault(characters) {
 if(loginBtn) {
     loginBtn.addEventListener('click', async () => {
         try {
-            loginBtn.innerText = "מתחבר...";
+            loginBtn.innerText = "...";
             loginBtn.disabled = true;
             await db.loginWithGoogle();
         } catch (error) {
             console.error("Login Error Details:", error);
-            alert(`ההתחברות נכשלה!\nסיבה: ${error.message}\n(קוד שגיאה: ${error.code})`);
+            alert(`${t('alert_login_fail')}\n${error.message}`);
             loginBtn.innerHTML = `
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width:20px; height:20px;">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.7 17.74 9.5 24 9.5z"></path>
@@ -93,7 +115,7 @@ if(loginBtn) {
                     <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
                     <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.2-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
                 </svg>
-                התחבר באמצעות Google
+                <span data-i18n="login_google">${t('login_google')}</span>
             `;
             loginBtn.disabled = false;
         }
@@ -143,42 +165,33 @@ if(saveCharBtn) {
         const init = document.getElementById('cb-init')?.value;
         const hp = document.getElementById('cb-hp')?.value;
         const melee = document.getElementById('cb-melee')?.value;
+        const meleeDmg = document.getElementById('cb-melee-dmg')?.value;
         const ranged = document.getElementById('cb-ranged')?.value;
+        const rangedDmg = document.getElementById('cb-ranged-dmg')?.value;
 
-        let missing = [];
-        if (!name) missing.push("שם");
-        if (!charRace) missing.push("גזע");
-        if (!charClass) missing.push("מקצוע");
-        if (!ac) missing.push("AC");
-        if (!speed) missing.push("מהירות");
-        if (!pp) missing.push("הבחנה פסיבית");
-        if (!init) missing.push("יוזמה");
-        if (!hp) missing.push("חיים");
-        if (!melee) missing.push("קפא״פ");
-        if (!ranged) missing.push("מרחוק");
-        if (!selectedPortrait) missing.push("תמונת דמות (בחר מהמאגר)");
-
-        if (missing.length > 0) {
-            return alert("חסרים פרטים!\n" + missing.join(", "));
+        if (!name || !charRace || !charClass || !ac || !speed || !pp || !init || !hp || !melee || !ranged || !selectedPortrait) {
+            return alert(t('alert_missing'));
         }
 
         const charData = {
             name, race: charRace, class: charClass, ac: parseInt(ac), speed: parseInt(speed),
             pp: parseInt(pp), initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
-            melee: parseInt(melee), ranged: parseInt(ranged), portrait: selectedPortrait, createdAt: Date.now()
+            melee: parseInt(melee), meleeDmg: meleeDmg, 
+            ranged: parseInt(ranged), rangedDmg: rangedDmg, 
+            portrait: selectedPortrait, createdAt: Date.now()
         };
 
-        saveCharBtn.innerText = "שומר...";
+        saveCharBtn.innerText = t("cb_saving");
         saveCharBtn.disabled = true;
 
         try {
             await db.saveCharacterToVault(currentUserUid, charData);
             if(builderModal) builderModal.style.display = 'none';
         } catch (err) {
-            console.error("Error saving character:", err);
-            alert("שגיאה בשמירת הדמות.");
+            console.error(err);
+            alert(t('alert_save_err'));
         } finally {
-            saveCharBtn.innerText = "שמור לכספת";
+            saveCharBtn.innerText = t("cb_save_btn");
             saveCharBtn.disabled = false;
         }
     };
@@ -188,8 +201,9 @@ const createRoomBtn = document.getElementById('create-room-btn');
 if(createRoomBtn) {
     createRoomBtn.onclick = () => {
         const randomCode = Math.floor(1000 + Math.random() * 9000).toString(); 
-        alert(`החדר שלך נוצר בהצלחה! 👑\nקוד החדר להזמנת שחקנים הוא: ${randomCode}`);
+        alert(`${t('alert_room_created')} ${randomCode}`);
         
+        langToggleBtn.style.display = 'none'; // Hide the toggle inside the game room for now
         if(lobbyScreen) lobbyScreen.style.display = 'none';
         startGame('dm', null, randomCode);
     };
