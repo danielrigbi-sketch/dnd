@@ -15,6 +15,29 @@ export function setRoom(roomCode) { activeRoom = roomCode || 'public'; }
 // ==========================================
 // Auth & Vault
 // ==========================================
+// ── Security helpers ──────────────────────────────────────────────────
+// Sanitise character name for use as a Firebase RTDB key.
+// Firebase keys must not contain: . # $ [ ] /
+export function sanitizeCName(name) {
+    if (!name) return 'unknown';
+    return String(name)
+        .replace(/\./g, '_')
+        .replace(/[#$\[\]\/]/g, '_')
+        .trim() || 'unknown';
+}
+
+// Returns the current Firebase auth UID (null if not signed in).
+export function getAuthUid() {
+    return auth.currentUser?.uid || null;
+}
+
+// DM registers their uid so server-side rules can verify DM operations.
+export function setDmUid(roomCode, uid) {
+    if (!roomCode || !uid) return;
+    set(ref(db, `rooms/${roomCode}/dm_uid`), uid);
+}
+
+
 export function loginWithGoogle()              { return signInWithPopup(auth, googleProvider); }
 export function logoutUser()                   { return signOut(auth); }
 export function listenToAuthState(callback)    { onAuthStateChanged(auth, user => callback(user)); }
@@ -25,6 +48,7 @@ export function listenToUserCharacters(uid, cb){ onValue(ref(db, `users/${uid}/c
 // Game Room
 // ==========================================
 export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats) {
+    cName = sanitizeCName(cName);
     const playerRef = ref(db, `rooms/${activeRoom}/players/${cName}`);
     const existing  = await get(playerRef);
     let preservedHp = null, preservedStatuses = null;
@@ -32,7 +56,8 @@ export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrai
         preservedHp       = existing.val().hp      ?? null;
         preservedStatuses = existing.val().statuses ?? null;
     }
-    const data = { pName, pColor, userRole, portrait: charPortrait, score: 0, ...stats };
+    const authUid = auth.currentUser?.uid || null;
+    const data = { pName, pColor, userRole, portrait: charPortrait, score: 0, authUid, ...stats };
     if (preservedHp       !== null) data.hp       = preservedHp;
     if (preservedStatuses !== null) data.statuses = preservedStatuses;
     set(playerRef, data);
@@ -46,10 +71,10 @@ export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrai
 
 export function saveRollToDB(rollData)              { push(ref(db, `rooms/${activeRoom}/rolls`), rollData); }
 export async function getPlayerData(cName)          { return (await get(ref(db, `rooms/${activeRoom}/players/${cName}`))).val(); }
-export function updatePlayerHPInDB(cName, hp)       { update(ref(db, `rooms/${activeRoom}/players/${cName}`), { hp }); }
-export function updatePlayerStatusesInDB(cName, st) { update(ref(db, `rooms/${activeRoom}/players/${cName}`), { statuses: st }); }
-export function updatePlayerVisibilityInDB(cName,v) { update(ref(db, `rooms/${activeRoom}/players/${cName}`), { isHidden: v }); }
-export function removePlayerFromDB(cName)           { remove(ref(db, `rooms/${activeRoom}/players/${cName}`)); remove(ref(db, `rooms/${activeRoom}/initiative/${cName}`)); }
+export function updatePlayerHPInDB(cName, hp)       { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { hp }); }
+export function updatePlayerStatusesInDB(cName, st) { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { statuses: st }); }
+export function updatePlayerVisibilityInDB(cName,v) { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { isHidden: v }); }
+export function removePlayerFromDB(cName)           { const k=sanitizeCName(cName); remove(ref(db, `rooms/${activeRoom}/players/${k}`)); remove(ref(db, `rooms/${activeRoom}/initiative/${k}`)); }
 
 export async function resetInitiativeInDB() {
     remove(ref(db, `rooms/${activeRoom}/initiative`));
@@ -63,8 +88,9 @@ export async function getCombatStatus() { return (await get(ref(db, `rooms/${act
 export function setCombatStatus(v)      { set(ref(db, `rooms/${activeRoom}/combat_active`), v); }
 
 export function setPlayerInitiativeInDB(cName, pName, score, pColor) {
-    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { score });
-    set(ref(db, `rooms/${activeRoom}/initiative/${cName}`), { score, color: pColor, playerName: pName });
+    const k = sanitizeCName(cName);
+    update(ref(db, `rooms/${activeRoom}/players/${k}`), { score });
+    set(ref(db, `rooms/${activeRoom}/initiative/${k}`), { score, color: pColor, playerName: pName });
 }
 
 // ==========================================
@@ -104,10 +130,10 @@ export async function updateCharacterInVault(uid, id, data)  { await update(ref(
 // Sprint 5 — Death Saves & Concentration
 // ==========================================
 export function updateDeathSavesInDB(cName, saves) {
-    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { deathSaves: saves });
+    update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { deathSaves: saves });
 }
 export function updateConcentrationInDB(cName, isConcentrating) {
-    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { concentrating: isConcentrating });
+    update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { concentrating: isConcentrating });
 }
 
 // ==========================================
@@ -115,11 +141,11 @@ export function updateConcentrationInDB(cName, isConcentrating) {
 // ==========================================
 export function updateSpellSlotsInDB(cName, slots) {
     // slots = { max: {1:4,2:3,...}, used: {1:1,2:0,...} }
-    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { spellSlots: slots });
+    update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { spellSlots: slots });
 }
 export function restoreAllSpellSlotsInDB(cName, maxSlots) {
     // Restore used slots back to 0 (long rest)
-    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { 'spellSlots/used': {} });
+    update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { 'spellSlots/used': {} });
 }
 
 // ==========================================
