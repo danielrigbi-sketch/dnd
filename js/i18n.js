@@ -58,9 +58,16 @@ export const translations = {
         "cb_save_btn": "שמור לכספת",
         "cb_saving": "שומר...",
         "alert_login_fail": "ההתחברות נכשלה!",
-        "alert_missing": "חסרים פרטים!",
         "alert_save_err": "שגיאה בשמירת הדמות.",
-        "alert_room_created": "החדר שלך נוצר בהצלחה! 👑\nקוד החדר להזמנת שחקנים הוא:",
+        "alert_room_created": "החדר שלך נוצר! 👑 קוד החדר:",
+        "alert_room_created_title": "החדר שלך מוכן! 👑",
+        "alert_room_copy": "📋 העתק קוד",
+        "alert_room_copied": "✅ הועתק!",
+        "alert_room_enter": "🚪 כנס לחדר",
+        
+        // Form validation
+        "field_required": "שדה חובה",
+        "alert_missing_fields": "נא למלא את כל השדות המסומנים באדום",
         
         // Game Room
         "party_title": "חבורת ההרפתקנים",
@@ -136,7 +143,37 @@ export const translations = {
         "mon_vampire": "ערפד",
         "mon_dragon": "דרקון צעיר",
         "mon_beholder": "ביהולדר",
-        "mon_lich": "ליץ'"
+        "mon_lich": "ליץ'",
+
+        // =====================
+        // Flavor Text (d20)
+        // =====================
+        "flavor_d20_crit1": "האלים מריעים לך! 🌟",
+        "flavor_d20_crit2": "פגיעה קטלנית!",
+        "flavor_d20_crit3": "אגדה נולדת!",
+        "flavor_d20_crit4": "היסטוריה נכתבת ב-20 טבעי!",
+        "flavor_d20_fail1": "זה הולך לכאוב... 💀",
+        "flavor_d20_fail2": "יום רע להיות הרפתקן.",
+        "flavor_d20_fail3": "החרב החליקה?",
+        "flavor_d20_fail4": "הכישלון הזה ייזכר לדורות...",
+        "flavor_d20_high1": "מעשה גבורה שייכתב בדברי הימים!",
+        "flavor_d20_high2": "עוצמה שלא מהעולם הזה!",
+        "flavor_d20_high3": "האויב נראה המום מהפגיעה!",
+        "flavor_d20_good1": "מכה מרשימה ביותר!",
+        "flavor_d20_good2": "ביצוע של מקצוען אמיתי.",
+        "flavor_d20_good3": "האימונים השתלמו ברגע האמת.",
+        "flavor_d20_mid1": "תוצאה סולידית, לא רע.",
+        "flavor_d20_mid2": "זה יעשה את העבודה.",
+        "flavor_d20_mid3": "פגיעה נקייה, העסק מתקדם.",
+        "flavor_d20_low1": "אולי כדאי לנסות שוב...",
+        "flavor_d20_low2": "כמעט פגעת בציפור שעברה שם.",
+        "flavor_d20_low3": "נשימה עמוקה ובפעם הבאה לכוון.",
+
+        // Flavor Text (generic dice)
+        "flavor_gen_max_plus": "מעבר לכל הציפיות! כוח מתפרץ! 🔥",
+        "flavor_gen_max": "מקסימום עוצמה! מכה מדויקת.",
+        "flavor_gen_mid": "נחמד, זה בטח יזיז משהו.",
+        "flavor_gen_low": "זה בקושי שריטה... אולי בפעם הבאה."
     },
     en: {
         "app_title": "Welcome to CritRoll 2.0",
@@ -195,9 +232,16 @@ export const translations = {
         "cb_save_btn": "Save to Vault",
         "cb_saving": "Saving...",
         "alert_login_fail": "Login failed!",
-        "alert_missing": "Missing details!",
         "alert_save_err": "Error saving character.",
-        "alert_room_created": "Room created successfully! 👑\nRoom code for your players is:",
+        "alert_room_created": "Room created! 👑 Room code:",
+        "alert_room_created_title": "Your room is ready! 👑",
+        "alert_room_copy": "📋 Copy Code",
+        "alert_room_copied": "✅ Copied!",
+        "alert_room_enter": "🚪 Enter Room",
+
+        // Form validation
+        "field_required": "Required",
+        "alert_missing_fields": "Please fill in all highlighted fields",
         
         // Game Room
         "party_title": "The Adventuring Party",
@@ -273,7 +317,37 @@ export const translations = {
         "mon_vampire": "Vampire",
         "mon_dragon": "Young Dragon",
         "mon_beholder": "Beholder",
-        "mon_lich": "Lich"
+        "mon_lich": "Lich",
+
+        // =====================
+        // Flavor Text (d20)
+        // =====================
+        "flavor_d20_crit1": "The gods cheer for you! 🌟",
+        "flavor_d20_crit2": "Critical hit!",
+        "flavor_d20_crit3": "A legend is born!",
+        "flavor_d20_crit4": "History is written on a natural 20!",
+        "flavor_d20_fail1": "That's gonna hurt... 💀",
+        "flavor_d20_fail2": "A bad day to be an adventurer.",
+        "flavor_d20_fail3": "Did the sword slip?",
+        "flavor_d20_fail4": "This failure will be remembered for ages...",
+        "flavor_d20_high1": "A heroic feat worthy of the chronicles!",
+        "flavor_d20_high2": "Power beyond this world!",
+        "flavor_d20_high3": "The enemy looks stunned by the strike!",
+        "flavor_d20_good1": "A most impressive blow!",
+        "flavor_d20_good2": "Executed like a true professional.",
+        "flavor_d20_good3": "All that training paid off.",
+        "flavor_d20_mid1": "A solid result, not bad.",
+        "flavor_d20_mid2": "That'll get the job done.",
+        "flavor_d20_mid3": "Clean hit, moving forward.",
+        "flavor_d20_low1": "Maybe try again...",
+        "flavor_d20_low2": "You almost hit that passing bird.",
+        "flavor_d20_low3": "Deep breath, aim better next time.",
+
+        // Flavor Text (generic dice)
+        "flavor_gen_max_plus": "Beyond all expectations! Bursting power! 🔥",
+        "flavor_gen_max": "Maximum power! Precise strike.",
+        "flavor_gen_mid": "Nice, that should move something.",
+        "flavor_gen_low": "Barely a scratch... maybe next time."
     }
 };
 
@@ -295,27 +369,22 @@ export function getLang() {
 }
 
 export function t(key) {
-    return translations[currentLang][key] || key;
+    return translations[currentLang][key] || translations['he'][key] || key;
 }
 
 export function updateDOM() {
-    // Normal HTML text
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[currentLang][key]) {
             el.innerHTML = translations[currentLang][key];
         }
     });
-
-    // Placeholders for Inputs
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
         if (translations[currentLang][key]) {
             el.placeholder = translations[currentLang][key];
         }
     });
-
-    // Select Options
     document.querySelectorAll('option[data-i18n]').forEach(opt => {
         const key = opt.getAttribute('data-i18n');
         if (translations[currentLang][key]) {
