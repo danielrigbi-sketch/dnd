@@ -1,4 +1,4 @@
-// app.js v127
+// app.js v127  (S12: Toast/Confirm/Spinner)
 import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=126";
 import { getFlavorText } from "./messages.js?v=126";
 import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=126";
@@ -75,7 +75,8 @@ window.longRest = async (targetCName) => {
 
 window.rerollAllInitiatives = async () => {
     if (userRole !== 'dm') return;
-    if (!confirm('Re-roll all initiatives? This will reset the current order.')) return;
+    const ok = await crConfirm('This will reset the current turn order.', 'Re-roll All Initiatives?', '🎲', 'Re-roll', 'Cancel');
+    if (!ok) return;
     // Reset turn to 0
     currentActiveTurn  = 0;
     currentRoundNumber = 1;
@@ -94,6 +95,87 @@ import { t } from "./i18n.js?v=126";
 import { npcDatabase } from "./monsters.js?v=126";
 import { MapEngine } from "./mapEngine.js?v=126";
 import { SceneWizard } from "./sceneWizard.js?v=126";
+
+
+// =====================================================================
+// UI SYSTEM — Toast, Spinner, ConfirmModal (Sprint 12)
+// =====================================================================
+let _confirmResolve = null;
+
+// Show a non-blocking toast notification
+// type: 'success' | 'error' | 'info' | 'warning'
+export function showToast(msg, type='info', durationMs=3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const icons = { success:'✅', error:'❌', info:'ℹ️', warning:'⚠️' };
+    const el = document.createElement('div');
+    el.className = `cr-toast ${type}`;
+    el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+    container.appendChild(el);
+    const remove = () => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); };
+    const timer = setTimeout(remove, durationMs);
+    el.addEventListener('click', () => { clearTimeout(timer); remove(); });
+}
+window.showToast = showToast;
+
+// Show/hide the loading spinner overlay
+export function showSpinner(label='Loading…') {
+    const el = document.getElementById('cr-spinner-overlay');
+    const lbl = document.getElementById('cr-spinner-label');
+    if (lbl) lbl.textContent = label;
+    el?.classList.add('active');
+}
+export function hideSpinner() {
+    document.getElementById('cr-spinner-overlay')?.classList.remove('active');
+}
+window.showSpinner = showSpinner;
+window.hideSpinner = hideSpinner;
+
+// Styled replacement for native confirm()
+// Returns a Promise<boolean>
+export function crConfirm(msg, title='Are you sure?', icon='⚠️', okLabel='Confirm', cancelLabel='Cancel') {
+    return new Promise(resolve => {
+        const overlay = document.getElementById('cr-confirm-overlay');
+        if (!overlay) { resolve(window.confirm(msg)); return; }  // fallback
+        document.getElementById('cr-confirm-icon').textContent  = icon;
+        document.getElementById('cr-confirm-title').textContent = title;
+        document.getElementById('cr-confirm-msg').textContent   = msg;
+        document.getElementById('cr-confirm-ok').textContent     = okLabel;
+        document.getElementById('cr-confirm-cancel').textContent = cancelLabel;
+        overlay.classList.add('open');
+        _confirmResolve = resolve;
+        // Focus the cancel button by default (safer)
+        setTimeout(() => document.getElementById('cr-confirm-cancel')?.focus(), 50);
+    });
+}
+window.crConfirm = crConfirm;
+
+// Wire confirm modal buttons (called once on DOM ready)
+function _initConfirmModal() {
+    document.getElementById('cr-confirm-ok')?.addEventListener('click', () => {
+        document.getElementById('cr-confirm-overlay').classList.remove('open');
+        _confirmResolve?.(true);
+    });
+    document.getElementById('cr-confirm-cancel')?.addEventListener('click', () => {
+        document.getElementById('cr-confirm-overlay').classList.remove('open');
+        _confirmResolve?.(false);
+    });
+    // ESC key closes confirm modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const overlay = document.getElementById('cr-confirm-overlay');
+            if (overlay?.classList.contains('open')) {
+                overlay.classList.remove('open');
+                _confirmResolve?.(false);
+            }
+            // Also close scene wizard
+            if (document.getElementById('scene-wizard-modal')?.classList.contains('wiz-visible')) {
+                window._wizard?.close();
+            }
+        }
+    });
+}
+document.addEventListener('DOMContentLoaded', _initConfirmModal);
 
 // =====================================================================
 // GLOBALS
@@ -191,6 +273,7 @@ export async function startGame(role, charData, roomCode) {
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
     }
 
+    showSpinner('Joining room…');
     setupDatabaseListeners();
     initMap();
     unlockAudio();
@@ -208,6 +291,8 @@ export async function startGame(role, charData, roomCode) {
 
     try { await initDiceEngine(); isDiceBoxReady = true; }
     catch (e) { console.error("Dice engine failed:", e); }
+    hideSpinner();
+    showToast('Joined room successfully!', 'success');
     setTimeout(() => { canAnimate = true; }, 800);
 }
 
@@ -343,7 +428,7 @@ window.toggleStatus = async (targetCName, status) => {
 
 window.removeNPC = (targetCName) => {
     if (userRole !== 'dm') return;
-    if (confirm(t('alert_delete_npc_1') + targetCName + t('alert_delete_npc_2'))) {
+    if (await crConfirm(`Remove ${targetCName} from the encounter?`, 'Remove Character', '🗑️', 'Remove', 'Cancel')) {
         db.removePlayerFromDB(targetCName);
         if (activeRoller?.cName === targetCName) window.resetRoller();
         if (currentActiveTurn !== null && sortedCombatants.length > 1) {
@@ -380,7 +465,7 @@ window.toggleMute = () => { isMuted = !isMuted; document.getElementById('mute-bt
 window.toggleCombat = async () => {
     if (userRole !== 'dm') return;
     if (await db.getCombatStatus()) {
-        if (confirm(t('alert_end_combat'))) {
+        if (await crConfirm(t('alert_end_combat') || 'End combat and reset initiative?', 'End Combat', '⚔️', 'End Combat', 'Cancel')) {
             db.setCombatStatus(false);
             db.resetInitiativeInDB();
             currentActiveTurn = null; currentRoundNumber = 0; sortedCombatants = [];
@@ -571,8 +656,10 @@ window.editScene = async (sceneId) => {
 };
 
 window.deleteScene = (sceneId) => {
-    if (!uid || !confirm('Delete this scene?')) return;
+    if (!uid) return;
+    if (!(await crConfirm('This cannot be undone.', 'Delete Scene?', '🗺️', 'Delete', 'Cancel'))) return;
     db.deleteSceneFromVault(uid, sceneId);
+    showToast('Scene deleted.', 'info');
     if (activeSceneId === sceneId) window.deactivateScene();
 };
 
