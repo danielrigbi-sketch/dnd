@@ -196,7 +196,11 @@ export async function saveSceneToVault(uid, sceneId, data) {
     await set(ref(db, `users/${uid}/scenes/${sceneId}`), data);
 }
 export function listenToUserScenes(uid, cb) {
-    onValue(ref(db, `users/${uid}/scenes`), s => cb(s.val()));
+    return onValue(ref(db, `users/${uid}/scenes`), s => cb(s.val()));
+}
+export async function getUserScenesOnce(uid) {
+    const snap = await get(ref(db, `users/${uid}/scenes`));
+    return snap.val();
 }
 export async function deleteSceneFromVault(uid, sceneId) {
     await remove(ref(db, `users/${uid}/scenes/${sceneId}`));
