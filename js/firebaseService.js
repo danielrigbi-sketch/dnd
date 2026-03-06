@@ -188,3 +188,24 @@ export function listenScenes(room, cb) {
     return onValue(ref(db, `rooms/${room}/scenes`), s => cb(s.val()));
 }
 export function getActiveRoom() { return activeRoom; }
+
+// ==========================================
+// Sprint 8 — Scene Vault (user-level)
+// ==========================================
+export async function saveSceneToVault(uid, sceneId, data) {
+    await set(ref(db, `users/${uid}/scenes/${sceneId}`), data);
+}
+export function listenToUserScenes(uid, cb) {
+    onValue(ref(db, `users/${uid}/scenes`), s => cb(s.val()));
+}
+export async function deleteSceneFromVault(uid, sceneId) {
+    await remove(ref(db, `users/${uid}/scenes/${sceneId}`));
+}
+
+// Atmosphere sync (room-wide)
+export function setAtmosphere(room, atmosphere) {
+    set(ref(db, `rooms/${room}/map/atmosphere`), atmosphere);
+}
+export function listenAtmosphere(room, cb) {
+    return onValue(ref(db, `rooms/${room}/map/atmosphere`), s => cb(s.val()));
+}
