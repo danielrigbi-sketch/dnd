@@ -9,8 +9,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="assets/logo.png">
     
-    <link rel="stylesheet" href="css/style.css?v=111">
+    <link rel="stylesheet" href="css/style.css?v=112">
     <link rel="stylesheet" href="css/diceStyles.css">
+    <style>
+        .portrait-tab { flex: 1; padding: 6px; background: rgba(0,0,0,0.4); color: #ccc; border: 1px solid #555; cursor: pointer; border-radius: 4px; font-size: 12px; }
+        .portrait-tab.active { background: #3498db; color: white; border-color: #2980b9; font-weight: bold; }
+        .vault-card-actions { position: absolute; top: 5px; left: 5px; display: flex; gap: 5px; }
+        .vault-action-btn { background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 4px; cursor: pointer; padding: 4px 6px; font-size: 12px; transition: 0.2s; }
+        .vault-action-btn:hover { background: #e74c3c; }
+        .vault-action-btn.edit:hover { background: #f39c12; }
+    </style>
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
 
@@ -53,8 +61,7 @@
                     <div style="margin-bottom: 20px;">
                         <div data-i18n="player_join_title" style="color: #ccc; font-size: 13px; margin-bottom: 8px;"></div>
                         <div style="display: flex; gap: 5px;">
-                            <input type="text" id="room-code-input" data-i18n="room_code_ph" style="flex: 1; padding: 10px; border-radius: 6px; border: none; text-align: center; font-size: 16px; font-weight: bold;">
-                            <button id="join-room-btn" data-i18n="join_btn" style="background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; display: none;"></button>
+                            <input type="text" id="room-code-input" data-i18n-placeholder="room_code_ph" style="flex: 1; padding: 10px; border-radius: 6px; border: none; text-align: center; font-size: 16px; font-weight: bold;">
                         </div>
                         <div data-i18n="vault_hint" style="font-size: 11px; color: #aaa; margin-top: 5px;"></div>
                     </div>
@@ -69,7 +76,7 @@
                         <h3 data-i18n="vault_title" style="color: white; margin: 0;"></h3>
                         <button id="new-char-btn" data-i18n="new_char_btn" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;"></button>
                     </div>
-                    <div id="vault-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                    <div id="vault-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px; position: relative;">
                         </div>
                 </div>
             </div>
@@ -79,23 +86,49 @@
     <div id="char-builder-modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1100; justify-content: center; align-items: center; padding: 20px;">
         <div style="background: #2c3e50; width: 100%; max-width: 450px; border-radius: 12px; padding: 20px; border: 2px solid #f39c12; max-height: 95vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.9);">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
-                <h2 data-i18n="cb_title" style="margin: 0; color: #f1c40f; font-size: 20px;"></h2>
+                <h2 id="cb-main-title" data-i18n="cb_title" style="margin: 0; color: #f1c40f; font-size: 20px;"></h2>
                 <button id="close-builder-btn" style="background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer;">&times;</button>
             </div>
 
-            <div style="margin-bottom: 15px; text-align: center;">
+            <input type="hidden" id="cb-char-id">
+
+            <div style="display: flex; gap: 5px; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; margin-bottom: 15px;">
+                <div style="color: #ccc; font-size: 14px; font-weight: bold;" data-i18n="color_picker_label"></div>
+                <input type="color" id="cb-color" value="#3498db" style="width: 50px; height: 30px; border: none; cursor: pointer; background: transparent;">
+            </div>
+
+            <div style="margin-bottom: 15px; text-align: center; border-bottom: 1px dashed #555; padding-bottom: 10px;">
                 <div data-i18n="cb_portrait" style="font-size: 12px; color: #ccc; margin-bottom: 5px;"></div>
-                <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
-                    <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f" class="builder-portrait-btn">
+                
+                <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 10px;">
+                    <button type="button" id="tab-portrait-preset" class="portrait-tab active" data-i18n="port_tab_preset"></button>
+                    <button type="button" id="tab-portrait-url" class="portrait-tab" data-i18n="port_tab_url"></button>
+                    <button type="button" id="tab-portrait-file" class="portrait-tab" data-i18n="port_tab_file"></button>
+                </div>
+
+                <div id="portrait-preset-area" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                    <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f" class="builder-portrait-btn active">
                     <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=elf_f&backgroundColor=2ecc71" class="builder-portrait-btn">
                     <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=dwarf_m&backgroundColor=e67e22" class="builder-portrait-btn">
                     <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=tiefling_f&backgroundColor=c0392b" class="builder-portrait-btn">
                     <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=halfelf_m&backgroundColor=1abc9c" class="builder-portrait-btn">
                 </div>
+                
+                <div id="portrait-url-area" style="display: none;">
+                    <input type="text" id="cb-portrait-url" class="builder-input" data-i18n-placeholder="port_url_ph" style="width:100%; text-align: left; direction: ltr;">
+                </div>
+                
+                <div id="portrait-file-area" style="display: none;">
+                    <input type="file" id="cb-portrait-file" accept="image/*" class="builder-input" style="width:100%; color: white; padding: 6px;">
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <img id="portrait-preview" src="https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #f1c40f; background: #222;">
+                </div>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <input type="text" id="cb-name" class="builder-input" data-i18n="cb_name_ph" autocomplete="off">
+                <input type="text" id="cb-name" class="builder-input" data-i18n-placeholder="cb_name_ph" autocomplete="off">
                 <div style="display: flex; gap: 5px;">
                     <select id="cb-race" class="builder-input" style="width: 50%;">
                         <option value="" disabled selected data-i18n="cb_race"></option>
@@ -113,18 +146,18 @@
                 </div>
 
                 <div style="display: flex; gap: 5px;">
-                    <input type="number" id="cb-ac" class="builder-input" data-i18n="cb_ac" style="width: 25%;">
-                    <input type="number" id="cb-speed" class="builder-input" data-i18n="cb_speed" style="width: 25%;">
-                    <input type="number" id="cb-pp" class="builder-input" data-i18n="cb_pp" style="width: 25%;">
-                    <input type="number" id="cb-init" class="builder-input" data-i18n="cb_init" style="width: 25%;">
+                    <input type="number" id="cb-ac" class="builder-input" data-i18n-placeholder="cb_ac" style="width: 25%;">
+                    <input type="number" id="cb-speed" class="builder-input" data-i18n-placeholder="cb_speed" style="width: 25%;">
+                    <input type="number" id="cb-pp" class="builder-input" data-i18n-placeholder="cb_pp" style="width: 25%;">
+                    <input type="number" id="cb-init" class="builder-input" data-i18n-placeholder="cb_init" style="width: 25%;">
                 </div>
 
                 <div style="display: flex; gap: 5px;">
-                    <input type="number" id="cb-hp" class="builder-input" data-i18n="cb_hp" style="width: 100%;">
+                    <input type="number" id="cb-hp" class="builder-input" data-i18n-placeholder="cb_hp" style="width: 100%;">
                 </div>
 
                 <div style="display: flex; gap: 5px;">
-                    <input type="number" id="cb-melee" class="builder-input" data-i18n="cb_melee" style="width: 25%;">
+                    <input type="number" id="cb-melee" class="builder-input" data-i18n-placeholder="cb_melee" style="width: 25%;">
                     <select id="cb-melee-dmg" class="builder-input" style="width: 25%;">
                         <option value="1d4">1d4</option>
                         <option value="1d6" selected>1d6</option>
@@ -133,7 +166,7 @@
                         <option value="1d12">1d12</option>
                         <option value="2d6">2d6</option>
                     </select>
-                    <input type="number" id="cb-ranged" class="builder-input" data-i18n="cb_ranged" style="width: 25%;">
+                    <input type="number" id="cb-ranged" class="builder-input" data-i18n-placeholder="cb_ranged" style="width: 25%;">
                     <select id="cb-ranged-dmg" class="builder-input" style="width: 25%;">
                         <option value="1d4">1d4</option>
                         <option value="1d6" selected>1d6</option>
@@ -188,20 +221,20 @@
                     <option value="lich" data-i18n="mon_lich"></option>
                 </select>
                 <div style="display:flex; gap:5px;">
-                    <input type="text" id="npc-name" data-i18n="ph_specific_name" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
-                    <input type="text" id="npc-class" data-i18n="ph_class_opt" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-name" data-i18n-placeholder="ph_specific_name" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-class" data-i18n-placeholder="ph_class_opt" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:50%; text-align:center; background:#fff; color:#333;">
                 </div>
                 <div style="display:flex; gap:5px;">
-                    <input type="number" id="npc-hp" data-i18n="ph_hp" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
-                    <input type="number" id="npc-init" data-i18n="ph_init" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
-                    <input type="number" id="npc-count" data-i18n="ph_count" value="1" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-hp" data-i18n-placeholder="ph_hp" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-init" data-i18n-placeholder="ph_init" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-count" data-i18n-placeholder="ph_count" value="1" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:33%; text-align:center; background:#fff; color:#333;">
                 </div>
                 
                 <div style="display:flex; gap:5px;">
-                    <input type="number" id="npc-melee" data-i18n="ph_melee" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
-                    <input type="text" id="npc-melee-dmg" data-i18n="ph_melee_dmg" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
-                    <input type="number" id="npc-ranged" data-i18n="ph_ranged" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
-                    <input type="text" id="npc-ranged-dmg" data-i18n="ph_ranged_dmg" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-melee" data-i18n-placeholder="ph_melee" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-melee-dmg" data-i18n-placeholder="ph_melee_dmg" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="number" id="npc-ranged" data-i18n-placeholder="ph_ranged" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
+                    <input type="text" id="npc-ranged-dmg" data-i18n-placeholder="ph_ranged_dmg" style="padding:6px; font-size:12px; border-radius:4px; border:none; width:25%; text-align:center; background:#fff; color:#333;">
                 </div>
 
                 <div style="display:flex; align-items:center; justify-content:center; gap:5px; margin-top:4px;">
@@ -262,6 +295,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/lobby.js?v=111"></script>
+    <script type="module" src="js/lobby.js?v=112"></script>
 </body>
 </html>
