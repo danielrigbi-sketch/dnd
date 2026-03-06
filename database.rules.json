@@ -1,0 +1,61 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null",
+
+        "dm_uid": {
+          ".write": "auth != null && (!data.exists() || data.val() === auth.uid)"
+        },
+
+        "players": {
+          "$cName": {
+            ".write": "auth != null && (root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid || newData.child('authUid').val() === auth.uid || data.child('authUid').val() === auth.uid)"
+          }
+        },
+
+        "initiative": {
+          "$cName": {
+            ".write": "auth != null"
+          }
+        },
+
+        "combat_active": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+        },
+
+        "active_turn": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+        },
+
+        "round_number": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+        },
+
+        "map": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+        },
+
+        "scenes": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+        },
+
+        "rolls": {
+          ".write": "auth != null",
+          ".indexOn": ["ts"]
+        },
+
+        "online": {
+          ".write": "auth != null"
+        }
+      }
+    },
+
+    "users": {
+      "$uid": {
+        ".read":  "auth != null && $uid === auth.uid",
+        ".write": "auth != null && $uid === auth.uid"
+      }
+    }
+  }
+}
