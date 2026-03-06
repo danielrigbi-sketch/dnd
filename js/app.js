@@ -1,11 +1,45 @@
 // app.js v120
-import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=120";
-import { getFlavorText } from "./messages.js?v=120";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=120";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=120";
-import * as db from "./firebaseService.js?v=120";
-import { t } from "./i18n.js?v=120";
-import { npcDatabase } from "./monsters.js?v=120";
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=121";
+import { getFlavorText } from "./messages.js?v=121";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=121";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=121";
+import * as db from "./firebaseService.js?v=121";
+
+// =====================================================================
+// SPRINT 5 — Death Saves & Concentration
+// =====================================================================
+window.toggleDeathSave = async (targetCName, type, index) => {
+    const p = await db.getPlayerData(targetCName);
+    if (!p) return;
+    const saves = p.deathSaves || { successes: [false,false,false], failures: [false,false,false] };
+    saves[type][index] = !saves[type][index];
+    // Check win/lose conditions
+    const wins  = saves.successes.filter(Boolean).length;
+    const fails = saves.failures.filter(Boolean).length;
+    if (wins >= 3) {
+        saves.stable = true;
+        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `💚 ${targetCName} is STABLE!`, ts: Date.now() });
+    }
+    if (fails >= 3) {
+        saves.dead = true;
+        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `💀 ${targetCName} has DIED!`, ts: Date.now() });
+    }
+    db.updateDeathSavesInDB(targetCName, saves);
+};
+
+window.resetDeathSaves = async (targetCName) => {
+    db.updateDeathSavesInDB(targetCName, { successes: [false,false,false], failures: [false,false,false], stable: false, dead: false });
+};
+
+window.toggleConcentration = async (targetCName) => {
+    const p = await db.getPlayerData(targetCName);
+    if (!p) return;
+    const newVal = !p.concentrating;
+    db.updateConcentrationInDB(targetCName, newVal);
+    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: newVal ? `🔮 ${targetCName} is concentrating!` : `🔮 ${targetCName} lost concentration.`, ts: Date.now() });
+};
+import { t } from "./i18n.js?v=121";
+import { npcDatabase } from "./monsters.js?v=121";
 
 // =====================================================================
 // GLOBALS
@@ -218,6 +252,11 @@ window.changeHP = async (targetCName, isPlus) => {
     if (!p) return;
     const newHp = Math.max(0, Math.min(p.maxHp, (p.hp || 0) + (isPlus ? amount : -amount)));
     db.updatePlayerHPInDB(targetCName, newHp);
+    // Auto-break concentration on damage
+    if (!isPlus && p.concentrating) {
+        db.updateConcentrationInDB(targetCName, false);
+        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `🔮 ${targetCName} lost concentration! (took damage)`, ts: Date.now() });
+    }
     db.saveRollToDB({ cName: targetCName, type: isPlus ? "HEAL" : "DAMAGE", res: amount, newHp, color: isPlus ? "#2ecc71" : "#e74c3c", flavor: (isPlus ? t('log_heals') : t('log_takes_dmg')) + ` (${amount} ${t('log_points')})`, ts: Date.now() });
     if (inputField) inputField.value = 1;
 };
