@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="assets/logo.png">
     
-    <link rel="stylesheet" href="css/style.css?v=121">
+    <link rel="stylesheet" href="css/style.css?v=122">
     <link rel="stylesheet" href="css/diceStyles.css">
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
@@ -189,6 +189,49 @@
                     <button type="button" id="add-custom-attack-btn" class="hover-btn w-100" data-i18n="cb_add_attack" style="background: rgba(52, 152, 219, 0.3); color: #3498db; border: 1px dashed #3498db; padding: 8px; border-radius: 6px; font-size: 12px; margin-top: 10px;"></button>
                 </div>
 
+                <!-- Sprint 6: Spell Slots -->
+                <div style="margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;">
+                    <div style="font-size: 14px; color: #9b59b6; margin-bottom: 8px; font-weight: bold;">🔮 Spell Slots (optional)</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;">Lv 1</label>
+                            <input type="number" id="cb-spell-1" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;">Lv 2</label>
+                            <input type="number" id="cb-spell-2" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;">Lv 3</label>
+                            <input type="number" id="cb-spell-3" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;">Lv 4</label>
+                            <input type="number" id="cb-spell-4" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;">Lv 5</label>
+                            <input type="number" id="cb-spell-5" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;">Lv 6</label>
+                            <input type="number" id="cb-spell-6" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;">Lv 7</label>
+                            <input type="number" id="cb-spell-7" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;">Lv 8</label>
+                            <input type="number" id="cb-spell-8" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;">Lv 9</label>
+                            <input type="number" id="cb-spell-9" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                    </div>
+                </div>
+
                 <button type="submit" id="save-char-btn" class="hover-btn w-100" data-i18n="cb_save_btn" style="background: #27ae60; color: white; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; margin-top: 20px;"></button>
             </div>
         </form>
@@ -264,6 +307,7 @@
                             <button onclick="window.prevTurn()" class="side-btn hover-btn" style="flex:1; background:#2c3e50; padding:8px; font-size:18px;" title="Previous Turn">◀</button>
                             <button onclick="window.nextTurn()" class="side-btn hover-btn" style="flex:2; background:#e67e22; padding:8px; font-weight:900; font-size:13px;">Next Turn ▶</button>
                         </div>
+                        <button onclick="window.rerollAllInitiatives()" class="side-btn hover-btn" style="background:rgba(52,152,219,0.3); border:1px solid #3498db; color:#3498db; font-size:12px; padding:7px;">🎲 Re-roll All Initiatives</button>
                     </div>
 
                     <button id="mute-btn" class="side-btn hover-btn" data-i18n="mute_sound" onclick="window.toggleMute()"></button>
@@ -314,7 +358,7 @@
         </div>
     </div>
 
-    <script type="module" src="js/lobby.js?v=121"></script>
+    <script type="module" src="js/lobby.js?v=122"></script>
     <script>
         // Mobile panel toggle
         window.toggleMobilePanel = () => {
