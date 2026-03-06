@@ -1,7 +1,7 @@
 // lobby.js - Welcome screen and Authentication Controller
-import * as db from "./firebaseService.js?v=123";
-import { startGame } from "./app.js?v=123";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=123";
+import * as db from "./firebaseService.js?v=125";
+import { startGame } from "./app.js?v=125";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=125";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
