@@ -243,6 +243,19 @@
             <div class="side-footer">
                 <div class="side-buttons-row">
                     <button id="master-combat-btn" class="side-btn hover-btn" data-i18n="open_combat" style="display:none; background:#2c3e50;" onclick="window.toggleCombat()"></button>
+
+                    <!-- Sprint 3: Turn Tracker Controls (DM only, shown during combat) -->
+                    <div id="dm-turn-controls" style="display:none; flex-direction:column; gap:6px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(241,196,15,0.1); border:1px solid rgba(241,196,15,0.3); border-radius:8px; padding:6px 10px;">
+                            <span id="round-counter" style="color:#f1c40f; font-weight:900; font-size:13px;"></span>
+                            <span id="active-turn-name" style="color:white; font-size:12px; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px;"></span>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button onclick="window.prevTurn()" class="side-btn hover-btn" style="flex:1; background:#2c3e50; padding:8px; font-size:18px;" title="Previous Turn">◀</button>
+                            <button onclick="window.nextTurn()" class="side-btn hover-btn" style="flex:2; background:#e67e22; padding:8px; font-weight:900; font-size:13px;">Next Turn ▶</button>
+                        </div>
+                    </div>
+
                     <button id="mute-btn" class="side-btn hover-btn" data-i18n="mute_sound" onclick="window.toggleMute()"></button>
                 </div>
             </div>
@@ -291,7 +304,7 @@
         </div>
     </div>
 
-    <script type="module" src="js/lobby.js?v=118"></script>
+    <script type="module" src="js/lobby.js?v=119"></script>
     <script>
         // Mobile panel toggle
         window.toggleMobilePanel = () => {
