@@ -1,8 +1,8 @@
 // lobby.js - Welcome screen and Authentication Controller
 
-import * as db from "./firebaseService.js?v=110";
-import { startGame } from "./app.js?v=110";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=110";
+import * as db from "./firebaseService.js?v=111";
+import { startGame } from "./app.js?v=111";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=111";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -31,7 +31,6 @@ const closeBuilderBtn = document.getElementById('close-builder-btn');
 const saveCharBtn = document.getElementById('save-char-btn');
 const vaultList = document.getElementById('vault-list');
 
-// NEW: Custom Attacks UI Logic
 const addAttackBtn = document.getElementById('add-custom-attack-btn');
 const attacksList = document.getElementById('custom-attacks-list');
 
@@ -157,7 +156,7 @@ if(newCharBtn) {
         selectedPortrait = "";
         document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.builder-input').forEach(input => input.value = '');
-        if (attacksList) attacksList.innerHTML = ''; // Clear custom attacks when opening a fresh form
+        if (attacksList) attacksList.innerHTML = '';
     };
 }
 
@@ -192,7 +191,6 @@ if(saveCharBtn) {
         const ranged = document.getElementById('cb-ranged')?.value;
         const rangedDmg = document.getElementById('cb-ranged-dmg')?.value;
 
-        // NEW: Gather custom attacks from the DOM
         const customAttacks = [];
         if (attacksList) {
             attacksList.querySelectorAll('div').forEach(row => {
@@ -214,7 +212,7 @@ if(saveCharBtn) {
             pp: parseInt(pp), initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
             melee: parseInt(melee), meleeDmg: meleeDmg, 
             ranged: parseInt(ranged), rangedDmg: rangedDmg, 
-            customAttacks: customAttacks, // Saved to Firebase!
+            customAttacks: customAttacks,
             portrait: selectedPortrait, createdAt: Date.now()
         };
 
