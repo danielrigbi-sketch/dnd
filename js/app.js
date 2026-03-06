@@ -1,11 +1,11 @@
 // app.js - Main Game Controller
 
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=109";
-import { getFlavorText } from "./messages.js?v=109";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=109";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=109";
-import * as db from "./firebaseService.js?v=109";
-import { t } from "./i18n.js?v=109";
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=111";
+import { getFlavorText } from "./messages.js?v=111";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=111";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=111";
+import * as db from "./firebaseService.js?v=111";
+import { t } from "./i18n.js?v=111";
 
 // =====================================================================
 // GLOBALS
@@ -56,6 +56,10 @@ export async function startGame(role, charData, roomCode) {
         pColor = "#3498db";
         charPortrait = charData.portrait;
         localStorage.setItem('critroll_initBonus', charData.initBonus || 0);
+        
+        // THE FIX: We explicitly save the character's name so ui.js knows who we are!
+        localStorage.setItem('critroll_cName', cName); 
+
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, charData);
     } else {
         pName = document.getElementById('user-display-name')?.innerText || "DM";
@@ -67,6 +71,9 @@ export async function startGame(role, charData, roomCode) {
         const npcControls = document.getElementById('dm-npc-controls');
         if(combatBtn) combatBtn.style.display = 'block';
         if(npcControls) npcControls.style.display = 'flex';
+
+        // THE FIX: Reset the cName for DM so it doesn't carry over from previous games
+        localStorage.setItem('critroll_cName', 'DM'); 
 
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
     }
