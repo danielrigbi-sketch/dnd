@@ -1,6 +1,6 @@
 // ui.js
 
-import { t } from "./i18n.js?v=110";
+import { t } from "./i18n.js?v=111";
 
 let expandedCardId = null;
 
@@ -98,9 +98,10 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
             const displayClass = hasHebrew.test(classStr) ? classStr : t("class_" + classStr.toLowerCase());
 
             let subtext = isNPC ? `⚔️ ${i.class ? i.class : t("default_monster")}` : `${displayRace} ${displayClass}`;
+            
+            // This is where the magic happens for permissions:
             const canViewStats = isDM || isOwner;
 
-            // NEW: Generate HTML for Custom Attacks if they exist
             let customAttacksHTML = '';
             if (i.customAttacks && i.customAttacks.length > 0) {
                 customAttacksHTML = i.customAttacks.map(atk => `
