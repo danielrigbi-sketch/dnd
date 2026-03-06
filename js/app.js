@@ -1,9 +1,9 @@
-// app.js v120
-import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=126";
-import { getFlavorText } from "./messages.js?v=126";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=126";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=126";
-import * as db from "./firebaseService.js?v=126";
+// app.js v127
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=127";
+import { getFlavorText } from "./messages.js?v=127";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=127";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=127";
+import * as db from "./firebaseService.js?v=127";
 // getActiveRoom is available via db.getActiveRoom()
 
 // =====================================================================
@@ -99,10 +99,10 @@ window.rerollAllInitiatives = async () => {
     }
     db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
 };
-import { t } from "./i18n.js?v=126";
-import { npcDatabase } from "./monsters.js?v=126";
-import { MapEngine } from "./mapEngine.js?v=126";
-import { SceneWizard } from "./sceneWizard.js?v=126";
+import { t } from "./i18n.js?v=127";
+import { npcDatabase } from "./monsters.js?v=127";
+import { MapEngine } from "./mapEngine.js?v=127";
+import { SceneWizard } from "./sceneWizard.js?v=127";
 
 // =====================================================================
 // GLOBALS
@@ -191,6 +191,8 @@ export async function startGame(role, charData, roomCode) {
         localStorage.setItem('critroll_cName', 'DM');
         populateMonsterSelect();
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
+        // Register DM uid for Firebase security rules
+        if (uid) db.setDmUid(roomCode, uid);
     }
 
     setupDatabaseListeners();
