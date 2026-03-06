@@ -1,5 +1,5 @@
 // ui.js v119
-import { t } from "./i18n.js?v=120";
+import { t } from "./i18n.js?v=121";
 
 let expandedCardId = null;
 let _lastPlayersData = null;
@@ -59,6 +59,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
         if (isThisCharDM) extraClasses = 'dm-item';
         if (activeRoller && activeRoller.cName === i.name) extraClasses += ' active-control';
         if (isActiveTurn) extraClasses += ' active-turn';
+        if (isDying && !isStable && !isDead) extraClasses += ' dying';
 
         div.className = `tracker-item ${extraClasses}`;
         div.setAttribute('data-combatant', i.name);
@@ -83,6 +84,10 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             const isOwner = myCName === i.name;
             const isNPC = i.userRole === 'npc';
             const isOpen = expandedCardId === i.name;
+            const isDying = (i.hp || 0) <= 0;
+            const saves = i.deathSaves || { successes:[false,false,false], failures:[false,false,false] };
+            const isStable = saves.stable || false;
+            const isDead   = saves.dead   || false;
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">🗑️</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
@@ -106,20 +111,79 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             }
 
             // Active turn badge
-            const activeBadge = isActiveTurn
-                ? `<span class="active-turn-badge">⚔️ NOW</span>`
-                : '';
+            const activeBadge = isActiveTurn ? `<span class="active-turn-badge">⚔️ NOW</span>` : '';
+            // Concentration badge
+            const concBadge = i.concentrating ? `<span class="conc-badge">🔮</span>` : '';
+            // Portrait ring colour: gold=active, red=dying, default
+            const portraitStyle = isActiveTurn
+                ? 'border-color:#f1c40f; box-shadow:0 0 10px #f1c40f;'
+                : isDying && !isStable
+                    ? 'border-color:#e74c3c; box-shadow:0 0 8px rgba(231,76,60,0.6);'
+                    : '';
+
+            // ── HP / Death-saves block ──
+            const hpBlock = isDying ? `
+                <div class="death-saves-block" style="margin-top:8px;">
+                    ${isStable ? `
+                        <div class="ds-stable-badge">💚 STABLE</div>
+                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${i.name}')" class="ds-reset-btn">↺ Reset</button>` : ''}
+                    ` : isDead ? `
+                        <div class="ds-dead-badge">💀 DEAD</div>
+                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${i.name}')" class="ds-reset-btn">↺ Reset</button>` : ''}
+                    ` : `
+                        <div style="font-size:10px; color:#ff7675; font-weight:bold; margin-bottom:5px;">💀 Death Saves</div>
+                        <div style="display:flex; gap:8px; align-items:center; justify-content:space-between;">
+                            <div style="display:flex; align-items:center; gap:3px;">
+                                <span style="font-size:9px; color:#2ecc71; margin-left:2px;">✔</span>
+                                ${saves.successes.map((s,idx) => `
+                                    <button class="ds-btn ds-success ${s?'active':''}" onclick="window.toggleDeathSave('${i.name}','successes',${idx})" ${isDM||isOwner?'':' disabled'}></button>
+                                `).join('')}
+                            </div>
+                            <div style="display:flex; align-items:center; gap:3px;">
+                                <span style="font-size:9px; color:#e74c3c; margin-left:2px;">✖</span>
+                                ${saves.failures.map((f,idx) => `
+                                    <button class="ds-btn ds-fail ${f?'active':''}" onclick="window.toggleDeathSave('${i.name}','failures',${idx})" ${isDM||isOwner?'':' disabled'}></button>
+                                `).join('')}
+                            </div>
+                            ${(isDM||isOwner) ? `
+                                <div class="hp-controls">
+                                    <input type="number" id="hp-input-${i.name}" class="hp-amount-input" value="1" min="1">
+                                    <button class="hp-edit-btn plus" onclick="window.changeHP('${i.name}', true)" title="Heal">+</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `}
+                </div>
+            ` : `
+                <div style="margin-top:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <span style="font-size:10px; font-weight:bold; color:${hpPercent > 30 ? '#2ecc71' : '#ff7675'}">
+                            ❤️ ${i.hp}/${i.maxHp}
+                        </span>
+                        ${(isDM||isOwner) ? `
+                            <div class="hp-controls">
+                                <input type="number" id="hp-input-${i.name}" class="hp-amount-input" value="1" min="1">
+                                <button class="hp-edit-btn minus" onclick="window.changeHP('${i.name}', false)">-</button>
+                                <button class="hp-edit-btn plus"  onclick="window.changeHP('${i.name}', true)">+</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div style="background:#333; height:6px; border-radius:3px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
+                        <div style="width:${hpPercent}%; height:100%; background:${hpPercent > 30 ? '#2ecc71' : '#e74c3c'}; transition:width 0.4s ease-out;"></div>
+                    </div>
+                </div>
+            `;
 
             div.innerHTML = `
-                <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity:0.6;' : ''}">
-                    <img src="${i.portrait || 'https://via.placeholder.com/50'}" class="char-portrait" style="${isActiveTurn ? 'border-color:#f1c40f; box-shadow:0 0 10px #f1c40f;' : ''}">
+                <div style="display:flex; gap:10px; align-items:center; ${isDead?'opacity:0.55;':''}">
+                    <img src="${i.portrait || 'https://via.placeholder.com/50'}" class="char-portrait" style="${portraitStyle}">
                     <div style="flex:1; min-width:0;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
                             <span style="font-weight:900; color:white; font-size:1.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                 ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}
                             </span>
                             <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
-                                ${activeBadge}
+                                ${activeBadge}${concBadge}
                                 <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
                                 <button id="expand-btn-${i.name}" class="expand-btn ${isOpen ? 'open' : ''}" onclick="window.toggleCardExpand('${i.name}')">▼</button>
                             </div>
@@ -130,26 +194,13 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                         </div>
                     </div>
                 </div>
-                <div style="margin-top:8px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                        <span style="font-size:10px; font-weight:bold; color:${hpPercent > 30 ? '#2ecc71' : '#ff7675'}">
-                            ❤️ ${i.hp}/${i.maxHp}
-                        </span>
-                        ${(isDM || isOwner) ? `
-                            <div class="hp-controls">
-                                <input type="number" id="hp-input-${i.name}" class="hp-amount-input" value="1" min="1">
-                                <button class="hp-edit-btn minus" onclick="window.changeHP('${i.name}', false)">-</button>
-                                <button class="hp-edit-btn plus" onclick="window.changeHP('${i.name}', true)">+</button>
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div style="background:#333; height:6px; border-radius:3px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
-                        <div style="width:${hpPercent}%; height:100%; background:${hpPercent > 30 ? '#2ecc71' : '#e74c3c'}; transition:width 0.4s ease-out;"></div>
-                    </div>
-                </div>
+                ${hpBlock}
                 <div class="status-container">
                     ${(i.statuses || []).map(s => `<span class="status-badge" style="background:#636e72">${s}</span>`).join('')}
-                    ${isDM ? `<button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>` : ''}
+                    ${isDM ? `
+                        <button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>
+                        <button onclick="window.toggleConcentration('${i.name}')" title="Toggle Concentration" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; opacity:${i.concentrating?1:0.4};">🔮</button>
+                    ` : ''}
                 </div>
                 <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
