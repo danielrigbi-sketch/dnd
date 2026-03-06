@@ -297,7 +297,80 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .portrait-tab.active { background: #3498db; color: white; border-color: #2980b9; font-weight: bold; }
 
 /* ====================================================
-   SPRINT 5 — DEATH SAVES & CONCENTRATION
+   SPRINT 6 — SPELL SLOTS
+   ==================================================== */
+.spell-slots-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.spell-level-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.spell-level-label {
+    font-size: 10px;
+    color: #9b59b6;
+    font-weight: bold;
+    min-width: 28px;
+}
+.slot-pips {
+    display: flex;
+    gap: 3px;
+    flex: 1;
+}
+.slot-pip {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid #9b59b6;
+    display: inline-block;
+    transition: all 0.15s;
+}
+.slot-pip.avail  { background: #9b59b6; box-shadow: 0 0 4px rgba(155,89,182,0.5); }
+.slot-pip.used   { background: transparent; opacity: 0.4; }
+.slot-count {
+    font-size: 10px;
+    color: #ccc;
+    min-width: 24px;
+    text-align: center;
+}
+.slot-btn {
+    background: none;
+    border: 1px solid rgba(155,89,182,0.5);
+    color: #9b59b6;
+    border-radius: 3px;
+    width: 18px; height: 18px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0;
+    transition: 0.15s;
+    display: flex; align-items: center; justify-content: center;
+}
+.slot-btn.use:hover     { background: rgba(155,89,182,0.3); }
+.slot-btn.restore:hover { background: rgba(155,89,182,0.3); }
+.slot-btn:disabled      { opacity: 0.25; cursor: not-allowed; }
+
+.long-rest-btn {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    background: rgba(52,73,94,0.6);
+    border: 1px solid rgba(155,89,182,0.4);
+    color: #c39bd3;
+    border-radius: 6px;
+    padding: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.long-rest-btn:hover { background: rgba(155,89,182,0.25); color: #d2b4de; }
+
+/* ====================================================
    ==================================================== */
 
 /* Dying card tint */
