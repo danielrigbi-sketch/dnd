@@ -30,6 +30,16 @@ const STS_ICON = {
   Concentrating:'🔮',
 };
 
+
+// Lightweight debounce: delays fn until after 'ms' ms of inactivity.
+function _debounce(fn, ms) {
+    let t = null;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), ms);
+    };
+}
+
 function ck(gx,gy){ return `${Math.floor(gx)}_${Math.floor(gy)}`; }
 function kp(k){ const[x,y]=k.split('_').map(Number); return{gx:x,gy:y}; }
 function cheb(ax,ay,bx,by){ return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
@@ -86,6 +96,21 @@ export class MapEngine {
 
     this._evs = {};
     this._unsubs = [];
+
+    // Debounced Firebase writes for high-frequency painting operations
+    this._debouncedWriteObstacle = _debounce((key, val) => {
+        if (this.db) this.db.setObstacle(this.activeRoom, this.S.activeScene, key, val);
+    }, 50);
+    this._debouncedWriteFog = _debounce((gx, gy, reveal) => {
+        if (this.db) {
+            if (reveal) this.db.revealFog(this.activeRoom, this.S.activeScene, gx, gy, 1);
+            else        this.db.hideFog(this.activeRoom, this.S.activeScene, gx, gy);
+        }
+    }, 50);
+    this._debouncedSaveGridCfg = _debounce(() => {
+        if (this.db) this.db.setMapCfg(this.activeRoom, this.S.cfg);
+    }, 300);
+
     this._bindCanvas();
     this._loop();
   }
