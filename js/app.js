@@ -1,9 +1,9 @@
 // app.js v120
-import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=121";
-import { getFlavorText } from "./messages.js?v=121";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=121";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=121";
-import * as db from "./firebaseService.js?v=121";
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=122";
+import { getFlavorText } from "./messages.js?v=122";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=122";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=122";
+import * as db from "./firebaseService.js?v=122";
 
 // =====================================================================
 // SPRINT 5 — Death Saves & Concentration
@@ -38,8 +38,68 @@ window.toggleConcentration = async (targetCName) => {
     db.updateConcentrationInDB(targetCName, newVal);
     db.saveRollToDB({ cName: targetCName, type: "STATUS", status: newVal ? `🔮 ${targetCName} is concentrating!` : `🔮 ${targetCName} lost concentration.`, ts: Date.now() });
 };
-import { t } from "./i18n.js?v=121";
-import { npcDatabase } from "./monsters.js?v=121";
+
+// =====================================================================
+// SPRINT 6 — Spell Slots
+// =====================================================================
+window.useSpellSlot = async (targetCName, level) => {
+    const p = await db.getPlayerData(targetCName);
+    if (!p || !p.spellSlots) return;
+    const max  = p.spellSlots.max  || {};
+    const used = p.spellSlots.used || {};
+    const currentUsed = used[level] || 0;
+    const maxForLevel = max[level]  || 0;
+    if (currentUsed >= maxForLevel) return; // already exhausted
+    const newUsed = { ...used, [level]: currentUsed + 1 };
+    db.updateSpellSlotsInDB(targetCName, { max, used: newUsed });
+    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `🔮 ${targetCName} used a level ${level} spell slot (${maxForLevel - currentUsed - 1} remaining).`, ts: Date.now() });
+};
+
+window.restoreSpellSlot = async (targetCName, level) => {
+    const p = await db.getPlayerData(targetCName);
+    if (!p || !p.spellSlots) return;
+    const max  = p.spellSlots.max  || {};
+    const used = p.spellSlots.used || {};
+    const currentUsed = used[level] || 0;
+    if (currentUsed <= 0) return; // nothing to restore
+    const newUsed = { ...used, [level]: currentUsed - 1 };
+    db.updateSpellSlotsInDB(targetCName, { max, used: newUsed });
+};
+
+window.longRest = async (targetCName) => {
+    const p = await db.getPlayerData(targetCName);
+    if (!p) return;
+    // Restore HP to max
+    db.updatePlayerHPInDB(targetCName, p.maxHp);
+    // Restore all spell slots
+    if (p.spellSlots) db.updateSpellSlotsInDB(targetCName, { max: p.spellSlots.max, used: {} });
+    // Remove dying state
+    db.updateDeathSavesInDB(targetCName, { successes:[false,false,false], failures:[false,false,false], stable:false, dead:false });
+    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `🌙 ${targetCName} took a Long Rest — fully restored!`, ts: Date.now() });
+};
+
+// =====================================================================
+// SPRINT 6 — Re-roll All Initiatives (DM mid-combat)
+// =====================================================================
+window.rerollAllInitiatives = async () => {
+    if (userRole !== 'dm') return;
+    if (!confirm('Re-roll all initiatives? This will reset the current order.')) return;
+    // Reset turn to 0
+    currentActiveTurn  = 0;
+    currentRoundNumber = 1;
+    db.setActiveTurn(0, 1);
+    // Re-roll each non-DM combatant
+    for (const c of sortedCombatants) {
+        const p = await db.getPlayerData(c.name);
+        if (!p) continue;
+        const initBonus = p.initBonus || 0;
+        const newScore  = Math.floor(Math.random() * 20) + 1 + initBonus;
+        db.setPlayerInitiativeInDB(c.name, p.pName || c.name, newScore, p.pColor || '#e74c3c');
+    }
+    db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
+};
+import { t } from "./i18n.js?v=122";
+import { npcDatabase } from "./monsters.js?v=122";
 
 // =====================================================================
 // GLOBALS
