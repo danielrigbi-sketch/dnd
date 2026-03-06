@@ -297,7 +297,32 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .portrait-tab.active { background: #3498db; color: white; border-color: #2980b9; font-weight: bold; }
 
 /* ====================================================
-   MOBILE — TABLET (≤ 768px)
+   ACTIVE TURN TRACKER (Sprint 3)
+   ==================================================== */
+@keyframes activeTurnPulse {
+    0%   { box-shadow: 0 0 0px rgba(241,196,15,0); border-color: rgba(241,196,15,0.4); }
+    50%  { box-shadow: 0 0 18px rgba(241,196,15,0.6); border-color: rgba(241,196,15,0.9); }
+    100% { box-shadow: 0 0 0px rgba(241,196,15,0); border-color: rgba(241,196,15,0.4); }
+}
+.tracker-item.active-turn {
+    background: rgba(241,196,15,0.12) !important;
+    border: 2px solid rgba(241,196,15,0.7) !important;
+    animation: activeTurnPulse 2s ease-in-out infinite;
+}
+.active-turn-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    font-size: 9px;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 10px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(241,196,15,0.4);
+}
+
+/* ====================================================
    ==================================================== */
 @media (max-width: 768px) {
     :root { --panel-width: 100%; }
