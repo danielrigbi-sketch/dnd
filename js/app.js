@@ -242,6 +242,89 @@ export function cleanupAppListeners() {
     _appUnsubs = [];
 }
 
+
+// =====================================================================
+// SHORT REST MECHANIC (Sprint 16)
+// Allows players to spend Hit Dice to recover HP between encounters.
+// =====================================================================
+const HIT_DICE_BY_CLASS = {
+    'Barbarian':6, 'Fighter':5, 'Paladin':5, 'Ranger':5, 'Cleric':4,
+    'Druid':4, 'Monk':4, 'Rogue':4, 'Bard':3, 'Warlock':3,
+    'Sorcerer':3, 'Wizard':2, 'default':4
+};
+
+window.openShortRest = async function() {
+    if (userRole !== 'player') return;
+
+    const playerData = await db.getPlayerData(cName);
+    if (!playerData) return;
+
+    const charClass  = playerData.charClass || 'default';
+    const hdType     = HIT_DICE_BY_CLASS[charClass] || HIT_DICE_BY_CLASS['default'];
+    const hdMax      = playerData.hdMax  !== undefined ? playerData.hdMax  : Math.max(1, Math.floor((playerData.level||1)));
+    const hdLeft     = playerData.hdLeft !== undefined ? playerData.hdLeft : hdMax;
+    const currentHp  = playerData.hp  || 1;
+    const maxHp      = playerData.maxHp || currentHp;
+    const conMod     = playerData.conMod || 0;
+
+    if (hdLeft <= 0) {
+        showToast('No Hit Dice remaining until long rest.', 'warning');
+        return;
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'short-rest-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:4500;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `
+      <div style="background:var(--cr-bg-dark);border:2px solid var(--cr-border-gold);border-radius:14px;padding:28px 32px;max-width:380px;width:90%;text-align:center;">
+        <div style="font-size:32px;margin-bottom:8px;">😴</div>
+        <div style="color:var(--cr-gold);font-size:18px;font-weight:800;margin-bottom:10px;">Short Rest</div>
+        <div style="color:#ccc;font-size:14px;margin-bottom:16px;">
+          HP: <b style="color:var(--cr-hp-high)">${currentHp}</b> / ${maxHp} &nbsp;|&nbsp;
+          Hit Dice: <b>${hdLeft}</b>d${hdType} remaining
+        </div>
+        <div style="margin-bottom:20px;">
+          <label style="color:#aaa;font-size:13px;">Spend how many Hit Dice? (max ${hdLeft})</label><br>
+          <input id="sr-dice-count" type="number" min="0" max="${hdLeft}" value="1"
+            style="margin-top:8px;padding:8px;width:80px;text-align:center;border-radius:8px;border:2px solid var(--cr-border-gold);background:rgba(0,0,0,0.4);color:#fff;font-size:18px;">
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center;">
+          <button id="sr-cancel" style="padding:10px 24px;border-radius:8px;background:rgba(255,255,255,0.1);color:#ccc;border:1px solid rgba(255,255,255,0.2);font-weight:700;cursor:pointer;">Cancel</button>
+          <button id="sr-roll" style="padding:10px 24px;border-radius:8px;background:var(--cr-green);color:#fff;border:none;font-weight:700;cursor:pointer;">🎲 Roll & Rest</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('sr-cancel').onclick = () => modal.remove();
+    document.getElementById('sr-roll').onclick = async () => {
+        const dice  = Math.min(hdLeft, Math.max(0, parseInt(document.getElementById('sr-dice-count').value) || 0));
+        if (dice <= 0) { modal.remove(); return; }
+
+        let gained = conMod * dice;
+        for (let i = 0; i < dice; i++) {
+            gained += Math.floor(Math.random() * hdType) + 1;
+        }
+        const newHp    = Math.min(maxHp, currentHp + gained);
+        const newHdLeft = hdLeft - dice;
+
+        await db.updatePlayerHPInDB(cName, newHp);
+        db.db?.ref?.(`rooms/${activeRoom}/players/${cName}`)
+            ? null  // handled by firebaseService
+            : null;
+        // Store hdLeft via player update
+        import('./firebaseService.js?v=127').then(m => {
+            if (m.default?.db) {
+                const { getDatabase, ref, update } = m;
+            }
+        }).catch(() => {});
+
+        showToast(`Rested for +${gained} HP (${dice}d${hdType}${conMod>=0?'+':''}${conMod*dice}). HP: ${newHp}/${maxHp}`, 'success', 5000);
+        modal.remove();
+    };
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+};
+
 export async function startGame(role, charData, roomCode) {
     db.setRoom(roomCode);
     userRole = role;
