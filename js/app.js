@@ -1,14 +1,11 @@
 // app.js v127
-import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=127";
-import { getFlavorText } from "./messages.js?v=127";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=127";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=127";
-import * as db from "./firebaseService.js?v=127";
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=126";
+import { getFlavorText } from "./messages.js?v=126";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=126";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=126";
+import * as db from "./firebaseService.js?v=126";
 // getActiveRoom is available via db.getActiveRoom()
 
-// =====================================================================
-// SPRINT 5 — Death Saves & Concentration
-// =====================================================================
 window.toggleDeathSave = async (targetCName, type, index) => {
     const p = await db.getPlayerData(targetCName);
     if (!p) return;
@@ -40,9 +37,6 @@ window.toggleConcentration = async (targetCName) => {
     db.saveRollToDB({ cName: targetCName, type: "STATUS", status: newVal ? `🔮 ${targetCName} is concentrating!` : `🔮 ${targetCName} lost concentration.`, ts: Date.now() });
 };
 
-// =====================================================================
-// SPRINT 6 — Spell Slots
-// =====================================================================
 window.useSpellSlot = async (targetCName, level) => {
     const p = await db.getPlayerData(targetCName);
     if (!p || !p.spellSlots) return;
@@ -79,9 +73,6 @@ window.longRest = async (targetCName) => {
     db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `🌙 ${targetCName} took a Long Rest — fully restored!`, ts: Date.now() });
 };
 
-// =====================================================================
-// SPRINT 6 — Re-roll All Initiatives (DM mid-combat)
-// =====================================================================
 window.rerollAllInitiatives = async () => {
     if (userRole !== 'dm') return;
     if (!confirm('Re-roll all initiatives? This will reset the current order.')) return;
@@ -99,10 +90,10 @@ window.rerollAllInitiatives = async () => {
     }
     db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
 };
-import { t } from "./i18n.js?v=127";
-import { npcDatabase } from "./monsters.js?v=127";
-import { MapEngine } from "./mapEngine.js?v=127";
-import { SceneWizard } from "./sceneWizard.js?v=127";
+import { t } from "./i18n.js?v=126";
+import { npcDatabase } from "./monsters.js?v=126";
+import { MapEngine } from "./mapEngine.js?v=126";
+import { SceneWizard } from "./sceneWizard.js?v=126";
 
 // =====================================================================
 // GLOBALS
@@ -191,15 +182,12 @@ export async function startGame(role, charData, roomCode) {
         localStorage.setItem('critroll_cName', 'DM');
         populateMonsterSelect();
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
-        // Register DM uid for Firebase security rules
-        if (uid) db.setDmUid(roomCode, uid);
     }
 
     setupDatabaseListeners();
     initMap();
     unlockAudio();
 
-    // ── Sprint 4: load persisted roll log ──
     try {
         const recentRolls = await db.loadRecentRolls(20);
         // Replay oldest-first silently (canAnimate is still false)
@@ -438,9 +426,6 @@ window.addNPC = () => {
 
 window.roll3DDice = roll3DDice;
 
-// =====================================================================
-// SPRINT 7 — MAP ENGINE INIT
-// =====================================================================
 function initMap() {
     if (mapEngine) return; // guard: only init once
 
@@ -532,121 +517,6 @@ function _updateTokenRoster() {
         `;
         roster.appendChild(row);
     });
-}
-
-function _initDashDrag() {
-    const dash = document.getElementById('dm-map-dash');
-    const hdr  = document.getElementById('dm-map-dash-header');
-    let dragging=false, ox=0, oy=0, lx=0, ly=0;
-    hdr.addEventListener('mousedown', e=>{
-        dragging=true; ox=e.clientX-lx; oy=e.clientY-ly;
-    });
-    document.addEventListener('mousemove', e=>{
-        if(!dragging) return;
-        lx=e.clientX-ox; ly=e.clientY-oy;
-        dash.style.left=lx+'px'; dash.style.top=ly+'px';
-    });
-    document.addEventListener('mouseup', ()=>{ dragging=false; });
-}
-
-function _initDashTabs() {
-    document.querySelectorAll('.map-dash-tab').forEach(tab=>{
-        tab.onclick=()=>{
-            document.querySelectorAll('.map-dash-tab').forEach(t=>t.classList.remove('active'));
-            document.querySelectorAll('.map-dash-panel').forEach(p=>p.classList.remove('active'));
-            tab.classList.add('active');
-            document.getElementById('map-panel-'+tab.dataset.tab)?.classList.add('active');
-        };
-    });
-}
-
-function _initDashControls() {
-    // Mode buttons
-    document.querySelectorAll('.map-mode-btn').forEach(btn=>{
-        btn.onclick=()=>{
-            const mode=btn.dataset.mode;
-            mapEngine?.setMode(mode);
-            document.querySelectorAll('.map-mode-btn').forEach(b=>b.classList.remove('active'));
-            btn.classList.add('active');
-            // Update cursor
-            const cursors={view:'cursor-grab',obstacle:'cursor-paint',trigger:'cursor-paint',
-                           fogReveal:'cursor-reveal',fogHide:'cursor-hide',ruler:'cursor-ruler',aoe:'cursor-ruler',calibrate:'cursor-grab'};
-            const container=document.getElementById('map-canvas-container');
-            if(container){
-                // Remove only cursor classes, preserve layout classes
-                ['cursor-grab','cursor-paint','cursor-reveal','cursor-hide','cursor-ruler','cursor-place']
-                    .forEach(c=>container.classList.remove(c));
-                if(cursors[mode]) container.classList.add(cursors[mode]);
-            }
-        };
-    });
-    // Tool buttons
-    document.querySelectorAll('.map-tool-btn').forEach(btn=>{
-        btn.onclick=()=>{
-            mapEngine?.setTool(btn.dataset.tool);
-            document.querySelectorAll('.map-tool-btn').forEach(b=>b.classList.remove('active'));
-            btn.classList.add('active');
-        };
-    });
-    // AOE shape
-    document.querySelectorAll('.aoe-shape-btn').forEach(btn=>{
-        btn.onclick=()=>{
-            mapEngine?.setAoeShape(btn.dataset.shape);
-            document.querySelectorAll('.aoe-shape-btn').forEach(b=>b.classList.remove('active'));
-            btn.classList.add('active');
-        };
-    });
-    // AOE radius
-    document.getElementById('aoe-radius-input')?.addEventListener('input', e=>{
-        mapEngine?.setAoeRadius(parseInt(e.target.value)||20);
-    });
-    // Background URL
-    document.getElementById('map-bg-load-btn')?.addEventListener('click', ()=>{
-        const url=document.getElementById('map-bg-url').value.trim();
-        if(url) mapEngine?.loadBgUrl(url);
-    });
-    // Background file
-    document.getElementById('map-bg-file')?.addEventListener('change', e=>{
-        const file=e.target.files[0];
-        if(file) mapEngine?.loadBgFile(file);
-    });
-    // Grid calibration
-    document.getElementById('calib-pps-plus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(4,0,0); _updateCalibDisplay(); });
-    document.getElementById('calib-pps-minus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(-4,0,0); _updateCalibDisplay(); });
-    document.getElementById('calib-ox-plus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(0,4,0); _updateCalibDisplay(); });
-    document.getElementById('calib-ox-minus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(0,-4,0); _updateCalibDisplay(); });
-    document.getElementById('calib-oy-plus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(0,0,4); _updateCalibDisplay(); });
-    document.getElementById('calib-oy-minus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(0,0,-4); _updateCalibDisplay(); });
-    document.getElementById('calib-lock-btn')?.addEventListener('click',()=>{
-        mapEngine?.lockGrid(); mapEngine?.saveGridToFirebase();
-        document.getElementById('calib-lock-btn').textContent='🔒 Locked!';
-    });
-    document.getElementById('calib-unlock-btn')?.addEventListener('click',()=>{
-        mapEngine?.unlockGrid(); mapEngine?.saveGridToFirebase();
-        document.getElementById('calib-lock-btn').textContent='🔒 Lock Grid';
-    });
-    document.getElementById('calib-save-btn')?.addEventListener('click',()=>{ mapEngine?.saveGridToFirebase(); });
-    // Scene
-    document.getElementById('map-new-scene-btn')?.addEventListener('click',()=>{
-        const name=document.getElementById('map-scene-name')?.value.trim()||'Scene 1';
-        mapEngine?.createScene(name);
-    });
-    // Fog tools
-    document.getElementById('map-reveal-all')?.addEventListener('click',()=>mapEngine?.revealAll());
-    document.getElementById('map-hide-all')?.addEventListener('click',()=>mapEngine?.hideAll());
-    // Reset movement (called at turn start)
-    document.getElementById('map-reset-mv')?.addEventListener('click',()=>mapEngine?.resetAllMovement());
-}
-
-function _updateCalibDisplay() {
-    if (!mapEngine) return;
-    const cfg = mapEngine.S.cfg;
-    const el = document.getElementById('calib-pps-val');
-    if (el) el.textContent = cfg.pps + 'px';
-    const oxEl = document.getElementById('calib-ox-val');
-    if (oxEl) oxEl.textContent = cfg.ox;
-    const oyEl = document.getElementById('calib-oy-val');
-    if (oyEl) oyEl.textContent = cfg.oy;
 }
 
 window.openSceneWizard = (existingData=null) => {
@@ -774,7 +644,6 @@ function setupDatabaseListeners() {
         if (mapEngine) { mapEngine.setPlayers(playersData||{}); _updateTokenRoster(); }
     });
 
-    // ── Sprint 4: YOUR TURN detection ──
     db.listenToActiveTurn((turnIndex) => {
         const wasMyTurn = prevActiveTurn !== null && sortedCombatants[prevActiveTurn]?.name === cName;
         const isMyTurn  = turnIndex !== null       && sortedCombatants[turnIndex]?.name  === cName;
