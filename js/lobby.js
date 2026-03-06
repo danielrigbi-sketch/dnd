@@ -1,8 +1,8 @@
 // lobby.js - Welcome screen and Authentication Controller
 
-import * as db from "./firebaseService.js?v=111";
-import { startGame } from "./app.js?v=111";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=111";
+import * as db from "./firebaseService.js?v=112";
+import { startGame } from "./app.js?v=112";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=112";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -34,6 +34,66 @@ const vaultList = document.getElementById('vault-list');
 const addAttackBtn = document.getElementById('add-custom-attack-btn');
 const attacksList = document.getElementById('custom-attacks-list');
 
+// Edit Tracker
+let currentEditCharId = null;
+
+// Portrait Logic
+const tabPreset = document.getElementById('tab-portrait-preset');
+const tabUrl = document.getElementById('tab-portrait-url');
+const tabFile = document.getElementById('tab-portrait-file');
+const areaPreset = document.getElementById('portrait-preset-area');
+const areaUrl = document.getElementById('portrait-url-area');
+const areaFile = document.getElementById('portrait-file-area');
+const previewImg = document.getElementById('portrait-preview');
+const inputUrl = document.getElementById('cb-portrait-url');
+const inputFile = document.getElementById('cb-portrait-file');
+
+let selectedPortrait = "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
+
+function switchPortraitTab(activeTab, activeArea) {
+    [tabPreset, tabUrl, tabFile].forEach(t => t.classList.remove('active'));
+    [areaPreset, areaUrl, areaFile].forEach(a => a.style.display = 'none');
+    activeTab.classList.add('active');
+    activeArea.style.display = 'flex';
+}
+
+if(tabPreset) tabPreset.onclick = () => switchPortraitTab(tabPreset, areaPreset);
+if(tabUrl) tabUrl.onclick = () => switchPortraitTab(tabUrl, areaUrl);
+if(tabFile) tabFile.onclick = () => switchPortraitTab(tabFile, areaFile);
+
+document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedPortrait = btn.src;
+        if(previewImg) previewImg.src = selectedPortrait;
+    };
+});
+
+if(inputUrl) {
+    inputUrl.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        if(val) {
+            selectedPortrait = val;
+            if(previewImg) previewImg.src = val;
+        }
+    });
+}
+
+if(inputFile) {
+    inputFile.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                selectedPortrait = event.target.result;
+                if(previewImg) previewImg.src = selectedPortrait;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
 if (addAttackBtn) {
     addAttackBtn.onclick = () => {
         const row = document.createElement('div');
@@ -50,7 +110,6 @@ if (addAttackBtn) {
 }
 
 let currentUserUid = null;
-let selectedPortrait = "";
 let currentVaultCharacters = {};
 
 updateDOM();
@@ -87,6 +146,7 @@ function renderVault(characters) {
         const c = characters[charId];
         const card = document.createElement('div');
         card.className = 'vault-card';
+        card.style.position = 'relative';
         
         const raceStr = c.race || "";
         const classStr = c.class || "";
@@ -95,15 +155,41 @@ function renderVault(characters) {
         const displayRace = hasHebrew.test(raceStr) ? raceStr : t("race_" + raceStr.toLowerCase());
         const displayClass = hasHebrew.test(classStr) ? classStr : t("class_" + classStr.toLowerCase());
 
+        // Rich Vault Data
         card.innerHTML = `
-            <img src="${c.portrait || 'assets/logo.png'}" class="vault-card-img">
-            <div class="vault-card-info">
+            <div class="vault-card-actions">
+                <button class="vault-action-btn edit" data-action="edit" data-id="${charId}" title="ערוך">✏️</button>
+                <button class="vault-action-btn delete" data-action="delete" data-id="${charId}" data-name="${c.name}" title="מחק">🗑️</button>
+            </div>
+            <img src="${c.portrait || 'assets/logo.png'}" class="vault-card-img" style="border: 2px solid ${c.color || '#3498db'}">
+            <div class="vault-card-info" style="flex: 1;">
                 <div class="vault-card-name">${c.name}</div>
                 <div class="vault-card-sub">${displayRace} ${displayClass}</div>
+                <div style="font-size: 11px; color: #aaa; margin-top: 4px; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; display: inline-block;">
+                    🛡️ AC: ${c.ac || 10} | ❤️ HP: ${c.maxHp || 10}
+                </div>
             </div>
-            <button class="vault-select-btn" data-charid="${charId}">${t("select_btn")}</button>
+            <button class="vault-select-btn" data-charid="${charId}" style="align-self: center;">${t("select_btn")}</button>
         `;
         vaultList.appendChild(card);
+    });
+
+    // Vault Actions Listeners
+    document.querySelectorAll('.vault-action-btn').forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const action = btn.getAttribute('data-action');
+            const charId = btn.getAttribute('data-id');
+            const charName = btn.getAttribute('data-name');
+            
+            if (action === 'delete') {
+                if(confirm(`${t('delete_confirm')} (${charName})`)) {
+                    await db.deleteCharacterFromVault(currentUserUid, charId);
+                }
+            } else if (action === 'edit') {
+                openBuilderForEdit(charId);
+            }
+        };
     });
 
     document.querySelectorAll('.vault-select-btn').forEach(btn => {
@@ -111,7 +197,13 @@ function renderVault(characters) {
             const charId = e.target.getAttribute('data-charid');
             const selectedChar = currentVaultCharacters[charId];
             const roomCodeInput = document.getElementById('room-code-input');
-            const roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "CRIT";
+            const roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "";
+            
+            // Vault 2.0 Feature: Block empty rooms
+            if(!roomCode) {
+                alert(t("alert_no_room_code"));
+                return;
+            }
             
             langToggleBtn.style.display = 'none'; 
             if(lobbyScreen) lobbyScreen.style.display = 'none';
@@ -120,42 +212,72 @@ function renderVault(characters) {
     });
 }
 
-if(loginBtn) {
-    loginBtn.addEventListener('click', async () => {
-        try {
-            loginBtn.innerText = "...";
-            loginBtn.disabled = true;
-            await db.loginWithGoogle();
-        } catch (error) {
-            console.error("Login Error Details:", error);
-            alert(`${t('alert_login_fail')}\n${error.message}`);
-            loginBtn.innerHTML = `
-                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width:20px; height:20px;">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.7 17.74 9.5 24 9.5z"></path>
-                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.2-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-                </svg>
-                <span data-i18n="login_google">${t('login_google')}</span>
+function openBuilderForEdit(charId) {
+    const c = currentVaultCharacters[charId];
+    if(!c) return;
+    
+    currentEditCharId = charId;
+    if(builderModal) builderModal.style.display = 'flex';
+    
+    document.getElementById('cb-main-title').innerText = t('title_edit_char');
+    document.getElementById('save-char-btn').innerText = t('btn_update_char');
+    
+    document.getElementById('cb-name').value = c.name || "";
+    document.getElementById('cb-race').value = c.race || "";
+    document.getElementById('cb-class').value = c.class || "";
+    document.getElementById('cb-ac').value = c.ac || "";
+    document.getElementById('cb-speed').value = c.speed || "";
+    document.getElementById('cb-pp').value = c.pp || "";
+    document.getElementById('cb-init').value = c.initBonus || "";
+    document.getElementById('cb-hp').value = c.maxHp || "";
+    document.getElementById('cb-melee').value = c.melee || "";
+    document.getElementById('cb-melee-dmg').value = c.meleeDmg || "1d6";
+    document.getElementById('cb-ranged').value = c.ranged || "";
+    document.getElementById('cb-ranged-dmg').value = c.rangedDmg || "1d6";
+    document.getElementById('cb-color').value = c.color || "#3498db";
+    
+    // Set Portrait
+    selectedPortrait = c.portrait || "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
+    if(previewImg) previewImg.src = selectedPortrait;
+    switchPortraitTab(tabUrl, areaUrl); // Default to URL view on edit for clarity
+    if(inputUrl) inputUrl.value = selectedPortrait;
+    
+    // Load Custom Attacks
+    if (attacksList) attacksList.innerHTML = '';
+    if (c.customAttacks && c.customAttacks.length > 0) {
+        c.customAttacks.forEach(atk => {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.gap = '5px';
+            row.innerHTML = `
+                <input type="text" class="builder-input atk-name" value="${atk.name}" style="width: 40%; font-size:12px; padding:6px;">
+                <input type="number" class="builder-input atk-bonus" value="${atk.bonus}" style="width: 20%; font-size:12px; padding:6px;">
+                <input type="text" class="builder-input atk-dmg" value="${atk.dmg}" style="width: 30%; font-size:12px; padding:6px;">
+                <button type="button" onclick="this.parentElement.remove()" style="background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer; width:10%; font-weight:bold;">X</button>
             `;
-            loginBtn.disabled = false;
-        }
-    });
+            attacksList.appendChild(row);
+        });
+    }
 }
 
-if(logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-        try { await db.logoutUser(); } catch (error) { console.error(error); }
-    });
-}
-
-const newCharBtn = document.getElementById('new-char-btn');
 if(newCharBtn) {
     newCharBtn.onclick = () => {
+        currentEditCharId = null;
         if(builderModal) builderModal.style.display = 'flex';
-        selectedPortrait = "";
-        document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.builder-input').forEach(input => input.value = '');
+        
+        document.getElementById('cb-main-title').innerText = t('cb_title');
+        document.getElementById('save-char-btn').innerText = t('cb_save_btn');
+        
+        document.querySelectorAll('.builder-input').forEach(input => {
+            if(input.tagName === 'INPUT' && input.type !== 'file') input.value = '';
+            if(input.tagName === 'SELECT') input.selectedIndex = 0;
+        });
+        document.getElementById('cb-color').value = "#3498db";
+        
+        switchPortraitTab(tabPreset, areaPreset);
+        selectedPortrait = "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
+        if(previewImg) previewImg.src = selectedPortrait;
+        
         if (attacksList) attacksList.innerHTML = '';
     };
 }
@@ -165,14 +287,6 @@ if(closeBuilderBtn) {
         if(builderModal) builderModal.style.display = 'none';
     };
 }
-
-document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
-    btn.onclick = () => {
-        document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        selectedPortrait = btn.src;
-    };
-});
 
 if(saveCharBtn) {
     saveCharBtn.onclick = async () => {
@@ -190,6 +304,7 @@ if(saveCharBtn) {
         const meleeDmg = document.getElementById('cb-melee-dmg')?.value;
         const ranged = document.getElementById('cb-ranged')?.value;
         const rangedDmg = document.getElementById('cb-ranged-dmg')?.value;
+        const color = document.getElementById('cb-color')?.value;
 
         const customAttacks = [];
         if (attacksList) {
@@ -213,20 +328,26 @@ if(saveCharBtn) {
             melee: parseInt(melee), meleeDmg: meleeDmg, 
             ranged: parseInt(ranged), rangedDmg: rangedDmg, 
             customAttacks: customAttacks,
-            portrait: selectedPortrait, createdAt: Date.now()
+            color: color, 
+            portrait: selectedPortrait, 
+            createdAt: Date.now()
         };
 
         saveCharBtn.innerText = t("cb_saving");
         saveCharBtn.disabled = true;
 
         try {
-            await db.saveCharacterToVault(currentUserUid, charData);
+            if (currentEditCharId) {
+                await db.updateCharacterInVault(currentUserUid, currentEditCharId, charData);
+            } else {
+                await db.saveCharacterToVault(currentUserUid, charData);
+            }
             if(builderModal) builderModal.style.display = 'none';
         } catch (err) {
             console.error(err);
             alert(t('alert_save_err'));
         } finally {
-            saveCharBtn.innerText = t("cb_save_btn");
+            saveCharBtn.innerText = currentEditCharId ? t("btn_update_char") : t("cb_save_btn");
             saveCharBtn.disabled = false;
         }
     };
