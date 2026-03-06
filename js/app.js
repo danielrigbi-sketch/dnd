@@ -1,11 +1,11 @@
-// app.js - Main Game Controller v119
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=119";
-import { getFlavorText } from "./messages.js?v=119";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=119";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=119";
-import * as db from "./firebaseService.js?v=119";
-import { t } from "./i18n.js?v=119";
-import { npcDatabase } from "./monsters.js?v=119";
+// app.js v120
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=120";
+import { getFlavorText } from "./messages.js?v=120";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=120";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=120";
+import * as db from "./firebaseService.js?v=120";
+import { t } from "./i18n.js?v=120";
+import { npcDatabase } from "./monsters.js?v=120";
 
 // =====================================================================
 // GLOBALS
@@ -16,10 +16,10 @@ let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal';
 let activeRoller = null;
 
-// Turn Tracker state
-let currentActiveTurn = null;   // index into sorted players array
+let currentActiveTurn  = null;
 let currentRoundNumber = 0;
-let sortedCombatants = [];       // kept in sync with listenToPlayers
+let sortedCombatants   = [];
+let prevActiveTurn     = null;   // track changes for YOUR TURN detection
 
 function populateMonsterSelect() {
     const select = document.getElementById('npc-preset');
@@ -29,6 +29,31 @@ function populateMonsterSelect() {
         select.innerHTML += `<option value="${key}">${t("mon_" + key) || key}</option>`;
     }
 }
+
+// =====================================================================
+// YOUR TURN NOTIFICATION
+// =====================================================================
+let yourTurnTimer = null;
+
+function showYourTurnBanner(name) {
+    const banner = document.getElementById('your-turn-banner');
+    const nameEl = document.getElementById('your-turn-name');
+    if (!banner) return;
+    if (nameEl) nameEl.innerText = name;
+    banner.classList.remove('hidden');
+    banner.classList.add('visible');
+    if (yourTurnTimer) clearTimeout(yourTurnTimer);
+    yourTurnTimer = setTimeout(() => hideYourTurnBanner(), 4000);
+}
+
+function hideYourTurnBanner() {
+    const banner = document.getElementById('your-turn-banner');
+    if (!banner) return;
+    banner.classList.remove('visible');
+    banner.classList.add('hidden');
+}
+
+window.dismissYourTurn = hideYourTurnBanner;
 
 // =====================================================================
 // START GAME
@@ -44,24 +69,21 @@ export async function startGame(role, charData, roomCode) {
     if (titleHeader) titleHeader.innerText = `${t('party_title')} (${roomCode})`;
 
     if (userRole === 'player') {
-        pName = document.getElementById('user-display-name')?.innerText || "Player";
-        cName = charData.name;
-        pColor = charData.color || "#3498db";
+        pName       = document.getElementById('user-display-name')?.innerText || "Player";
+        cName       = charData.name;
+        pColor      = charData.color || "#3498db";
         charPortrait = charData.portrait;
         localStorage.setItem('critroll_initBonus', charData.initBonus || 0);
         localStorage.setItem('critroll_cName', cName);
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, charData);
     } else {
-        pName = document.getElementById('user-display-name')?.innerText || "DM";
-        cName = "DM_" + pName;
-        pColor = "#c0392b";
+        pName        = document.getElementById('user-display-name')?.innerText || "DM";
+        cName        = "DM_" + pName;
+        pColor       = "#c0392b";
         charPortrait = document.getElementById('user-avatar')?.src || "assets/logo.png";
-        const combatBtn = document.getElementById('master-combat-btn');
-        const npcControls = document.getElementById('dm-npc-controls');
-        const turnControls = document.getElementById('dm-turn-controls');
-        if (combatBtn) combatBtn.style.display = 'block';
-        if (npcControls) npcControls.style.display = 'flex';
-        if (turnControls) turnControls.style.display = 'none'; // shown when combat starts
+        document.getElementById('master-combat-btn').style.display = 'block';
+        document.getElementById('dm-npc-controls').style.display   = 'flex';
+        document.getElementById('dm-turn-controls').style.display  = 'none';
         localStorage.setItem('critroll_cName', 'DM');
         populateMonsterSelect();
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
@@ -69,50 +91,61 @@ export async function startGame(role, charData, roomCode) {
 
     setupDatabaseListeners();
     unlockAudio();
+
+    // ── Sprint 4: load persisted roll log ──
+    try {
+        const recentRolls = await db.loadRecentRolls(20);
+        // Replay oldest-first silently (canAnimate is still false)
+        recentRolls.forEach(data => {
+            const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+            addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res + data.mod), 20), true);
+        });
+    } catch(e) { console.warn('Could not load roll history:', e); }
+
     try { await initDiceEngine(); isDiceBoxReady = true; }
     catch (e) { console.error("Dice engine failed:", e); }
-    setTimeout(() => { canAnimate = true; }, 1000);
+    setTimeout(() => { canAnimate = true; }, 800);
 }
 
 // =====================================================================
-// TURN TRACKER FUNCTIONS (DM only)
+// TURN TRACKER
 // =====================================================================
 window.nextTurn = () => {
     if (userRole !== 'dm' || sortedCombatants.length === 0) return;
-    let nextIndex = (currentActiveTurn === null ? 0 : currentActiveTurn + 1);
-    let newRound = currentRoundNumber;
-    if (nextIndex >= sortedCombatants.length) {
-        nextIndex = 0;
-        newRound++;
-        db.saveRollToDB({ cName: "DM", type: "STATUS", status: `⚔️ Round ${newRound}!`, ts: Date.now() });
+    let next = (currentActiveTurn === null ? 0 : currentActiveTurn + 1);
+    let round = currentRoundNumber;
+    if (next >= sortedCombatants.length) {
+        next = 0;
+        round++;
+        db.saveRollToDB({ cName: "DM", type: "STATUS", status: `⚔️ Round ${round}!`, ts: Date.now() });
     }
-    currentActiveTurn = nextIndex;
-    currentRoundNumber = newRound;
-    db.setActiveTurn(nextIndex, newRound);
+    currentActiveTurn  = next;
+    currentRoundNumber = round;
+    db.setActiveTurn(next, round);
     updateTurnUI();
 };
 
 window.prevTurn = () => {
     if (userRole !== 'dm' || sortedCombatants.length === 0) return;
-    let prevIndex = (currentActiveTurn === null ? 0 : currentActiveTurn - 1);
-    let newRound = currentRoundNumber;
-    if (prevIndex < 0) { prevIndex = sortedCombatants.length - 1; newRound = Math.max(1, newRound - 1); }
-    currentActiveTurn = prevIndex;
-    currentRoundNumber = newRound;
-    db.setActiveTurn(prevIndex, newRound);
+    let prev  = (currentActiveTurn === null ? 0 : currentActiveTurn - 1);
+    let round = currentRoundNumber;
+    if (prev < 0) { prev = sortedCombatants.length - 1; round = Math.max(1, round - 1); }
+    currentActiveTurn  = prev;
+    currentRoundNumber = round;
+    db.setActiveTurn(prev, round);
     updateTurnUI();
 };
 
 function updateTurnUI() {
-    const roundEl = document.getElementById('round-counter');
-    if (roundEl) roundEl.innerText = currentRoundNumber > 0 ? `Round ${currentRoundNumber}` : '';
-    const activeName = sortedCombatants[currentActiveTurn]?.name || '';
+    const roundEl  = document.getElementById('round-counter');
     const activeEl = document.getElementById('active-turn-name');
-    if (activeEl) activeEl.innerText = activeName;
+    const name = sortedCombatants[currentActiveTurn]?.name || '';
+    if (roundEl)  roundEl.innerText  = currentRoundNumber > 0 ? `Round ${currentRoundNumber}` : '';
+    if (activeEl) activeEl.innerText = name;
 }
 
 // =====================================================================
-// WINDOW FUNCTIONS
+// DICE & COMBAT FUNCTIONS
 // =====================================================================
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
@@ -127,11 +160,11 @@ window.roll = async (type, isInit = false) => {
     let finalRes, res1 = null, res2 = null;
     try {
         if (currentMode !== 'normal') {
-            const results = await roll3DDice(`2${type}`);
-            res1 = results[0].value; res2 = results[1].value;
-            finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
-        } else { const results = await roll3DDice(`1${type}`); finalRes = results[0].value; }
-    } catch (err) { isCooldown = false; setDiceCooldown(false); return; }
+            const r = await roll3DDice(`2${type}`);
+            res1 = r[0].value; res2 = r[1].value;
+            finalRes = currentMode === 'adv' ? Math.max(res1, res2) : Math.min(res1, res2);
+        } else { finalRes = (await roll3DDice(`1${type}`))[0].value; }
+    } catch { isCooldown = false; setDiceCooldown(false); return; }
     const mod = isInit
         ? (parseInt(localStorage.getItem('critroll_initBonus')) || 0)
         : (parseInt(document.getElementById('mod-input')?.value) || 0);
@@ -147,19 +180,17 @@ window.rollMacro = async (targetCName, attackName, bonus) => {
     const currentMode = activeMode;
     isCooldown = true; setDiceCooldown(true); playStartRollSound(isMuted);
     const p = await db.getPlayerData(targetCName);
-    const macroColor = p ? (p.pColor || "#c0392b") : "#e74c3c";
-    const macroPName = p ? p.pName : "System";
+    const macroColor = p?.pColor || "#e74c3c";
     await updateDiceColor(macroColor);
     let finalRes, res1 = null, res2 = null;
     try {
         if (currentMode !== 'normal') {
-            const results = await roll3DDice(`2d20`);
-            res1 = results[0].value; res2 = results[1].value;
-            finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
-        } else { const results = await roll3DDice(`1d20`); finalRes = results[0].value; }
-    } catch (err) { isCooldown = false; setDiceCooldown(false); return; }
-    const flavorText = `${t('log_attack')} ${attackName}!`;
-    const rollData = { pName: macroPName, cName: targetCName, type: 'd20', res: finalRes, mod: parseInt(bonus) || 0, color: macroColor, mode: currentMode, flavor: flavorText, ts: Date.now() };
+            const r = await roll3DDice('2d20');
+            res1 = r[0].value; res2 = r[1].value;
+            finalRes = currentMode === 'adv' ? Math.max(res1, res2) : Math.min(res1, res2);
+        } else { finalRes = (await roll3DDice('1d20'))[0].value; }
+    } catch { isCooldown = false; setDiceCooldown(false); return; }
+    const rollData = { pName: p?.pName || "DM", cName: targetCName, type: 'd20', res: finalRes, mod: parseInt(bonus)||0, color: macroColor, mode: currentMode, flavor: `${t('log_attack')} ${attackName}!`, ts: Date.now() };
     if (res1 !== null) { rollData.res1 = res1; rollData.res2 = res2; }
     db.saveRollToDB(rollData);
     activeMode = 'normal'; updateModeUI(activeMode);
@@ -171,28 +202,23 @@ window.rollDamageMacro = async (targetCName, attackName, diceString, bonus) => {
     if (!diceString || diceString === '0') return alert(t('alert_no_dmg'));
     isCooldown = true; setDiceCooldown(true); playStartRollSound(isMuted);
     const p = await db.getPlayerData(targetCName);
-    const macroColor = p ? (p.pColor || "#c0392b") : "#e74c3c";
-    const macroPName = p ? p.pName : "System";
+    const macroColor = p?.pColor || "#e74c3c";
     await updateDiceColor(macroColor);
     let finalRes = 0;
-    try { const results = await roll3DDice(diceString); finalRes = results.reduce((sum, die) => sum + die.value, 0); }
-    catch (err) { isCooldown = false; setDiceCooldown(false); return; }
-    const flavorText = `${t('log_roll_dmg')} ${attackName}!`;
-    const rollData = { pName: macroPName, cName: targetCName, type: diceString, res: finalRes, mod: parseInt(bonus) || 0, color: macroColor, mode: 'normal', flavor: flavorText, ts: Date.now() };
-    db.saveRollToDB(rollData);
+    try { finalRes = (await roll3DDice(diceString)).reduce((s, d) => s + d.value, 0); }
+    catch { isCooldown = false; setDiceCooldown(false); return; }
+    db.saveRollToDB({ pName: p?.pName || "DM", cName: targetCName, type: diceString, res: finalRes, mod: parseInt(bonus)||0, color: macroColor, mode: 'normal', flavor: `${t('log_roll_dmg')} ${attackName}!`, ts: Date.now() });
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
 window.changeHP = async (targetCName, isPlus) => {
     const inputField = document.getElementById(`hp-input-${targetCName}`);
     const amount = parseInt(inputField?.value) || 1;
-    const finalAmount = isPlus ? amount : -amount;
     const p = await db.getPlayerData(targetCName);
     if (!p) return;
-    const newHp = Math.max(0, Math.min(p.maxHp, (p.hp || 0) + finalAmount));
+    const newHp = Math.max(0, Math.min(p.maxHp, (p.hp || 0) + (isPlus ? amount : -amount)));
     db.updatePlayerHPInDB(targetCName, newHp);
-    const flavor = (isPlus ? t('log_heals') : t('log_takes_dmg')) + ` (${amount} ${t('log_points')})`;
-    db.saveRollToDB({ cName: targetCName, type: isPlus ? "HEAL" : "DAMAGE", res: amount, newHp, color: isPlus ? "#2ecc71" : "#e74c3c", flavor, ts: Date.now() });
+    db.saveRollToDB({ cName: targetCName, type: isPlus ? "HEAL" : "DAMAGE", res: amount, newHp, color: isPlus ? "#2ecc71" : "#e74c3c", flavor: (isPlus ? t('log_heals') : t('log_takes_dmg')) + ` (${amount} ${t('log_points')})`, ts: Date.now() });
     if (inputField) inputField.value = 1;
 };
 
@@ -201,7 +227,7 @@ window.toggleStatus = async (targetCName, status) => {
     const p = await db.getPlayerData(targetCName);
     if (!p) return;
     let statuses = p.statuses || [];
-    if (statuses.includes(status)) { statuses = statuses.filter(s => s !== status); }
+    if (statuses.includes(status)) statuses = statuses.filter(s => s !== status);
     else { statuses.push(status); db.saveRollToDB({ cName: targetCName, type: "STATUS", status, ts: Date.now() }); }
     db.updatePlayerStatusesInDB(targetCName, statuses);
 };
@@ -210,21 +236,18 @@ window.removeNPC = (targetCName) => {
     if (userRole !== 'dm') return;
     if (confirm(t('alert_delete_npc_1') + targetCName + t('alert_delete_npc_2'))) {
         db.removePlayerFromDB(targetCName);
-        if (activeRoller && activeRoller.cName === targetCName) window.resetRoller();
-        // Re-sync turn index after removal
-        if (currentActiveTurn !== null && sortedCombatants.length > 0) {
-            const safeIndex = Math.min(currentActiveTurn, sortedCombatants.length - 2);
-            currentActiveTurn = Math.max(0, safeIndex);
+        if (activeRoller?.cName === targetCName) window.resetRoller();
+        if (currentActiveTurn !== null && sortedCombatants.length > 1) {
+            currentActiveTurn = Math.min(currentActiveTurn, sortedCombatants.length - 2);
             db.setActiveTurn(currentActiveTurn, currentRoundNumber);
         }
     }
 };
 
-window.toggleVisibility = (targetCName, currentHiddenStatus) => {
+window.toggleVisibility = (targetCName, current) => {
     if (userRole !== 'dm') return;
-    const newStatus = !currentHiddenStatus;
-    db.updatePlayerVisibilityInDB(targetCName, newStatus);
-    if (!newStatus) db.saveRollToDB({ cName: "DM", type: "STATUS", status: `${t('log_revealed')} ${targetCName}!`, ts: Date.now() });
+    db.updatePlayerVisibilityInDB(targetCName, !current);
+    if (current) db.saveRollToDB({ cName: "DM", type: "STATUS", status: `${t('log_revealed')} ${targetCName}!`, ts: Date.now() });
 };
 
 window.impersonate = async (targetCName) => {
@@ -232,104 +255,73 @@ window.impersonate = async (targetCName) => {
     const p = await db.getPlayerData(targetCName);
     if (!p) return;
     activeRoller = { cName: targetCName, pName: "DM", color: p.pColor || "#c0392b" };
-    const banner = document.getElementById('active-roller-banner');
-    const nameEl = document.getElementById('active-roller-name');
-    if (banner) banner.style.display = 'flex';
-    if (nameEl) nameEl.innerText = targetCName;
+    document.getElementById('active-roller-banner').style.display = 'flex';
+    document.getElementById('active-roller-name').innerText = targetCName;
     updateDiceColor(activeRoller.color);
 };
-
 window.resetRoller = () => {
     activeRoller = null;
-    const banner = document.getElementById('active-roller-banner');
-    if (banner) banner.style.display = 'none';
+    document.getElementById('active-roller-banner').style.display = 'none';
     updateDiceColor(pColor);
 };
 
-window.setMode = (mode) => { activeMode = (activeMode === mode) ? 'normal' : mode; updateModeUI(activeMode); };
-window.toggleMute = () => { isMuted = !isMuted; const btn = document.getElementById('mute-btn'); if (btn) btn.innerText = isMuted ? t('unmute_sound') : t('mute_sound'); };
+window.setMode   = (mode) => { activeMode = activeMode === mode ? 'normal' : mode; updateModeUI(activeMode); };
+window.toggleMute = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? t('unmute_sound') : t('mute_sound'); };
 
 window.toggleCombat = async () => {
     if (userRole !== 'dm') return;
-    const current = await db.getCombatStatus();
-    if (current) {
+    if (await db.getCombatStatus()) {
         if (confirm(t('alert_end_combat'))) {
             db.setCombatStatus(false);
             db.resetInitiativeInDB();
-            currentActiveTurn = null;
-            currentRoundNumber = 0;
-            sortedCombatants = [];
-            const turnControls = document.getElementById('dm-turn-controls');
-            if (turnControls) turnControls.style.display = 'none';
-            const roundEl = document.getElementById('round-counter');
-            if (roundEl) roundEl.innerText = '';
+            currentActiveTurn = null; currentRoundNumber = 0; sortedCombatants = [];
+            document.getElementById('dm-turn-controls').style.display = 'none';
+            document.getElementById('round-counter').innerText = '';
         }
-    } else {
-        db.setCombatStatus(true);
-    }
+    } else { db.setCombatStatus(true); }
 };
 
 window.rollInit = async () => {
     const btn = document.getElementById('init-btn');
     if (btn) btn.disabled = true;
-    const isCombat = await db.getCombatStatus();
-    if (!isCombat) { if (btn) btn.disabled = false; return alert(t('alert_not_started')); }
+    if (!await db.getCombatStatus()) { if (btn) btn.disabled = false; return alert(t('alert_not_started')); }
     const rollResult = await window.roll('d20', true);
     db.setPlayerInitiativeInDB(cName, pName, rollResult, pColor);
 };
 
 window.handlePresetChange = (val) => {
-    const nameEl = document.getElementById('npc-name'), hpEl = document.getElementById('npc-hp'),
-          initEl = document.getElementById('npc-init'), meleeEl = document.getElementById('npc-melee'),
-          meleeDmgEl = document.getElementById('npc-melee-dmg'), rangedEl = document.getElementById('npc-ranged'),
-          rangedDmgEl = document.getElementById('npc-ranged-dmg');
-    if (val === 'custom') {
-        [nameEl, hpEl, initEl, meleeEl, meleeDmgEl, rangedEl, rangedDmgEl].forEach(el => { if (el) el.value = ""; });
-    } else {
-        const data = npcDatabase[val];
-        if (!data) return;
-        if (nameEl) nameEl.value = t("mon_" + val);
-        if (hpEl) hpEl.value = data.hp;
-        if (initEl) initEl.value = data.init;
-        if (meleeEl) meleeEl.value = data.melee || 0;
-        if (meleeDmgEl) meleeDmgEl.value = data.meleeDmg || '1d4';
-        if (rangedEl) rangedEl.value = data.ranged || 0;
-        if (rangedDmgEl) rangedDmgEl.value = data.rangedDmg || '1d4';
-    }
+    const fields = { 'npc-name': null, 'npc-hp': null, 'npc-init': null, 'npc-melee': null, 'npc-melee-dmg': null, 'npc-ranged': null, 'npc-ranged-dmg': null };
+    if (val === 'custom') { Object.keys(fields).forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; }); return; }
+    const d = npcDatabase[val]; if (!d) return;
+    const vals = { 'npc-name': t("mon_" + val), 'npc-hp': d.hp, 'npc-init': d.init, 'npc-melee': d.melee||0, 'npc-melee-dmg': d.meleeDmg||'1d4', 'npc-ranged': d.ranged||0, 'npc-ranged-dmg': d.rangedDmg||'1d4' };
+    Object.entries(vals).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
 };
 
 window.addNPC = () => {
     if (userRole !== 'dm') return;
     const presetVal = document.getElementById('npc-preset')?.value;
-    let baseName = document.getElementById('npc-name')?.value.trim();
-    if (!baseName) baseName = presetVal !== 'custom' ? t("mon_" + presetVal) : t("default_monster");
+    let baseName = document.getElementById('npc-name')?.value.trim() || (presetVal !== 'custom' ? t("mon_"+presetVal) : t("default_monster"));
     const npcClass = document.getElementById('npc-class')?.value.trim();
-    const npcHp = parseInt(document.getElementById('npc-hp')?.value) || 10;
-    const npcInitBonus = parseInt(document.getElementById('npc-init')?.value) || 0;
-    const npcMelee = parseInt(document.getElementById('npc-melee')?.value) || 0;
-    const npcMeleeDmg = document.getElementById('npc-melee-dmg')?.value || '1d6';
-    const npcRanged = parseInt(document.getElementById('npc-ranged')?.value) || 0;
-    const npcRangedDmg = document.getElementById('npc-ranged-dmg')?.value || '1d6';
-    const count = parseInt(document.getElementById('npc-count')?.value) || 1;
+    const npcHp = parseInt(document.getElementById('npc-hp')?.value)||10;
+    const npcInitBonus = parseInt(document.getElementById('npc-init')?.value)||0;
+    const npcMelee = parseInt(document.getElementById('npc-melee')?.value)||0;
+    const npcMeleeDmg = document.getElementById('npc-melee-dmg')?.value||'1d6';
+    const npcRanged = parseInt(document.getElementById('npc-ranged')?.value)||0;
+    const npcRangedDmg = document.getElementById('npc-ranged-dmg')?.value||'1d6';
+    const count = parseInt(document.getElementById('npc-count')?.value)||1;
     const isHidden = document.getElementById('npc-hidden')?.checked;
-    let portrait = "https://via.placeholder.com/50/c0392b/ffffff?text=NPC";
-    if (presetVal !== 'custom' && npcDatabase[presetVal]) portrait = npcDatabase[presetVal].img;
+    const portrait = (presetVal !== 'custom' && npcDatabase[presetVal]) ? npcDatabase[presetVal].img : "https://via.placeholder.com/50/c0392b/ffffff?text=NPC";
     for (let i = 1; i <= count; i++) {
         const finalName = count > 1 ? `${baseName} ${i}` : baseName;
-        const d20 = Math.floor(Math.random() * 20) + 1;
-        const finalInit = d20 + npcInitBonus;
-        const stats = { maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10, isHidden, melee: npcMelee, meleeDmg: npcMeleeDmg, ranged: npcRanged, rangedDmg: npcRangedDmg };
+        const finalInit = Math.floor(Math.random()*20)+1 + npcInitBonus;
+        const stats = { maxHp:npcHp, hp:npcHp, ac:10, speed:30, pp:10, isHidden, melee:npcMelee, meleeDmg:npcMeleeDmg, ranged:npcRanged, rangedDmg:npcRangedDmg };
         if (npcClass) stats.class = npcClass;
         db.joinPlayerToDB(finalName, "DM", "#c0392b", "npc", portrait, stats);
         db.setPlayerInitiativeInDB(finalName, "DM", finalInit, "#c0392b");
-        const hiddenText = isHidden ? t('log_hidden_tag') : "";
-        db.saveRollToDB({ cName: "DM", type: "STATUS", status: `${t('log_added')} ${finalName}${hiddenText} [${t('log_init')} ${finalInit}]`, ts: Date.now() });
+        db.saveRollToDB({ cName:"DM", type:"STATUS", status:`${t('log_added')} ${finalName}${isHidden?t('log_hidden_tag'):''} [${t('log_init')} ${finalInit}]`, ts:Date.now() });
     }
-    ['npc-preset','npc-name','npc-class','npc-hp','npc-init','npc-melee','npc-melee-dmg','npc-ranged','npc-ranged-dmg'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = id === 'npc-preset' ? 'custom' : "";
-    });
-    if (document.getElementById('npc-count')) document.getElementById('npc-count').value = "1";
+    ['npc-preset','npc-name','npc-class','npc-hp','npc-init','npc-melee','npc-melee-dmg','npc-ranged','npc-ranged-dmg'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=id==='npc-preset'?'custom':'';});
+    const countEl = document.getElementById('npc-count'); if(countEl) countEl.value="1";
 };
 
 window.roll3DDice = roll3DDice;
@@ -338,34 +330,19 @@ window.roll3DDice = roll3DDice;
 // DB LISTENERS
 // =====================================================================
 function setupDatabaseListeners() {
-
     db.listenToCombatStatus((isCombat) => {
-        const btn = document.getElementById('init-btn');
-        const dmBtn = document.getElementById('master-combat-btn');
+        const btn          = document.getElementById('init-btn');
+        const dmBtn        = document.getElementById('master-combat-btn');
         const turnControls = document.getElementById('dm-turn-controls');
-
-        if (userRole === 'dm' && dmBtn) {
-            dmBtn.innerText = isCombat ? t('end_combat') : t('open_combat');
-            dmBtn.style.background = isCombat ? "#c0392b" : "#2c3e50";
-        }
-        if (userRole === 'dm' && turnControls) {
-            turnControls.style.display = isCombat ? 'flex' : 'none';
-        }
-
+        if (userRole === 'dm' && dmBtn) { dmBtn.innerText = isCombat ? t('end_combat') : t('open_combat'); dmBtn.style.background = isCombat ? "#c0392b" : "#2c3e50"; }
+        if (userRole === 'dm' && turnControls) turnControls.style.display = isCombat ? 'flex' : 'none';
         if (isCombat) {
-            // Start at turn 0 if DM opens combat fresh
             if (userRole === 'dm' && currentActiveTurn === null && sortedCombatants.length > 0) {
-                currentActiveTurn = 0;
-                currentRoundNumber = 1;
-                db.setActiveTurn(0, 1);
-                updateTurnUI();
+                currentActiveTurn = 0; currentRoundNumber = 1;
+                db.setActiveTurn(0, 1); updateTurnUI();
             }
             db.listenToPlayerInitiative(cName, (exists) => {
-                if (btn) {
-                    btn.disabled = exists;
-                    btn.innerText = exists ? t('registered') : t('roll_init_btn');
-                    btn.style.opacity = exists ? "0.5" : "1";
-                }
+                if (btn) { btn.disabled = exists; btn.innerText = exists ? t('registered') : t('roll_init_btn'); btn.style.opacity = exists ? "0.5" : "1"; }
             });
         } else {
             if (btn) { btn.disabled = true; btn.innerText = t('waiting_combat'); btn.style.opacity = "0.3"; }
@@ -374,61 +351,64 @@ function setupDatabaseListeners() {
 
     db.listenToPlayers((playersData) => {
         if (playersData) {
-            // Keep sortedCombatants in sync for turn cycling
             sortedCombatants = Object.keys(playersData)
-                .map(key => ({ name: key, ...playersData[key] }))
+                .map(k => ({ name: k, ...playersData[k] }))
                 .filter(p => p.userRole !== 'dm')
-                .sort((a, b) => (b.score || 0) - (a.score || 0));
-        } else {
-            sortedCombatants = [];
-        }
+                .sort((a, b) => (b.score||0) - (a.score||0));
+        } else { sortedCombatants = []; }
         updateInitiativeUI(playersData, userRole, activeRoller, currentActiveTurn, sortedCombatants);
     });
 
-    // Listen to active turn from Firebase (syncs to all clients)
+    // ── Sprint 4: YOUR TURN detection ──
     db.listenToActiveTurn((turnIndex) => {
+        const wasMyTurn = prevActiveTurn !== null && sortedCombatants[prevActiveTurn]?.name === cName;
+        const isMyTurn  = turnIndex !== null       && sortedCombatants[turnIndex]?.name  === cName;
+        // Trigger only when turn changes TO your character (not on load)
+        if (isMyTurn && !wasMyTurn && canAnimate) {
+            if (!isMuted) playYourTurnSound();
+            showYourTurnBanner(cName);
+        }
+        prevActiveTurn    = turnIndex;
         currentActiveTurn = turnIndex;
         updateTurnUI();
         updateInitiativeUI(null, userRole, activeRoller, currentActiveTurn, sortedCombatants);
-        // Auto-scroll active card into view
         if (turnIndex !== null && sortedCombatants[turnIndex]) {
-            const activeName = sortedCombatants[turnIndex].name;
-            const el = document.querySelector(`[data-combatant="${CSS.escape(activeName)}"]`);
+            const el = document.querySelector(`[data-combatant="${CSS.escape(sortedCombatants[turnIndex].name)}"]`);
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     });
 
     db.listenToRoundNumber((round) => {
         currentRoundNumber = round;
-        const roundEl = document.getElementById('round-counter');
-        if (roundEl) roundEl.innerText = round > 0 ? `Round ${round}` : '';
+        const el = document.getElementById('round-counter');
+        if (el) el.innerText = round > 0 ? `Round ${round}` : '';
     });
 
     db.listenToNewRolls((data) => {
         if (!data || !canAnimate) return;
         if (!isMuted) {
-            if (data.type === "DAMAGE") playDamageSound(isMuted);
-            else if (data.type === "HEAL") playHealSound(isMuted);
-            else playRollSound(data.type, data.res, isMuted);
+            if      (data.type === "DAMAGE") playDamageSound(isMuted);
+            else if (data.type === "HEAL")   playHealSound(isMuted);
+            else                             playRollSound(data.type, data.res, isMuted);
         }
-        const time = new Date(data.ts || Date.now()).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-        if (data.type !== "DAMAGE" && data.type !== "HEAL" && data.type !== "STATUS") {
+        const time = new Date(data.ts||Date.now()).toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' });
+        if (!["DAMAGE","HEAL","STATUS"].includes(data.type)) {
             const emptyState = document.getElementById('empty-state');
             const diceVisual = document.getElementById('dice-visual');
             const resultText = document.getElementById('result-text');
-            const arena = document.getElementById('dice-arena');
+            const arena      = document.getElementById('dice-arena');
             if (emptyState) emptyState.style.display = 'none';
-            if (diceVisual) diceVisual.style.display = 'flex';
+            if (diceVisual) diceVisual.style.display  = 'flex';
             if (resultText && arena) {
-                resultText.classList.remove('show', 'crit-success-text', 'crit-fail-text');
-                arena.classList.remove('vfx-crit-success', 'vfx-crit-fail', 'vfx-shake');
+                resultText.classList.remove('show','crit-success-text','crit-fail-text');
+                arena.classList.remove('vfx-crit-success','vfx-crit-fail','vfx-shake');
                 void arena.offsetWidth;
-                resultText.innerText = (data.res || 0) + (data.mod || 0);
+                resultText.innerText = (data.res||0) + (data.mod||0);
                 resultText.style.color = "white";
                 resultText.style.textShadow = `0 0 20px ${data.color}, 3px 3px 10px rgba(0,0,0,0.9)`;
                 if (data.type === 'd20') {
-                    if (data.res === 20) { arena.classList.add('vfx-crit-success'); resultText.classList.add('crit-success-text'); resultText.style.textShadow = ""; resultText.style.color = ""; }
-                    else if (data.res === 1) { arena.classList.add('vfx-crit-fail', 'vfx-shake'); resultText.classList.add('crit-fail-text'); resultText.style.textShadow = ""; resultText.style.color = ""; }
+                    if (data.res === 20) { arena.classList.add('vfx-crit-success'); resultText.classList.add('crit-success-text'); resultText.style.textShadow=""; resultText.style.color=""; }
+                    else if (data.res === 1) { arena.classList.add('vfx-crit-fail','vfx-shake'); resultText.classList.add('crit-fail-text'); resultText.style.textShadow=""; resultText.style.color=""; }
                 }
                 setTimeout(() => resultText.classList.add('show'), 50);
                 setTimeout(() => resultText.classList.remove('show'), 4000);
