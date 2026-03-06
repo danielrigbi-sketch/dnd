@@ -19,7 +19,7 @@ export const translations = {
         "empty_vault": "עדיין אין לך דמויות בכספת.<br>צור את הדמות הראשונה שלך!",
         "select_btn": "בחר",
         "cb_title": "יצירת דמות חדשה",
-        "cb_portrait": "בחר דיוקן מהמאגר:",
+        "cb_portrait": "בחר דיוקן:",
         "cb_name_ph": "שם הדמות",
         "cb_race": "גזע",
         "race_human": "אדם",
@@ -30,22 +30,31 @@ export const translations = {
         "class_wizard": "קוסם",
         "class_rogue": "נוכל",
         "class_cleric": "כוהן",
-        "cb_ac": "AC",
+        "cb_ac": "AC (שריון)",
         "cb_speed": "מהירות",
-        "cb_pp": "PP",
+        "cb_pp": "הבחנה",
         "cb_init": "יוזמה+",
         "cb_hp": "חיים (HP)",
         "cb_melee": "קפא״פ+",
         "cb_ranged": "מרחוק+",
         "cb_dmg": "נזק",
         
-        // NEW Custom Attacks Translations
+        // Vault 2.0 Additions
+        "alert_no_room_code": "אנא הזן קוד חדר כדי להיכנס למשחק.",
+        "delete_confirm": "האם אתה בטוח שברצונך למחוק את הדמות לצמיתות?",
+        "btn_update_char": "עדכן דמות",
+        "title_edit_char": "עריכת דמות",
+        "port_tab_preset": "מאגר",
+        "port_tab_url": "לינק",
+        "port_tab_file": "קובץ",
+        "port_url_ph": "הדבק לינק לתמונה (URL)",
+        "color_picker_label": "צבע הקוביות:",
+        
         "cb_attacks_title": "נשקים ולחשים מיוחדים:",
         "cb_add_attack": "➕ הוסף התקפה/לחש",
         "ph_atk_name": "שם (למשל: חרב)",
         "ph_atk_bonus": "תוסף+",
         "ph_atk_dmg": "נזק (1d8)",
-
         "cb_save_btn": "שמור לכספת",
         "cb_saving": "שומר...",
         "alert_login_fail": "ההתחברות נכשלה!",
@@ -160,20 +169,29 @@ export const translations = {
         "class_cleric": "Cleric",
         "cb_ac": "AC",
         "cb_speed": "Speed",
-        "cb_pp": "Passive Perc.",
+        "cb_pp": "Pass. Perc",
         "cb_init": "Init+",
         "cb_hp": "Max HP",
         "cb_melee": "Melee+",
         "cb_ranged": "Ranged+",
         "cb_dmg": "Dmg",
         
-        // NEW Custom Attacks Translations
+        // Vault 2.0 Additions
+        "alert_no_room_code": "Please enter a valid room code to join.",
+        "delete_confirm": "Are you sure you want to permanently delete this character?",
+        "btn_update_char": "Update Character",
+        "title_edit_char": "Edit Character",
+        "port_tab_preset": "Presets",
+        "port_tab_url": "URL",
+        "port_tab_file": "File",
+        "port_url_ph": "Paste image URL",
+        "color_picker_label": "Dice Color:",
+        
         "cb_attacks_title": "Custom Attacks & Spells:",
         "cb_add_attack": "➕ Add Attack/Spell",
         "ph_atk_name": "Name (e.g. Sword)",
         "ph_atk_bonus": "Bonus+",
         "ph_atk_dmg": "Dmg (1d8)",
-
         "cb_save_btn": "Save to Vault",
         "cb_saving": "Saving...",
         "alert_login_fail": "Login failed!",
@@ -281,17 +299,23 @@ export function t(key) {
 }
 
 export function updateDOM() {
+    // Normal HTML text
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[currentLang][key]) {
-            if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
-                el.placeholder = translations[currentLang][key];
-            } else {
-                el.innerHTML = translations[currentLang][key];
-            }
+            el.innerHTML = translations[currentLang][key];
         }
     });
 
+    // Placeholders for Inputs
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[currentLang][key]) {
+            el.placeholder = translations[currentLang][key];
+        }
+    });
+
+    // Select Options
     document.querySelectorAll('option[data-i18n]').forEach(opt => {
         const key = opt.getAttribute('data-i18n');
         if (translations[currentLang][key]) {
