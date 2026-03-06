@@ -94,8 +94,6 @@ export function setPlayerInitiativeInDB(cName, pName, score, pColor) {
 }
 
 // ==========================================
-// Sprint 3 — Turn Tracker
-// ==========================================
 export function setActiveTurn(index, roundNumber) {
     set(ref(db, `rooms/${activeRoom}/active_turn`), index);
     if (roundNumber !== undefined) set(ref(db, `rooms/${activeRoom}/round_number`), roundNumber);
@@ -104,8 +102,6 @@ export function listenToActiveTurn(cb)  { onValue(ref(db, `rooms/${activeRoom}/a
 export function listenToRoundNumber(cb) { onValue(ref(db, `rooms/${activeRoom}/round_number`), s => cb(s.val() || 0)); }
 
 // ==========================================
-// Sprint 4 — Roll Log Persistence
-// ==========================================
 export async function loadRecentRolls(n = 20) {
     const snap = await get(query(ref(db, `rooms/${activeRoom}/rolls`), limitToLast(n)));
     if (!snap.exists()) return [];
@@ -113,6 +109,25 @@ export async function loadRecentRolls(n = 20) {
     return Object.entries(snap.val())
         .sort(([a], [b]) => (a < b ? -1 : 1))
         .map(([, v]) => v);
+}
+
+// Purge roll log: keep only the most recent MAX_ROLLS entries.
+// Call once on game start to prevent unbounded growth.
+const MAX_ROLLS = 200;
+export async function purgeOldRolls() {
+    try {
+        const rollsRef = ref(db, `rooms/${activeRoom}/rolls`);
+        const snap = await get(query(rollsRef, orderByKey()));
+        if (!snap.exists()) return;
+        const keys = Object.keys(snap.val());
+        if (keys.length <= MAX_ROLLS) return;
+        const toDelete = keys.slice(0, keys.length - MAX_ROLLS);
+        const deletions = toDelete.map(k => remove(ref(db, `rooms/${activeRoom}/rolls/${k}`)));
+        await Promise.all(deletions);
+        console.info(`[CritRoll] Purged ${toDelete.length} old roll log entries.`);
+    } catch (e) {
+        console.warn('[CritRoll] purgeOldRolls failed:', e);
+    }
 }
 
 // ==========================================
@@ -127,8 +142,6 @@ export async function deleteCharacterFromVault(uid, id)      { await remove(ref(
 export async function updateCharacterInVault(uid, id, data)  { await update(ref(getDatabase(),  `users/${uid}/characters/${id}`), data); }
 
 // ==========================================
-// Sprint 5 — Death Saves & Concentration
-// ==========================================
 export function updateDeathSavesInDB(cName, saves) {
     update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { deathSaves: saves });
 }
@@ -136,8 +149,6 @@ export function updateConcentrationInDB(cName, isConcentrating) {
     update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { concentrating: isConcentrating });
 }
 
-// ==========================================
-// Sprint 6 — Spell Slots
 // ==========================================
 export function updateSpellSlotsInDB(cName, slots) {
     // slots = { max: {1:4,2:3,...}, used: {1:1,2:0,...} }
@@ -148,8 +159,6 @@ export function restoreAllSpellSlotsInDB(cName, maxSlots) {
     update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { 'spellSlots/used': {} });
 }
 
-// ==========================================
-// Sprint 7 — Tactical Battlefield Firebase
 // ==========================================
 export function listenMapCfg(room, cb) {
     return onValue(ref(db, `rooms/${room}/map/config`), s => cb(s.val()));
@@ -215,8 +224,6 @@ export function listenScenes(room, cb) {
 }
 export function getActiveRoom() { return activeRoom; }
 
-// ==========================================
-// Sprint 8 — Scene Vault (user-level)
 // ==========================================
 export async function saveSceneToVault(uid, sceneId, data) {
     await set(ref(db, `users/${uid}/scenes/${sceneId}`), data);
