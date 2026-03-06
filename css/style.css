@@ -297,7 +297,68 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .portrait-tab.active { background: #3498db; color: white; border-color: #2980b9; font-weight: bold; }
 
 /* ====================================================
-   SPRINT 4 — YOUR TURN BANNER
+   SPRINT 5 — DEATH SAVES & CONCENTRATION
+   ==================================================== */
+
+/* Dying card tint */
+.tracker-item.dying {
+    background: rgba(231, 76, 60, 0.08) !important;
+    border-color: rgba(231,76,60,0.4) !important;
+}
+
+/* Death save checkboxes */
+.death-saves-block { padding: 4px 0; }
+
+.ds-btn {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: transparent;
+    padding: 0;
+}
+.ds-btn:disabled { cursor: default; opacity: 0.5; }
+.ds-success          { border-color: #27ae60; }
+.ds-success.active   { background: #27ae60; box-shadow: 0 0 6px rgba(39,174,96,0.7); }
+.ds-fail             { border-color: #e74c3c; }
+.ds-fail.active      { background: #e74c3c; box-shadow: 0 0 6px rgba(231,76,60,0.7); }
+
+.ds-stable-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white; font-size: 11px; font-weight: 900;
+    padding: 4px 10px; border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(39,174,96,0.4);
+}
+.ds-dead-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #636e72, #2d3436);
+    color: #dfe6e9; font-size: 11px; font-weight: 900;
+    padding: 4px 10px; border-radius: 20px;
+    letter-spacing: 0.5px;
+}
+.ds-reset-btn {
+    background: none; border: 1px solid rgba(255,255,255,0.2);
+    color: #aaa; font-size: 10px; border-radius: 4px;
+    cursor: pointer; padding: 2px 6px; margin-top: 4px;
+    transition: 0.2s; display: block;
+}
+.ds-reset-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+/* Concentration badge */
+@keyframes concPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.6; transform: scale(1.15); }
+}
+.conc-badge {
+    display: inline-flex; align-items: center;
+    font-size: 13px;
+    animation: concPulse 2s ease-in-out infinite;
+    cursor: default;
+}
+
+/* ====================================================
    ==================================================== */
 @keyframes yourTurnIn {
     0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
