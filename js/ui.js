@@ -55,6 +55,11 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
         const isActiveTurn = (i.name === activeCombatantName);
         const div = document.createElement('div');
         const isThisCharDM = i.userRole === 'dm';
+        // Hoist death-save state so it's available for extraClasses
+        const _saves   = i.deathSaves || { successes:[false,false,false], failures:[false,false,false] };
+        const isDying  = (i.hp || 0) <= 0;
+        const isStable = _saves.stable || false;
+        const isDead   = _saves.dead   || false;
         let extraClasses = '';
         if (isThisCharDM) extraClasses = 'dm-item';
         if (activeRoller && activeRoller.cName === i.name) extraClasses += ' active-control';
@@ -80,14 +85,10 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             `;
         } else {
             const hpPercent = (i.hp / i.maxHp) * 100;
-            const isDead = i.hp <= 0;
             const isOwner = myCName === i.name;
             const isNPC = i.userRole === 'npc';
             const isOpen = expandedCardId === i.name;
-            const isDying = (i.hp || 0) <= 0;
-            const saves = i.deathSaves || { successes:[false,false,false], failures:[false,false,false] };
-            const isStable = saves.stable || false;
-            const isDead   = saves.dead   || false;
+            const saves = _saves; // already computed above
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">🗑️</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
