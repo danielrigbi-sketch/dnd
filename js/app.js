@@ -1,9 +1,10 @@
 // app.js v120
-import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=122";
-import { getFlavorText } from "./messages.js?v=122";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=122";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=122";
-import * as db from "./firebaseService.js?v=122";
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=123";
+import { getFlavorText } from "./messages.js?v=123";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=123";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=123";
+import * as db from "./firebaseService.js?v=123";
+// getActiveRoom is available via db.getActiveRoom()
 
 // =====================================================================
 // SPRINT 5 — Death Saves & Concentration
@@ -98,8 +99,9 @@ window.rerollAllInitiatives = async () => {
     }
     db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
 };
-import { t } from "./i18n.js?v=122";
-import { npcDatabase } from "./monsters.js?v=122";
+import { t } from "./i18n.js?v=123";
+import { npcDatabase } from "./monsters.js?v=123";
+import { MapEngine } from "./mapEngine.js?v=123";
 
 // =====================================================================
 // GLOBALS
@@ -114,6 +116,8 @@ let currentActiveTurn  = null;
 let currentRoundNumber = 0;
 let sortedCombatants   = [];
 let prevActiveTurn     = null;   // track changes for YOUR TURN detection
+// ── Map Engine (Sprint 7) ──────────────────────────────────────────────
+let mapEngine = null;
 
 function populateMonsterSelect() {
     const select = document.getElementById('npc-preset');
@@ -184,6 +188,7 @@ export async function startGame(role, charData, roomCode) {
     }
 
     setupDatabaseListeners();
+    initMap();
     unlockAudio();
 
     // ── Sprint 4: load persisted roll log ──
@@ -426,6 +431,166 @@ window.addNPC = () => {
 window.roll3DDice = roll3DDice;
 
 // =====================================================================
+// SPRINT 7 — MAP ENGINE INIT
+// =====================================================================
+function initMap() {
+    const cv  = document.getElementById('map-canvas');
+    const fwc = document.getElementById('fow-canvas');
+    if (!cv || !fwc) return;
+
+    // Size canvases to container
+    const container = document.getElementById('map-canvas-container');
+    const resize = () => {
+        const w = container.clientWidth, h = container.clientHeight;
+        cv.width = w; cv.height = h; fwc.width = w; fwc.height = h;
+        mapEngine?.resize(w, h);
+    };
+
+    mapEngine = new MapEngine(cv, fwc, { cName, userRole, activeRoom: db.getActiveRoom() });
+    window._mapEng = mapEngine; // expose for dashboard buttons
+    mapEngine.setupFirebase(db);
+    resize();
+    window.addEventListener('resize', resize);
+
+    // DM dashboard drag
+    if (userRole === 'dm') {
+        document.getElementById('dm-map-dash').style.display = 'block';
+        document.getElementById('open-map-btn').style.display = 'block';
+        _initDashDrag();
+        _initDashTabs();
+        _initDashControls();
+    } else {
+        document.getElementById('open-map-btn').style.display = 'block';
+    }
+}
+
+function _initDashDrag() {
+    const dash = document.getElementById('dm-map-dash');
+    const hdr  = document.getElementById('dm-map-dash-header');
+    let dragging=false, ox=0, oy=0, lx=0, ly=0;
+    hdr.addEventListener('mousedown', e=>{
+        dragging=true; ox=e.clientX-lx; oy=e.clientY-ly;
+    });
+    document.addEventListener('mousemove', e=>{
+        if(!dragging) return;
+        lx=e.clientX-ox; ly=e.clientY-oy;
+        dash.style.left=lx+'px'; dash.style.top=ly+'px';
+    });
+    document.addEventListener('mouseup', ()=>{ dragging=false; });
+}
+
+function _initDashTabs() {
+    document.querySelectorAll('.map-dash-tab').forEach(tab=>{
+        tab.onclick=()=>{
+            document.querySelectorAll('.map-dash-tab').forEach(t=>t.classList.remove('active'));
+            document.querySelectorAll('.map-dash-panel').forEach(p=>p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('map-panel-'+tab.dataset.tab)?.classList.add('active');
+        };
+    });
+}
+
+function _initDashControls() {
+    // Mode buttons
+    document.querySelectorAll('.map-mode-btn').forEach(btn=>{
+        btn.onclick=()=>{
+            const mode=btn.dataset.mode;
+            mapEngine?.setMode(mode);
+            document.querySelectorAll('.map-mode-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            // Update cursor
+            const cursors={view:'cursor-grab',obstacle:'cursor-paint',trigger:'cursor-paint',
+                           fogReveal:'cursor-reveal',fogHide:'cursor-hide',ruler:'cursor-ruler',aoe:'cursor-ruler',calibrate:'cursor-grab'};
+            const container=document.getElementById('map-canvas-container');
+            container.className='';
+            if(cursors[mode]) container.classList.add(cursors[mode]);
+        };
+    });
+    // Tool buttons
+    document.querySelectorAll('.map-tool-btn').forEach(btn=>{
+        btn.onclick=()=>{
+            mapEngine?.setTool(btn.dataset.tool);
+            document.querySelectorAll('.map-tool-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+        };
+    });
+    // AOE shape
+    document.querySelectorAll('.aoe-shape-btn').forEach(btn=>{
+        btn.onclick=()=>{
+            mapEngine?.setAoeShape(btn.dataset.shape);
+            document.querySelectorAll('.aoe-shape-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+        };
+    });
+    // AOE radius
+    document.getElementById('aoe-radius-input')?.addEventListener('input', e=>{
+        mapEngine?.setAoeRadius(parseInt(e.target.value)||20);
+    });
+    // Background URL
+    document.getElementById('map-bg-load-btn')?.addEventListener('click', ()=>{
+        const url=document.getElementById('map-bg-url').value.trim();
+        if(url) mapEngine?.loadBgUrl(url);
+    });
+    // Background file
+    document.getElementById('map-bg-file')?.addEventListener('change', e=>{
+        const file=e.target.files[0];
+        if(file) mapEngine?.loadBgFile(file);
+    });
+    // Grid calibration
+    document.getElementById('calib-pps-plus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(4,0,0); _updateCalibDisplay(); });
+    document.getElementById('calib-pps-minus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(-4,0,0); _updateCalibDisplay(); });
+    document.getElementById('calib-ox-plus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(0,4,0); _updateCalibDisplay(); });
+    document.getElementById('calib-ox-minus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(0,-4,0); _updateCalibDisplay(); });
+    document.getElementById('calib-oy-plus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(0,0,4); _updateCalibDisplay(); });
+    document.getElementById('calib-oy-minus')?.addEventListener('click',()=>{ mapEngine?.nudgeGrid(0,0,-4); _updateCalibDisplay(); });
+    document.getElementById('calib-lock-btn')?.addEventListener('click',()=>{
+        mapEngine?.lockGrid(); mapEngine?.saveGridToFirebase();
+        document.getElementById('calib-lock-btn').textContent='🔒 Locked!';
+    });
+    document.getElementById('calib-unlock-btn')?.addEventListener('click',()=>{
+        mapEngine?.unlockGrid(); mapEngine?.saveGridToFirebase();
+        document.getElementById('calib-lock-btn').textContent='🔒 Lock Grid';
+    });
+    document.getElementById('calib-save-btn')?.addEventListener('click',()=>{ mapEngine?.saveGridToFirebase(); });
+    // Scene
+    document.getElementById('map-new-scene-btn')?.addEventListener('click',()=>{
+        const name=document.getElementById('map-scene-name')?.value.trim()||'Scene 1';
+        mapEngine?.createScene(name);
+    });
+    // Fog tools
+    document.getElementById('map-reveal-all')?.addEventListener('click',()=>mapEngine?.revealAll());
+    document.getElementById('map-hide-all')?.addEventListener('click',()=>mapEngine?.hideAll());
+    // Reset movement (called at turn start)
+    document.getElementById('map-reset-mv')?.addEventListener('click',()=>mapEngine?.resetAllMovement());
+}
+
+function _updateCalibDisplay() {
+    if (!mapEngine) return;
+    const cfg = mapEngine.S.cfg;
+    const el = document.getElementById('calib-pps-val');
+    if (el) el.textContent = cfg.pps + 'px';
+    const oxEl = document.getElementById('calib-ox-val');
+    if (oxEl) oxEl.textContent = cfg.ox;
+    const oyEl = document.getElementById('calib-oy-val');
+    if (oyEl) oyEl.textContent = cfg.oy;
+}
+
+window.openMap = () => {
+    document.getElementById('map-overlay').classList.remove('map-hidden');
+    // Sync players to map engine
+    if (mapEngine) {
+        mapEngine.setPlayers(sortedCombatants.reduce((acc,c)=>{acc[c.name]=c;return acc;},{}));
+        mapEngine.setActiveTurn(currentActiveTurn, sortedCombatants);
+        mapEngine._updateDashTokenList?.();
+    }
+};
+window.closeMap = () => document.getElementById('map-overlay').classList.add('map-hidden');
+window.toggleMap = () => {
+    const el = document.getElementById('map-overlay');
+    el.classList.contains('map-hidden') ? window.openMap() : window.closeMap();
+};
+
+// =====================================================================
 // DB LISTENERS
 // =====================================================================
 function setupDatabaseListeners() {
@@ -456,6 +621,8 @@ function setupDatabaseListeners() {
                 .sort((a, b) => (b.score||0) - (a.score||0));
         } else { sortedCombatants = []; }
         updateInitiativeUI(playersData, userRole, activeRoller, currentActiveTurn, sortedCombatants);
+        // Sync to map engine
+        if (mapEngine) { mapEngine.setPlayers(playersData||{}); mapEngine._updateDashTokenList?.(); }
     });
 
     // ── Sprint 4: YOUR TURN detection ──
@@ -470,6 +637,8 @@ function setupDatabaseListeners() {
         prevActiveTurn    = turnIndex;
         currentActiveTurn = turnIndex;
         updateTurnUI();
+        // Sync to map engine
+        if (mapEngine) mapEngine.setActiveTurn(currentActiveTurn, sortedCombatants);
         updateInitiativeUI(null, userRole, activeRoller, currentActiveTurn, sortedCombatants);
         if (turnIndex !== null && sortedCombatants[turnIndex]) {
             const el = document.querySelector(`[data-combatant="${CSS.escape(sortedCombatants[turnIndex].name)}"]`);
