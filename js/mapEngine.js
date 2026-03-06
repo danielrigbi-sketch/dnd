@@ -1,10 +1,12 @@
-// js/mapEngine.js — Tactical Battlefield v123
+// js/mapEngine.js — Tactical Battlefield v127
 // Complete real-time tactical map for CritRoll D&D
 // Self-contained: no external render deps, uses injected Firebase helpers
 // =====================================================================
 
 // ── Constants ────────────────────────────────────────────────────────
 const FT_PER_SQ   = 5;
+const MAP_W_DEFAULT = 30;   // default grid columns when none specified
+const MAP_H_DEFAULT = 20;   // default grid rows when none specified
 const DEF_PPS     = 64;          // default pixels-per-square
 const MIN_PPS     = 16;
 const MAX_PPS     = 200;
@@ -219,10 +221,10 @@ export class MapEngine {
       return;
     }
 
-    const W=(mw||30)*pps, H=(mh||20)*pps;
+    const W=(mw||MAP_W_DEFAULT)*pps, H=(mh||MAP_H_DEFAULT)*pps;
     // Checkerboard
-    for(let gx=0;gx<(mw||30);gx++){
-      for(let gy=0;gy<(mh||20);gy++){
+    for(let gx=0;gx<(mw||MAP_W_DEFAULT);gx++){
+      for(let gy=0;gy<(mh||MAP_H_DEFAULT);gy++){
         ctx.fillStyle=(gx+gy)%2===0?'#1a1a2e':'#16213e';
         ctx.fillRect(ox+gx*pps,oy+gy*pps,pps,pps);
       }
@@ -238,20 +240,20 @@ export class MapEngine {
     ctx.strokeStyle = m==='calibrate' ? GRID_CALIB : locked ? GRID_LOCKED : GRID_NORMAL;
     ctx.lineWidth = (m==='calibrate'?1.5:0.6)/this.vs;
     ctx.beginPath();
-    for(let x=0;x<=(mw||30);x++){
+    for(let x=0;x<=(mw||MAP_W_DEFAULT);x++){
       const px=ox+x*pps;
-      ctx.moveTo(px,oy); ctx.lineTo(px,oy+(mh||20)*pps);
+      ctx.moveTo(px,oy); ctx.lineTo(px,oy+(mh||MAP_H_DEFAULT)*pps);
     }
-    for(let y=0;y<=(mh||20);y++){
+    for(let y=0;y<=(mh||MAP_H_DEFAULT);y++){
       const py=oy+y*pps;
-      ctx.moveTo(ox,py); ctx.lineTo(ox+(mw||30)*pps,py);
+      ctx.moveTo(ox,py); ctx.lineTo(ox+(mw||MAP_W_DEFAULT)*pps,py);
     }
     ctx.stroke();
     // In calibrate mode show corner handles
     if(m==='calibrate'){
       ctx.fillStyle=GRID_CALIB;
-      for(let x=0;x<=(mw||30);x+=5){
-        for(let y=0;y<=(mh||20);y+=5){
+      for(let x=0;x<=(mw||MAP_W_DEFAULT);x+=5){
+        for(let y=0;y<=(mh||MAP_H_DEFAULT);y+=5){
           ctx.fillRect(ox+x*pps-3/this.vs,oy+y*pps-3/this.vs,6/this.vs,6/this.vs);
         }
       }
@@ -517,7 +519,7 @@ export class MapEngine {
     ctx.save();
     ctx.translate(this.vx,this.vy);
     ctx.scale(this.vs,this.vs);
-    const cols=mw||30, rows=mh||20;
+    const cols=mw||MAP_W_DEFAULT, rows=mh||MAP_H_DEFAULT;
     for(let gx=0;gx<cols;gx++) for(let gy=0;gy<rows;gy++){
       if(!this.S.fog[ck(gx,gy)]){
         const px=ox+gx*pps, py=oy+gy*pps;
@@ -534,7 +536,7 @@ export class MapEngine {
   // ── FOW ghost for DM ─────────────────────────────────────────────────
   _rFowDM(){
     const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh}=this.S.cfg;
-    for(let gx=0;gx<(mw||30);gx++) for(let gy=0;gy<(mh||20);gy++){
+    for(let gx=0;gx<(mw||MAP_W_DEFAULT);gx++) for(let gy=0;gy<(mh||MAP_H_DEFAULT);gy++){
       if(!this.S.fog[ck(gx,gy)]){
         ctx.fillStyle='rgba(0,0,0,0.30)';
         ctx.fillRect(ox+gx*pps,oy+gy*pps,pps,pps);
@@ -671,7 +673,7 @@ export class MapEngine {
     const dt=this.L.drag; if(!dt) return;
     const {ctx,cv}=this;
     const pl=this.S.players[dt.cName]||{};
-    const speed=pl.speed||30;
+    const speed=pl.speed||MAP_W_DEFAULT;
     const sq=(dt.path?.length||1)-1;
     const prevUsed=this.S.tokens[dt.cName]?.usedMv||0;
     const used=prevUsed+sq*FT_PER_SQ;
@@ -872,7 +874,7 @@ export class MapEngine {
 
     const isDM=this.userRole==='dm';
     const pl=this.S.players[dt.cName]||{};
-    const speed=pl.speed||30;
+    const speed=pl.speed||MAP_W_DEFAULT;
     const sq=(dt.path?.length||1)-1;
     const prevUsed=this.S.tokens[dt.cName]?.usedMv||0;
     const newUsed=prevUsed+sq*FT_PER_SQ;
@@ -1028,7 +1030,7 @@ export class MapEngine {
     if(!this.db) return;
     const {mapW:mw,mapH:mh}=this.S.cfg;
     const cells={};
-    for(let gx=0;gx<(mw||30);gx++) for(let gy=0;gy<(mh||20);gy++) cells[ck(gx,gy)]=true;
+    for(let gx=0;gx<(mw||MAP_W_DEFAULT);gx++) for(let gy=0;gy<(mh||MAP_H_DEFAULT);gy++) cells[ck(gx,gy)]=true;
     this.db.revealFogCells(this.activeRoom,this.S.activeScene,cells);
   }
 
