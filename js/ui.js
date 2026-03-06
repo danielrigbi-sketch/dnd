@@ -1,6 +1,6 @@
 // ui.js
 
-import { t } from "./i18n.js?v=109";
+import { t } from "./i18n.js?v=110";
 
 let expandedCardId = null;
 
@@ -91,7 +91,6 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
 
-            // Handle legacy data and translate subtext
             const raceStr = i.race || "";
             const classStr = i.class || "";
             const hasHebrew = /[\u0590-\u05FF]/;
@@ -100,6 +99,17 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
 
             let subtext = isNPC ? `⚔️ ${i.class ? i.class : t("default_monster")}` : `${displayRace} ${displayClass}`;
             const canViewStats = isDM || isOwner;
+
+            // NEW: Generate HTML for Custom Attacks if they exist
+            let customAttacksHTML = '';
+            if (i.customAttacks && i.customAttacks.length > 0) {
+                customAttacksHTML = i.customAttacks.map(atk => `
+                    <div style="display:flex; gap:5px; margin-top:6px;">
+                        <button class="macro-btn melee" onclick="window.rollMacro('${i.name}', '${atk.name}', ${atk.bonus})">⚔️ ${atk.name}</button>
+                        ${atk.dmg ? `<button class="macro-btn" style="background:rgba(192, 57, 43, 0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${atk.name}', '${atk.dmg}', ${atk.bonus})">🩸 ${atk.dmg}</button>` : ''}
+                    </div>
+                `).join('');
+            }
 
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
@@ -175,6 +185,9 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                                     <button class="macro-btn" onclick="window.rollMacro('${i.name}', '${t('card_ranged')}', ${i.ranged || 0})">🏹 ${t('macro_attack')}</button>
                                     <button class="macro-btn" style="background:rgba(192, 57, 43, 0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_ranged')}', '${i.rangedDmg || '1d6'}', ${i.ranged || 0})">🩸 ${t('macro_dmg')} (${i.rangedDmg || '1d6'})</button>
                                 </div>
+                                
+                                ${customAttacksHTML}
+
                             </div>
                         </div>
                     ` : `
