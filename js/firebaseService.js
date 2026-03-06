@@ -88,3 +88,14 @@ export function listenToCombatStatus(callback) { onValue(ref(db, `rooms/${active
 export function listenToPlayerInitiative(cName, callback) { onValue(ref(db, `rooms/${activeRoom}/initiative/${cName}`), (snap) => callback(snap.exists()), { onlyOnce: true }); }
 export function listenToPlayers(callback) { onValue(ref(db, `rooms/${activeRoom}/players`), (snapshot) => callback(snapshot.val())); }
 export function listenToNewRolls(callback) { onChildAdded(query(ref(db, `rooms/${activeRoom}/rolls`), limitToLast(1)), (snapshot) => callback(snapshot.val())); }
+export async function deleteCharacterFromVault(uid, charId) {
+    const dbInstance = getDatabase();
+    const charRef = ref(dbInstance, `users/${uid}/characters/${charId}`);
+    await remove(charRef);
+}
+
+export async function updateCharacterInVault(uid, charId, charData) {
+    const dbInstance = getDatabase();
+    const charRef = ref(dbInstance, `users/${uid}/characters/${charId}`);
+    await update(charRef, charData);
+}
