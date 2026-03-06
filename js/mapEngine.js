@@ -93,7 +93,14 @@ export class MapEngine {
   }
 
   setActiveTurn(idx, sc){ this.L.ati=idx; this.L.sc=sc||[]; this._dirty(); }
-  setPlayers(p){ this.S.players=p||{}; this._dirty(); }
+  setPlayers(p){
+    const newKeys=Object.keys(p||{}).sort().join(',');
+    const oldKeys=Object.keys(this.S.players).sort().join(',');
+    this.S.players=p||{};
+    this._dirty();
+    // Only rebuild the token roster DOM when membership changes
+    if(newKeys!==oldKeys) this._updateDashTokenList();
+  }
   setMuted(v){ this.isMuted=v; }
   _dirty(){ this.L.dirty=true; }
 
@@ -786,8 +793,52 @@ export class MapEngine {
     const key=ck(gx,gy);
     const existing=this.S.triggers[key];
     if(existing){ this.db.setTrigger(this.activeRoom,this.S.activeScene,key,null); return; }
-    const label=prompt('Trigger label:','Trap')||'Trap';
-    this.db.setTrigger(this.activeRoom,this.S.activeScene,key,{label,fired:false});
+    // Store pending placement, show inline confirm UI
+    this.L.pendingTrigger={gx,gy,key};
+    this._showTriggerForm(gx,gy);
+  }
+
+  _showTriggerForm(gx,gy){
+    // Build or reuse a small inline form near the dashboard
+    let form=document.getElementById('map-trigger-form');
+    if(!form){
+      form=document.createElement('div');
+      form.id='map-trigger-form';
+      form.style.cssText='position:absolute;background:rgba(13,10,30,0.97);border:1.5px solid rgba(241,196,15,0.5);border-radius:10px;padding:10px 12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.7);min-width:190px;';
+      document.getElementById('map-canvas-container')?.appendChild(form);
+    }
+    // Position near canvas centre
+    const cc=document.getElementById('map-canvas-container');
+    form.style.left=(cc?cc.clientWidth/2-95:120)+'px';
+    form.style.top='60px';
+    form.innerHTML=`
+      <div style="font-size:11px;color:#f1c40f;font-weight:bold;margin-bottom:6px;">⚠️ New Trigger at [${gx},${gy}]</div>
+      <input id="map-trigger-label" type="text" value="Trap"
+        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:5px;padding:5px 7px;font-size:12px;outline:none;margin-bottom:7px;">
+      <div style="display:flex;gap:5px;">
+        <button id="map-trigger-confirm" style="flex:1;background:rgba(241,196,15,0.2);border:1px solid rgba(241,196,15,0.5);color:#f1c40f;border-radius:5px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">✓ Place</button>
+        <button id="map-trigger-cancel"  style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#aaa;border-radius:5px;padding:5px;font-size:11px;cursor:pointer;">✕ Cancel</button>
+      </div>
+    `;
+    form.style.display='block';
+    const input=document.getElementById('map-trigger-label');
+    input?.focus(); input?.select();
+    document.getElementById('map-trigger-confirm').onclick=()=>{
+      const label=(input?.value.trim())||'Trap';
+      const pt=this.L.pendingTrigger;
+      if(pt) this.db.setTrigger(this.activeRoom,this.S.activeScene,pt.key,{label,fired:false});
+      this.L.pendingTrigger=null;
+      form.style.display='none';
+    };
+    document.getElementById('map-trigger-cancel').onclick=()=>{
+      this.L.pendingTrigger=null;
+      form.style.display='none';
+    };
+    // Also close on Enter
+    input?.addEventListener('keydown',e=>{
+      if(e.key==='Enter') document.getElementById('map-trigger-confirm')?.click();
+      if(e.key==='Escape') document.getElementById('map-trigger-cancel')?.click();
+    });
   }
 
   _revealCell(gx,gy,r=2){
@@ -913,22 +964,42 @@ export class MapEngine {
   _updateDashTokenList(){
     const list=document.getElementById('map-token-roster');
     if(!list) return;
-    list.innerHTML='';
-    Object.keys(this.S.players).forEach(cn=>{
-      const p=this.S.players[cn];
-      if(p?.userRole==='dm') return;
-      const onMap=!!this.S.tokens[cn];
-      const row=document.createElement('div');
-      row.className='map-token-row';
+
+    const players=this.S.players, tokens=this.S.tokens;
+    const desired=Object.keys(players).filter(cn=>players[cn]?.userRole!=='dm');
+
+    // Remove rows for players no longer in the room
+    list.querySelectorAll('[data-cn]').forEach(row=>{
+      if(!players[row.dataset.cn]) row.remove();
+    });
+
+    desired.forEach(cn=>{
+      const p=players[cn];
+      const onMap=!!tokens[cn];
+      let row=list.querySelector(`[data-cn="${CSS.escape(cn)}"]`);
+
+      if(!row){
+        // Create new row
+        row=document.createElement('div');
+        row.className='map-token-row';
+        row.dataset.cn=cn;
+        list.appendChild(row);
+      }
+
+      // Only rewrite innerHTML if the "onMap" state or name changed
+      const prevOnMap=row.dataset.onmap==='1';
+      if(prevOnMap===onMap && row.dataset.rendered==='1') return;
+      row.dataset.onmap=onMap?'1':'0';
+      row.dataset.rendered='1';
+
       row.innerHTML=`
         <img src="${p?.portrait||'assets/logo.png'}" style="width:24px;height:24px;border-radius:50%;border:2px solid ${p?.pColor||'#fff'}">
         <span style="flex:1;font-size:12px;color:white;">${cn}</span>
         ${onMap
-          ?`<button onclick="window._mapEng.removeToken('${cn}')" class="map-dash-btn" style="background:rgba(231,76,60,0.4);border-color:#e74c3c;">✕</button>`
-          :`<button onclick="window._mapEng.startPlacing('${cn}')" class="map-dash-btn">📍 Place</button>`
+          ?`<button onclick="window._mapEng.removeToken('${cn}')" class="map-dash-btn" style="width:auto;padding:3px 7px;background:rgba(231,76,60,0.4);border-color:#e74c3c;">✕</button>`
+          :`<button onclick="window._mapEng.startPlacing('${cn}')" class="map-dash-btn" style="width:auto;padding:3px 7px;">📍</button>`
         }
       `;
-      list.appendChild(row);
     });
   }
 }
