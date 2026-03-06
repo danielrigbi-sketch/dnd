@@ -171,12 +171,13 @@ function renderVault(characters) {
             const selectedChar = currentVaultCharacters[charId];
             const roomCodeInput = document.getElementById('room-code-input');
             const roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "";
-            if(!roomCode) { alert(t("alert_no_room_code")); return; }
+            if(!roomCode) { showToast(t("alert_no_room_code") || 'Enter a room code.', 'warning'); return; }
             // Sanitise input — strip spaces, uppercase
             roomCode = roomCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-            if(!roomCode) { alert(t("alert_no_room_code")); return; }
+            if(!roomCode) { showToast(t("alert_no_room_code") || 'Enter a room code.', 'warning'); return; }
             langToggleBtn.style.display = 'none';
             if(lobbyScreen) lobbyScreen.style.display = 'none';
+            showSpinner('Joining room…');
             startGame('player', selectedChar, roomCode);
         };
     });
@@ -347,7 +348,7 @@ if(saveCharBtn) {
                 if (currentEditCharId) { await db.updateCharacterInVault(currentUserUid, currentEditCharId, charData); }
                 else { await db.saveCharacterToVault(currentUserUid, charData); }
                 if(builderModal) builderModal.style.display = 'none';
-            } catch (err) { console.error(err); alert(t('alert_save_err')); }
+            } catch (err) { console.error(err); showToast(t('alert_save_err'), 'warning'); }
             finally { saveCharBtn.innerText = currentEditCharId ? t("btn_update_char") : t("cb_save_btn"); saveCharBtn.disabled = false; }
         };
     }
