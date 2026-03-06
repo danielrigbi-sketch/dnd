@@ -184,7 +184,10 @@ export class SceneWizard {
           <span id="wiz-pps-val" class="wiz-pps-val">${cfg.pps}<small>px</small></span>
           <button class="wiz-big-btn" id="wiz-pps-p">+</button>
         </div>
-        <div class="wiz-tip" style="margin-top:6px;text-align:center;">${t('wiz_l1_sq_tip')}</div>
+        <div id="wiz-tile-count" class="wiz-tile-count" style="text-align:center;margin-top:6px;font-size:12px;color:#6ef29a;font-weight:700;letter-spacing:0.5px;">
+          &nbsp;
+        </div>
+        <div class="wiz-tip" style="margin-top:4px;text-align:center;">${t('wiz_l1_sq_tip')}</div>
 
         <div class="wiz-section" style="margin-top:14px;">${t('wiz_l1_nudge')}</div>
         <div class="wiz-nudge-grid">
@@ -323,16 +326,24 @@ export class SceneWizard {
       if (eng) eng.S.cfg = { ...eng.S.cfg, ...cfg };
       eng?._dirty();
     };
-    document.getElementById('wiz-pps-m')?.addEventListener('click', () => {
-      cfg.pps = Math.max(8, cfg.pps - 4); syncCfg();
+    const _refreshPps = () => {
       const el = document.getElementById('wiz-pps-val');
       if (el) el.innerHTML = `${cfg.pps}<small>px</small>`;
+      // Show live tile count from engine
+      const tc = eng?.getBgTileCount?.();
+      const tcEl = document.getElementById('wiz-tile-count');
+      if (tcEl) {
+        tcEl.textContent = tc ? `${tc.cols} × ${tc.rows} tiles` : '';
+      }
+    };
+    document.getElementById('wiz-pps-m')?.addEventListener('click', () => {
+      cfg.pps = Math.max(8, cfg.pps - 4); syncCfg(); _refreshPps();
     });
     document.getElementById('wiz-pps-p')?.addEventListener('click', () => {
-      cfg.pps = Math.min(256, cfg.pps + 4); syncCfg();
-      const el = document.getElementById('wiz-pps-val');
-      if (el) el.innerHTML = `${cfg.pps}<small>px</small>`;
+      cfg.pps = Math.min(256, cfg.pps + 4); syncCfg(); _refreshPps();
     });
+    // Populate on step entry
+    setTimeout(_refreshPps, 50);
     document.getElementById('wiz-ox-m')?.addEventListener('click', () => { cfg.ox -= 4; syncCfg(); });
     document.getElementById('wiz-ox-p')?.addEventListener('click', () => { cfg.ox += 4; syncCfg(); });
     document.getElementById('wiz-oy-m')?.addEventListener('click', () => { cfg.oy -= 4; syncCfg(); });
