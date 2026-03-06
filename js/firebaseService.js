@@ -126,15 +126,13 @@ export function restoreAllSpellSlotsInDB(cName, maxSlots) {
 // Sprint 7 — Tactical Battlefield Firebase
 // ==========================================
 export function listenMapCfg(room, cb) {
-    onValue(ref(db, `rooms/${room}/map/config`), s => cb(s.val()));
-    return () => {};
+    return onValue(ref(db, `rooms/${room}/map/config`), s => cb(s.val()));
 }
 export function setMapCfg(room, cfg) {
     set(ref(db, `rooms/${room}/map/config`), cfg);
 }
 export function listenMapTokens(room, cb) {
-    onValue(ref(db, `rooms/${room}/map/tokens`), s => cb(s.val()));
-    return () => {};
+    return onValue(ref(db, `rooms/${room}/map/tokens`), s => cb(s.val()));
 }
 export function moveMapToken(room, cName, gx, gy, usedMv) {
     update(ref(db, `rooms/${room}/map/tokens/${cName}`), { gx, gy, usedMv: usedMv||0 });
@@ -146,11 +144,9 @@ export function removeMapToken(room, cName) {
     remove(ref(db, `rooms/${room}/map/tokens/${cName}`));
 }
 export function listenFog(room, scene, cb) {
-    onValue(ref(db, `rooms/${room}/scenes/${scene}/fog`), s => cb(s.val()));
-    return () => {};
+    return onValue(ref(db, `rooms/${room}/scenes/${scene}/fog`), s => cb(s.val()));
 }
 export function revealFogCells(room, scene, cells) {
-    // cells = { 'gx_gy': true, ... }
     const updates = {};
     Object.keys(cells).forEach(k => { updates[`rooms/${room}/scenes/${scene}/fog/${k}`] = true; });
     update(ref(db), updates);
@@ -162,16 +158,14 @@ export function resetFog(room, scene) {
     remove(ref(db, `rooms/${room}/scenes/${scene}/fog`));
 }
 export function listenObstacles(room, scene, cb) {
-    onValue(ref(db, `rooms/${room}/scenes/${scene}/obstacles`), s => cb(s.val()));
-    return () => {};
+    return onValue(ref(db, `rooms/${room}/scenes/${scene}/obstacles`), s => cb(s.val()));
 }
 export function setObstacle(room, scene, key, val) {
     if (val) set(ref(db, `rooms/${room}/scenes/${scene}/obstacles/${key}`), true);
     else remove(ref(db, `rooms/${room}/scenes/${scene}/obstacles/${key}`));
 }
 export function listenTriggers(room, scene, cb) {
-    onValue(ref(db, `rooms/${room}/scenes/${scene}/triggers`), s => cb(s.val()));
-    return () => {};
+    return onValue(ref(db, `rooms/${room}/scenes/${scene}/triggers`), s => cb(s.val()));
 }
 export function setTrigger(room, scene, key, val) {
     if (val) set(ref(db, `rooms/${room}/scenes/${scene}/triggers/${key}`), val);
@@ -181,8 +175,7 @@ export function fireTrigger(room, scene, key) {
     update(ref(db, `rooms/${room}/scenes/${scene}/triggers/${key}`), { fired: true });
 }
 export function listenActiveScene(room, cb) {
-    onValue(ref(db, `rooms/${room}/map/activeScene`), s => cb(s.val()));
-    return () => {};
+    return onValue(ref(db, `rooms/${room}/map/activeScene`), s => cb(s.val()));
 }
 export function setActiveScene(room, sceneId) {
     set(ref(db, `rooms/${room}/map/activeScene`), sceneId);
@@ -192,7 +185,6 @@ export function saveScene(room, sceneId, data) {
     if (data.config) set(ref(db, `rooms/${room}/scenes/${sceneId}/config`), data.config);
 }
 export function listenScenes(room, cb) {
-    onValue(ref(db, `rooms/${room}/scenes`), s => cb(s.val()));
-    return () => {};
+    return onValue(ref(db, `rooms/${room}/scenes`), s => cb(s.val()));
 }
 export function getActiveRoom() { return activeRoom; }
