@@ -1,8 +1,8 @@
 // lobby.js - Welcome screen and Authentication Controller
 
-import * as db from "./firebaseService.js?v=109";
-import { startGame } from "./app.js?v=109";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=109";
+import * as db from "./firebaseService.js?v=110";
+import { startGame } from "./app.js?v=110";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=110";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -30,6 +30,25 @@ const builderModal = document.getElementById('char-builder-modal');
 const closeBuilderBtn = document.getElementById('close-builder-btn');
 const saveCharBtn = document.getElementById('save-char-btn');
 const vaultList = document.getElementById('vault-list');
+
+// NEW: Custom Attacks UI Logic
+const addAttackBtn = document.getElementById('add-custom-attack-btn');
+const attacksList = document.getElementById('custom-attacks-list');
+
+if (addAttackBtn) {
+    addAttackBtn.onclick = () => {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '5px';
+        row.innerHTML = `
+            <input type="text" class="builder-input atk-name" placeholder="${t('ph_atk_name')}" style="width: 40%; font-size:12px; padding:6px;">
+            <input type="number" class="builder-input atk-bonus" placeholder="${t('ph_atk_bonus')}" style="width: 20%; font-size:12px; padding:6px;">
+            <input type="text" class="builder-input atk-dmg" placeholder="${t('ph_atk_dmg')}" style="width: 30%; font-size:12px; padding:6px;">
+            <button type="button" onclick="this.parentElement.remove()" style="background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer; width:10%; font-weight:bold;">X</button>
+        `;
+        attacksList.appendChild(row);
+    };
+}
 
 let currentUserUid = null;
 let selectedPortrait = "";
@@ -138,6 +157,7 @@ if(newCharBtn) {
         selectedPortrait = "";
         document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.builder-input').forEach(input => input.value = '');
+        if (attacksList) attacksList.innerHTML = ''; // Clear custom attacks when opening a fresh form
     };
 }
 
@@ -172,6 +192,19 @@ if(saveCharBtn) {
         const ranged = document.getElementById('cb-ranged')?.value;
         const rangedDmg = document.getElementById('cb-ranged-dmg')?.value;
 
+        // NEW: Gather custom attacks from the DOM
+        const customAttacks = [];
+        if (attacksList) {
+            attacksList.querySelectorAll('div').forEach(row => {
+                const aName = row.querySelector('.atk-name')?.value.trim();
+                const aBonus = parseInt(row.querySelector('.atk-bonus')?.value) || 0;
+                const aDmg = row.querySelector('.atk-dmg')?.value.trim();
+                if (aName) {
+                    customAttacks.push({ name: aName, bonus: aBonus, dmg: aDmg });
+                }
+            });
+        }
+
         if (!name || !charRace || !charClass || !ac || !speed || !pp || !init || !hp || !melee || !ranged || !selectedPortrait) {
             return alert(t('alert_missing'));
         }
@@ -181,6 +214,7 @@ if(saveCharBtn) {
             pp: parseInt(pp), initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
             melee: parseInt(melee), meleeDmg: meleeDmg, 
             ranged: parseInt(ranged), rangedDmg: rangedDmg, 
+            customAttacks: customAttacks, // Saved to Firebase!
             portrait: selectedPortrait, createdAt: Date.now()
         };
 
