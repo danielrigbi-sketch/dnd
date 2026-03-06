@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="assets/logo.png">
     
-    <link rel="stylesheet" href="css/style.css?v=116">
+    <link rel="stylesheet" href="css/style.css?v=117">
     <link rel="stylesheet" href="css/diceStyles.css">
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
@@ -71,6 +71,21 @@
                     <div id="vault-list" class="flex-column" style="max-height: 250px; overflow-y: auto; padding-right: 5px; position: relative;">
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- Room Code Modal (replaces the old alert())            -->
+    <!-- ===================================================== -->
+    <div id="room-code-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:3000; justify-content:center; align-items:center;">
+        <div style="background:#2c3e50; border:2px solid #f1c40f; border-radius:16px; padding:32px 40px; text-align:center; max-width:380px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.9); animation: fadeInDown 0.3s ease;">
+            <div style="font-size:40px; margin-bottom:10px;">👑</div>
+            <h2 data-i18n="alert_room_created_title" style="color:#f1c40f; margin:0 0 20px 0; font-size:22px;"></h2>
+            <div id="room-code-display" style="font-size:56px; font-weight:900; color:white; letter-spacing:10px; background:rgba(0,0,0,0.4); padding:16px 24px; border-radius:12px; border:2px dashed rgba(241,196,15,0.5); margin-bottom:24px; font-family:monospace; text-shadow:0 0 20px rgba(241,196,15,0.5);"></div>
+            <div style="display:flex; gap:12px; justify-content:center;">
+                <button id="room-code-copy-btn" class="hover-btn" data-i18n="alert_room_copy" style="background:#3498db; color:white; padding:12px 20px; border-radius:8px; font-weight:bold; font-size:15px; flex:1;"></button>
+                <button id="room-code-enter-btn" class="hover-btn" data-i18n="alert_room_enter" style="background:#e74c3c; color:white; padding:12px 20px; border-radius:8px; font-weight:bold; font-size:15px; flex:1;"></button>
             </div>
         </div>
     </div>
@@ -271,6 +286,6 @@
         </div>
     </div>
 
-    <script type="module" src="js/lobby.js?v=116"></script>
+    <script type="module" src="js/lobby.js?v=117"></script>
 </body>
 </html>
