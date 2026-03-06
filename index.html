@@ -194,6 +194,16 @@
         </form>
     </div>
 
+    <!-- Sprint 4: YOUR TURN notification banner -->
+    <div id="your-turn-banner" class="hidden" onclick="window.dismissYourTurn()">
+        <div class="your-turn-inner">
+            <div class="your-turn-icon">⚔️</div>
+            <div class="your-turn-text">YOUR TURN!</div>
+            <div id="your-turn-name" class="your-turn-name"></div>
+            <div class="your-turn-hint">tap to dismiss</div>
+        </div>
+    </div>
+
     <!-- Mobile panel backdrop -->
     <div id="panel-backdrop" onclick="window.closeMobilePanel()"></div>
     <!-- Mobile panel toggle -->
@@ -304,7 +314,7 @@
         </div>
     </div>
 
-    <script type="module" src="js/lobby.js?v=119"></script>
+    <script type="module" src="js/lobby.js?v=120"></script>
     <script>
         // Mobile panel toggle
         window.toggleMobilePanel = () => {
