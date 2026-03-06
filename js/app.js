@@ -1,14 +1,14 @@
-// app.js - Main Game Controller
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=118";
-import { getFlavorText } from "./messages.js?v=118";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=118";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=118";
-import * as db from "./firebaseService.js?v=118";
-import { t } from "./i18n.js?v=118";
-import { npcDatabase } from "./monsters.js?v=118";
+// app.js - Main Game Controller v119
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=119";
+import { getFlavorText } from "./messages.js?v=119";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=119";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=119";
+import * as db from "./firebaseService.js?v=119";
+import { t } from "./i18n.js?v=119";
+import { npcDatabase } from "./monsters.js?v=119";
 
 // =====================================================================
-// GLOBALS & DB
+// GLOBALS
 // =====================================================================
 let isDiceBoxReady = false;
 let pName = "", cName = "", pColor = "#3498db", userRole = "player", charPortrait = "";
@@ -16,18 +16,22 @@ let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal';
 let activeRoller = null;
 
+// Turn Tracker state
+let currentActiveTurn = null;   // index into sorted players array
+let currentRoundNumber = 0;
+let sortedCombatants = [];       // kept in sync with listenToPlayers
+
 function populateMonsterSelect() {
     const select = document.getElementById('npc-preset');
     if (!select) return;
-    select.innerHTML = `<option value="custom" data-i18n="custom_npc">${t('custom_npc') || '-- Custom NPC --'}</option>`;
+    select.innerHTML = `<option value="custom">${t('custom_npc')}</option>`;
     for (const key of Object.keys(npcDatabase)) {
-        const translatedName = t("mon_" + key) || key;
-        select.innerHTML += `<option value="${key}" data-i18n="mon_${key}">${translatedName}</option>`;
+        select.innerHTML += `<option value="${key}">${t("mon_" + key) || key}</option>`;
     }
 }
 
 // =====================================================================
-// START GAME FUNCTION
+// START GAME
 // =====================================================================
 export async function startGame(role, charData, roomCode) {
     db.setRoom(roomCode);
@@ -37,7 +41,8 @@ export async function startGame(role, charData, roomCode) {
     const gameScreen = document.getElementById('game-screen');
     if (gameScreen) gameScreen.style.display = 'flex';
     const titleHeader = document.querySelector('#side-panel h3');
-    if(titleHeader) titleHeader.innerText = `${t('party_title')} (${roomCode})`;
+    if (titleHeader) titleHeader.innerText = `${t('party_title')} (${roomCode})`;
+
     if (userRole === 'player') {
         pName = document.getElementById('user-display-name')?.innerText || "Player";
         cName = charData.name;
@@ -53,21 +58,61 @@ export async function startGame(role, charData, roomCode) {
         charPortrait = document.getElementById('user-avatar')?.src || "assets/logo.png";
         const combatBtn = document.getElementById('master-combat-btn');
         const npcControls = document.getElementById('dm-npc-controls');
-        if(combatBtn) combatBtn.style.display = 'block';
-        if(npcControls) npcControls.style.display = 'flex';
+        const turnControls = document.getElementById('dm-turn-controls');
+        if (combatBtn) combatBtn.style.display = 'block';
+        if (npcControls) npcControls.style.display = 'flex';
+        if (turnControls) turnControls.style.display = 'none'; // shown when combat starts
         localStorage.setItem('critroll_cName', 'DM');
         populateMonsterSelect();
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
     }
+
     setupDatabaseListeners();
     unlockAudio();
     try { await initDiceEngine(); isDiceBoxReady = true; }
-    catch (e) { console.error("Dice engine failed to load:", e); }
+    catch (e) { console.error("Dice engine failed:", e); }
     setTimeout(() => { canAnimate = true; }, 1000);
 }
 
 // =====================================================================
-// HARDWIRED WINDOW FUNCTIONS
+// TURN TRACKER FUNCTIONS (DM only)
+// =====================================================================
+window.nextTurn = () => {
+    if (userRole !== 'dm' || sortedCombatants.length === 0) return;
+    let nextIndex = (currentActiveTurn === null ? 0 : currentActiveTurn + 1);
+    let newRound = currentRoundNumber;
+    if (nextIndex >= sortedCombatants.length) {
+        nextIndex = 0;
+        newRound++;
+        db.saveRollToDB({ cName: "DM", type: "STATUS", status: `⚔️ Round ${newRound}!`, ts: Date.now() });
+    }
+    currentActiveTurn = nextIndex;
+    currentRoundNumber = newRound;
+    db.setActiveTurn(nextIndex, newRound);
+    updateTurnUI();
+};
+
+window.prevTurn = () => {
+    if (userRole !== 'dm' || sortedCombatants.length === 0) return;
+    let prevIndex = (currentActiveTurn === null ? 0 : currentActiveTurn - 1);
+    let newRound = currentRoundNumber;
+    if (prevIndex < 0) { prevIndex = sortedCombatants.length - 1; newRound = Math.max(1, newRound - 1); }
+    currentActiveTurn = prevIndex;
+    currentRoundNumber = newRound;
+    db.setActiveTurn(prevIndex, newRound);
+    updateTurnUI();
+};
+
+function updateTurnUI() {
+    const roundEl = document.getElementById('round-counter');
+    if (roundEl) roundEl.innerText = currentRoundNumber > 0 ? `Round ${currentRoundNumber}` : '';
+    const activeName = sortedCombatants[currentActiveTurn]?.name || '';
+    const activeEl = document.getElementById('active-turn-name');
+    if (activeEl) activeEl.innerText = activeName;
+}
+
+// =====================================================================
+// WINDOW FUNCTIONS
 // =====================================================================
 window.roll = async (type, isInit = false) => {
     if (isCooldown && !isInit) return;
@@ -87,7 +132,7 @@ window.roll = async (type, isInit = false) => {
             finalRes = (currentMode === 'adv') ? Math.max(res1, res2) : Math.min(res1, res2);
         } else { const results = await roll3DDice(`1${type}`); finalRes = results[0].value; }
     } catch (err) { isCooldown = false; setDiceCooldown(false); return; }
-    const mod = (isInit)
+    const mod = isInit
         ? (parseInt(localStorage.getItem('critroll_initBonus')) || 0)
         : (parseInt(document.getElementById('mod-input')?.value) || 0);
     const rollData = { pName: rollPName, cName: rollCName, type, res: finalRes, mod, color: rollColor, mode: currentMode, ts: Date.now() };
@@ -148,13 +193,13 @@ window.changeHP = async (targetCName, isPlus) => {
     db.updatePlayerHPInDB(targetCName, newHp);
     const flavor = (isPlus ? t('log_heals') : t('log_takes_dmg')) + ` (${amount} ${t('log_points')})`;
     db.saveRollToDB({ cName: targetCName, type: isPlus ? "HEAL" : "DAMAGE", res: amount, newHp, color: isPlus ? "#2ecc71" : "#e74c3c", flavor, ts: Date.now() });
-    if(inputField) inputField.value = 1;
+    if (inputField) inputField.value = 1;
 };
 
 window.toggleStatus = async (targetCName, status) => {
     if (userRole !== 'dm') return;
     const p = await db.getPlayerData(targetCName);
-    if(!p) return;
+    if (!p) return;
     let statuses = p.statuses || [];
     if (statuses.includes(status)) { statuses = statuses.filter(s => s !== status); }
     else { statuses.push(status); db.saveRollToDB({ cName: targetCName, type: "STATUS", status, ts: Date.now() }); }
@@ -165,7 +210,13 @@ window.removeNPC = (targetCName) => {
     if (userRole !== 'dm') return;
     if (confirm(t('alert_delete_npc_1') + targetCName + t('alert_delete_npc_2'))) {
         db.removePlayerFromDB(targetCName);
-        if (activeRoller && activeRoller.cName === targetCName) { window.resetRoller(); }
+        if (activeRoller && activeRoller.cName === targetCName) window.resetRoller();
+        // Re-sync turn index after removal
+        if (currentActiveTurn !== null && sortedCombatants.length > 0) {
+            const safeIndex = Math.min(currentActiveTurn, sortedCombatants.length - 2);
+            currentActiveTurn = Math.max(0, safeIndex);
+            db.setActiveTurn(currentActiveTurn, currentRoundNumber);
+        }
     }
 };
 
@@ -183,33 +234,46 @@ window.impersonate = async (targetCName) => {
     activeRoller = { cName: targetCName, pName: "DM", color: p.pColor || "#c0392b" };
     const banner = document.getElementById('active-roller-banner');
     const nameEl = document.getElementById('active-roller-name');
-    if(banner) banner.style.display = 'flex';
-    if(nameEl) nameEl.innerText = targetCName;
+    if (banner) banner.style.display = 'flex';
+    if (nameEl) nameEl.innerText = targetCName;
     updateDiceColor(activeRoller.color);
 };
 
 window.resetRoller = () => {
     activeRoller = null;
     const banner = document.getElementById('active-roller-banner');
-    if(banner) banner.style.display = 'none';
+    if (banner) banner.style.display = 'none';
     updateDiceColor(pColor);
 };
 
 window.setMode = (mode) => { activeMode = (activeMode === mode) ? 'normal' : mode; updateModeUI(activeMode); };
-window.toggleMute = () => { isMuted = !isMuted; const btn = document.getElementById('mute-btn'); if(btn) btn.innerText = isMuted ? t('unmute_sound') : t('mute_sound'); };
+window.toggleMute = () => { isMuted = !isMuted; const btn = document.getElementById('mute-btn'); if (btn) btn.innerText = isMuted ? t('unmute_sound') : t('mute_sound'); };
 
 window.toggleCombat = async () => {
     if (userRole !== 'dm') return;
     const current = await db.getCombatStatus();
-    if (current) { if (confirm(t('alert_end_combat'))) { db.setCombatStatus(false); db.resetInitiativeInDB(); } }
-    else { db.setCombatStatus(true); }
+    if (current) {
+        if (confirm(t('alert_end_combat'))) {
+            db.setCombatStatus(false);
+            db.resetInitiativeInDB();
+            currentActiveTurn = null;
+            currentRoundNumber = 0;
+            sortedCombatants = [];
+            const turnControls = document.getElementById('dm-turn-controls');
+            if (turnControls) turnControls.style.display = 'none';
+            const roundEl = document.getElementById('round-counter');
+            if (roundEl) roundEl.innerText = '';
+        }
+    } else {
+        db.setCombatStatus(true);
+    }
 };
 
 window.rollInit = async () => {
     const btn = document.getElementById('init-btn');
-    if(btn) btn.disabled = true; // Disable immediately to prevent race condition
+    if (btn) btn.disabled = true;
     const isCombat = await db.getCombatStatus();
-    if (!isCombat) { if(btn) btn.disabled = false; return alert(t('alert_not_started')); }
+    if (!isCombat) { if (btn) btn.disabled = false; return alert(t('alert_not_started')); }
     const rollResult = await window.roll('d20', true);
     db.setPlayerInitiativeInDB(cName, pName, rollResult, pColor);
 };
@@ -219,18 +283,18 @@ window.handlePresetChange = (val) => {
           initEl = document.getElementById('npc-init'), meleeEl = document.getElementById('npc-melee'),
           meleeDmgEl = document.getElementById('npc-melee-dmg'), rangedEl = document.getElementById('npc-ranged'),
           rangedDmgEl = document.getElementById('npc-ranged-dmg');
-    if(val === 'custom') {
-        [nameEl, hpEl, initEl, meleeEl, meleeDmgEl, rangedEl, rangedDmgEl].forEach(el => { if(el) el.value = ""; });
+    if (val === 'custom') {
+        [nameEl, hpEl, initEl, meleeEl, meleeDmgEl, rangedEl, rangedDmgEl].forEach(el => { if (el) el.value = ""; });
     } else {
         const data = npcDatabase[val];
-        if(!data) return;
-        if(nameEl) nameEl.value = t("mon_" + val);
-        if(hpEl) hpEl.value = data.hp;
-        if(initEl) initEl.value = data.init;
-        if(meleeEl) meleeEl.value = data.melee || 0;
-        if(meleeDmgEl) meleeDmgEl.value = data.meleeDmg || '1d4';
-        if(rangedEl) rangedEl.value = data.ranged || 0;
-        if(rangedDmgEl) rangedDmgEl.value = data.rangedDmg || '1d4';
+        if (!data) return;
+        if (nameEl) nameEl.value = t("mon_" + val);
+        if (hpEl) hpEl.value = data.hp;
+        if (initEl) initEl.value = data.init;
+        if (meleeEl) meleeEl.value = data.melee || 0;
+        if (meleeDmgEl) meleeDmgEl.value = data.meleeDmg || '1d4';
+        if (rangedEl) rangedEl.value = data.ranged || 0;
+        if (rangedDmgEl) rangedDmgEl.value = data.rangedDmg || '1d4';
     }
 };
 
@@ -238,7 +302,7 @@ window.addNPC = () => {
     if (userRole !== 'dm') return;
     const presetVal = document.getElementById('npc-preset')?.value;
     let baseName = document.getElementById('npc-name')?.value.trim();
-    if (!baseName) { baseName = presetVal !== 'custom' ? t("mon_" + presetVal) : t("default_monster"); }
+    if (!baseName) baseName = presetVal !== 'custom' ? t("mon_" + presetVal) : t("default_monster");
     const npcClass = document.getElementById('npc-class')?.value.trim();
     const npcHp = parseInt(document.getElementById('npc-hp')?.value) || 10;
     const npcInitBonus = parseInt(document.getElementById('npc-init')?.value) || 0;
@@ -249,20 +313,23 @@ window.addNPC = () => {
     const count = parseInt(document.getElementById('npc-count')?.value) || 1;
     const isHidden = document.getElementById('npc-hidden')?.checked;
     let portrait = "https://via.placeholder.com/50/c0392b/ffffff?text=NPC";
-    if (presetVal !== 'custom' && npcDatabase[presetVal]) { portrait = npcDatabase[presetVal].img; }
-    for(let i = 1; i <= count; i++) {
+    if (presetVal !== 'custom' && npcDatabase[presetVal]) portrait = npcDatabase[presetVal].img;
+    for (let i = 1; i <= count; i++) {
         const finalName = count > 1 ? `${baseName} ${i}` : baseName;
         const d20 = Math.floor(Math.random() * 20) + 1;
         const finalInit = d20 + npcInitBonus;
-        const stats = { maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10, isHidden: isHidden, melee: npcMelee, meleeDmg: npcMeleeDmg, ranged: npcRanged, rangedDmg: npcRangedDmg };
+        const stats = { maxHp: npcHp, hp: npcHp, ac: 10, speed: 30, pp: 10, isHidden, melee: npcMelee, meleeDmg: npcMeleeDmg, ranged: npcRanged, rangedDmg: npcRangedDmg };
         if (npcClass) stats.class = npcClass;
         db.joinPlayerToDB(finalName, "DM", "#c0392b", "npc", portrait, stats);
         db.setPlayerInitiativeInDB(finalName, "DM", finalInit, "#c0392b");
         const hiddenText = isHidden ? t('log_hidden_tag') : "";
         db.saveRollToDB({ cName: "DM", type: "STATUS", status: `${t('log_added')} ${finalName}${hiddenText} [${t('log_init')} ${finalInit}]`, ts: Date.now() });
     }
-    ['npc-preset','npc-name','npc-class','npc-hp','npc-init','npc-melee','npc-melee-dmg','npc-ranged','npc-ranged-dmg'].forEach(id => { const el = document.getElementById(id); if(el) el.value = id === 'npc-preset' ? 'custom' : ""; });
-    if(document.getElementById('npc-count')) document.getElementById('npc-count').value = "1";
+    ['npc-preset','npc-name','npc-class','npc-hp','npc-init','npc-melee','npc-melee-dmg','npc-ranged','npc-ranged-dmg'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = id === 'npc-preset' ? 'custom' : "";
+    });
+    if (document.getElementById('npc-count')) document.getElementById('npc-count').value = "1";
 };
 
 window.roll3DDice = roll3DDice;
@@ -271,19 +338,72 @@ window.roll3DDice = roll3DDice;
 // DB LISTENERS
 // =====================================================================
 function setupDatabaseListeners() {
+
     db.listenToCombatStatus((isCombat) => {
         const btn = document.getElementById('init-btn');
         const dmBtn = document.getElementById('master-combat-btn');
-        if (userRole === 'dm' && dmBtn) { dmBtn.innerText = isCombat ? t('end_combat') : t('open_combat'); dmBtn.style.background = isCombat ? "#c0392b" : "#2c3e50"; }
+        const turnControls = document.getElementById('dm-turn-controls');
+
+        if (userRole === 'dm' && dmBtn) {
+            dmBtn.innerText = isCombat ? t('end_combat') : t('open_combat');
+            dmBtn.style.background = isCombat ? "#c0392b" : "#2c3e50";
+        }
+        if (userRole === 'dm' && turnControls) {
+            turnControls.style.display = isCombat ? 'flex' : 'none';
+        }
+
         if (isCombat) {
+            // Start at turn 0 if DM opens combat fresh
+            if (userRole === 'dm' && currentActiveTurn === null && sortedCombatants.length > 0) {
+                currentActiveTurn = 0;
+                currentRoundNumber = 1;
+                db.setActiveTurn(0, 1);
+                updateTurnUI();
+            }
             db.listenToPlayerInitiative(cName, (exists) => {
-                if (btn) { btn.disabled = exists; btn.innerText = exists ? t('registered') : t('roll_init_btn'); btn.style.opacity = exists ? "0.5" : "1"; }
+                if (btn) {
+                    btn.disabled = exists;
+                    btn.innerText = exists ? t('registered') : t('roll_init_btn');
+                    btn.style.opacity = exists ? "0.5" : "1";
+                }
             });
         } else {
             if (btn) { btn.disabled = true; btn.innerText = t('waiting_combat'); btn.style.opacity = "0.3"; }
         }
     });
-    db.listenToPlayers((playersData) => updateInitiativeUI(playersData, userRole, activeRoller));
+
+    db.listenToPlayers((playersData) => {
+        if (playersData) {
+            // Keep sortedCombatants in sync for turn cycling
+            sortedCombatants = Object.keys(playersData)
+                .map(key => ({ name: key, ...playersData[key] }))
+                .filter(p => p.userRole !== 'dm')
+                .sort((a, b) => (b.score || 0) - (a.score || 0));
+        } else {
+            sortedCombatants = [];
+        }
+        updateInitiativeUI(playersData, userRole, activeRoller, currentActiveTurn, sortedCombatants);
+    });
+
+    // Listen to active turn from Firebase (syncs to all clients)
+    db.listenToActiveTurn((turnIndex) => {
+        currentActiveTurn = turnIndex;
+        updateTurnUI();
+        updateInitiativeUI(null, userRole, activeRoller, currentActiveTurn, sortedCombatants);
+        // Auto-scroll active card into view
+        if (turnIndex !== null && sortedCombatants[turnIndex]) {
+            const activeName = sortedCombatants[turnIndex].name;
+            const el = document.querySelector(`[data-combatant="${CSS.escape(activeName)}"]`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
+
+    db.listenToRoundNumber((round) => {
+        currentRoundNumber = round;
+        const roundEl = document.getElementById('round-counter');
+        if (roundEl) roundEl.innerText = round > 0 ? `Round ${round}` : '';
+    });
+
     db.listenToNewRolls((data) => {
         if (!data || !canAnimate) return;
         if (!isMuted) {
@@ -297,9 +417,9 @@ function setupDatabaseListeners() {
             const diceVisual = document.getElementById('dice-visual');
             const resultText = document.getElementById('result-text');
             const arena = document.getElementById('dice-arena');
-            if(emptyState) emptyState.style.display = 'none';
-            if(diceVisual) diceVisual.style.display = 'flex';
-            if(resultText && arena) {
+            if (emptyState) emptyState.style.display = 'none';
+            if (diceVisual) diceVisual.style.display = 'flex';
+            if (resultText && arena) {
                 resultText.classList.remove('show', 'crit-success-text', 'crit-fail-text');
                 arena.classList.remove('vfx-crit-success', 'vfx-crit-fail', 'vfx-shake');
                 void arena.offsetWidth;
