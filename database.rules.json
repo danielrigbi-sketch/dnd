@@ -10,13 +10,16 @@
 
         "players": {
           "$cName": {
-            ".write": "auth != null && (root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid || newData.child('authUid').val() === auth.uid || data.child('authUid').val() === auth.uid)"
+            ".write": "auth != null && (root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid || newData.child('authUid').val() === auth.uid || data.child('authUid').val() === auth.uid)",
+            "userRole": {
+              ".validate": "root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid || newData.val() === 'player' || newData.val() === 'npc'"
+            }
           }
         },
 
         "initiative": {
           "$cName": {
-            ".write": "auth != null"
+            ".write": "auth != null && (root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid || root.child('rooms/' + $roomId + '/players/' + $cName + '/authUid').val() === auth.uid)"
           }
         },
 
