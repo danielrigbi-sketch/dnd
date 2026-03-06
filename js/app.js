@@ -102,10 +102,14 @@ window.rerollAllInitiatives = async () => {
 import { t } from "./i18n.js?v=125";
 import { npcDatabase } from "./monsters.js?v=125";
 import { MapEngine } from "./mapEngine.js?v=125";
+import { SceneWizard } from "./sceneWizard.js?v=125";
 
 // =====================================================================
 // GLOBALS
 // =====================================================================
+let uid = null;   // set by lobby.js via setUid() after auth
+export function setUid(u) { uid = u; }
+
 let isDiceBoxReady = false;
 let pName = "", cName = "", pColor = "#3498db", userRole = "player", charPortrait = "";
 let isMuted = false, isCooldown = false, canAnimate = false;
