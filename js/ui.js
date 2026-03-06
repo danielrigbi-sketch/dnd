@@ -1,7 +1,8 @@
-// ui.js
-import { t } from "./i18n.js?v=118";
+// ui.js v119
+import { t } from "./i18n.js?v=119";
 
 let expandedCardId = null;
+let _lastPlayersData = null;
 
 window.toggleCardExpand = (name) => {
     expandedCardId = expandedCardId === name ? null : name;
@@ -28,25 +29,44 @@ export function updateModeUI(activeMode) {
     else if (activeMode === 'dis') { disBtn.style.filter = "grayscale(0%)"; disBtn.style.opacity = "1"; disBtn.style.border = "2px solid white"; }
 }
 
-export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
+// activeTurnIndex: index in sortedCombatants that is currently active
+// sortedCombatants: the sorted array from app.js
+export function updateInitiativeUI(data, currentUserRole, activeRoller = null, activeTurnIndex = null, sortedCombatants = []) {
     const list = document.getElementById('init-list');
     if (!list) return;
+
+    // If data is null, re-use last known data (called from activeTurn listener)
+    if (data !== null) _lastPlayersData = data;
+    const playersData = _lastPlayersData;
+    if (!playersData) return;
+
     list.innerHTML = "";
-    if (!data) return;
-    const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
+    const items = Object.keys(playersData).map(key => ({ name: key, ...playersData[key] }));
     const isDM = currentUserRole === 'dm';
     const myCName = localStorage.getItem('critroll_cName');
+
+    // Get the active combatant's name
+    const activeCombatantName = (activeTurnIndex !== null && sortedCombatants[activeTurnIndex])
+        ? sortedCombatants[activeTurnIndex].name : null;
+
     items.sort((a, b) => (b.score || 0) - (a.score || 0)).forEach((i, index) => {
         if (i.isHidden && !isDM && i.name !== myCName) return;
+
+        const isActiveTurn = (i.name === activeCombatantName);
         const div = document.createElement('div');
         const isThisCharDM = i.userRole === 'dm';
         let extraClasses = '';
         if (isThisCharDM) extraClasses = 'dm-item';
         if (activeRoller && activeRoller.cName === i.name) extraClasses += ' active-control';
+        if (isActiveTurn) extraClasses += ' active-turn';
+
         div.className = `tracker-item ${extraClasses}`;
+        div.setAttribute('data-combatant', i.name);
+
         const playerColor = i.pColor || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
-        if (i.isHidden) { div.style.opacity = '0.6'; div.style.borderStyle = 'dashed'; div.style.background = 'rgba(0, 0, 0, 0.7)'; }
+        if (i.isHidden) { div.style.opacity = '0.6'; div.style.borderStyle = 'dashed'; div.style.background = 'rgba(0,0,0,0.7)'; }
+
         if (isThisCharDM) {
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center;">
@@ -66,38 +86,47 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">🗑️</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
+
             const raceStr = i.race || "";
             const classStr = i.class || "";
             const hasHebrew = /[\u0590-\u05FF]/;
             const displayRace = hasHebrew.test(raceStr) ? raceStr : t("race_" + raceStr.toLowerCase());
             const displayClass = hasHebrew.test(classStr) ? classStr : t("class_" + classStr.toLowerCase());
             let subtext = isNPC ? `⚔️ ${i.class ? i.class : t("default_monster")}` : `${displayRace} ${displayClass}`;
+
             const canViewStats = isDM || isOwner;
             let customAttacksHTML = '';
             if (i.customAttacks && i.customAttacks.length > 0) {
                 customAttacksHTML = i.customAttacks.map(atk => `
                     <div style="display:flex; gap:5px; margin-top:6px;">
                         <button class="macro-btn melee" onclick="window.rollMacro('${i.name}', '${atk.name}', ${atk.bonus})">⚔️ ${atk.name}</button>
-                        ${atk.dmg ? `<button class="macro-btn" style="background:rgba(192, 57, 43, 0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${atk.name}', '${atk.dmg}', ${atk.bonus})">🩸 ${atk.dmg}</button>` : ''}
+                        ${atk.dmg ? `<button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${atk.name}', '${atk.dmg}', ${atk.bonus})">🩸 ${atk.dmg}</button>` : ''}
                     </div>
                 `).join('');
             }
+
+            // Active turn badge
+            const activeBadge = isActiveTurn
+                ? `<span class="active-turn-badge">⚔️ NOW</span>`
+                : '';
+
             div.innerHTML = `
-                <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
-                    <img src="${i.portrait || 'https://via.placeholder.com/50'}" class="char-portrait">
-                    <div style="flex:1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-weight:900; color:white; font-size:1.1em;">
+                <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity:0.6;' : ''}">
+                    <img src="${i.portrait || 'https://via.placeholder.com/50'}" class="char-portrait" style="${isActiveTurn ? 'border-color:#f1c40f; box-shadow:0 0 10px #f1c40f;' : ''}">
+                    <div style="flex:1; min-width:0;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
+                            <span style="font-weight:900; color:white; font-size:1.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                 ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}
                             </span>
-                            <div style="display:flex; align-items:center; gap:2px;">
-                                <span class="init-score" style="margin-left: 5px; margin-right: 5px;">${i.score > 0 ? i.score : '--'}</span>
+                            <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
+                                ${activeBadge}
+                                <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
                                 <button id="expand-btn-${i.name}" class="expand-btn ${isOpen ? 'open' : ''}" onclick="window.toggleCardExpand('${i.name}')">▼</button>
                             </div>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
-                            <div style="font-size:0.7em; color:#f3e5ab;">${subtext}</div>
-                            <div style="display:flex; align-items:center; gap:2px;">${impersonateBtn}${visibilityBtn}${deleteBtn}</div>
+                            <div style="font-size:0.7em; color:#f3e5ab; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${subtext}</div>
+                            <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">${impersonateBtn}${visibilityBtn}${deleteBtn}</div>
                         </div>
                     </div>
                 </div>
@@ -115,7 +144,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                         ` : ''}
                     </div>
                     <div style="background:#333; height:6px; border-radius:3px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
-                        <div style="width:${hpPercent}%; height:100%; background:${hpPercent > 30 ? '#2ecc71' : '#e74c3c'}; transition: width 0.4s ease-out;"></div>
+                        <div style="width:${hpPercent}%; height:100%; background:${hpPercent > 30 ? '#2ecc71' : '#e74c3c'}; transition:width 0.4s ease-out;"></div>
                     </div>
                 </div>
                 <div class="status-container">
@@ -123,8 +152,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                     ${isDM ? `<button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>` : ''}
                 </div>
                 <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px;">
-                        ${['Poisoned', 'Charmed', 'Unconscious', 'Frightened', 'Paralyzed', 'Restrained', 'Blinded', 'Prone', 'Stunned'].map(s =>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+                        ${['Poisoned','Charmed','Unconscious','Frightened','Paralyzed','Restrained','Blinded','Prone','Stunned'].map(s =>
                             `<button onclick="window.toggleStatus('${i.name}', '${s}'); this.parentElement.parentElement.style.display='none';" style="font-size:10px; padding:3px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer;">${s}</button>`
                         ).join('')}
                     </div>
@@ -139,28 +168,26 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                             <div class="stat-box" style="color:#e74c3c;"><span>${t('card_melee')}</span>⚔️ ${i.melee >= 0 ? '+'+(i.melee||0) : i.melee}</div>
                             <div class="stat-box" style="color:#3498db;"><span>${t('card_ranged')}</span>🏹 ${i.ranged >= 0 ? '+'+(i.ranged||0) : i.ranged}</div>
                         </div>
-                        <div style="margin-top:10px; padding-top:10px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                        <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1);">
                             <div style="font-size:10px; color:#aaa; margin-bottom:5px;">${t('card_macros_title')}</div>
                             <div style="display:flex; flex-direction:column; gap:5px;">
                                 <div style="display:flex; gap:5px;">
                                     <button class="macro-btn melee" onclick="window.rollMacro('${i.name}', '${t('card_melee')}', ${i.melee || 0})">⚔️ ${t('macro_attack')}</button>
-                                    <button class="macro-btn" style="background:rgba(192, 57, 43, 0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_melee')}', '${i.meleeDmg || '1d6'}', ${i.melee || 0})">🩸 ${t('macro_dmg')} (${i.meleeDmg || '1d6'})</button>
+                                    <button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_melee')}', '${i.meleeDmg || '1d6'}', ${i.melee || 0})">🩸 ${t('macro_dmg')} (${i.meleeDmg || '1d6'})</button>
                                 </div>
                                 <div style="display:flex; gap:5px;">
                                     <button class="macro-btn" onclick="window.rollMacro('${i.name}', '${t('card_ranged')}', ${i.ranged || 0})">🏹 ${t('macro_attack')}</button>
-                                    <button class="macro-btn" style="background:rgba(192, 57, 43, 0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_ranged')}', '${i.rangedDmg || '1d6'}', ${i.ranged || 0})">🩸 ${t('macro_dmg')} (${i.rangedDmg || '1d6'})</button>
+                                    <button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_ranged')}', '${i.rangedDmg || '1d6'}', ${i.ranged || 0})">🩸 ${t('macro_dmg')} (${i.rangedDmg || '1d6'})</button>
                                 </div>
                                 ${customAttacksHTML}
                             </div>
                         </div>
                     ` : `
-                        <div style="text-align:center; padding:10px 0; color:#888; font-style:italic; font-size:11px;">
-                            ${t('hidden_data')}
-                        </div>
+                        <div style="text-align:center; padding:10px 0; color:#888; font-style:italic; font-size:11px;">${t('hidden_data')}</div>
                     `}
                 </div>
             `;
-            if (isDead) div.style.background = "rgba(231, 76, 60, 0.15)";
+            if (isDead) div.style.background = "rgba(231,76,60,0.15)";
         }
         list.appendChild(div);
     });
@@ -177,44 +204,41 @@ export function addLogEntry(data, time, flavorText) {
     const entry = document.createElement('div');
     entry.className = 'log-entry';
     const userColor = data.color || '#8B0000';
-    const nameStyle = `color: ${userColor} !important; font-family: 'Assistant', sans-serif !important; font-weight: 900; font-size: 1.1em; text-shadow: none;`;
+    const nameStyle = `color:${userColor} !important; font-family:'Assistant',sans-serif !important; font-weight:900; font-size:1.1em; text-shadow:none;`;
     if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
         entry.innerHTML = `
-            <div style="margin-bottom: 12px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.05); border-left: 4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="margin-bottom:12px; padding:10px; border-radius:8px; background:rgba(0,0,0,0.05); border-left:4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="${nameStyle}">${data.cName}</span>
-                    <span style="color: #666; font-size: 10px;">${time}</span>
+                    <span style="color:#666; font-size:10px;">${time}</span>
                 </div>
-                <div style="color: var(--ink); margin-top: 5px; font-size: 0.9em; font-style: italic; font-weight: 600;">"${flavorText}"</div>
-            </div>
-        `;
+                <div style="color:var(--ink); margin-top:5px; font-size:0.9em; font-style:italic; font-weight:600;">"${flavorText}"</div>
+            </div>`;
     } else if (data.type === "STATUS") {
         entry.innerHTML = `
-            <div style="margin-bottom: 12px; padding: 8px; border-radius: 8px; background: rgba(108, 92, 231, 0.1); border: 1px dashed #6c5ce7; text-align:center;">
-                <span style="font-size:0.9em; color: var(--ink);"><strong>${data.cName}</strong>: <span style="color:#6c5ce7; font-weight:bold;">${data.status}</span></span>
-            </div>
-        `;
+            <div style="margin-bottom:12px; padding:8px; border-radius:8px; background:rgba(108,92,231,0.1); border:1px dashed #6c5ce7; text-align:center;">
+                <span style="font-size:0.9em; color:var(--ink);"><strong>${data.cName}</strong>: <span style="color:#6c5ce7; font-weight:bold;">${data.status}</span></span>
+            </div>`;
     } else {
         const modeLabel = data.mode === 'adv'
             ? `<span style="color:#27ae60; font-weight:bold;">(${t('adv')})</span>`
             : (data.mode === 'dis' ? `<span style="color:#c0392b; font-weight:bold;">(${t('dis')})</span>` : '');
         entry.innerHTML = `
-            <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.4); border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="margin-bottom:15px; padding:12px; border-bottom:1px solid rgba(0,0,0,0.1); background:rgba(255,255,255,0.4); border-radius:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                     <span style="${nameStyle}">${data.cName || 'Player'} <small style="font-weight:600; color:#555;">(${data.pName || 'User'})</small></span>
-                    <span style="color: #666; font-size: 11px;">[${time}]</span>
+                    <span style="color:#666; font-size:11px;">[${time}]</span>
                 </div>
-                <div style="color: var(--ink); margin-top: 4px; line-height: 1.4; font-weight: 600;">
+                <div style="color:var(--ink); margin-top:4px; line-height:1.4; font-weight:600;">
                     ${t('log_rolled')} <strong>${data.type.toUpperCase()}</strong> ${modeLabel} ${t('log_and_got')}
-                    <span style="color: ${data.res === 20 ? '#b8860b' : (data.res === 1 ? '#c0392b' : 'var(--ink)')}; font-weight: 900; font-size: 1.3em;">
+                    <span style="color:${data.res === 20 ? '#b8860b' : (data.res === 1 ? '#c0392b' : 'var(--ink)')}; font-weight:900; font-size:1.3em;">
                         ${data.res + (data.mod || 0)}
                     </span>
-                    <small style="opacity: 0.8; font-weight: normal;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
+                    <small style="opacity:0.8; font-weight:normal;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
                 </div>
-                ${flavorText ? `<div style="color: #444; font-style: italic; font-size: 12px; margin-top: 6px;">"${flavorText}"</div>` : ""}
-            </div>
-        `;
+                ${flavorText ? `<div style="color:#444; font-style:italic; font-size:12px; margin-top:6px;">"${flavorText}"</div>` : ""}
+            </div>`;
     }
     log.prepend(entry);
     if (log.children.length > 30) log.removeChild(log.lastChild);
