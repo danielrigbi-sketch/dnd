@@ -1,0 +1,388 @@
+/* ============================================================
+   mapStyles.css — Tactical Battlefield v123
+   Fantasy-themed, RTL-safe, non-obstructive
+   ============================================================ */
+
+/* ── Map overlay (full-screen panel) ────────────────────────── */
+#map-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    background: #0d0d1a;
+    transition: opacity 0.25s, transform 0.25s;
+}
+#map-overlay.map-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.97);
+}
+
+/* ── Map header bar ─────────────────────────────────────────── */
+#map-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    background: linear-gradient(90deg, #1a0a00, #2c1404, #1a0a00);
+    border-bottom: 2px solid rgba(241,196,15,0.4);
+    flex-shrink: 0;
+    height: 44px;
+    user-select: none;
+}
+#map-header-title {
+    font-size: 16px;
+    font-weight: 900;
+    color: #f1c40f;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+#map-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.map-header-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: white;
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    transition: 0.15s;
+}
+.map-header-btn:hover { background: rgba(255,255,255,0.18); }
+.map-header-btn.close { border-color: rgba(231,76,60,0.5); color: #ff7675; }
+.map-header-btn.close:hover { background: rgba(231,76,60,0.3); }
+
+/* ── Canvas container ───────────────────────────────────────── */
+#map-canvas-container {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    cursor: crosshair;
+}
+#map-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    display: block;
+}
+#fow-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    display: block;
+    pointer-events: none;
+}
+#map-canvas-container.cursor-grab   { cursor: grab; }
+#map-canvas-container.cursor-grab:active { cursor: grabbing; }
+#map-canvas-container.cursor-paint  { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='8' fill='rgba(255,80,80,0.7)' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, crosshair; }
+#map-canvas-container.cursor-reveal { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='8' fill='rgba(80,255,150,0.7)' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, crosshair; }
+#map-canvas-container.cursor-hide   { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='8' fill='rgba(20,20,20,0.9)' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, crosshair; }
+#map-canvas-container.cursor-ruler  { cursor: crosshair; }
+#map-canvas-container.cursor-place  { cursor: cell; }
+
+/* ── DM floating dashboard ──────────────────────────────────── */
+#dm-map-dash {
+    position: absolute;
+    top: 54px;
+    left: 12px;
+    width: 248px;
+    background: rgba(13,10,30,0.96);
+    border: 1.5px solid rgba(241,196,15,0.45);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    z-index: 100;
+    user-select: none;
+    overflow: hidden;
+    transition: height 0.2s;
+    display: none; /* shown when DM opens map */
+}
+#dm-map-dash-header {
+    background: linear-gradient(135deg, #2c1404, #1a0a00);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: grab;
+    border-bottom: 1px solid rgba(241,196,15,0.25);
+    font-weight: bold;
+    color: #f1c40f;
+    font-size: 13px;
+}
+#dm-map-dash-header:active { cursor: grabbing; }
+#dm-dash-collapse {
+    background: none; border: none; color: #f1c40f; cursor: pointer;
+    font-size: 14px; padding: 0 4px; line-height: 1;
+}
+#dm-map-dash-body {
+    padding: 8px;
+    overflow-y: auto;
+    max-height: calc(100vh - 140px);
+    overflow-x: hidden;
+}
+/* Dash tabs */
+.map-dash-tabs {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+.map-dash-tab {
+    flex: 1;
+    min-width: 36px;
+    padding: 4px 2px;
+    font-size: 10px;
+    font-weight: bold;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #aaa;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    transition: 0.15s;
+    white-space: nowrap;
+}
+.map-dash-tab.active {
+    background: rgba(241,196,15,0.18);
+    border-color: rgba(241,196,15,0.55);
+    color: #f1c40f;
+}
+.map-dash-panel { display: none; }
+.map-dash-panel.active { display: block; }
+
+/* ── Dash section label ─────────────────────────────────────── */
+.dash-section {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 8px 0 4px;
+}
+
+/* ── Mode buttons ────────────────────────────────────────────── */
+.map-mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    margin-bottom: 6px;
+}
+.map-mode-btn {
+    padding: 6px 4px;
+    font-size: 11px;
+    font-weight: bold;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #ccc;
+    border-radius: 7px;
+    cursor: pointer;
+    text-align: center;
+    transition: 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.map-mode-btn:hover { background: rgba(255,255,255,0.14); color: white; }
+.map-mode-btn.active {
+    background: rgba(241,196,15,0.22);
+    border-color: #f1c40f;
+    color: #f1c40f;
+    box-shadow: 0 0 8px rgba(241,196,15,0.25);
+}
+.map-mode-btn.red.active   { background: rgba(231,76,60,0.22);  border-color:#e74c3c; color:#ff7675; }
+.map-mode-btn.green.active { background: rgba(46,204,113,0.22); border-color:#2ecc71; color:#2ecc71; }
+.map-mode-btn.blue.active  { background: rgba(52,152,219,0.22); border-color:#3498db; color:#3498db; }
+
+/* Tool sub-buttons */
+.map-tool-row {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 6px;
+}
+.map-tool-btn {
+    flex: 1;
+    padding: 5px;
+    font-size: 11px;
+    font-weight: bold;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #aaa;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: 0.15s;
+}
+.map-tool-btn.active { background: rgba(52,152,219,0.25); border-color:#3498db; color:#3498db; }
+
+/* ── Dash generic button ─────────────────────────────────────── */
+.map-dash-btn {
+    width: 100%;
+    padding: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #ccc;
+    border-radius: 7px;
+    cursor: pointer;
+    text-align: center;
+    transition: 0.15s;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.map-dash-btn:hover { background: rgba(255,255,255,0.14); color: white; }
+.map-dash-btn.gold { border-color: rgba(241,196,15,0.5); color: #f1c40f; background: rgba(241,196,15,0.1); }
+.map-dash-btn.gold:hover { background: rgba(241,196,15,0.22); }
+.map-dash-btn.danger { border-color: rgba(231,76,60,0.5); color: #ff7675; background: rgba(231,76,60,0.1); }
+.map-dash-btn.danger:hover { background: rgba(231,76,60,0.22); }
+
+/* ── Grid calibration ───────────────────────────────────────── */
+.map-calib-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+.map-calib-label {
+    font-size: 10px;
+    color: #aaa;
+    min-width: 50px;
+}
+.map-calib-val {
+    flex: 1;
+    text-align: center;
+    font-weight: bold;
+    color: #f1c40f;
+    font-size: 13px;
+}
+.map-calib-btn {
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: 0.1s; flex-shrink: 0;
+}
+.map-calib-btn:hover { background: rgba(255,255,255,0.22); }
+.map-calib-btn:active { transform: scale(0.9); }
+
+/* ── Background input ───────────────────────────────────────── */
+.map-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white;
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 11px;
+    margin-bottom: 5px;
+    outline: none;
+}
+.map-input:focus { border-color: rgba(241,196,15,0.5); }
+.map-input::placeholder { color: #555; }
+
+/* ── AOE shape grid ─────────────────────────────────────────── */
+.aoe-shape-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+.aoe-shape-btn {
+    padding: 5px;
+    font-size: 11px;
+    text-align: center;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #aaa;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.15s;
+}
+.aoe-shape-btn.active { background: rgba(255,80,0,0.22); border-color: #e67e22; color: #e67e22; }
+
+/* ── Scene row ───────────────────────────────────────────────── */
+.map-scene-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    transition: 0.15s;
+    font-size: 11px;
+    color: #ccc;
+}
+.map-scene-row:hover { background: rgba(255,255,255,0.10); color: white; }
+.map-scene-row.active { background: rgba(241,196,15,0.15); border: 1px solid rgba(241,196,15,0.4); color: #f1c40f; }
+.map-scene-dot { width: 8px; height: 8px; border-radius: 50%; background: #888; flex-shrink: 0; }
+.map-scene-row.active .map-scene-dot { background: #f1c40f; }
+
+/* ── Token roster ────────────────────────────────────────────── */
+.map-token-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
+/* ── Open-map button (in game screen) ───────────────────────── */
+#open-map-btn {
+    background: linear-gradient(135deg, rgba(26,10,0,0.95), rgba(44,20,4,0.95));
+    border: 1px solid rgba(241,196,15,0.4);
+    color: #f1c40f;
+    font-weight: bold;
+    font-size: 12px;
+    border-radius: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+    transition: 0.2s;
+    margin-top: 4px;
+    display: none; /* shown once startGame() fires */
+}
+#open-map-btn:hover { background: rgba(241,196,15,0.15); box-shadow: 0 0 10px rgba(241,196,15,0.2); }
+
+/* ── Responsive / RTL ────────────────────────────────────────── */
+[dir="rtl"] #dm-map-dash { left: auto; right: 12px; }
+
+@media (max-width: 600px) {
+    #dm-map-dash { width: 210px; }
+    .map-mode-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Scrollbar inside dashboard ──────────────────────────────── */
+#dm-map-dash-body::-webkit-scrollbar { width: 4px; }
+#dm-map-dash-body::-webkit-scrollbar-thumb { background: rgba(241,196,15,0.3); border-radius: 2px; }
+
+/* ── Lock badge on grid ──────────────────────────────────────── */
+.grid-lock-badge {
+    display: inline-block;
+    background: rgba(80,200,255,0.2);
+    border: 1px solid rgba(80,200,255,0.5);
+    color: #80cfff;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-left: 6px;
+}
