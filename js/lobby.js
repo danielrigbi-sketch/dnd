@@ -1,8 +1,8 @@
 // lobby.js - Welcome screen and Authentication Controller
 
-import * as db from "./firebaseService.js?v=113";
-import { startGame } from "./app.js?v=113";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=113";
+import * as db from "./firebaseService.js?v=114";
+import { startGame } from "./app.js?v=114";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=114";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -17,7 +17,6 @@ langToggleBtn.onclick = () => {
     }
 };
 
-// DOM Elements
 const authScreen = document.getElementById('auth-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
 const loginBtn = document.getElementById('google-login-btn');
@@ -32,16 +31,12 @@ const closeBuilderBtn = document.getElementById('close-builder-btn');
 const saveCharBtn = document.getElementById('save-char-btn');
 const vaultList = document.getElementById('vault-list');
 
-// THE FIX: Added the missing button declaration!
 const newCharBtn = document.getElementById('new-char-btn');
-
 const addAttackBtn = document.getElementById('add-custom-attack-btn');
 const attacksList = document.getElementById('custom-attacks-list');
 
-// Edit Tracker
 let currentEditCharId = null;
 
-// Portrait Logic
 const tabPreset = document.getElementById('tab-portrait-preset');
 const tabUrl = document.getElementById('tab-portrait-url');
 const tabFile = document.getElementById('tab-portrait-file');
@@ -101,13 +96,12 @@ if(inputFile) {
 if (addAttackBtn) {
     addAttackBtn.onclick = () => {
         const row = document.createElement('div');
-        row.style.display = 'flex';
-        row.style.gap = '5px';
+        row.className = 'flex-row';
         row.innerHTML = `
-            <input type="text" class="builder-input atk-name" placeholder="${t('ph_atk_name')}" style="width: 40%; font-size:12px; padding:6px;">
-            <input type="number" class="builder-input atk-bonus" placeholder="${t('ph_atk_bonus')}" style="width: 20%; font-size:12px; padding:6px;">
-            <input type="text" class="builder-input atk-dmg" placeholder="${t('ph_atk_dmg')}" style="width: 30%; font-size:12px; padding:6px;">
-            <button type="button" onclick="this.parentElement.remove()" style="background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer; width:10%; font-weight:bold;">X</button>
+            <input type="text" class="builder-input atk-name flex-1" placeholder="${t('ph_atk_name')}" style="padding:6px; font-size:12px; width: 40%;">
+            <input type="number" class="builder-input atk-bonus flex-1" placeholder="${t('ph_atk_bonus')}" style="padding:6px; font-size:12px; width: 20%;">
+            <input type="text" class="builder-input atk-dmg flex-1" placeholder="${t('ph_atk_dmg')}" style="padding:6px; font-size:12px; width: 30%;">
+            <button type="button" class="delete-atk-btn" onclick="this.parentElement.remove()" aria-label="מחק התקפה">X</button>
         `;
         attacksList.appendChild(row);
     };
@@ -155,7 +149,6 @@ function renderVault(characters) {
         const raceStr = c.race || "";
         const classStr = c.class || "";
         
-        // Bulletproof Translation Fallback
         let displayRace = raceStr;
         if (raceStr) {
             let translated = t("race_" + raceStr.toLowerCase());
@@ -181,7 +174,7 @@ function renderVault(characters) {
                     🛡️ AC: ${c.ac || 10} | ❤️ HP: ${c.maxHp || 10}
                 </div>
             </div>
-            <button class="vault-select-btn" data-charid="${charId}" style="align-self: center;">${t("select_btn")}</button>
+            <button class="vault-select-btn hover-btn" data-charid="${charId}" style="align-self: center;">${t("select_btn")}</button>
         `;
         vaultList.appendChild(card);
     });
@@ -249,7 +242,6 @@ function openBuilderForEdit(charId) {
     selectedPortrait = c.portrait || "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
     if(previewImg) previewImg.src = selectedPortrait;
     
-    // Check if portrait is a URL or Data URI (File) to open the correct tab
     if (selectedPortrait.startsWith("data:image")) {
         switchPortraitTab(tabFile, areaFile);
     } else if (!selectedPortrait.includes("dicebear.com/8.x/adventurer")) {
@@ -267,13 +259,12 @@ function openBuilderForEdit(charId) {
     if (c.customAttacks && c.customAttacks.length > 0) {
         c.customAttacks.forEach(atk => {
             const row = document.createElement('div');
-            row.style.display = 'flex';
-            row.style.gap = '5px';
+            row.className = 'flex-row';
             row.innerHTML = `
-                <input type="text" class="builder-input atk-name" value="${atk.name}" style="width: 40%; font-size:12px; padding:6px;">
-                <input type="number" class="builder-input atk-bonus" value="${atk.bonus}" style="width: 20%; font-size:12px; padding:6px;">
-                <input type="text" class="builder-input atk-dmg" value="${atk.dmg}" style="width: 30%; font-size:12px; padding:6px;">
-                <button type="button" onclick="this.parentElement.remove()" style="background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer; width:10%; font-weight:bold;">X</button>
+                <input type="text" class="builder-input atk-name flex-1" value="${atk.name}" style="padding:6px; font-size:12px; width: 40%;">
+                <input type="number" class="builder-input atk-bonus flex-1" value="${atk.bonus}" style="padding:6px; font-size:12px; width: 20%;">
+                <input type="text" class="builder-input atk-dmg flex-1" value="${atk.dmg}" style="padding:6px; font-size:12px; width: 30%;">
+                <button type="button" class="delete-atk-btn" onclick="this.parentElement.remove()" aria-label="מחק התקפה">X</button>
             `;
             attacksList.appendChild(row);
         });
@@ -298,7 +289,7 @@ if(newCharBtn) {
         selectedPortrait = "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
         if(previewImg) previewImg.src = selectedPortrait;
         document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector('.builder-portrait-btn').classList.add('active'); // default first
+        document.querySelector('.builder-portrait-btn').classList.add('active'); 
         
         if (attacksList) attacksList.innerHTML = '';
     };
@@ -311,68 +302,73 @@ if(closeBuilderBtn) {
 }
 
 if(saveCharBtn) {
-    saveCharBtn.onclick = async () => {
-        if (!currentUserUid) return;
+    // Note: Since this is now triggered by a form submit, we handle it slightly differently
+    const form = document.getElementById('char-builder-form');
+    if(form) {
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            if (!currentUserUid) return;
 
-        const name = document.getElementById('cb-name')?.value.trim();
-        const charRace = document.getElementById('cb-race')?.value;
-        const charClass = document.getElementById('cb-class')?.value;
-        const ac = document.getElementById('cb-ac')?.value;
-        const speed = document.getElementById('cb-speed')?.value;
-        const pp = document.getElementById('cb-pp')?.value;
-        const init = document.getElementById('cb-init')?.value;
-        const hp = document.getElementById('cb-hp')?.value;
-        const melee = document.getElementById('cb-melee')?.value;
-        const meleeDmg = document.getElementById('cb-melee-dmg')?.value;
-        const ranged = document.getElementById('cb-ranged')?.value;
-        const rangedDmg = document.getElementById('cb-ranged-dmg')?.value;
-        const color = document.getElementById('cb-color')?.value;
+            const name = document.getElementById('cb-name')?.value.trim();
+            const charRace = document.getElementById('cb-race')?.value;
+            const charClass = document.getElementById('cb-class')?.value;
+            const ac = document.getElementById('cb-ac')?.value;
+            const speed = document.getElementById('cb-speed')?.value;
+            const pp = document.getElementById('cb-pp')?.value;
+            const init = document.getElementById('cb-init')?.value;
+            const hp = document.getElementById('cb-hp')?.value;
+            const melee = document.getElementById('cb-melee')?.value;
+            const meleeDmg = document.getElementById('cb-melee-dmg')?.value;
+            const ranged = document.getElementById('cb-ranged')?.value;
+            const rangedDmg = document.getElementById('cb-ranged-dmg')?.value;
+            const color = document.getElementById('cb-color')?.value;
 
-        const customAttacks = [];
-        if (attacksList) {
-            attacksList.querySelectorAll('div').forEach(row => {
-                const aName = row.querySelector('.atk-name')?.value.trim();
-                const aBonus = parseInt(row.querySelector('.atk-bonus')?.value) || 0;
-                const aDmg = row.querySelector('.atk-dmg')?.value.trim();
-                if (aName) {
-                    customAttacks.push({ name: aName, bonus: aBonus, dmg: aDmg });
-                }
-            });
-        }
-
-        if (!name || !charRace || !charClass || !ac || !speed || !pp || !init || !hp || !melee || !ranged || !selectedPortrait) {
-            return alert(t('alert_missing'));
-        }
-
-        const charData = {
-            name, race: charRace, class: charClass, ac: parseInt(ac), speed: parseInt(speed),
-            pp: parseInt(pp), initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
-            melee: parseInt(melee), meleeDmg: meleeDmg, 
-            ranged: parseInt(ranged), rangedDmg: rangedDmg, 
-            customAttacks: customAttacks,
-            color: color, 
-            portrait: selectedPortrait, 
-            createdAt: Date.now()
-        };
-
-        saveCharBtn.innerText = t("cb_saving");
-        saveCharBtn.disabled = true;
-
-        try {
-            if (currentEditCharId) {
-                await db.updateCharacterInVault(currentUserUid, currentEditCharId, charData);
-            } else {
-                await db.saveCharacterToVault(currentUserUid, charData);
+            const customAttacks = [];
+            if (attacksList) {
+                attacksList.querySelectorAll('div').forEach(row => {
+                    const aName = row.querySelector('.atk-name')?.value.trim();
+                    const aBonus = parseInt(row.querySelector('.atk-bonus')?.value) || 0;
+                    const aDmg = row.querySelector('.atk-dmg')?.value.trim();
+                    if (aName) {
+                        customAttacks.push({ name: aName, bonus: aBonus, dmg: aDmg });
+                    }
+                });
             }
-            if(builderModal) builderModal.style.display = 'none';
-        } catch (err) {
-            console.error(err);
-            alert(t('alert_save_err'));
-        } finally {
-            saveCharBtn.innerText = currentEditCharId ? t("btn_update_char") : t("cb_save_btn");
-            saveCharBtn.disabled = false;
-        }
-    };
+
+            if (!name || !charRace || !charClass || !ac || !speed || !pp || !init || !hp || !melee || !ranged || !selectedPortrait) {
+                return alert(t('alert_missing'));
+            }
+
+            const charData = {
+                name, race: charRace, class: charClass, ac: parseInt(ac), speed: parseInt(speed),
+                pp: parseInt(pp), initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
+                melee: parseInt(melee), meleeDmg: meleeDmg, 
+                ranged: parseInt(ranged), rangedDmg: rangedDmg, 
+                customAttacks: customAttacks,
+                color: color, 
+                portrait: selectedPortrait, 
+                createdAt: Date.now()
+            };
+
+            saveCharBtn.innerText = t("cb_saving");
+            saveCharBtn.disabled = true;
+
+            try {
+                if (currentEditCharId) {
+                    await db.updateCharacterInVault(currentUserUid, currentEditCharId, charData);
+                } else {
+                    await db.saveCharacterToVault(currentUserUid, charData);
+                }
+                if(builderModal) builderModal.style.display = 'none';
+            } catch (err) {
+                console.error(err);
+                alert(t('alert_save_err'));
+            } finally {
+                saveCharBtn.innerText = currentEditCharId ? t("btn_update_char") : t("cb_save_btn");
+                saveCharBtn.disabled = false;
+            }
+        };
+    }
 }
 
 const createRoomBtn = document.getElementById('create-room-btn');
