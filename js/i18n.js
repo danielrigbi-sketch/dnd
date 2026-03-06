@@ -237,6 +237,11 @@ export const translations = {
         "race_halfling": "חצילינג",
         "race_gnome": "גנום",
         "race_dragonborn": "נולד-דרקון"
+,
+        "short_rest": "מנוחה קצרה",
+        "short_rest_no_hd": "אין קוביות פגיעה שנותרו עד מנוחה ארוכה.",
+        "short_rest_roll": "🎲 גלגל ומנוח",
+        "hd_remaining": "קוביות פגיעה שנותרו"
 
     },
     en: {
@@ -475,6 +480,11 @@ export const translations = {
         "race_halfling": "Halfling",
         "race_gnome": "Gnome",
         "race_dragonborn": "Dragonborn"
+,
+        "short_rest": "Short Rest",
+        "short_rest_no_hd": "No Hit Dice remaining until long rest.",
+        "short_rest_roll": "🎲 Roll & Rest",
+        "hd_remaining": "Hit Dice remaining"
 
     }
 };
