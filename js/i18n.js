@@ -38,6 +38,14 @@ export const translations = {
         "cb_melee": "קפא״פ+",
         "cb_ranged": "מרחוק+",
         "cb_dmg": "נזק",
+        
+        // NEW Custom Attacks Translations
+        "cb_attacks_title": "נשקים ולחשים מיוחדים:",
+        "cb_add_attack": "➕ הוסף התקפה/לחש",
+        "ph_atk_name": "שם (למשל: חרב)",
+        "ph_atk_bonus": "תוסף+",
+        "ph_atk_dmg": "נזק (1d8)",
+
         "cb_save_btn": "שמור לכספת",
         "cb_saving": "שומר...",
         "alert_login_fail": "ההתחברות נכשלה!",
@@ -158,6 +166,14 @@ export const translations = {
         "cb_melee": "Melee+",
         "cb_ranged": "Ranged+",
         "cb_dmg": "Dmg",
+        
+        // NEW Custom Attacks Translations
+        "cb_attacks_title": "Custom Attacks & Spells:",
+        "cb_add_attack": "➕ Add Attack/Spell",
+        "ph_atk_name": "Name (e.g. Sword)",
+        "ph_atk_bonus": "Bonus+",
+        "ph_atk_dmg": "Dmg (1d8)",
+
         "cb_save_btn": "Save to Vault",
         "cb_saving": "Saving...",
         "alert_login_fail": "Login failed!",
