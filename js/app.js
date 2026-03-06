@@ -115,6 +115,8 @@ let prevActiveTurn     = null;   // track changes for YOUR TURN detection
 let mapEngine = null;
 let sceneWizard = null;
 let activeSceneId = null;
+// App-level Firebase listener unsubscribers (cleaned up on logout/room change)
+let _appUnsubs = [];
 
 function populateMonsterSelect() {
     const select = document.getElementById('npc-preset');
@@ -153,6 +155,11 @@ window.dismissYourTurn = hideYourTurnBanner;
 // =====================================================================
 // START GAME
 // =====================================================================
+export function cleanupAppListeners() {
+    _appUnsubs.forEach(u => { try { u?.(); } catch(_){} });
+    _appUnsubs = [];
+}
+
 export async function startGame(role, charData, roomCode) {
     db.setRoom(roomCode);
     userRole = role;
@@ -187,6 +194,8 @@ export async function startGame(role, charData, roomCode) {
     setupDatabaseListeners();
     initMap();
     unlockAudio();
+    // Purge roll log on game start (keep last 200 entries)
+    db.purgeOldRolls().catch(e => console.warn('purgeOldRolls:', e));
 
     try {
         const recentRolls = await db.loadRecentRolls(20);
@@ -613,7 +622,7 @@ function _activateMapCanvas(sceneData) {
 // DB LISTENERS
 // =====================================================================
 function setupDatabaseListeners() {
-    db.listenToCombatStatus((isCombat) => {
+    _appUnsubs.push(db.listenToCombatStatus((isCombat) => {
         const btn          = document.getElementById('init-btn');
         const dmBtn        = document.getElementById('master-combat-btn');
         const turnControls = document.getElementById('dm-turn-controls');
@@ -632,7 +641,7 @@ function setupDatabaseListeners() {
         }
     });
 
-    db.listenToPlayers((playersData) => {
+    _appUnsubs.push(db.listenToPlayers((playersData) => {
         if (playersData) {
             sortedCombatants = Object.keys(playersData)
                 .map(k => ({ name: k, ...playersData[k] }))
@@ -644,7 +653,7 @@ function setupDatabaseListeners() {
         if (mapEngine) { mapEngine.setPlayers(playersData||{}); _updateTokenRoster(); }
     });
 
-    db.listenToActiveTurn((turnIndex) => {
+    _appUnsubs.push(db.listenToActiveTurn((turnIndex) => {
         const wasMyTurn = prevActiveTurn !== null && sortedCombatants[prevActiveTurn]?.name === cName;
         const isMyTurn  = turnIndex !== null       && sortedCombatants[turnIndex]?.name  === cName;
         // Trigger only when turn changes TO your character (not on load)
@@ -664,13 +673,13 @@ function setupDatabaseListeners() {
         }
     });
 
-    db.listenToRoundNumber((round) => {
+    _appUnsubs.push(db.listenToRoundNumber((round) => {
         currentRoundNumber = round;
         const el = document.getElementById('round-counter');
         if (el) el.innerText = round > 0 ? `Round ${round}` : '';
     });
 
-    db.listenToNewRolls((data) => {
+    _appUnsubs.push(db.listenToNewRolls((data) => {
         if (!data || !canAnimate) return;
         if (!isMuted) {
             if      (data.type === "DAMAGE") playDamageSound(isMuted);
