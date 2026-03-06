@@ -194,8 +194,31 @@ export class MapEngine {
   }
 
   // ── Background ──────────────────────────────────────────────────────
+  // Returns the pixel dimensions the bg image should be drawn at in phantom
+  // mode: fit-inside the canvas at scale=1, preserving aspect ratio.
+  _getBgFit(){
+    const cw=this.cv.width, ch=this.cv.height;
+    if(!this.L.bg) return {w:cw,h:ch};
+    const nw=this.L.bg.naturalWidth||this.L.bg.width||cw;
+    const nh=this.L.bg.naturalHeight||this.L.bg.height||ch;
+    const scale=Math.min(cw/nw, ch/nh, 1); // never upscale beyond canvas
+    return {w:Math.round(nw*scale), h:Math.round(nh*scale)};
+  }
+
   _rBg(){
     const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh}=this.S.cfg;
+
+    if(this.L.mode==='phantom'){
+      // Phantom mode: image at fixed canvas-fitted size so grid calibration
+      // doesn't scale the image — only grid density changes with pps.
+      const fit=this._getBgFit();
+      // Dark background behind image
+      ctx.fillStyle='#0d0a1e';
+      ctx.fillRect(ox,oy,fit.w,fit.h);
+      if(this.L.bg) ctx.drawImage(this.L.bg,ox,oy,fit.w,fit.h);
+      return;
+    }
+
     const W=(mw||30)*pps, H=(mh||20)*pps;
     // Checkerboard
     for(let gx=0;gx<(mw||30);gx++){
@@ -451,9 +474,19 @@ export class MapEngine {
   // Rendered as the top layer in world space (inside save/restore block)
   _rPhantomGrid(){
     if(this.L.mode!=='phantom') return;
-    const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh}=this.S.cfg;
-    const cols=mw||30, rows=mh||20;
-    // Dark tint behind grid
+    const {ctx}=this, {pps,ox,oy}=this.S.cfg;
+
+    // Derive tile count from image's fixed fit size divided by current pps.
+    // This means +/- shows more/fewer tiles WITHOUT moving the image.
+    const fit=this._getBgFit();
+    const cols=Math.max(1,Math.floor(fit.w/pps));
+    const rows=Math.max(1,Math.floor(fit.h/pps));
+
+    // Keep mapW/mapH in sync so other steps use the right counts.
+    this.S.cfg.mapW=cols;
+    this.S.cfg.mapH=rows;
+
+    // Semi-transparent tint over image so grid is visible
     ctx.fillStyle='rgba(0,0,0,0.18)';
     ctx.fillRect(ox,oy,cols*pps,rows*pps);
     // Vivid green grid lines
@@ -1002,6 +1035,16 @@ export class MapEngine {
   hideAll(){
     if(!this.db) return;
     this.db.resetFog(this.activeRoom,this.S.activeScene);
+  }
+
+  getBgTileCount(){
+    if(this.L.mode!=='phantom') return null;
+    const fit=this._getBgFit();
+    const {pps}=this.S.cfg;
+    return {
+      cols:Math.max(1,Math.floor(fit.w/pps)),
+      rows:Math.max(1,Math.floor(fit.h/pps)),
+    };
   }
 
   // ── Background / Config ────────────────────────────────────────────────
