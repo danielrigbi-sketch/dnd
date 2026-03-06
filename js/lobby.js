@@ -1,36 +1,28 @@
 // lobby.js - Welcome screen and Authentication Controller
-
-import * as db from "./firebaseService.js?v=114";
-import { startGame } from "./app.js?v=114";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=114";
+import * as db from "./firebaseService.js?v=116";
+import { startGame } from "./app.js?v=116";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=116";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
-
 langToggleBtn.onclick = () => {
     const newLang = getLang() === 'he' ? 'en' : 'he';
-    setLanguage(newLang); 
+    setLanguage(newLang);
     langToggleBtn.innerText = newLang === 'he' ? 'English' : 'עברית';
-    
-    if(currentUserUid) {
-        renderVault(currentVaultCharacters);
-    }
+    if(currentUserUid) { renderVault(currentVaultCharacters); }
 };
 
 const authScreen = document.getElementById('auth-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
 const loginBtn = document.getElementById('google-login-btn');
 const logoutBtn = document.getElementById('logout-btn');
-
 const userDisplayName = document.getElementById('user-display-name');
 const userEmail = document.getElementById('user-email');
 const userAvatar = document.getElementById('user-avatar');
-
 const builderModal = document.getElementById('char-builder-modal');
 const closeBuilderBtn = document.getElementById('close-builder-btn');
 const saveCharBtn = document.getElementById('save-char-btn');
 const vaultList = document.getElementById('vault-list');
-
 const newCharBtn = document.getElementById('new-char-btn');
 const addAttackBtn = document.getElementById('add-custom-attack-btn');
 const attacksList = document.getElementById('custom-attacks-list');
@@ -72,10 +64,7 @@ document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
 if(inputUrl) {
     inputUrl.addEventListener('input', (e) => {
         const val = e.target.value.trim();
-        if(val) {
-            selectedPortrait = val;
-            if(previewImg) previewImg.src = val;
-        }
+        if(val) { selectedPortrait = val; if(previewImg) previewImg.src = val; }
     });
 }
 
@@ -117,11 +106,9 @@ db.listenToAuthState((user) => {
         currentUserUid = user.uid;
         if(authScreen) authScreen.style.display = 'none';
         if(lobbyScreen) lobbyScreen.style.display = 'block';
-        
         if(userDisplayName) userDisplayName.innerText = user.displayName || "Player";
         if(userEmail) userEmail.innerText = user.email || "";
         if (user.photoURL && userAvatar) userAvatar.src = user.photoURL;
-
         db.listenToUserCharacters(user.uid, renderVault);
     } else {
         currentUserUid = null;
@@ -134,33 +121,21 @@ function renderVault(characters) {
     if(!vaultList) return;
     vaultList.innerHTML = "";
     currentVaultCharacters = characters || {};
-    
     if (!characters || Object.keys(characters).length === 0) {
         vaultList.innerHTML = `<div style="text-align: center; color: #888; font-style: italic; padding: 20px 0;">${t("empty_vault")}</div>`;
         return;
     }
-
     Object.keys(characters).forEach(charId => {
         const c = characters[charId];
         const card = document.createElement('div');
         card.className = 'vault-card';
         card.style.position = 'relative';
-        
         const raceStr = c.race || "";
         const classStr = c.class || "";
-        
         let displayRace = raceStr;
-        if (raceStr) {
-            let translated = t("race_" + raceStr.toLowerCase());
-            displayRace = translated !== "race_" + raceStr.toLowerCase() ? translated : raceStr;
-        }
-
+        if (raceStr) { let translated = t("race_" + raceStr.toLowerCase()); displayRace = translated !== "race_" + raceStr.toLowerCase() ? translated : raceStr; }
         let displayClass = classStr;
-        if (classStr) {
-            let translated = t("class_" + classStr.toLowerCase());
-            displayClass = translated !== "class_" + classStr.toLowerCase() ? translated : classStr;
-        }
-
+        if (classStr) { let translated = t("class_" + classStr.toLowerCase()); displayClass = translated !== "class_" + classStr.toLowerCase() ? translated : classStr; }
         card.innerHTML = `
             <div class="vault-card-actions">
                 <button class="vault-action-btn edit" data-action="edit" data-id="${charId}" title="ערוך">✏️</button>
@@ -178,37 +153,25 @@ function renderVault(characters) {
         `;
         vaultList.appendChild(card);
     });
-
     document.querySelectorAll('.vault-action-btn').forEach(btn => {
         btn.onclick = async (e) => {
             e.stopPropagation();
             const action = btn.getAttribute('data-action');
             const charId = btn.getAttribute('data-id');
             const charName = btn.getAttribute('data-name');
-            
             if (action === 'delete') {
-                if(confirm(`${t('delete_confirm')} (${charName})`)) {
-                    await db.deleteCharacterFromVault(currentUserUid, charId);
-                }
-            } else if (action === 'edit') {
-                openBuilderForEdit(charId);
-            }
+                if(confirm(`${t('delete_confirm')} (${charName})`)) { await db.deleteCharacterFromVault(currentUserUid, charId); }
+            } else if (action === 'edit') { openBuilderForEdit(charId); }
         };
     });
-
     document.querySelectorAll('.vault-select-btn').forEach(btn => {
         btn.onclick = (e) => {
             const charId = e.target.getAttribute('data-charid');
             const selectedChar = currentVaultCharacters[charId];
             const roomCodeInput = document.getElementById('room-code-input');
             const roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "";
-            
-            if(!roomCode) {
-                alert(t("alert_no_room_code"));
-                return;
-            }
-            
-            langToggleBtn.style.display = 'none'; 
+            if(!roomCode) { alert(t("alert_no_room_code")); return; }
+            langToggleBtn.style.display = 'none';
             if(lobbyScreen) lobbyScreen.style.display = 'none';
             startGame('player', selectedChar, roomCode);
         };
@@ -218,13 +181,10 @@ function renderVault(characters) {
 function openBuilderForEdit(charId) {
     const c = currentVaultCharacters[charId];
     if(!c) return;
-    
     currentEditCharId = charId;
     if(builderModal) builderModal.style.display = 'flex';
-    
     document.getElementById('cb-main-title').innerText = t('title_edit_char');
     document.getElementById('save-char-btn').innerText = t('btn_update_char');
-    
     document.getElementById('cb-name').value = c.name || "";
     document.getElementById('cb-race').value = c.race || "";
     document.getElementById('cb-class').value = c.class || "";
@@ -238,23 +198,14 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-ranged').value = c.ranged || "";
     document.getElementById('cb-ranged-dmg').value = c.rangedDmg || "1d6";
     document.getElementById('cb-color').value = c.color || "#3498db";
-    
     selectedPortrait = c.portrait || "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
     if(previewImg) previewImg.src = selectedPortrait;
-    
-    if (selectedPortrait.startsWith("data:image")) {
-        switchPortraitTab(tabFile, areaFile);
-    } else if (!selectedPortrait.includes("dicebear.com/8.x/adventurer")) {
-        switchPortraitTab(tabUrl, areaUrl);
-        if(inputUrl) inputUrl.value = selectedPortrait;
-    } else {
+    if (selectedPortrait.startsWith("data:image")) { switchPortraitTab(tabFile, areaFile); }
+    else if (!selectedPortrait.includes("dicebear.com/8.x/adventurer")) { switchPortraitTab(tabUrl, areaUrl); if(inputUrl) inputUrl.value = selectedPortrait; }
+    else {
         switchPortraitTab(tabPreset, areaPreset);
-        document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.src === selectedPortrait) btn.classList.add('active');
-        });
+        document.querySelectorAll('.builder-portrait-btn').forEach(btn => { btn.classList.remove('active'); if (btn.src === selectedPortrait) btn.classList.add('active'); });
     }
-    
     if (attacksList) attacksList.innerHTML = '';
     if (c.customAttacks && c.customAttacks.length > 0) {
         c.customAttacks.forEach(atk => {
@@ -275,40 +226,30 @@ if(newCharBtn) {
     newCharBtn.onclick = () => {
         currentEditCharId = null;
         if(builderModal) builderModal.style.display = 'flex';
-        
         document.getElementById('cb-main-title').innerText = t('cb_title');
         document.getElementById('save-char-btn').innerText = t('cb_save_btn');
-        
         document.querySelectorAll('.builder-input').forEach(input => {
             if(input.tagName === 'INPUT' && input.type !== 'file') input.value = '';
             if(input.tagName === 'SELECT') input.selectedIndex = 0;
         });
         document.getElementById('cb-color').value = "#3498db";
-        
         switchPortraitTab(tabPreset, areaPreset);
         selectedPortrait = "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
         if(previewImg) previewImg.src = selectedPortrait;
         document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector('.builder-portrait-btn').classList.add('active'); 
-        
+        document.querySelector('.builder-portrait-btn').classList.add('active');
         if (attacksList) attacksList.innerHTML = '';
     };
 }
 
-if(closeBuilderBtn) {
-    closeBuilderBtn.onclick = () => {
-        if(builderModal) builderModal.style.display = 'none';
-    };
-}
+if(closeBuilderBtn) { closeBuilderBtn.onclick = () => { if(builderModal) builderModal.style.display = 'none'; }; }
 
 if(saveCharBtn) {
-    // Note: Since this is now triggered by a form submit, we handle it slightly differently
     const form = document.getElementById('char-builder-form');
     if(form) {
         form.onsubmit = async (e) => {
             e.preventDefault();
             if (!currentUserUid) return;
-
             const name = document.getElementById('cb-name')?.value.trim();
             const charRace = document.getElementById('cb-race')?.value;
             const charClass = document.getElementById('cb-class')?.value;
@@ -322,51 +263,32 @@ if(saveCharBtn) {
             const ranged = document.getElementById('cb-ranged')?.value;
             const rangedDmg = document.getElementById('cb-ranged-dmg')?.value;
             const color = document.getElementById('cb-color')?.value;
-
             const customAttacks = [];
             if (attacksList) {
                 attacksList.querySelectorAll('div').forEach(row => {
                     const aName = row.querySelector('.atk-name')?.value.trim();
                     const aBonus = parseInt(row.querySelector('.atk-bonus')?.value) || 0;
                     const aDmg = row.querySelector('.atk-dmg')?.value.trim();
-                    if (aName) {
-                        customAttacks.push({ name: aName, bonus: aBonus, dmg: aDmg });
-                    }
+                    if (aName) { customAttacks.push({ name: aName, bonus: aBonus, dmg: aDmg }); }
                 });
             }
-
-            if (!name || !charRace || !charClass || !ac || !speed || !pp || !init || !hp || !melee || !ranged || !selectedPortrait) {
-                return alert(t('alert_missing'));
-            }
-
+            if (!name || !charRace || !charClass || !ac || !speed || !pp || !init || !hp || !melee || !ranged || !selectedPortrait) { return alert(t('alert_missing')); }
             const charData = {
-                name, race: charRace, class: charClass, ac: parseInt(ac), speed: parseInt(speed),
-                pp: parseInt(pp), initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
-                melee: parseInt(melee), meleeDmg: meleeDmg, 
-                ranged: parseInt(ranged), rangedDmg: rangedDmg, 
-                customAttacks: customAttacks,
-                color: color, 
-                portrait: selectedPortrait, 
-                createdAt: Date.now()
+                name, race: charRace, class: charClass,
+                ac: parseInt(ac), speed: parseInt(speed), pp: parseInt(pp),
+                initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
+                melee: parseInt(melee), meleeDmg: meleeDmg,
+                ranged: parseInt(ranged), rangedDmg: rangedDmg,
+                customAttacks: customAttacks, color: color, portrait: selectedPortrait, createdAt: Date.now()
             };
-
             saveCharBtn.innerText = t("cb_saving");
             saveCharBtn.disabled = true;
-
             try {
-                if (currentEditCharId) {
-                    await db.updateCharacterInVault(currentUserUid, currentEditCharId, charData);
-                } else {
-                    await db.saveCharacterToVault(currentUserUid, charData);
-                }
+                if (currentEditCharId) { await db.updateCharacterInVault(currentUserUid, currentEditCharId, charData); }
+                else { await db.saveCharacterToVault(currentUserUid, charData); }
                 if(builderModal) builderModal.style.display = 'none';
-            } catch (err) {
-                console.error(err);
-                alert(t('alert_save_err'));
-            } finally {
-                saveCharBtn.innerText = currentEditCharId ? t("btn_update_char") : t("cb_save_btn");
-                saveCharBtn.disabled = false;
-            }
+            } catch (err) { console.error(err); alert(t('alert_save_err')); }
+            finally { saveCharBtn.innerText = currentEditCharId ? t("btn_update_char") : t("cb_save_btn"); saveCharBtn.disabled = false; }
         };
     }
 }
@@ -374,9 +296,8 @@ if(saveCharBtn) {
 const createRoomBtn = document.getElementById('create-room-btn');
 if(createRoomBtn) {
     createRoomBtn.onclick = () => {
-        const randomCode = Math.floor(1000 + Math.random() * 9000).toString(); 
+        const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
         alert(`${t('alert_room_created')} ${randomCode}`);
-        
         langToggleBtn.style.display = 'none';
         if(lobbyScreen) lobbyScreen.style.display = 'none';
         startGame('dm', null, randomCode);
