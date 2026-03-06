@@ -1,14 +1,14 @@
 // app.js - Main Game Controller
 
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=112";
-import { getFlavorText } from "./messages.js?v=112";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=112";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=112";
-import * as db from "./firebaseService.js?v=112";
-import { t } from "./i18n.js?v=112";
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=114";
+import { getFlavorText } from "./messages.js?v=114";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=114";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=114";
+import * as db from "./firebaseService.js?v=114";
+import { t } from "./i18n.js?v=114";
 
 // =====================================================================
-// GLOBALS
+// GLOBALS & DB
 // =====================================================================
 let isDiceBoxReady = false;
 let pName = "", cName = "", pColor = "#3498db", userRole = "player", charPortrait = "";
@@ -33,6 +33,17 @@ const npcDatabase = {
     "lich": { hp: 135, init: 3, melee: 9, meleeDmg: '3d6', ranged: 12, rangedDmg: '4d6', img: "https://api.dicebear.com/8.x/bottts/svg?seed=lich&backgroundColor=2c3e50" }
 };
 
+// NEW: Dynamically build the Monster Select Dropdown
+function populateMonsterSelect() {
+    const select = document.getElementById('npc-preset');
+    if (!select) return;
+    select.innerHTML = `<option value="custom" data-i18n="custom_npc">${t('custom_npc') || '-- Custom NPC --'}</option>`;
+    for (const key of Object.keys(npcDatabase)) {
+        const translatedName = t("mon_" + key) || key;
+        select.innerHTML += `<option value="${key}" data-i18n="mon_${key}">${translatedName}</option>`;
+    }
+}
+
 // =====================================================================
 // START GAME FUNCTION
 // =====================================================================
@@ -53,10 +64,7 @@ export async function startGame(role, charData, roomCode) {
     if (userRole === 'player') {
         pName = document.getElementById('user-display-name')?.innerText || "Player";
         cName = charData.name;
-        
-        // THE FIX: Pull the saved color to style the dice!
         pColor = charData.color || "#3498db"; 
-        
         charPortrait = charData.portrait;
         localStorage.setItem('critroll_initBonus', charData.initBonus || 0);
         localStorage.setItem('critroll_cName', cName); 
@@ -74,6 +82,9 @@ export async function startGame(role, charData, roomCode) {
         if(npcControls) npcControls.style.display = 'flex';
 
         localStorage.setItem('critroll_cName', 'DM'); 
+        
+        // Execute the new dynamic injection
+        populateMonsterSelect();
 
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
     }
