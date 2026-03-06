@@ -70,7 +70,7 @@ export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrai
 }
 
 export function saveRollToDB(rollData)              { push(ref(db, `rooms/${activeRoom}/rolls`), rollData); }
-export async function getPlayerData(cName)          { return (await get(ref(db, `rooms/${activeRoom}/players/${cName}`))).val(); }
+export async function getPlayerData(cName)          { return (await get(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`))).val(); }
 export function updatePlayerHPInDB(cName, hp)       { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { hp }); }
 export function updatePlayerStatusesInDB(cName, st) { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { statuses: st }); }
 export function updatePlayerVisibilityInDB(cName,v) { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { isHidden: v }); }
@@ -134,7 +134,7 @@ export async function purgeOldRolls() {
 // Listeners
 // ==========================================
 export function listenToCombatStatus(cb)              { onValue(ref(db, `rooms/${activeRoom}/combat_active`), s => cb(s.val())); }
-export function listenToPlayerInitiative(cName, cb)   { onValue(ref(db, `rooms/${activeRoom}/initiative/${cName}`), s => cb(s.exists()), { onlyOnce: true }); }
+export function listenToPlayerInitiative(cName, cb)   { onValue(ref(db, `rooms/${activeRoom}/initiative/${sanitizeCName(cName)}`), s => cb(s.exists()), { onlyOnce: true }); }
 export function listenToPlayers(cb)                   { onValue(ref(db, `rooms/${activeRoom}/players`),       s => cb(s.val())); }
 export function listenToNewRolls(cb)                  { onChildAdded(query(ref(db, `rooms/${activeRoom}/rolls`), limitToLast(1)), s => cb(s.val())); }
 
@@ -170,13 +170,13 @@ export function listenMapTokens(room, cb) {
     return onValue(ref(db, `rooms/${room}/map/tokens`), s => cb(s.val()));
 }
 export function moveMapToken(room, cName, gx, gy, usedMv) {
-    update(ref(db, `rooms/${room}/map/tokens/${cName}`), { gx, gy, usedMv: usedMv||0 });
+    update(ref(db, `rooms/${room}/map/tokens/${sanitizeCName(cName)}`), { gx, gy, usedMv: usedMv||0 });
 }
 export function resetTokenMv(room, cName) {
-    update(ref(db, `rooms/${room}/map/tokens/${cName}`), { usedMv: 0 });
+    update(ref(db, `rooms/${room}/map/tokens/${sanitizeCName(cName)}`), { usedMv: 0 });
 }
 export function removeMapToken(room, cName) {
-    remove(ref(db, `rooms/${room}/map/tokens/${cName}`));
+    remove(ref(db, `rooms/${room}/map/tokens/${sanitizeCName(cName)}`));
 }
 export function listenFog(room, scene, cb) {
     return onValue(ref(db, `rooms/${room}/scenes/${scene}/fog`), s => cb(s.val()));
