@@ -14,9 +14,7 @@
     transition: opacity 0.25s, transform 0.25s;
 }
 #map-overlay.map-hidden {
-    opacity: 0;
-    pointer-events: none;
-    transform: scale(0.97);
+    display: none;
 }
 
 /* ── Map header bar ─────────────────────────────────────────── */
