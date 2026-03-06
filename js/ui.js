@@ -1,6 +1,5 @@
 // ui.js
-
-import { t } from "./i18n.js?v=111";
+import { t } from "./i18n.js?v=116";
 
 let expandedCardId = null;
 
@@ -20,56 +19,34 @@ export function updateModeUI(activeMode) {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
     if (!advBtn || !disBtn) return;
-
     [advBtn, disBtn].forEach(btn => {
         btn.style.filter = "grayscale(100%)";
         btn.style.opacity = "0.4";
         btn.style.border = "1px solid rgba(255,255,255,0.2)";
     });
-
-    if (activeMode === 'adv') {
-        advBtn.style.filter = "grayscale(0%)";
-        advBtn.style.opacity = "1";
-        advBtn.style.border = "2px solid white";
-    } else if (activeMode === 'dis') {
-        disBtn.style.filter = "grayscale(0%)";
-        disBtn.style.opacity = "1";
-        disBtn.style.border = "2px solid white";
-    }
+    if (activeMode === 'adv') { advBtn.style.filter = "grayscale(0%)"; advBtn.style.opacity = "1"; advBtn.style.border = "2px solid white"; }
+    else if (activeMode === 'dis') { disBtn.style.filter = "grayscale(0%)"; disBtn.style.opacity = "1"; disBtn.style.border = "2px solid white"; }
 }
 
 export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
     const list = document.getElementById('init-list');
     if (!list) return;
-
     list.innerHTML = "";
     if (!data) return;
-
     const items = Object.keys(data).map(key => ({ name: key, ...data[key] }));
     const isDM = currentUserRole === 'dm';
     const myCName = localStorage.getItem('critroll_cName');
-    
     items.sort((a, b) => (b.score || 0) - (a.score || 0)).forEach((i, index) => {
-        
-        if (i.isHidden && !isDM && i.name !== myCName) return; 
-
+        if (i.isHidden && !isDM && i.name !== myCName) return;
         const div = document.createElement('div');
         const isThisCharDM = i.userRole === 'dm';
-        
         let extraClasses = '';
         if (isThisCharDM) extraClasses = 'dm-item';
         if (activeRoller && activeRoller.cName === i.name) extraClasses += ' active-control';
-        
         div.className = `tracker-item ${extraClasses}`;
         const playerColor = i.pColor || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
-        
-        if (i.isHidden) {
-            div.style.opacity = '0.6';
-            div.style.borderStyle = 'dashed';
-            div.style.background = 'rgba(0, 0, 0, 0.7)';
-        }
-        
+        if (i.isHidden) { div.style.opacity = '0.6'; div.style.borderStyle = 'dashed'; div.style.background = 'rgba(0, 0, 0, 0.7)'; }
         if (isThisCharDM) {
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center;">
@@ -86,22 +63,16 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
             const isOwner = myCName === i.name;
             const isNPC = i.userRole === 'npc';
             const isOpen = expandedCardId === i.name;
-            
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">🗑️</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
-
             const raceStr = i.race || "";
             const classStr = i.class || "";
             const hasHebrew = /[\u0590-\u05FF]/;
             const displayRace = hasHebrew.test(raceStr) ? raceStr : t("race_" + raceStr.toLowerCase());
             const displayClass = hasHebrew.test(classStr) ? classStr : t("class_" + classStr.toLowerCase());
-
             let subtext = isNPC ? `⚔️ ${i.class ? i.class : t("default_monster")}` : `${displayRace} ${displayClass}`;
-            
-            // This is where the magic happens for permissions:
             const canViewStats = isDM || isOwner;
-
             let customAttacksHTML = '';
             if (i.customAttacks && i.customAttacks.length > 0) {
                 customAttacksHTML = i.customAttacks.map(atk => `
@@ -111,7 +82,6 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                     </div>
                 `).join('');
             }
-
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center; ${isDead ? 'opacity: 0.6;' : ''}">
                     <img src="${i.portrait || 'https://via.placeholder.com/50'}" class="char-portrait">
@@ -127,13 +97,10 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
                             <div style="font-size:0.7em; color:#f3e5ab;">${subtext}</div>
-                            <div style="display:flex; align-items:center; gap:2px;">
-                                ${impersonateBtn} ${visibilityBtn} ${deleteBtn}
-                            </div>
+                            <div style="display:flex; align-items:center; gap:2px;">${impersonateBtn}${visibilityBtn}${deleteBtn}</div>
                         </div>
                     </div>
                 </div>
-
                 <div style="margin-top:8px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                         <span style="font-size:10px; font-weight:bold; color:${hpPercent > 30 ? '#2ecc71' : '#ff7675'}">
@@ -151,20 +118,17 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                         <div style="width:${hpPercent}%; height:100%; background:${hpPercent > 30 ? '#2ecc71' : '#e74c3c'}; transition: width 0.4s ease-out;"></div>
                     </div>
                 </div>
-
                 <div class="status-container">
                     ${(i.statuses || []).map(s => `<span class="status-badge" style="background:#636e72">${s}</span>`).join('')}
                     ${isDM ? `<button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>` : ''}
                 </div>
-
                 <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px;">
-                        ${['Poisoned', 'Charmed', 'Unconscious', 'Frightened', 'Paralyzed', 'Restrained', 'Blinded', 'Prone', 'Stunned'].map(s => 
+                        ${['Poisoned', 'Charmed', 'Unconscious', 'Frightened', 'Paralyzed', 'Restrained', 'Blinded', 'Prone', 'Stunned'].map(s =>
                             `<button onclick="window.toggleStatus('${i.name}', '${s}'); this.parentElement.parentElement.style.display='none';" style="font-size:10px; padding:3px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer;">${s}</button>`
                         ).join('')}
                     </div>
                 </div>
-
                 <div id="details-${i.name}" class="card-details ${isOpen ? 'open' : ''}">
                     ${canViewStats ? `
                         <div class="stats-grid">
@@ -186,9 +150,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null) {
                                     <button class="macro-btn" onclick="window.rollMacro('${i.name}', '${t('card_ranged')}', ${i.ranged || 0})">🏹 ${t('macro_attack')}</button>
                                     <button class="macro-btn" style="background:rgba(192, 57, 43, 0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_ranged')}', '${i.rangedDmg || '1d6'}', ${i.ranged || 0})">🩸 ${t('macro_dmg')} (${i.rangedDmg || '1d6'})</button>
                                 </div>
-                                
                                 ${customAttacksHTML}
-
                             </div>
                         </div>
                     ` : `
@@ -212,12 +174,10 @@ window.toggleStatusPicker = (name) => {
 export function addLogEntry(data, time, flavorText) {
     const log = document.getElementById('roll-log');
     if (!log) return;
-
     const entry = document.createElement('div');
     entry.className = 'log-entry';
     const userColor = data.color || '#8B0000';
     const nameStyle = `color: ${userColor} !important; font-family: 'Assistant', sans-serif !important; font-weight: 900; font-size: 1.1em; text-shadow: none;`;
-
     if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
         entry.innerHTML = `
@@ -236,15 +196,17 @@ export function addLogEntry(data, time, flavorText) {
             </div>
         `;
     } else {
-        const modeLabel = data.mode === 'adv' ? `<span style="color:#27ae60; font-weight:bold;">(${t('adv')})</span>` : (data.mode === 'dis' ? `<span style="color:#c0392b; font-weight:bold;">(${t('dis')})</span>` : '');
+        const modeLabel = data.mode === 'adv'
+            ? `<span style="color:#27ae60; font-weight:bold;">(${t('adv')})</span>`
+            : (data.mode === 'dis' ? `<span style="color:#c0392b; font-weight:bold;">(${t('dis')})</span>` : '');
         entry.innerHTML = `
             <div style="margin-bottom: 15px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.4); border-radius: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                     <span style="${nameStyle}">${data.cName || 'Player'} <small style="font-weight:600; color:#555;">(${data.pName || 'User'})</small></span>
-                     <span style="color: #666; font-size: 11px;">[${time}]</span> 
+                    <span style="${nameStyle}">${data.cName || 'Player'} <small style="font-weight:600; color:#555;">(${data.pName || 'User'})</small></span>
+                    <span style="color: #666; font-size: 11px;">[${time}]</span>
                 </div>
                 <div style="color: var(--ink); margin-top: 4px; line-height: 1.4; font-weight: 600;">
-                    ${t('log_rolled')} <strong>${data.type.toUpperCase()}</strong> ${modeLabel} ${t('log_and_got')} 
+                    ${t('log_rolled')} <strong>${data.type.toUpperCase()}</strong> ${modeLabel} ${t('log_and_got')}
                     <span style="color: ${data.res === 20 ? '#b8860b' : (data.res === 1 ? '#c0392b' : 'var(--ink)')}; font-weight: 900; font-size: 1.3em;">
                         ${data.res + (data.mod || 0)}
                     </span>
@@ -254,7 +216,6 @@ export function addLogEntry(data, time, flavorText) {
             </div>
         `;
     }
-
     log.prepend(entry);
     if (log.children.length > 30) log.removeChild(log.lastChild);
 }
