@@ -384,7 +384,45 @@ export const translations = {
         "flavor_gen_max_plus": "Beyond all expectations! Bursting power! 🔥",
         "flavor_gen_max": "Maximum power! Precise strike.",
         "flavor_gen_mid": "Nice, that should move something.",
-        "flavor_gen_low": "Barely a scratch... maybe next time."
+        "flavor_gen_low": "Barely a scratch... maybe next time.",
+
+        // ── Wizard v126 ──
+        "wiz_t0":"🖼 Set the Stage","wiz_t1":"🔲 Align the Grid","wiz_t2":"⚔️ Build Your World",
+        "wiz_t3":"🌑 Fog of War","wiz_t4":"🌩 Set the Mood","wiz_t5":"💾 Name & Save",
+        "wiz_s0":"Load your battlefield image","wiz_s1":"Calibrate squares to your map","wiz_s2":"Place obstacles, traps & tokens",
+        "wiz_s3":"Configure hidden areas","wiz_s4":"Weather, light & vision","wiz_s5":"Save to your scene collection",
+        "wiz_or":"or",
+        "wiz_l0_image":"Map Image","wiz_l0_url_ph":"Paste image URL…","wiz_l0_load_url":"Load URL",
+        "wiz_l0_upload":"Upload from device","wiz_l0_loaded":"Image loaded successfully",
+        "wiz_l0_tip":"The image is purely decorative background. You will set the grid in the next step.",
+        "wiz_l1_sq_size":"Square Size","wiz_l1_sq_tip":"Resize until green squares match your map grid",
+        "wiz_l1_nudge":"Fine-tune position","wiz_l1_nudge_lbl":"nudge",
+        "wiz_l1_approve":"Approve Grid","wiz_l1_approved":"Grid Approved",
+        "wiz_l2_tool":"Tool","wiz_l2_obstacle":"Obstacle","wiz_l2_trap":"Trap",
+        "wiz_l2_select":"Select","wiz_l2_ruler":"Ruler",
+        "wiz_l2_brush":"Brush","wiz_l2_paint":"Paint","wiz_l2_erase":"Erase",
+        "wiz_l2_tokens":"Tokens","wiz_l2_no_players":"No players in room",
+        "wiz_l3_brush":"Fog Brush","wiz_l3_reveal":"Reveal","wiz_l3_hide":"Hide",
+        "wiz_l3_quick":"Quick Actions","wiz_l3_reveal_all":"Reveal All","wiz_l3_hide_all":"Hide All",
+        "wiz_l3_tip":"Click or drag tiles to reveal or hide. Players auto-reveal based on position.",
+        "wiz_l4_weather":"Weather","wiz_l4_light":"Ambient Light","wiz_l4_dv":"Global Darkvision",
+        "wiz_w_clear":"Clear","wiz_w_rain":"Light Rain","wiz_w_hrain":"Heavy Rain",
+        "wiz_w_fog":"Dense Fog","wiz_w_bliz":"Blizzard","wiz_w_sand":"Sandstorm","wiz_w_dark":"Magical Darkness",
+        "wiz_l_bright":"Bright Light","wiz_l_dim":"Dim Light","wiz_l_dark":"Darkness",
+        "wiz_dv_per":"Per-Character","wiz_dv_30":"30 ft everyone","wiz_dv_60":"60 ft everyone",
+        "wiz_l5_name":"Scene Name","wiz_l5_name_ph":"e.g. Dungeon Entrance",
+        "wiz_l5_save_only":"Save Only","wiz_l5_save_only_tip":"Adds to your collection for later.",
+        "wiz_l5_go_live":"Go Live!","wiz_l5_go_live_tip":"Saves and activates the scene for all players.",
+        "wiz_default_name":"New Scene",
+        "wiz_tip0":"Tip: Load any battle map by URL. Stays private until you Go Live.",
+        "wiz_tip1":"Tip: Use + and minus to resize green squares to match your map grid. Click Approve when aligned.",
+        "wiz_tip2":"Tip: Select Obstacle and paint over walls. Traps are invisible to players.",
+        "wiz_tip3":"Tip: Start fully hidden. Players reveal their surroundings based on their vision.",
+        "wiz_tip4":"Tip: Heavy Rain gives Perception disadvantage. Magical Darkness suits dungeon interiors.",
+        "wiz_tip5":"Scene ready! Saved to your personal vault for use in any future game.",
+        "my_scenes":"My Scenes","scene_create_new":"New Scene",
+        "scene_delete_confirm":"Permanently delete this scene?"
+
     }
 };
 
@@ -426,44 +464,6 @@ export function updateDOM() {
         const key = opt.getAttribute('data-i18n');
         if (translations[currentLang][key]) {
             opt.innerText = translations[currentLang][key];
-        },
-
-        // ── Wizard v126 ──
-        "wiz_t0":"🖼 Set the Stage","wiz_t1":"🔲 Align the Grid","wiz_t2":"⚔️ Build Your World",
-        "wiz_t3":"🌑 Fog of War","wiz_t4":"🌩 Set the Mood","wiz_t5":"💾 Name & Save",
-        "wiz_s0":"Load your battlefield image","wiz_s1":"Calibrate squares to your map","wiz_s2":"Place obstacles, traps & tokens",
-        "wiz_s3":"Configure hidden areas","wiz_s4":"Weather, light & vision","wiz_s5":"Save to your scene collection",
-        "wiz_or":"or",
-        "wiz_l0_image":"Map Image","wiz_l0_url_ph":"Paste image URL…","wiz_l0_load_url":"Load URL",
-        "wiz_l0_upload":"Upload from device","wiz_l0_loaded":"Image loaded successfully",
-        "wiz_l0_tip":"The image is purely decorative background. You'll set the grid in the next step.",
-        "wiz_l1_sq_size":"Square Size","wiz_l1_sq_tip":"Resize until green squares<br>match your map's grid",
-        "wiz_l1_nudge":"Fine-tune position","wiz_l1_nudge_lbl":"nudge",
-        "wiz_l1_approve":"Approve Grid","wiz_l1_approved":"Grid Approved ✓",
-        "wiz_l2_tool":"Tool","wiz_l2_obstacle":"Obstacle","wiz_l2_trap":"Trap",
-        "wiz_l2_select":"Select","wiz_l2_ruler":"Ruler",
-        "wiz_l2_brush":"Brush","wiz_l2_paint":"Paint","wiz_l2_erase":"Erase",
-        "wiz_l2_tokens":"Tokens","wiz_l2_no_players":"No players in room",
-        "wiz_l3_brush":"Fog Brush","wiz_l3_reveal":"Reveal","wiz_l3_hide":"Hide",
-        "wiz_l3_quick":"Quick Actions","wiz_l3_reveal_all":"Reveal All","wiz_l3_hide_all":"Hide All",
-        "wiz_l3_tip":"Click/drag tiles to reveal or hide. Players auto-reveal based on position.",
-        "wiz_l4_weather":"Weather","wiz_l4_light":"Ambient Light","wiz_l4_dv":"Global Darkvision",
-        "wiz_w_clear":"Clear","wiz_w_rain":"Light Rain","wiz_w_hrain":"Heavy Rain",
-        "wiz_w_fog":"Dense Fog","wiz_w_bliz":"Blizzard","wiz_w_sand":"Sandstorm","wiz_w_dark":"Magical Darkness",
-        "wiz_l_bright":"Bright Light","wiz_l_dim":"Dim Light","wiz_l_dark":"Darkness",
-        "wiz_dv_per":"Per-Character","wiz_dv_30":"30 ft everyone","wiz_dv_60":"60 ft everyone",
-        "wiz_l5_name":"Scene Name","wiz_l5_name_ph":"e.g. Dungeon Entrance",
-        "wiz_l5_save_only":"Save Only","wiz_l5_save_only_tip":"Adds to your collection for later.",
-        "wiz_l5_go_live":"Go Live!","wiz_l5_go_live_tip":"Saves and activates the scene for all players.",
-        "wiz_default_name":"New Scene",
-        "wiz_tip0":"💡 Tip: Load any battle map by URL. Stays private until you Go Live.",
-        "wiz_tip1":"💡 Tip: Use + and − to resize green squares to match your map's grid. Click Approve when aligned.",
-        "wiz_tip2":"💡 Tip: Select 🧱 Obstacle and paint over walls. Traps are invisible — triggered when stepped on.",
-        "wiz_tip3":"💡 Tip: Start fully hidden. Players reveal their surroundings based on their character's vision.",
-        "wiz_tip4":"💡 Tip: Heavy Rain gives Perception disadvantage. Magical Darkness suits dungeon interiors.",
-        "wiz_tip5":"✅ Scene ready! Saved to your personal vault for use in any future game.",
-        "my_scenes":"My Scenes","scene_create_new":"✦ New Scene",
-        "scene_delete_confirm":"Permanently delete this scene?",
-
+        }
     });
 }
