@@ -1,11 +1,11 @@
 // app.js - Main Game Controller
-import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=117";
-import { getFlavorText } from "./messages.js?v=117";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=117";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=117";
-import * as db from "./firebaseService.js?v=117";
-import { t } from "./i18n.js?v=117";
-import { npcDatabase } from "./monsters.js?v=117";
+import { initDiceEngine, updateDiceColor, roll3DDice, clearDice } from "./diceEngine.js?v=118";
+import { getFlavorText } from "./messages.js?v=118";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound } from "./audio.js?v=118";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=118";
+import * as db from "./firebaseService.js?v=118";
+import { t } from "./i18n.js?v=118";
+import { npcDatabase } from "./monsters.js?v=118";
 
 // =====================================================================
 // GLOBALS & DB
