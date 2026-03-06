@@ -143,6 +143,10 @@
                         <option value="Human" data-i18n="race_human"></option>
                         <option value="Elf" data-i18n="race_elf"></option>
                         <option value="Dwarf" data-i18n="race_dwarf"></option>
+                        <option value="Half-Orc" data-i18n="race_halforc"></option>
+                        <option value="Halfling" data-i18n="race_halfling"></option>
+                        <option value="Gnome" data-i18n="race_gnome"></option>
+                        <option value="Dragonborn" data-i18n="race_dragonborn"></option>
                     </select>
                     <select id="cb-class" class="builder-input w-50" style="flex:1;">
                         <option value="" disabled selected data-i18n="cb_class"></option>
@@ -150,6 +154,12 @@
                         <option value="Wizard" data-i18n="class_wizard"></option>
                         <option value="Rogue" data-i18n="class_rogue"></option>
                         <option value="Cleric" data-i18n="class_cleric"></option>
+                        <option value="Barbarian" data-i18n="class_barbarian"></option>
+                        <option value="Bard" data-i18n="class_bard"></option>
+                        <option value="Druid" data-i18n="class_druid"></option>
+                        <option value="Paladin" data-i18n="class_paladin"></option>
+                        <option value="Ranger" data-i18n="class_ranger"></option>
+                        <option value="Warlock" data-i18n="class_warlock"></option>
                     </select>
                 </div>
 
@@ -192,7 +202,7 @@
 
                 <!-- Sprint 6: Spell Slots -->
                 <div style="margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;">
-                    <div style="font-size: 14px; color: #9b59b6; margin-bottom: 8px; font-weight: bold;">🔮 Spell Slots (optional)</div>
+                    <div style="font-size: 14px; color: var(--cr-purple); margin-bottom: 8px; font-weight: bold;" data-i18n="spell_slots_header">🔮 Spell Slots (optional)</div>
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
                         <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
                             <label style="font-size:10px; color:#aaa;">Lv 1</label>
@@ -298,12 +308,12 @@
             <!-- ── Scene Manager (DM only) ── -->
             <div id="scene-manager-section" style="display:none;">
                 <div class="scene-mgr-header" onclick="window.toggleScenePanel()">
-                    <span>🗺️ My Scenes</span>
+                    <span data-i18n="my_scenes">🗺️ My Scenes</span>
                     <span id="scene-mgr-chevron">▼</span>
                 </div>
                 <div id="scene-panel" style="display:none;">
                     <button id="scene-new-btn" onclick="window.openSceneWizard()" class="scene-new-btn">
-                        ✦ Create New Scene
+                        <span data-i18n="create_new_scene">✦ Create New Scene</span>
                     </button>
                     <div id="scene-gallery"></div>
                 </div>
@@ -319,8 +329,8 @@
                             <span id="active-turn-name" style="color:white; font-size:12px; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px;"></span>
                         </div>
                         <div style="display:flex; gap:6px;">
-                            <button onclick="window.prevTurn()" class="side-btn hover-btn" style="flex:1; background:#2c3e50; padding:8px; font-size:18px;" title="Previous Turn">◀</button>
-                            <button onclick="window.nextTurn()" class="side-btn hover-btn" style="flex:2; background:#e67e22; padding:8px; font-weight:900; font-size:13px;">Next Turn ▶</button>
+                            <button onclick="window.prevTurn()" class="side-btn hover-btn" style="flex:1; background:var(--cr-bg-dark); padding:8px; font-size:18px;" title="Previous Turn" data-i18n="prev_turn">◀</button>
+                            <button onclick="window.nextTurn()" class="side-btn hover-btn" style="flex:2; background:var(--cr-orange); padding:8px; font-weight:900; font-size:13px;" data-i18n="next_turn">Next Turn ▶</button>
                         </div>
                         <button onclick="window.rerollAllInitiatives()" class="side-btn hover-btn" style="background:rgba(52,152,219,0.3); border:1px solid #3498db; color:#3498db; font-size:12px; padding:7px;">🎲 Re-roll All Initiatives</button>
                     </div>
@@ -432,11 +442,11 @@
 
         <!-- Footer nav -->
         <div id="wiz-footer">
-            <button id="wiz-back-btn" onclick="window._wizard?.back()" class="wiz-nav-btn">← Back</button>
-            <button id="wiz-next-btn" onclick="window._wizard?.next()" class="wiz-nav-btn gold">Next →</button>
+            <button id="wiz-back-btn" onclick="window._wizard?.back()" class="wiz-nav-btn" data-i18n="wiz_back">← Back</button>
+            <button id="wiz-next-btn" onclick="window._wizard?.next()" class="wiz-nav-btn gold" data-i18n="wiz_next">Next →</button>
             <div id="wiz-save-row" style="display:none;gap:10px;">
-                <button id="wiz-save-only" class="wiz-nav-btn">💾 Save Only</button>
-                <button id="wiz-go-live"   class="wiz-nav-btn gold">⚔️ Go Live!</button>
+                <button id="wiz-save-only" class="wiz-nav-btn" data-i18n="wiz_save_only">💾 Save Only</button>
+                <button id="wiz-go-live"   class="wiz-nav-btn gold" data-i18n="wiz_go_live">⚔️ Go Live!</button>
             </div>
         </div>
     </div>
