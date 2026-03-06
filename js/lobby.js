@@ -1,7 +1,7 @@
 // lobby.js - Welcome screen and Authentication Controller
-import * as db from "./firebaseService.js?v=116";
-import { startGame } from "./app.js?v=116";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=116";
+import * as db from "./firebaseService.js?v=117";
+import { startGame } from "./app.js?v=117";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=117";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -244,6 +244,34 @@ if(newCharBtn) {
 
 if(closeBuilderBtn) { closeBuilderBtn.onclick = () => { if(builderModal) builderModal.style.display = 'none'; }; }
 
+// =====================================================================
+// Smart Form Validation - highlights missing fields instead of alert
+// =====================================================================
+function highlightMissingFields(fieldsMap) {
+    const missing = [];
+    for (const [id, value] of Object.entries(fieldsMap)) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (!value) {
+            el.style.border = "2px solid #e74c3c";
+            el.style.boxShadow = "0 0 6px rgba(231,76,60,0.5)";
+            el.addEventListener('input', () => {
+                el.style.border = "";
+                el.style.boxShadow = "";
+            }, { once: true });
+            missing.push(el);
+        } else {
+            el.style.border = "";
+            el.style.boxShadow = "";
+        }
+    }
+    if (missing.length > 0) {
+        missing[0].focus();
+        missing[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return missing.length === 0;
+}
+
 if(saveCharBtn) {
     const form = document.getElementById('char-builder-form');
     if(form) {
@@ -272,7 +300,22 @@ if(saveCharBtn) {
                     if (aName) { customAttacks.push({ name: aName, bonus: aBonus, dmg: aDmg }); }
                 });
             }
-            if (!name || !charRace || !charClass || !ac || !speed || !pp || !init || !hp || !melee || !ranged || !selectedPortrait) { return alert(t('alert_missing')); }
+
+            // Smart validation — highlight missing fields instead of generic alert
+            const isValid = highlightMissingFields({
+                'cb-name': name,
+                'cb-race': charRace,
+                'cb-class': charClass,
+                'cb-ac': ac,
+                'cb-speed': speed,
+                'cb-pp': pp,
+                'cb-init': init,
+                'cb-hp': hp,
+                'cb-melee': melee,
+                'cb-ranged': ranged,
+            });
+            if (!isValid || !selectedPortrait) return;
+
             const charData = {
                 name, race: charRace, class: charClass,
                 ac: parseInt(ac), speed: parseInt(speed), pp: parseInt(pp),
@@ -293,13 +336,53 @@ if(saveCharBtn) {
     }
 }
 
+// =====================================================================
+// Room Code Modal — replaces the old alert()
+// =====================================================================
+function showRoomCodeModal(code, onEnter) {
+    const overlay = document.getElementById('room-code-modal');
+    const codeDisplay = document.getElementById('room-code-display');
+    const copyBtn = document.getElementById('room-code-copy-btn');
+    const enterBtn = document.getElementById('room-code-enter-btn');
+    if (!overlay || !codeDisplay) return;
+
+    codeDisplay.innerText = code;
+    overlay.style.display = 'flex';
+
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(code).then(() => {
+            copyBtn.innerText = t('alert_room_copied');
+            copyBtn.style.background = '#27ae60';
+            setTimeout(() => {
+                copyBtn.innerText = t('alert_room_copy');
+                copyBtn.style.background = '';
+            }, 2000);
+        }).catch(() => {
+            // Fallback for older browsers
+            const ta = document.createElement('textarea');
+            ta.value = code;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            copyBtn.innerText = t('alert_room_copied');
+        });
+    };
+
+    enterBtn.onclick = () => {
+        overlay.style.display = 'none';
+        onEnter();
+    };
+}
+
 const createRoomBtn = document.getElementById('create-room-btn');
 if(createRoomBtn) {
     createRoomBtn.onclick = () => {
         const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
-        alert(`${t('alert_room_created')} ${randomCode}`);
-        langToggleBtn.style.display = 'none';
-        if(lobbyScreen) lobbyScreen.style.display = 'none';
-        startGame('dm', null, randomCode);
+        showRoomCodeModal(randomCode, () => {
+            langToggleBtn.style.display = 'none';
+            if(lobbyScreen) lobbyScreen.style.display = 'none';
+            startGame('dm', null, randomCode);
+        });
     };
 }
