@@ -1,5 +1,5 @@
 // ui.js
-import { t } from "./i18n.js?v=116";
+import { t } from "./i18n.js?v=117";
 
 let expandedCardId = null;
 
