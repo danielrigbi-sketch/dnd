@@ -172,6 +172,9 @@ function renderVault(characters) {
             const roomCodeInput = document.getElementById('room-code-input');
             const roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "";
             if(!roomCode) { alert(t("alert_no_room_code")); return; }
+            // Sanitise input — strip spaces, uppercase
+            roomCode = roomCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if(!roomCode) { alert(t("alert_no_room_code")); return; }
             langToggleBtn.style.display = 'none';
             if(lobbyScreen) lobbyScreen.style.display = 'none';
             startGame('player', selectedChar, roomCode);
@@ -392,11 +395,15 @@ function showRoomCodeModal(code, onEnter) {
 const createRoomBtn = document.getElementById('create-room-btn');
 if(createRoomBtn) {
     createRoomBtn.onclick = () => {
-        const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+        // 6-character alphanumeric room code (36^6 ≈ 2.2 billion combinations)
+        const _chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1 to avoid confusion
+        const randomCode = Array.from({length:6}, () => _chars[Math.floor(Math.random()*_chars.length)]).join('');
         showRoomCodeModal(randomCode, () => {
             langToggleBtn.style.display = 'none';
             if(lobbyScreen) lobbyScreen.style.display = 'none';
             startGame('dm', null, randomCode);
+            // Register DM uid so Firebase rules can verify DM-only writes
+            if (currentUserUid) db.setDmUid(randomCode, currentUserUid);
         });
     };
 }
