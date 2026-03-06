@@ -194,6 +194,11 @@
         </form>
     </div>
 
+    <!-- Mobile panel backdrop -->
+    <div id="panel-backdrop" onclick="window.closeMobilePanel()"></div>
+    <!-- Mobile panel toggle -->
+    <button id="panel-toggle-btn" onclick="window.toggleMobilePanel()" aria-label="Toggle party panel">👥</button>
+
     <div id="game-screen" style="display: none; height: 100%; flex-direction: row; width: 100%;">
         <div id="side-panel">
             <img src="assets/logo.png" alt="Small Logo" class="side-logo">
@@ -286,6 +291,27 @@
         </div>
     </div>
 
-    <script type="module" src="js/lobby.js?v=117"></script>
+    <script type="module" src="js/lobby.js?v=118"></script>
+    <script>
+        // Mobile panel toggle
+        window.toggleMobilePanel = () => {
+            const panel = document.getElementById('side-panel');
+            const backdrop = document.getElementById('panel-backdrop');
+            const btn = document.getElementById('panel-toggle-btn');
+            const isOpen = panel.classList.toggle('panel-visible');
+            backdrop.classList.toggle('visible', isOpen);
+            btn.classList.toggle('panel-open', isOpen);
+            btn.textContent = isOpen ? '✕' : '👥';
+        };
+        window.closeMobilePanel = () => {
+            const panel = document.getElementById('side-panel');
+            const backdrop = document.getElementById('panel-backdrop');
+            const btn = document.getElementById('panel-toggle-btn');
+            panel.classList.remove('panel-visible');
+            backdrop.classList.remove('visible');
+            btn.classList.remove('panel-open');
+            btn.textContent = '👥';
+        };
+    </script>
 </body>
 </html>
