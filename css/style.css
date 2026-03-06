@@ -297,7 +297,76 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .portrait-tab.active { background: #3498db; color: white; border-color: #2980b9; font-weight: bold; }
 
 /* ====================================================
-   ACTIVE TURN TRACKER (Sprint 3)
+   SPRINT 4 — YOUR TURN BANNER
+   ==================================================== */
+@keyframes yourTurnIn {
+    0%   { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
+    60%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+}
+@keyframes yourTurnOut {
+    to   { transform: translate(-50%, -50%) scale(0.85); opacity: 0; }
+}
+@keyframes swordPulse {
+    0%, 100% { transform: scale(1) rotate(-10deg); }
+    50%       { transform: scale(1.25) rotate(10deg); }
+}
+
+#your-turn-banner {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+    cursor: pointer;
+    pointer-events: none;
+}
+#your-turn-banner.visible {
+    pointer-events: auto;
+    animation: yourTurnIn 0.45s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
+}
+#your-turn-banner.hidden {
+    animation: yourTurnOut 0.3s ease forwards;
+    pointer-events: none;
+}
+
+.your-turn-inner {
+    background: linear-gradient(135deg, #1a0a00, #2c1404);
+    border: 3px solid #f1c40f;
+    border-radius: 20px;
+    padding: 28px 40px;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(241,196,15,0.6), 0 20px 60px rgba(0,0,0,0.8);
+    min-width: 240px;
+}
+.your-turn-icon {
+    font-size: 48px;
+    animation: swordPulse 0.7s ease-in-out infinite;
+    margin-bottom: 4px;
+    display: block;
+}
+.your-turn-text {
+    font-size: 32px;
+    font-weight: 900;
+    color: #f1c40f;
+    text-shadow: 0 0 20px rgba(241,196,15,0.8);
+    letter-spacing: 2px;
+    line-height: 1.1;
+}
+.your-turn-name {
+    font-size: 18px;
+    color: white;
+    font-weight: 700;
+    margin-top: 4px;
+    opacity: 0.9;
+}
+.your-turn-hint {
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 10px;
+    font-style: italic;
+}
+
+/* ====================================================
    ==================================================== */
 @keyframes activeTurnPulse {
     0%   { box-shadow: 0 0 0px rgba(241,196,15,0); border-color: rgba(241,196,15,0.4); }
