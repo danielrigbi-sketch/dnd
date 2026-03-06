@@ -1,5 +1,5 @@
 // ui.js v119
-import { t } from "./i18n.js?v=121";
+import { t } from "./i18n.js?v=122";
 
 let expandedCardId = null;
 let _lastPlayersData = null;
@@ -233,6 +233,39 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                 ${customAttacksHTML}
                             </div>
                         </div>
+                        ${i.spellSlots && Object.keys(i.spellSlots.max || {}).length > 0 ? `
+                        <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1);">
+                            <div style="font-size:10px; color:#9b59b6; font-weight:bold; margin-bottom:6px;">🔮 Spell Slots</div>
+                            <div class="spell-slots-grid">
+                                ${Object.entries(i.spellSlots.max).sort(([a],[b]) => a-b).map(([lv, max]) => {
+                                    const used = (i.spellSlots.used || {})[lv] || 0;
+                                    const remaining = max - used;
+                                    const pips = Array.from({length: max}, (_, idx) => {
+                                        const isUsed = idx >= remaining;
+                                        return `<span class="slot-pip ${isUsed ? 'used' : 'avail'}"></span>`;
+                                    }).join('');
+                                    return `
+                                        <div class="spell-level-row">
+                                            <span class="spell-level-label">Lv ${lv}</span>
+                                            <div class="slot-pips">${pips}</div>
+                                            <span class="slot-count">${remaining}/${max}</span>
+                                            ${canViewStats ? `
+                                                <button class="slot-btn use" onclick="window.useSpellSlot('${i.name}',${lv})" ${remaining<=0?'disabled':''} title="Use slot">–</button>
+                                                <button class="slot-btn restore" onclick="window.restoreSpellSlot('${i.name}',${lv})" ${used<=0?'disabled':''} title="Restore slot">+</button>
+                                            ` : ''}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                            ${canViewStats ? `
+                                <button onclick="window.longRest('${i.name}')" class="long-rest-btn">🌙 Long Rest — Full Restore</button>
+                            ` : ''}
+                        </div>
+                        ` : canViewStats ? `
+                        <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1);">
+                            ${isDM ? `<button onclick="window.longRest('${i.name}')" class="long-rest-btn">🌙 Long Rest</button>` : ''}
+                        </div>
+                        ` : ''}
                     ` : `
                         <div style="text-align:center; padding:10px 0; color:#888; font-style:italic; font-size:11px;">${t('hidden_data')}</div>
                     `}
