@@ -99,3 +99,13 @@ export function listenToNewRolls(cb)                  { onChildAdded(query(ref(d
 
 export async function deleteCharacterFromVault(uid, id)      { await remove(ref(getDatabase(), `users/${uid}/characters/${id}`)); }
 export async function updateCharacterInVault(uid, id, data)  { await update(ref(getDatabase(),  `users/${uid}/characters/${id}`), data); }
+
+// ==========================================
+// Sprint 5 — Death Saves & Concentration
+// ==========================================
+export function updateDeathSavesInDB(cName, saves) {
+    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { deathSaves: saves });
+}
+export function updateConcentrationInDB(cName, isConcentrating) {
+    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { concentrating: isConcentrating });
+}
