@@ -205,8 +205,17 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                 </div>
                 <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
-                        ${['Poisoned','Charmed','Unconscious','Frightened','Paralyzed','Restrained','Blinded','Prone','Stunned'].map(s =>
-                            `<button onclick="window.toggleStatus('${i.name}', '${s}'); this.parentElement.parentElement.style.display='none';" style="font-size:10px; padding:3px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer;">${s}</button>`
+                        ${[
+                            {n:'Poisoned',icon:'🤢'},{n:'Charmed',icon:'💕'},{n:'Unconscious',icon:'💀'},
+                            {n:'Frightened',icon:'😨'},{n:'Paralyzed',icon:'⚡'},{n:'Restrained',icon:'🕸️'},
+                            {n:'Blinded',icon:'👁️'},{n:'Prone',icon:'🔻'},{n:'Stunned',icon:'💫'},
+                            {n:'Incapacitated',icon:'💤'},{n:'Invisible',icon:'👻'},{n:'Exhausted',icon:'😵'},
+                            {n:'Deafened',icon:'👂'},{n:'Grappled',icon:'🤼'},{n:'Raging',icon:'😤'},
+                            {n:'Hasted',icon:'🏃'},{n:'Blessed',icon:'✨'},{n:'Concentrating',icon:'🔮'}
+                        ].map(c =>
+                            `<button onclick="window.toggleStatus('${i.name}', '${c.n}'); this.parentElement.parentElement.style.display='none';"
+                              title="${c.n}" style="font-size:11px; padding:4px 6px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:3px;">
+                              <span>${c.icon}</span><span style="font-size:9px;">${c.n}</span></button>`
                         ).join('')}
                     </div>
                 </div>
@@ -337,5 +346,13 @@ export function setDiceCooldown(isActive) {
         btn.style.opacity = isActive ? "0.4" : "1";
         btn.style.cursor = isActive ? "not-allowed" : "pointer";
         btn.style.pointerEvents = isActive ? "none" : "auto";
+    });
+}
+
+// Show/hide short rest button based on player role (Sprint 16)
+export function setShortRestVisible(visible) {
+    ['short-rest-btn', 'short-rest-btn-2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = visible ? '' : 'none';
     });
 }
