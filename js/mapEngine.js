@@ -52,6 +52,7 @@ export class MapEngine {
     // Firebase-synced state
     this.S = {
       cfg: { bgUrl:'', pps:DEF_PPS, ox:0, oy:0, locked:false, mapW:30, mapH:20 },
+      atmosphere: { weather:'none', ambientLight:'bright', globalDarkvision:0 },
       tokens:    {},  // {cName:{gx,gy,usedMv}}
       fog:       {},  // {ck: true}  = revealed
       obstacles: {},  // {ck: true}
@@ -180,6 +181,8 @@ export class MapEngine {
     if(this.userRole!=='dm') this._rFow();
     else this._rFowDM();
 
+    // Weather overlay (screen-space)
+    this._rWeather();
     // HUD (screen-space)
     this._rHUD();
     this._rModeHUD();
@@ -509,6 +512,64 @@ export class MapEngine {
     ctx.fillStyle='white'; ctx.font=`bold ${fs}px Arial`;
     ctx.textAlign='center'; ctx.textBaseline='bottom';
     ctx.fillText(`${this.L.aoeR}ft`,pos.x,pos.y-rPx-3/this.vs);
+    ctx.restore();
+  }
+
+  // ── Weather/Atmosphere ───────────────────────────────────────────────────
+  _rWeather(){
+    const a = this.S.atmosphere;
+    if(!a || a.weather==='none') {
+      // ambient light only
+      if(a?.ambientLight==='dark'){
+        this.ctx.fillStyle='rgba(0,0,0,0.65)'; this.ctx.fillRect(0,0,this.cv.width,this.cv.height);
+      } else if(a?.ambientLight==='dim'){
+        this.ctx.fillStyle='rgba(0,0,0,0.32)'; this.ctx.fillRect(0,0,this.cv.width,this.cv.height);
+      }
+      return;
+    }
+    const W=this.cv.width, H=this.cv.height, ctx=this.ctx;
+    const now=Date.now();
+    switch(a.weather){
+      case 'light_rain':  this._rRain(ctx,W,H,80,now,0.45,'#88aacc'); break;
+      case 'heavy_rain':  this._rRain(ctx,W,H,220,now,0.65,'#667799'); break;
+      case 'blizzard':    this._rSnow(ctx,W,H,200,now); break;
+      case 'sandstorm':
+        ctx.fillStyle='rgba(210,160,60,0.38)'; ctx.fillRect(0,0,W,H);
+        this._rRain(ctx,W,H,120,now,0.5,'#c8a055'); break;
+      case 'fog':
+        ctx.fillStyle='rgba(200,210,220,0.52)'; ctx.fillRect(0,0,W,H); break;
+      case 'darkness':
+        ctx.fillStyle='rgba(0,0,20,0.80)'; ctx.fillRect(0,0,W,H); break;
+    }
+    // Ambient light overlay on top
+    if(a.ambientLight==='dark'){
+      ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(0,0,W,H);
+    } else if(a.ambientLight==='dim'){
+      ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.fillRect(0,0,W,H);
+    }
+    this._dirty(); // keep animating
+  }
+
+  _rRain(ctx,W,H,count,now,alpha,col){
+    ctx.save(); ctx.globalAlpha=alpha; ctx.strokeStyle=col;
+    ctx.lineWidth=1;
+    for(let i=0;i<count;i++){
+      const seed=(i*7919+now/16)%1;
+      const x=((i*137.5+now*0.08)%W);
+      const y=((seed*H+now*0.25)%H);
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-2,y+12); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  _rSnow(ctx,W,H,count,now){
+    ctx.save(); ctx.fillStyle='rgba(240,245,255,0.80)';
+    for(let i=0;i<count;i++){
+      const x=((i*173+now*0.03+Math.sin(now*0.001+i)*20)%W+W)%W;
+      const y=((i*11+now*0.06)%H);
+      const r=Math.max(1,((i%4)+1)*0.8);
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -952,6 +1013,10 @@ export class MapEngine {
   }
 
   // ── Mode & tool setters ────────────────────────────────────────────────
+  setAtmosphere(a){
+    this.S.atmosphere = { ...this.S.atmosphere, ...(a||{}) };
+    this._dirty();
+  }
   setMode(m){ this.L.mode=m; this._dirty(); }
   setTool(t){ this.L.tool=t; }
   setAoeShape(s){ this.L.aoeShape=s; this._dirty(); }
