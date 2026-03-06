@@ -1,5 +1,5 @@
 // ui.js v119
-import { t } from "./i18n.js?v=123";
+import { t } from "./i18n.js?v=125";
 
 let expandedCardId = null;
 let _lastPlayersData = null;
