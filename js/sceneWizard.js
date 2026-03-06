@@ -416,10 +416,18 @@ export class SceneWizard {
   async _save(goLive) {
     this._syncFromEngine();
 
-    const name    = document.getElementById('wiz-scene-name')?.value.trim()
-                    || this._data.name
-                    || t('wiz_default_name');
+    const rawName = document.getElementById('wiz-scene-name')?.value.trim()
+                    || this._data.name;
+    if (!rawName) {
+        if (window.showToast) showToast('Please give your scene a name first.', 'warning');
+        else alert('Please enter a scene name.');
+        document.getElementById('wiz-scene-name')?.focus();
+        return;
+    }
+    const name = rawName;
     this._data.name = name;
+
+    if (window.showSpinner) showSpinner('Saving scene…');
 
     // Stable ID — edit reuses existing _id so Firebase upserts instead of inserting
     const sceneId = this._data._id || ('scene_' + Date.now());
@@ -439,6 +447,8 @@ export class SceneWizard {
       await this.db.saveSceneToVault(this.uid, sceneId, sceneData);
     }
 
+    if (window.hideSpinner) hideSpinner();
+    if (window.showToast) showToast('Scene saved! ✨', 'success');
     this.onSaved?.(sceneId, sceneData);
 
     if (goLive && this.db) {
