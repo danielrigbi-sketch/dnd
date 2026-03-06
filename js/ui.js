@@ -1,5 +1,5 @@
 // ui.js v119
-import { t } from "./i18n.js?v=119";
+import { t } from "./i18n.js?v=120";
 
 let expandedCardId = null;
 let _lastPlayersData = null;
@@ -198,7 +198,7 @@ window.toggleStatusPicker = (name) => {
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 };
 
-export function addLogEntry(data, time, flavorText) {
+export function addLogEntry(data, time, flavorText, isReplay = false) {
     const log = document.getElementById('roll-log');
     if (!log) return;
     const entry = document.createElement('div');
@@ -240,7 +240,7 @@ export function addLogEntry(data, time, flavorText) {
                 ${flavorText ? `<div style="color:#444; font-style:italic; font-size:12px; margin-top:6px;">"${flavorText}"</div>` : ""}
             </div>`;
     }
-    log.prepend(entry);
+    isReplay ? log.appendChild(entry) : log.prepend(entry);
     if (log.children.length > 30) log.removeChild(log.lastChild);
 }
 
