@@ -1,9 +1,9 @@
 // app.js v120
-import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=123";
-import { getFlavorText } from "./messages.js?v=123";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=123";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=123";
-import * as db from "./firebaseService.js?v=123";
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=124";
+import { getFlavorText } from "./messages.js?v=124";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=124";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=124";
+import * as db from "./firebaseService.js?v=124";
 // getActiveRoom is available via db.getActiveRoom()
 
 // =====================================================================
@@ -99,9 +99,9 @@ window.rerollAllInitiatives = async () => {
     }
     db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
 };
-import { t } from "./i18n.js?v=123";
-import { npcDatabase } from "./monsters.js?v=123";
-import { MapEngine } from "./mapEngine.js?v=123";
+import { t } from "./i18n.js?v=124";
+import { npcDatabase } from "./monsters.js?v=124";
+import { MapEngine } from "./mapEngine.js?v=124";
 
 // =====================================================================
 // GLOBALS
