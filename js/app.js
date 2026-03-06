@@ -434,6 +434,9 @@ window.roll3DDice = roll3DDice;
 // SPRINT 7 — MAP ENGINE INIT
 // =====================================================================
 function initMap() {
+    // Guard: never create more than one MapEngine per session
+    if (mapEngine) return;
+
     const cv  = document.getElementById('map-canvas');
     const fwc = document.getElementById('fow-canvas');
     if (!cv || !fwc) return;
@@ -446,9 +449,11 @@ function initMap() {
         mapEngine?.resize(w, h);
     };
 
+    // Create engine but defer Firebase subscription to first openMap() call.
+    // This avoids piling 6 new onValue listeners onto the WebSocket during
+    // the initial handshake, which causes "WebSocket closed before established".
     mapEngine = new MapEngine(cv, fwc, { cName, userRole, activeRoom: db.getActiveRoom() });
     window._mapEng = mapEngine; // expose for dashboard buttons
-    mapEngine.setupFirebase(db);
     resize();
     window.addEventListener('resize', resize);
 
@@ -581,12 +586,17 @@ function _updateCalibDisplay() {
 
 window.openMap = () => {
     document.getElementById('map-overlay').classList.remove('map-hidden');
-    // Sync players to map engine
-    if (mapEngine) {
-        mapEngine.setPlayers(sortedCombatants.reduce((acc,c)=>{acc[c.name]=c;return acc;},{}));
-        mapEngine.setActiveTurn(currentActiveTurn, sortedCombatants);
-        mapEngine._updateDashTokenList?.();
+    if (!mapEngine) return;
+    // Lazy Firebase connect: only subscribe on first open, well after WS handshake
+    if (!mapEngine._fbConnected) {
+        mapEngine._fbConnected = true;
+        mapEngine.setupFirebase(db);
     }
+    // Sync players & turn state
+    const playerMap = sortedCombatants.reduce((acc,c)=>{acc[c.name]=c;return acc;},{});
+    mapEngine.setPlayers(playerMap);
+    mapEngine.setActiveTurn(currentActiveTurn, sortedCombatants);
+    mapEngine._updateDashTokenList?.();
 };
 window.closeMap = () => document.getElementById('map-overlay').classList.add('map-hidden');
 window.toggleMap = () => {
