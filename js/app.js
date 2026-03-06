@@ -118,6 +118,8 @@ let sortedCombatants   = [];
 let prevActiveTurn     = null;   // track changes for YOUR TURN detection
 // ── Map Engine (Sprint 7) ──────────────────────────────────────────────
 let mapEngine = null;
+let sceneWizard = null;
+let activeSceneId = null;
 
 function populateMonsterSelect() {
     const select = document.getElementById('npc-preset');
@@ -434,39 +436,94 @@ window.roll3DDice = roll3DDice;
 // SPRINT 7 — MAP ENGINE INIT
 // =====================================================================
 function initMap() {
-    // Guard: never create more than one MapEngine per session
-    if (mapEngine) return;
+    if (mapEngine) return; // guard: only init once
 
     const cv  = document.getElementById('map-canvas');
     const fwc = document.getElementById('fow-canvas');
     if (!cv || !fwc) return;
 
-    // Size canvases to container
     const container = document.getElementById('map-canvas-container');
     const resize = () => {
-        const w = container.clientWidth, h = container.clientHeight;
+        const w = container.clientWidth || 800;
+        const h = container.clientHeight || 500;
         cv.width = w; cv.height = h; fwc.width = w; fwc.height = h;
         mapEngine?.resize(w, h);
     };
 
-    // Create engine but defer Firebase subscription to first openMap() call.
-    // This avoids piling 6 new onValue listeners onto the WebSocket during
-    // the initial handshake, which causes "WebSocket closed before established".
     mapEngine = new MapEngine(cv, fwc, { cName, userRole, activeRoom: db.getActiveRoom() });
-    window._mapEng = mapEngine; // expose for dashboard buttons
+    window._mapEng = mapEngine;
     resize();
     window.addEventListener('resize', resize);
 
-    // DM dashboard drag
+    // Show scene manager for DM
     if (userRole === 'dm') {
-        document.getElementById('dm-map-dash').style.display = 'block';
-        document.getElementById('open-map-btn').style.display = 'block';
-        _initDashDrag();
-        _initDashTabs();
-        _initDashControls();
-    } else {
-        document.getElementById('open-map-btn').style.display = 'block';
+        document.getElementById('scene-manager-section').style.display = 'block';
+        _initSceneManager();
     }
+
+    // Wire compact toolbar
+    window._mapToolBtn = (btn) => {
+        document.querySelectorAll('.map-tb-btn[data-mode]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        mapEngine?.setMode(btn.dataset.mode);
+    };
+    window.toggleTokenRoster = () => {
+        const el = document.getElementById('map-token-roster-popup');
+        const isVisible = el.style.display !== 'none';
+        el.style.display = isVisible ? 'none' : 'block';
+        if (!isVisible) _updateTokenRoster();
+    };
+}
+
+function _initSceneManager() {
+    if (!uid) return;
+    db.listenToUserScenes(uid, (scenes) => {
+        _renderSceneGallery(scenes || {});
+    });
+}
+
+function _renderSceneGallery(scenes) {
+    const gallery = document.getElementById('scene-gallery');
+    if (!gallery) return;
+    const entries = Object.entries(scenes).sort(([,a],[,b]) => (b.createdAt||0)-(a.createdAt||0));
+    if (!entries.length) {
+        gallery.innerHTML = '<div style="font-size:11px;color:#555;font-style:italic;padding:4px 0;">No scenes yet. Create your first!</div>';
+        return;
+    }
+    gallery.innerHTML = entries.map(([id, s]) => `
+        <div class="scene-gallery-card ${id===activeSceneId?'active':''}" id="sgc-${id}">
+            <div class="scene-thumb">${s.atmosphere?.weather==='fog'?'🌫':s.atmosphere?.weather==='heavy_rain'?'⛈':s.atmosphere?.weather==='blizzard'?'❄️':'🗺'}</div>
+            <div class="scene-card-info">
+                <div class="scene-card-name">${s.name||'Unnamed'}</div>
+                <div class="scene-card-sub">${new Date(s.createdAt||0).toLocaleDateString()}</div>
+            </div>
+            <div class="scene-card-btns">
+                <button class="scene-card-btn live"  title="Go Live"  onclick="window.activateScene('${id}')">▶</button>
+                <button class="scene-card-btn edit"  title="Edit"     onclick="window.editScene('${id}')">✎</button>
+                <button class="scene-card-btn del"   title="Delete"   onclick="window.deleteScene('${id}')">🗑</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function _updateTokenRoster() {
+    const roster = document.getElementById('map-token-roster');
+    if (!roster) return;
+    roster.innerHTML = '';
+    sortedCombatants.forEach(c => {
+        const onMap = !!mapEngine?.S.tokens[c.name];
+        const row = document.createElement('div');
+        row.className = 'map-token-row';
+        row.innerHTML = `
+            <img src="${c.portrait||'assets/logo.png'}" style="width:22px;height:22px;border-radius:50%;border:2px solid ${c.pColor||'#fff'}">
+            <span style="flex:1;font-size:11px;color:white;">${c.name}</span>
+            ${onMap
+                ? `<button onclick="window._mapEng?.removeToken('${c.name}')" class="map-dash-btn danger">✕</button>`
+                : `<button onclick="window._mapEng?.startPlacing('${c.name}')" class="map-dash-btn">📍</button>`
+            }
+        `;
+        roster.appendChild(row);
+    });
 }
 
 function _initDashDrag() {
@@ -584,26 +641,100 @@ function _updateCalibDisplay() {
     if (oyEl) oyEl.textContent = cfg.oy;
 }
 
-window.openMap = () => {
-    document.getElementById('map-overlay').classList.remove('map-hidden');
-    if (!mapEngine) return;
-    // Lazy Firebase connect: only subscribe on first open, well after WS handshake
+window.openSceneWizard = (existingData=null) => {
+    if (!sceneWizard) {
+        sceneWizard = new SceneWizard({
+            uid, cName, activeRoom: db.getActiveRoom(), db,
+            players: sortedCombatants.reduce((a,c)=>{a[c.name]=c;return a;},{}),
+            onSaved: (id, data) => {
+                console.log('Scene saved:', id);
+            },
+            onGoLive: (id, data) => {
+                activeSceneId = id;
+                _activateMapCanvas(data);
+            },
+        });
+    } else {
+        // Refresh players
+        sceneWizard.players = sortedCombatants.reduce((a,c)=>{a[c.name]=c;return a;},{});
+    }
+    sceneWizard.open(existingData);
+};
+
+window.activateScene = (sceneId) => {
+    if (!uid) return;
+    // Load from user vault then go live
+    db.listenToUserScenes(uid, (scenes) => {
+        const s = scenes?.[sceneId];
+        if (!s) return;
+        activeSceneId = sceneId;
+        // Push to room
+        db.setMapCfg(db.getActiveRoom(), { ...s.config, bgUrl: s.bgUrl||'' });
+        if (s.atmosphere) db.setAtmosphere(db.getActiveRoom(), s.atmosphere);
+        db.setActiveScene(db.getActiveRoom(), sceneId);
+        _activateMapCanvas(s);
+        document.querySelectorAll('.scene-gallery-card').forEach(c => c.classList.remove('active'));
+        document.getElementById('sgc-'+sceneId)?.classList.add('active');
+    });
+};
+
+window.editScene = (sceneId) => {
+    if (!uid) return;
+    db.listenToUserScenes(uid, (scenes) => {
+        const s = scenes?.[sceneId];
+        if (!s) return;
+        window.openSceneWizard({ ...s, _id: sceneId });
+    });
+};
+
+window.deleteScene = (sceneId) => {
+    if (!uid || !confirm('Delete this scene?')) return;
+    db.deleteSceneFromVault(uid, sceneId);
+    if (activeSceneId === sceneId) window.deactivateScene();
+};
+
+window.deactivateScene = () => {
+    activeSceneId = null;
+    const container = document.getElementById('map-canvas-container');
+    container?.classList.remove('map-bg-active');
+    container?.classList.add('map-bg-hidden');
+    document.getElementById('dice-arena')?.classList.remove('map-active');
+    document.getElementById('map-toolbar').style.display = 'none';
+    document.getElementById('map-token-roster-popup').style.display = 'none';
+    document.querySelectorAll('.scene-gallery-card').forEach(c => c.classList.remove('active'));
+};
+
+window.toggleScenePanel = () => {
+    const panel = document.getElementById('scene-panel');
+    const chev  = document.getElementById('scene-mgr-chevron');
+    const open  = panel.style.display === 'none';
+    panel.style.display = open ? 'flex' : 'none';
+    if (chev) chev.textContent = open ? '▲' : '▼';
+};
+
+function _activateMapCanvas(sceneData) {
+    if (!mapEngine) initMap();
     if (!mapEngine._fbConnected) {
         mapEngine._fbConnected = true;
         mapEngine.setupFirebase(db);
     }
-    // Sync players & turn state
+    if (sceneData.bgUrl) mapEngine.loadBgUrl(sceneData.bgUrl);
+    if (sceneData.atmosphere) mapEngine.setAtmosphere(sceneData.atmosphere);
+    const container = document.getElementById('map-canvas-container');
+    container?.classList.remove('map-bg-hidden');
+    container?.classList.add('map-bg-active');
+    document.getElementById('dice-arena')?.classList.add('map-active');
+    if (userRole === 'dm') {
+        document.getElementById('map-toolbar').style.display = 'flex';
+    }
+    // Sync players & turn
     const playerMap = sortedCombatants.reduce((acc,c)=>{acc[c.name]=c;return acc;},{});
     mapEngine.setPlayers(playerMap);
     mapEngine.setActiveTurn(currentActiveTurn, sortedCombatants);
-    mapEngine._updateDashTokenList?.();
-};
-window.closeMap = () => document.getElementById('map-overlay').classList.add('map-hidden');
-window.toggleMap = () => {
-    const el = document.getElementById('map-overlay');
-    el.classList.contains('map-hidden') ? window.openMap() : window.closeMap();
-};
+}
 
+// =====================================================================
+// DB LISTENERS
 // =====================================================================
 // DB LISTENERS
 // =====================================================================
@@ -636,7 +767,7 @@ function setupDatabaseListeners() {
         } else { sortedCombatants = []; }
         updateInitiativeUI(playersData, userRole, activeRoller, currentActiveTurn, sortedCombatants);
         // Sync to map engine
-        if (mapEngine) { mapEngine.setPlayers(playersData||{}); mapEngine._updateDashTokenList?.(); }
+        if (mapEngine) { mapEngine.setPlayers(playersData||{}); _updateTokenRoster(); }
     });
 
     // ── Sprint 4: YOUR TURN detection ──
