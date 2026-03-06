@@ -1,5 +1,4 @@
 // firebaseService.js - Database and Authentication communication management
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast, update, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -19,16 +18,19 @@ export function setRoom(roomCode) {
 // ==========================================
 // User Authentication & Vault
 // ==========================================
-
-export function loginWithGoogle() { return signInWithPopup(auth, googleProvider); }
-export function logoutUser() { return signOut(auth); }
-export function listenToAuthState(callback) { onAuthStateChanged(auth, (user) => callback(user)); }
-
+export function loginWithGoogle() {
+    return signInWithPopup(auth, googleProvider);
+}
+export function logoutUser() {
+    return signOut(auth);
+}
+export function listenToAuthState(callback) {
+    onAuthStateChanged(auth, (user) => callback(user));
+}
 export function saveCharacterToVault(uid, charData) {
     const newCharRef = push(ref(db, `users/${uid}/characters`));
     return set(newCharRef, charData);
 }
-
 export function listenToUserCharacters(uid, callback) {
     onValue(ref(db, `users/${uid}/characters`), (snapshot) => {
         callback(snapshot.val());
@@ -39,11 +41,33 @@ export function listenToUserCharacters(uid, callback) {
 // Game Room Functions (Now Isolated by activeRoom)
 // ==========================================
 
-export function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats) {
+// FIX: Preserve current HP and statuses if player reconnects mid-session
+export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats) {
     const playerRef = ref(db, `rooms/${activeRoom}/players/${cName}`);
+
+    // Check if player already exists in the room (reconnect case)
+    const existing = await get(playerRef);
+    let preservedHp = null;
+    let preservedStatuses = null;
+    if (existing.exists()) {
+        const existingData = existing.val();
+        // Restore HP + statuses that were set during the session
+        preservedHp = existingData.hp ?? null;
+        preservedStatuses = existingData.statuses ?? null;
+    }
+
     const dataToSet = { pName, pColor, userRole, portrait: charPortrait, score: 0, ...stats };
+
+    // Override maxHp-reset with the preserved current HP
+    if (preservedHp !== null) {
+        dataToSet.hp = preservedHp;
+    }
+    if (preservedStatuses !== null) {
+        dataToSet.statuses = preservedStatuses;
+    }
+
     set(playerRef, dataToSet);
-    
+
     if (userRole !== 'npc') {
         onDisconnect(playerRef).remove();
         const onlineRef = ref(db, `rooms/${activeRoom}/online/${pName}_${cName}`);
@@ -52,12 +76,22 @@ export function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, sta
     }
 }
 
-export function saveRollToDB(rollData) { push(ref(db, `rooms/${activeRoom}/rolls`), rollData); }
-export async function getPlayerData(cName) { const snap = await get(ref(db, `rooms/${activeRoom}/players/${cName}`)); return snap.val(); }
-export function updatePlayerHPInDB(cName, newHp) { update(ref(db, `rooms/${activeRoom}/players/${cName}`), { hp: newHp }); }
-export function updatePlayerStatusesInDB(cName, statuses) { update(ref(db, `rooms/${activeRoom}/players/${cName}`), { statuses }); }
-export function updatePlayerVisibilityInDB(cName, isHidden) { update(ref(db, `rooms/${activeRoom}/players/${cName}`), { isHidden: isHidden }); }
-
+export function saveRollToDB(rollData) {
+    push(ref(db, `rooms/${activeRoom}/rolls`), rollData);
+}
+export async function getPlayerData(cName) {
+    const snap = await get(ref(db, `rooms/${activeRoom}/players/${cName}`));
+    return snap.val();
+}
+export function updatePlayerHPInDB(cName, newHp) {
+    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { hp: newHp });
+}
+export function updatePlayerStatusesInDB(cName, statuses) {
+    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { statuses });
+}
+export function updatePlayerVisibilityInDB(cName, isHidden) {
+    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { isHidden: isHidden });
+}
 export async function resetInitiativeInDB() {
     remove(ref(db, `rooms/${activeRoom}/initiative`));
     const snap = await get(ref(db, `rooms/${activeRoom}/players`));
@@ -66,15 +100,17 @@ export async function resetInitiativeInDB() {
         Object.keys(players).forEach(n => update(ref(db, `rooms/${activeRoom}/players/${n}`), { score: 0 }));
     }
 }
-
-export async function getCombatStatus() { const snap = await get(ref(db, `rooms/${activeRoom}/combat_active`)); return snap.val() || false; }
-export function setCombatStatus(isActive) { set(ref(db, `rooms/${activeRoom}/combat_active`), isActive); }
-
+export async function getCombatStatus() {
+    const snap = await get(ref(db, `rooms/${activeRoom}/combat_active`));
+    return snap.val() || false;
+}
+export function setCombatStatus(isActive) {
+    set(ref(db, `rooms/${activeRoom}/combat_active`), isActive);
+}
 export function setPlayerInitiativeInDB(cName, pName, score, pColor) {
     update(ref(db, `rooms/${activeRoom}/players/${cName}`), { score: score });
     set(ref(db, `rooms/${activeRoom}/initiative/${cName}`), { score: score, color: pColor, playerName: pName });
 }
-
 export function removePlayerFromDB(cName) {
     remove(ref(db, `rooms/${activeRoom}/players/${cName}`));
     remove(ref(db, `rooms/${activeRoom}/initiative/${cName}`));
@@ -83,17 +119,23 @@ export function removePlayerFromDB(cName) {
 // ==========================================
 // Listener Functions (Now Isolated by activeRoom)
 // ==========================================
-
-export function listenToCombatStatus(callback) { onValue(ref(db, `rooms/${activeRoom}/combat_active`), (snap) => callback(snap.val())); }
-export function listenToPlayerInitiative(cName, callback) { onValue(ref(db, `rooms/${activeRoom}/initiative/${cName}`), (snap) => callback(snap.exists()), { onlyOnce: true }); }
-export function listenToPlayers(callback) { onValue(ref(db, `rooms/${activeRoom}/players`), (snapshot) => callback(snapshot.val())); }
-export function listenToNewRolls(callback) { onChildAdded(query(ref(db, `rooms/${activeRoom}/rolls`), limitToLast(1)), (snapshot) => callback(snapshot.val())); }
+export function listenToCombatStatus(callback) {
+    onValue(ref(db, `rooms/${activeRoom}/combat_active`), (snap) => callback(snap.val()));
+}
+export function listenToPlayerInitiative(cName, callback) {
+    onValue(ref(db, `rooms/${activeRoom}/initiative/${cName}`), (snap) => callback(snap.exists()), { onlyOnce: true });
+}
+export function listenToPlayers(callback) {
+    onValue(ref(db, `rooms/${activeRoom}/players`), (snapshot) => callback(snapshot.val()));
+}
+export function listenToNewRolls(callback) {
+    onChildAdded(query(ref(db, `rooms/${activeRoom}/rolls`), limitToLast(1)), (snapshot) => callback(snapshot.val()));
+}
 export async function deleteCharacterFromVault(uid, charId) {
     const dbInstance = getDatabase();
     const charRef = ref(dbInstance, `users/${uid}/characters/${charId}`);
     await remove(charRef);
 }
-
 export async function updateCharacterInVault(uid, charId, charData) {
     const dbInstance = getDatabase();
     const charRef = ref(dbInstance, `users/${uid}/characters/${charId}`);
