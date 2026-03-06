@@ -9,9 +9,10 @@ const DEF_PPS     = 64;          // default pixels-per-square
 const MIN_PPS     = 16;
 const MAX_PPS     = 200;
 const FOW_ALPHA   = 0.88;
-const GRID_NORMAL = 'rgba(200,200,200,0.18)';
-const GRID_LOCKED = 'rgba(80,200,255,0.30)';
-const GRID_CALIB  = 'rgba(255,220,60,0.50)';
+const GRID_NORMAL   = 'rgba(200,200,200,0.18)';
+const GRID_LOCKED   = 'rgba(20,20,20,0.45)';   // thin black after approval
+const GRID_CALIB    = 'rgba(255,220,60,0.50)';
+const GRID_PHANTOM  = 'rgba(50,230,100,0.75)';  // vivid green phantom
 const OBS_FILL    = 'rgba(160,0,0,0.55)';
 const TRIG_FILL   = 'rgba(255,180,0,0.40)';
 const TRIG_FIRED  = 'rgba(255,80,0,0.70)';
@@ -35,6 +36,7 @@ function lerp(a,b,t){ return a+(b-a)*t; }
 // ── MapEngine class ──────────────────────────────────────────────────
 export class MapEngine {
   constructor(canvas, fowCanvas, opts={}) {
+    this.localOnly  = opts.localOnly || false; // wizard: no db needed
     this.cv  = canvas;
     this.ctx = canvas.getContext('2d');
     this.fw  = fowCanvas;
@@ -174,11 +176,14 @@ export class MapEngine {
     this._rPath();
     this._rRuler();
     this._rAoe();
+    this._rPhantomGrid(); // top layer in world space
 
     ctx.restore();
 
     // FOW (screen-space composite)
-    if(this.userRole!=='dm') this._rFow();
+    const _m=this.L.mode;
+    if(_m==='wizFog'||_m==='wizFogHide') this._rWizFog();
+    else if(this.userRole!=='dm') this._rFow();
     else this._rFowDM();
 
     // Weather overlay (screen-space)
@@ -204,6 +209,7 @@ export class MapEngine {
 
   // ── Grid ────────────────────────────────────────────────────────────
   _rGrid(){
+    if(this.L.mode==='phantom') return; // phantom drawn separately as top layer
     const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh,locked}=this.S.cfg;
     const m=this.L.mode;
     ctx.strokeStyle = m==='calibrate' ? GRID_CALIB : locked ? GRID_LOCKED : GRID_NORMAL;
@@ -440,6 +446,58 @@ export class MapEngine {
     this.ctx.drawImage(fw,0,0);
   }
 
+
+  // ── Phantom green grid — wizard step 2 ──────────────────────────────
+  // Rendered as the top layer in world space (inside save/restore block)
+  _rPhantomGrid(){
+    if(this.L.mode!=='phantom') return;
+    const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh}=this.S.cfg;
+    const cols=mw||30, rows=mh||20;
+    // Dark tint behind grid
+    ctx.fillStyle='rgba(0,0,0,0.18)';
+    ctx.fillRect(ox,oy,cols*pps,rows*pps);
+    // Vivid green grid lines
+    ctx.save();
+    ctx.strokeStyle=GRID_PHANTOM;
+    ctx.lineWidth=2/this.vs;
+    ctx.shadowColor='rgba(40,255,90,0.55)';
+    ctx.shadowBlur=6/this.vs;
+    ctx.beginPath();
+    for(let x=0;x<=cols;x++){ const px=ox+x*pps; ctx.moveTo(px,oy); ctx.lineTo(px,oy+rows*pps); }
+    for(let y=0;y<=rows;y++){ const py=oy+y*pps; ctx.moveTo(ox,py); ctx.lineTo(ox+cols*pps,py); }
+    ctx.stroke();
+    // Green dots at every intersection
+    ctx.fillStyle='rgba(60,255,110,0.90)';
+    ctx.shadowColor='rgba(40,255,90,0.7)';
+    ctx.shadowBlur=4/this.vs;
+    const dr=2.5/this.vs;
+    for(let x=0;x<=cols;x++) for(let y=0;y<=rows;y++){
+      ctx.beginPath(); ctx.arc(ox+x*pps,oy+y*pps,dr,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ── Wizard fog — thick grey-white covering unrevealed tiles ──────────
+  // Rendered in screen space (after ctx.restore) using viewport transform
+  _rWizFog(){
+    const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh}=this.S.cfg;
+    ctx.save();
+    ctx.translate(this.vx,this.vy);
+    ctx.scale(this.vs,this.vs);
+    const cols=mw||30, rows=mh||20;
+    for(let gx=0;gx<cols;gx++) for(let gy=0;gy<rows;gy++){
+      if(!this.S.fog[ck(gx,gy)]){
+        const px=ox+gx*pps, py=oy+gy*pps;
+        ctx.fillStyle='rgba(205,212,218,0.94)';
+        ctx.fillRect(px,py,pps,pps);
+        // Inner vignette for depth
+        ctx.fillStyle='rgba(160,168,175,0.30)';
+        ctx.fillRect(px+2,py+2,pps-4,pps-4);
+      }
+    }
+    ctx.restore();
+  }
+
   // ── FOW ghost for DM ─────────────────────────────────────────────────
   _rFowDM(){
     const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh}=this.S.cfg;
@@ -547,7 +605,9 @@ export class MapEngine {
     } else if(a.ambientLight==='dim'){
       ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.fillRect(0,0,W,H);
     }
-    this._dirty(); // keep animating
+    // Only keep animating for weather with actual animation (rain/snow)
+    const _wa=this.S.atmosphere?.weather;
+    if(_wa==='light_rain'||_wa==='heavy_rain'||_wa==='blizzard'||_wa==='sandstorm') this._dirty();
   }
 
   _rRain(ctx,W,H,count,now,alpha,col){
@@ -680,10 +740,10 @@ export class MapEngine {
     if(isDM&&m==='trigger'){
       this._placeTrigger(gx,gy); return;
     }
-    if(isDM&&m==='fogReveal'){
+    if(isDM&&(m==='fogReveal'||m==='wizFog')){
       this.L.painting=true; this._revealCell(gx,gy); return;
     }
-    if(isDM&&m==='fogHide'){
+    if(isDM&&(m==='fogHide'||m==='wizFogHide')){
       this.L.painting=true; this._hideCell(gx,gy); return;
     }
 
@@ -699,7 +759,7 @@ export class MapEngine {
     }
 
     // Default pan
-    if(m==='view'||m==='calibrate'){
+    if(m==='view'||m==='calibrate'||m==='phantom'){
       this.L.pan={on:true,sx,sy,vx0:this.vx,vy0:this.vy};
     }
   }
@@ -722,8 +782,8 @@ export class MapEngine {
     if(this.L.painting&&isDM){
       const m=this.L.mode;
       if(m==='obstacle')  this._paintObs(gx,gy);
-      if(m==='fogReveal') this._revealCell(gx,gy);
-      if(m==='fogHide')   this._hideCell(gx,gy);
+      if(m==='fogReveal'||m==='wizFog')     this._revealCell(gx,gy);
+      if(m==='fogHide'  ||m==='wizFogHide') this._hideCell(gx,gy);
     }
 
     if(this.L.drag){
@@ -844,14 +904,24 @@ export class MapEngine {
 
   // ── DM tools ───────────────────────────────────────────────────────────
   _paintObs(gx,gy){
-    if(!this.db) return;
     const key=ck(gx,gy);
+    if(this.localOnly){
+      if(this.L.tool==='erase') delete this.S.obstacles[key];
+      else this.S.obstacles[key]=true;
+      this._dirty(); return;
+    }
+    if(!this.db) return;
     this.db.setObstacle(this.activeRoom,this.S.activeScene,key,this.L.tool==='paint'?true:null);
   }
 
   _placeTrigger(gx,gy){
-    if(!this.db) return;
     const key=ck(gx,gy);
+    if(this.localOnly){
+      if(this.S.triggers[key]){ delete this.S.triggers[key]; this._dirty(); return; }
+      this.L.pendingTrigger={gx,gy,key};
+      this._showTriggerForm(gx,gy); return;
+    }
+    if(!this.db) return;
     const existing=this.S.triggers[key];
     if(existing){ this.db.setTrigger(this.activeRoom,this.S.activeScene,key,null); return; }
     // Store pending placement, show inline confirm UI
@@ -887,7 +957,10 @@ export class MapEngine {
     document.getElementById('map-trigger-confirm').onclick=()=>{
       const label=(input?.value.trim())||'Trap';
       const pt=this.L.pendingTrigger;
-      if(pt) this.db.setTrigger(this.activeRoom,this.S.activeScene,pt.key,{label,fired:false});
+      if(pt){
+        if(this.localOnly){ this.S.triggers[pt.key]={label,fired:false}; this._dirty(); }
+        else if(this.db)   { this.db.setTrigger(this.activeRoom,this.S.activeScene,pt.key,{label,fired:false}); }
+      }
       this.L.pendingTrigger=null;
       form.style.display='none';
     };
@@ -902,16 +975,18 @@ export class MapEngine {
     });
   }
 
-  _revealCell(gx,gy,r=2){
-    if(!this.db) return;
+  _revealCell(gx,gy,r=1){
     const cells={};
     for(let dx=-r;dx<=r;dx++) for(let dy=-r;dy<=r;dy++){
       if(cheb(0,0,dx,dy)<=r) cells[ck(gx+dx,gy+dy)]=true;
     }
+    if(this.localOnly){ Object.assign(this.S.fog,cells); this._dirty(); return; }
+    if(!this.db) return;
     this.db.revealFogCells(this.activeRoom,this.S.activeScene,cells);
   }
 
   _hideCell(gx,gy){
+    if(this.localOnly){ delete this.S.fog[ck(gx,gy)]; this._dirty(); return; }
     if(!this.db) return;
     this.db.hideFogCell(this.activeRoom,this.S.activeScene,ck(gx,gy));
   }
