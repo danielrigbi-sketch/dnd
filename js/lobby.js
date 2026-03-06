@@ -1,8 +1,8 @@
 // lobby.js - Welcome screen and Authentication Controller
 
-import * as db from "./firebaseService.js?v=112";
-import { startGame } from "./app.js?v=112";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=112";
+import * as db from "./firebaseService.js?v=113";
+import { startGame } from "./app.js?v=113";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=113";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -17,6 +17,7 @@ langToggleBtn.onclick = () => {
     }
 };
 
+// DOM Elements
 const authScreen = document.getElementById('auth-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
 const loginBtn = document.getElementById('google-login-btn');
@@ -30,6 +31,9 @@ const builderModal = document.getElementById('char-builder-modal');
 const closeBuilderBtn = document.getElementById('close-builder-btn');
 const saveCharBtn = document.getElementById('save-char-btn');
 const vaultList = document.getElementById('vault-list');
+
+// THE FIX: Added the missing button declaration!
+const newCharBtn = document.getElementById('new-char-btn');
 
 const addAttackBtn = document.getElementById('add-custom-attack-btn');
 const attacksList = document.getElementById('custom-attacks-list');
@@ -151,11 +155,19 @@ function renderVault(characters) {
         const raceStr = c.race || "";
         const classStr = c.class || "";
         
-        const hasHebrew = /[\u0590-\u05FF]/;
-        const displayRace = hasHebrew.test(raceStr) ? raceStr : t("race_" + raceStr.toLowerCase());
-        const displayClass = hasHebrew.test(classStr) ? classStr : t("class_" + classStr.toLowerCase());
+        // Bulletproof Translation Fallback
+        let displayRace = raceStr;
+        if (raceStr) {
+            let translated = t("race_" + raceStr.toLowerCase());
+            displayRace = translated !== "race_" + raceStr.toLowerCase() ? translated : raceStr;
+        }
 
-        // Rich Vault Data
+        let displayClass = classStr;
+        if (classStr) {
+            let translated = t("class_" + classStr.toLowerCase());
+            displayClass = translated !== "class_" + classStr.toLowerCase() ? translated : classStr;
+        }
+
         card.innerHTML = `
             <div class="vault-card-actions">
                 <button class="vault-action-btn edit" data-action="edit" data-id="${charId}" title="ערוך">✏️</button>
@@ -174,7 +186,6 @@ function renderVault(characters) {
         vaultList.appendChild(card);
     });
 
-    // Vault Actions Listeners
     document.querySelectorAll('.vault-action-btn').forEach(btn => {
         btn.onclick = async (e) => {
             e.stopPropagation();
@@ -199,7 +210,6 @@ function renderVault(characters) {
             const roomCodeInput = document.getElementById('room-code-input');
             const roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "";
             
-            // Vault 2.0 Feature: Block empty rooms
             if(!roomCode) {
                 alert(t("alert_no_room_code"));
                 return;
@@ -236,13 +246,23 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-ranged-dmg').value = c.rangedDmg || "1d6";
     document.getElementById('cb-color').value = c.color || "#3498db";
     
-    // Set Portrait
     selectedPortrait = c.portrait || "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
     if(previewImg) previewImg.src = selectedPortrait;
-    switchPortraitTab(tabUrl, areaUrl); // Default to URL view on edit for clarity
-    if(inputUrl) inputUrl.value = selectedPortrait;
     
-    // Load Custom Attacks
+    // Check if portrait is a URL or Data URI (File) to open the correct tab
+    if (selectedPortrait.startsWith("data:image")) {
+        switchPortraitTab(tabFile, areaFile);
+    } else if (!selectedPortrait.includes("dicebear.com/8.x/adventurer")) {
+        switchPortraitTab(tabUrl, areaUrl);
+        if(inputUrl) inputUrl.value = selectedPortrait;
+    } else {
+        switchPortraitTab(tabPreset, areaPreset);
+        document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.src === selectedPortrait) btn.classList.add('active');
+        });
+    }
+    
     if (attacksList) attacksList.innerHTML = '';
     if (c.customAttacks && c.customAttacks.length > 0) {
         c.customAttacks.forEach(atk => {
@@ -277,6 +297,8 @@ if(newCharBtn) {
         switchPortraitTab(tabPreset, areaPreset);
         selectedPortrait = "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
         if(previewImg) previewImg.src = selectedPortrait;
+        document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.builder-portrait-btn').classList.add('active'); // default first
         
         if (attacksList) attacksList.innerHTML = '';
     };
