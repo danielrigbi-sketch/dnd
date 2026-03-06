@@ -1,7 +1,7 @@
 // lobby.js - Welcome screen and Authentication Controller
-import * as db from "./firebaseService.js?v=121";
-import { startGame } from "./app.js?v=121";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=121";
+import * as db from "./firebaseService.js?v=122";
+import { startGame } from "./app.js?v=122";
+import { setLanguage, getLang, t, updateDOM } from "./i18n.js?v=122";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -207,8 +207,12 @@ function openBuilderForEdit(charId) {
         document.querySelectorAll('.builder-portrait-btn').forEach(btn => { btn.classList.remove('active'); if (btn.src === selectedPortrait) btn.classList.add('active'); });
     }
     if (attacksList) attacksList.innerHTML = '';
-    if (c.customAttacks && c.customAttacks.length > 0) {
-        c.customAttacks.forEach(atk => {
+    // Sprint 6: load spell slots
+    for (let lv = 1; lv <= 9; lv++) {
+        const el = document.getElementById('cb-spell-'+lv);
+        if (el) el.value = (c.spellSlots?.max?.[lv]) || '';
+    }
+    if (c.customAttacks && c.customAttacks.length > 0) {        c.customAttacks.forEach(atk => {
             const row = document.createElement('div');
             row.className = 'flex-row';
             row.innerHTML = `
@@ -324,6 +328,15 @@ if(saveCharBtn) {
                 ranged: parseInt(ranged), rangedDmg: rangedDmg,
                 customAttacks: customAttacks, color: color, portrait: selectedPortrait, createdAt: Date.now()
             };
+            // Sprint 6: spell slots (only include levels with > 0 max)
+            const spellMax = {};
+            for (let lv = 1; lv <= 9; lv++) {
+                const val = parseInt(document.getElementById('cb-spell-'+lv)?.value) || 0;
+                if (val > 0) spellMax[lv] = val;
+            }
+            if (Object.keys(spellMax).length > 0) {
+                charData.spellSlots = { max: spellMax, used: {} };
+            }
             saveCharBtn.innerText = t("cb_saving");
             saveCharBtn.disabled = true;
             try {
