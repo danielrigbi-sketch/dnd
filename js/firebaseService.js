@@ -109,3 +109,15 @@ export function updateDeathSavesInDB(cName, saves) {
 export function updateConcentrationInDB(cName, isConcentrating) {
     update(ref(db, `rooms/${activeRoom}/players/${cName}`), { concentrating: isConcentrating });
 }
+
+// ==========================================
+// Sprint 6 — Spell Slots
+// ==========================================
+export function updateSpellSlotsInDB(cName, slots) {
+    // slots = { max: {1:4,2:3,...}, used: {1:1,2:0,...} }
+    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { spellSlots: slots });
+}
+export function restoreAllSpellSlotsInDB(cName, maxSlots) {
+    // Restore used slots back to 0 (long rest)
+    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { 'spellSlots/used': {} });
+}
