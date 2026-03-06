@@ -1,9 +1,9 @@
 // app.js v120
-import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=125";
-import { getFlavorText } from "./messages.js?v=125";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=125";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=125";
-import * as db from "./firebaseService.js?v=125";
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=126";
+import { getFlavorText } from "./messages.js?v=126";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=126";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=126";
+import * as db from "./firebaseService.js?v=126";
 // getActiveRoom is available via db.getActiveRoom()
 
 // =====================================================================
@@ -99,10 +99,10 @@ window.rerollAllInitiatives = async () => {
     }
     db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
 };
-import { t } from "./i18n.js?v=125";
-import { npcDatabase } from "./monsters.js?v=125";
-import { MapEngine } from "./mapEngine.js?v=125";
-import { SceneWizard } from "./sceneWizard.js?v=125";
+import { t } from "./i18n.js?v=126";
+import { npcDatabase } from "./monsters.js?v=126";
+import { MapEngine } from "./mapEngine.js?v=126";
+import { SceneWizard } from "./sceneWizard.js?v=126";
 
 // =====================================================================
 // GLOBALS
@@ -479,9 +479,11 @@ function initMap() {
     };
 }
 
+let _sceneUnsub = null;
 function _initSceneManager() {
     if (!uid) return;
-    db.listenToUserScenes(uid, (scenes) => {
+    if (_sceneUnsub) _sceneUnsub(); // remove old listener
+    _sceneUnsub = db.listenToUserScenes(uid, (scenes) => {
         _renderSceneGallery(scenes || {});
     });
 }
@@ -665,30 +667,26 @@ window.openSceneWizard = (existingData=null) => {
     sceneWizard.open(existingData);
 };
 
-window.activateScene = (sceneId) => {
+window.activateScene = async (sceneId) => {
     if (!uid) return;
-    // Load from user vault then go live
-    db.listenToUserScenes(uid, (scenes) => {
-        const s = scenes?.[sceneId];
-        if (!s) return;
-        activeSceneId = sceneId;
-        // Push to room
-        db.setMapCfg(db.getActiveRoom(), { ...s.config, bgUrl: s.bgUrl||'' });
-        if (s.atmosphere) db.setAtmosphere(db.getActiveRoom(), s.atmosphere);
-        db.setActiveScene(db.getActiveRoom(), sceneId);
-        _activateMapCanvas(s);
-        document.querySelectorAll('.scene-gallery-card').forEach(c => c.classList.remove('active'));
-        document.getElementById('sgc-'+sceneId)?.classList.add('active');
-    });
+    const scenes = await db.getUserScenesOnce(uid);
+    const s = scenes?.[sceneId];
+    if (!s) return;
+    activeSceneId = sceneId;
+    db.setMapCfg(db.getActiveRoom(), { ...s.config, bgUrl: s.bgUrl||'' });
+    if (s.atmosphere) db.setAtmosphere(db.getActiveRoom(), s.atmosphere);
+    db.setActiveScene(db.getActiveRoom(), sceneId);
+    _activateMapCanvas(s);
+    document.querySelectorAll('.scene-gallery-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('sgc-'+sceneId)?.classList.add('active');
 };
 
-window.editScene = (sceneId) => {
+window.editScene = async (sceneId) => {
     if (!uid) return;
-    db.listenToUserScenes(uid, (scenes) => {
-        const s = scenes?.[sceneId];
-        if (!s) return;
-        window.openSceneWizard({ ...s, _id: sceneId });
-    });
+    const scenes = await db.getUserScenesOnce(uid);
+    const s = scenes?.[sceneId];
+    if (!s) return;
+    window.openSceneWizard({ ...s, _id: sceneId });
 };
 
 window.deleteScene = (sceneId) => {
