@@ -1,9 +1,9 @@
 // app.js v120
-import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=124";
-import { getFlavorText } from "./messages.js?v=124";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=124";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=124";
-import * as db from "./firebaseService.js?v=124";
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=125";
+import { getFlavorText } from "./messages.js?v=125";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=125";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=125";
+import * as db from "./firebaseService.js?v=125";
 // getActiveRoom is available via db.getActiveRoom()
 
 // =====================================================================
@@ -99,9 +99,9 @@ window.rerollAllInitiatives = async () => {
     }
     db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
 };
-import { t } from "./i18n.js?v=124";
-import { npcDatabase } from "./monsters.js?v=124";
-import { MapEngine } from "./mapEngine.js?v=124";
+import { t } from "./i18n.js?v=125";
+import { npcDatabase } from "./monsters.js?v=125";
+import { MapEngine } from "./mapEngine.js?v=125";
 
 // =====================================================================
 // GLOBALS
@@ -502,8 +502,12 @@ function _initDashControls() {
             const cursors={view:'cursor-grab',obstacle:'cursor-paint',trigger:'cursor-paint',
                            fogReveal:'cursor-reveal',fogHide:'cursor-hide',ruler:'cursor-ruler',aoe:'cursor-ruler',calibrate:'cursor-grab'};
             const container=document.getElementById('map-canvas-container');
-            container.className='';
-            if(cursors[mode]) container.classList.add(cursors[mode]);
+            if(container){
+                // Remove only cursor classes, preserve layout classes
+                ['cursor-grab','cursor-paint','cursor-reveal','cursor-hide','cursor-ruler','cursor-place']
+                    .forEach(c=>container.classList.remove(c));
+                if(cursors[mode]) container.classList.add(cursors[mode]);
+            }
         };
     });
     // Tool buttons
