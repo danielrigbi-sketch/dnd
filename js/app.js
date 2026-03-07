@@ -1023,41 +1023,58 @@ function setupDatabaseListeners() {
 }
 
 // ── Credits Modal ────────────────────────────────────────────────────────────
-const _CREDITS_LIBS = [
-    { name: 'Firebase', license: 'Apache 2.0', url: 'https://firebase.google.com/', desc: 'Realtime database, authentication, and cloud storage', color: '#F5820D' },
-    { name: 'Vite', license: 'MIT', url: 'https://vitejs.dev/', desc: 'Build toolchain and hot-module replacement', color: '#646CFF' },
-    { name: 'Open5e API / Dataset', license: 'CC-BY 4.0 + OGL 1.0a', url: 'https://open5e.com/', desc: 'SRD monster, spell, and item data', color: '#E74C3C', required: true },
-    { name: 'PixiJS', license: 'MIT', url: 'https://pixijs.com/', desc: 'WebGL 2D rendering engine', color: '#E72264' },
-    { name: 'Rot.js', license: 'BSD-3-Clause', url: 'https://github.com/ondras/rot.js', desc: 'FOV algorithms and procedural map generation', color: '#9B59B6' },
-    { name: 'Kenney Assets', license: 'CC0 Public Domain', url: 'https://kenney.nl/', desc: 'Tileset art and UI components', color: '#E67E22' },
-    { name: 'Game-Icons.net', license: 'CC-BY 3.0 ★ Required', url: 'https://game-icons.net/', desc: 'Icons by Lorc, Delapouite & contributors', color: '#E74C3C', required: true },
-    { name: 'EasyStar.js', license: 'MIT', url: 'https://github.com/prettymuchbryce/easystarjs', desc: 'A* grid pathfinding', color: '#3498DB' },
-    { name: "Watabou's One Page Dungeon", license: 'MIT / CC-BY', url: 'https://github.com/watabou/one-page-dungeon', desc: 'Procedural dungeon layout generator', color: '#27AE60' },
-    { name: 'Faker.js', license: 'MIT', url: 'https://fakerjs.dev/', desc: 'NPC name and lore generation', color: '#885522' },
+const _CREDITS = [
+    { n: 'Firebase', l: 'Apache 2.0', u: 'https://firebase.google.com/', d: 'Realtime database, auth, cloud storage', c: '#F5820D' },
+    { n: 'Vite', l: 'MIT', u: 'https://vitejs.dev/', d: 'Build toolchain and hot-module replacement', c: '#646CFF' },
+    { n: 'Open5e API', l: 'CC-BY 4.0 + OGL 1.0a', u: 'https://open5e.com/', d: 'SRD monster, spell, and item data', c: '#E74C3C', req: true },
+    { n: 'PixiJS', l: 'MIT', u: 'https://pixijs.com/', d: 'WebGL 2D rendering engine', c: '#E72264' },
+    { n: 'Rot.js', l: 'BSD-3-Clause', u: 'https://github.com/ondras/rot.js', d: 'FOV algorithms and procedural map generation', c: '#9B59B6' },
+    { n: 'Kenney Assets', l: 'CC0 Public Domain', u: 'https://kenney.nl/', d: 'Tileset art and UI components', c: '#E67E22' },
+    { n: 'Game-Icons.net', l: 'CC-BY 3.0 (Required)', u: 'https://game-icons.net/', d: 'Icons by Lorc, Delapouite & contributors', c: '#E74C3C', req: true },
+    { n: 'EasyStar.js', l: 'MIT', u: 'https://github.com/prettymuchbryce/easystarjs', d: 'A* grid pathfinding', c: '#3498DB' },
+    { n: "Watabou's Dungeon", l: 'MIT / CC-BY', u: 'https://github.com/watabou/one-page-dungeon', d: 'Procedural dungeon layout generator', c: '#27AE60' },
+    { n: 'Faker.js', l: 'MIT', u: 'https://fakerjs.dev/', d: 'NPC name and lore generation', c: '#885522' },
 ];
+
+function _buildCreditCard(lib) {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;' + (lib.req ? 'border-left:3px solid #e74c3c;' : '');
+    const dot = document.createElement('div');
+    dot.style.cssText = 'min-width:8px;height:8px;border-radius:50%;background:' + lib.c + ';margin-top:5px;flex-shrink:0;';
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0;';
+    const row1 = document.createElement('div');
+    row1.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;';
+    const name = document.createElement('span');
+    name.style.cssText = 'color:white;font-weight:700;font-size:13px;';
+    name.textContent = lib.n;
+    const badge = document.createElement('span');
+    badge.style.cssText = 'background:' + lib.c + '22;border:1px solid ' + lib.c + '55;color:' + lib.c + ';font-size:10px;padding:2px 8px;border-radius:10px;white-space:nowrap;';
+    badge.textContent = lib.l;
+    row1.append(name, badge);
+    const desc = document.createElement('div');
+    desc.style.cssText = 'color:#aaa;font-size:12px;margin-top:3px;';
+    desc.textContent = lib.d;
+    const link = document.createElement('a');
+    link.href = lib.u; link.target = '_blank';
+    link.style.cssText = 'color:#3498db;font-size:11px;opacity:0.8;';
+    link.textContent = lib.u;
+    info.append(row1, desc, link);
+    div.append(dot, info);
+    return div;
+}
 
 window.openCredits = () => {
     const list = document.getElementById('credits-lib-list');
     if (list && !list.children.length) {
-        list.innerHTML = _CREDITS_LIBS.map(lib => `
-            <div style="display:flex; gap:12px; align-items:flex-start; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px 14px; ${lib.required ? 'border-left:3px solid #e74c3c;' : ''}">
-                <div style="min-width:8px; height:8px; border-radius:50%; background:${lib.color}; margin-top:5px;"></div>
-                <div style="flex:1; min-width:0;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-                        <span style="color:white; font-weight:700; font-size:13px;">${lib.name}</span>
-                        <span style="background:${lib.color}22; border:1px solid ${lib.color}55; color:${lib.color}; font-size:10px; padding:2px 8px; border-radius:10px; white-space:nowrap;">${lib.license}</span>
-                    </div>
-                    <div style="color:#aaa; font-size:12px; margin-top:3px;">${lib.desc}</div>
-                    <a href="${lib.url}" target="_blank" style="color:#3498db; font-size:11px; opacity:0.8;">${lib.url}</a>
-                </div>
-            </div>
-        `).join('');
+        _CREDITS.forEach(lib => list.appendChild(_buildCreditCard(lib)));
     }
     const m = document.getElementById('credits-modal');
-    if (m) { m.style.display = 'flex'; }
+    if (m) m.style.display = 'flex';
 };
 
-// Close on backdrop click
 document.addEventListener('click', (e) => {
-    if (e.target === document.getElementById('credits-modal')) window.openCredits && document.getElementById('credits-modal').style.display = 'none';
+    if (e.target === document.getElementById('credits-modal')) {
+        document.getElementById('credits-modal').style.display = 'none';
+    }
 });
