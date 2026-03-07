@@ -16,6 +16,19 @@ const authScreen = document.getElementById('auth-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
 const loginBtn = document.getElementById('google-login-btn');
 const logoutBtn = document.getElementById('logout-btn');
+
+// Wire the Google login button
+if (loginBtn) {
+    loginBtn.onclick = () => {
+        db.loginWithGoogle().catch(err => {
+            console.error('Login error:', err);
+            if (typeof showToast === 'function') showToast(t('alert_login_fail'), 'warning');
+        });
+    };
+}
+
+// On mobile, after a redirect sign-in, Firebase lands back here — pick up the result
+db.checkRedirectResult().catch(() => {});
 const userDisplayName = document.getElementById('user-display-name');
 const userEmail = document.getElementById('user-email');
 const userAvatar = document.getElementById('user-avatar');
