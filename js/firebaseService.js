@@ -1,6 +1,6 @@
 // firebaseService.js v120
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast, orderByKey, update, get } from "firebase/database";
 import { firebaseConfig } from "./constants.js";
 
@@ -38,7 +38,14 @@ export function setDmUid(roomCode, uid) {
 }
 
 
-export function loginWithGoogle()              { return signInWithPopup(auth, googleProvider); }
+// On mobile Safari, signInWithPopup is blocked — use redirect flow instead.
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+export function loginWithGoogle() {
+    if (isMobile) return signInWithRedirect(auth, googleProvider);
+    return signInWithPopup(auth, googleProvider);
+}
+// Call once on startup to pick up the result of a redirect sign-in.
+export function checkRedirectResult() { return getRedirectResult(auth); }
 export function logoutUser()                   { return signOut(auth); }
 export function listenToAuthState(callback)    { onAuthStateChanged(auth, user => callback(user)); }
 export function saveCharacterToVault(uid, d)   { return set(push(ref(db, `users/${uid}/characters`)), d); }
