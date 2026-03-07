@@ -1,3 +1,4 @@
+// vite.config.js — build 1772881715
 import { defineConfig } from 'vite';
 import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
