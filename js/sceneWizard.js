@@ -13,6 +13,7 @@ import { MapEngine } from './mapEngine.js';
 import { t, getLang } from './i18n.js';
 import { npcDatabase, parseCR, typeColor } from './monsters.js';
 import { fetchMonsters, open5eToNPC, normaliseType } from './open5e.js';
+import { generateDungeon, tilesToObstacleGrid, seedFromRoomCode } from './dungeonGenerator.js'; // E3-E
 
 // ── Image helpers ──────────────────────────────────────────────────────────────
 /** Convert a base64 data URL to a 300px wide JPEG thumbnail (base64 data URL) */
@@ -50,6 +51,9 @@ export class SceneWizard {
     this._monCRFilter = 'all';
     this._monTypes    = new Set();   // empty = show all types
     this._spawnedNPCs = [];          // [{key, name, uid}] — tracked for save step
+    this._dungeonGenerated = false;  // E3-E: true after Quick Dungeon generate
+    this._dungeonInfo      = '';     // E3-E: e.g. "M Dungeon — 8 rooms"
+    this._dungeonData      = null;   // E3-E: last generateDungeon() result
     // E1-B: Open5e state
     this._o5eResults  = null;        // cached page of Open5e results
     this._o5eLoading  = false;
@@ -229,7 +233,27 @@ export class SceneWizard {
           <div class="wiz-ok-badge">✓ ${t('wiz_l0_loaded')}</div>
           ${this._data.bgThumb ? `<img src="${this._data.bgThumb}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;margin-top:8px;border:1px solid rgba(241,196,15,0.3);">` : ''}
         `:''}
-        <div class="wiz-tip" style="margin-top:12px;">${t('wiz_l0_tip')}</div>`;
+        <div class="wiz-tip" style="margin-top:12px;">${t('wiz_l0_tip')}</div>
+
+        <div class="wiz-divider" style="margin-top:16px;">${t('wiz_or')}</div>
+        <div class="wiz-section">🗺 ${t('wiz_quick_dungeon')}</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <select id="wiz-dng-size" class="wiz-input" style="flex:1;">
+            <option value="S">S (24×16)</option>
+            <option value="M" selected>M (36×24)</option>
+            <option value="L">L (48×32)</option>
+          </select>
+          <select id="wiz-dng-style" class="wiz-input" style="flex:1;">
+            <option value="dungeon" selected>⛏ ${t('wiz_dng_dungeon')}</option>
+            <option value="cave">🌿 ${t('wiz_dng_cave')}</option>
+            <option value="fort">🏰 ${t('wiz_dng_fort')}</option>
+          </select>
+        </div>
+        <button id="wiz-gen-dungeon" class="wiz-btn" style="background:rgba(155,89,182,0.25);border-color:#9b59b6;color:#d7bde2;">
+          🎲 ${t('wiz_gen_dungeon_btn')}
+        </button>
+        ${this._dungeonGenerated ? `<div class="wiz-ok-badge" style="margin-top:6px;">✓ ${t('wiz_dungeon_ready')} — ${this._dungeonInfo||''}</div>` : ''}
+        `;
 
       // ──── Step 1: Phantom grid calibration ───────────────────────────
       case 1: return `
@@ -449,12 +473,53 @@ export class SceneWizard {
   }
 
   // ── Wire controls ──────────────────────────────────────────────────────
+  // E3-E: Generate dungeon and apply obstacle + fog grids
+  async _generateQuickDungeon() {
+    const size  = document.getElementById('wiz-dng-size')?.value  || 'M';
+    const style = document.getElementById('wiz-dng-style')?.value || 'dungeon';
+    const seed  = this._roomCode ? (parseInt(this._roomCode, 36) % 2147483647) : undefined;
+
+    const btn = document.getElementById('wiz-gen-dungeon');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+
+    try {
+      const dng = generateDungeon({ size, style, seed });
+      this._dungeonData = dng;
+
+      // Apply obstacle grid to map engine
+      const obsGrid = tilesToObstacleGrid(dng.tiles);
+      if (this._engine) {
+        this._engine.S.obstacles = obsGrid;
+        // Resize map to dungeon dimensions
+        this._engine.S.cfg = {
+          ...this._engine.S.cfg,
+          cols: dng.width,
+          rows: dng.height,
+        };
+        this._engine._dirty();
+      }
+
+      this._dungeonGenerated = true;
+      const roomCount = dng.rooms.length;
+      this._dungeonInfo = `${size} ${style} — ${roomCount > 0 ? roomCount + ' rooms' : 'organic cave'}`;
+      this._render();
+    } catch(e) {
+      console.error('Dungeon gen error:', e);
+      if (btn) { btn.disabled = false; btn.textContent = '🎲 Generate Dungeon'; }
+    }
+  }
+
   _wireStep() {
     const eng = this._engine;
     const cfg = this._data.config;
     const atm = this._data.atmosphere;
 
     // ── Step 0: Image ────────────────────────────────────────────────────
+    // E3-E: Quick Dungeon generate button
+    document.getElementById('wiz-gen-dungeon')?.addEventListener('click', () => {
+      this._generateQuickDungeon();
+    });
+
     document.getElementById('wiz-bg-load')?.addEventListener('click', () => {
       const url = document.getElementById('wiz-bg-url')?.value.trim();
       if (!url) return;
