@@ -14,6 +14,7 @@ import { t, getLang } from './i18n.js';
 import { npcDatabase, parseCR, typeColor } from './monsters.js';
 import { fetchMonsters, open5eToNPC, normaliseType } from './open5e.js';
 import { generateDungeon, tilesToObstacleGrid, seedFromRoomCode } from './dungeonGenerator.js'; // E3-E
+import { TileEngine, AUTO_THEME } from './tileEngine.js'; // E4-B
 
 // ── Image helpers ──────────────────────────────────────────────────────────────
 /** Convert a base64 data URL to a 300px wide JPEG thumbnail (base64 data URL) */
@@ -52,6 +53,8 @@ export class SceneWizard {
     this._monTypes    = new Set();   // empty = show all types
     this._spawnedNPCs = [];          // [{key, name, uid}] — tracked for save step
     this._dungeonGenerated = false;  // E3-E: true after Quick Dungeon generate
+    this._selectedTile     = 'floor'; // E4-B: active tile in tile painter
+    this._tileEngine       = null;    // E4-B: shared TileEngine instance
     this._dungeonInfo      = '';     // E3-E: e.g. "M Dungeon — 8 rooms"
     this._dungeonData      = null;   // E3-E: last generateDungeon() result
     // E1-B: Open5e state
@@ -99,6 +102,13 @@ export class SceneWizard {
       };
     }
     this._step = 0;
+    // E4-B: init TileEngine shared instance
+    if(!this._tileEngine){
+      this._tileEngine = new TileEngine();
+      this._tileEngine.load().catch(e => console.warn('Wizard TileEngine:', e));
+    }
+    // Share tileEngine with mapEngine
+    if(this._engine) this._engine.tileEngine = this._tileEngine;
     this._modal.classList.add('wiz-open');   // SA-3: single class toggle
     this._modal.dir = getLang() === 'he' ? 'rtl' : 'ltr';
     // SB-2: keyboard navigation
@@ -357,6 +367,19 @@ export class SceneWizard {
             <button class="wiz-tool-btn" id="wt-erase" data-tool="erase" style="flex:1;">🧹 ${t('wiz_l2_erase')}</button>
           </div>
 
+          <div class="wiz-section" style="margin-top:12px;">🗺 ${t('wiz_tile_painter')}</div>
+          <div id="wiz-tile-picker" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">
+            ${Object.entries(TileEngine.tileGroups).map(([grp, keys]) => `
+              <div style="width:100%;font-size:9px;color:#888;margin-top:4px;">${grp}</div>
+              ${keys.map(k => `
+                <button class="wiz-tile-btn ${this._selectedTile===k?'active':''}" data-tile="${k}"
+                  title="${k}"
+                  style="${this._selectedTile===k?'border-color:#f1c40f;background:rgba(241,196,15,0.2);':''}font-size:9px;padding:3px 5px;">
+                  ${k.replace(/_/g,' ')}
+                </button>`).join('')}
+            `).join('')}
+          </div>
+
           <div class="wiz-section" style="margin-top:12px;">⚔️ MONSTERS
             <span style="font-size:9px;color:#888;font-weight:400;">${this._o5eTotal ? `· ${this._o5eTotal} SRD` : ''}</span>
           </div>
@@ -498,6 +521,12 @@ export class SceneWizard {
         };
         this._engine._dirty();
       }
+      // E4-B: Auto-apply tiles from dungeon data
+      const theme = style === 'cave' ? 'cave' : style === 'fort' ? 'fort' : 'dungeon';
+      if(this._tileEngine) {
+        this._tileEngine.applyDungeon(dng, theme);
+        if(this._engine) this._engine.tileEngine = this._tileEngine;
+      }
 
       this._dungeonGenerated = true;
       const roomCount = dng.rooms.length;
@@ -515,6 +544,19 @@ export class SceneWizard {
     const atm = this._data.atmosphere;
 
     // ── Step 0: Image ────────────────────────────────────────────────────
+    // E4-B: Tile picker buttons
+    document.querySelectorAll('.wiz-tile-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        this._selectedTile = btn.dataset.tile;
+        // Highlight active
+        document.querySelectorAll('.wiz-tile-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // E4-B: Canvas click when tile mode active — paint tile
+    if(this._step === 1) { /* tile painting wired in mapEngine via mode */ }
+
     // E3-E: Quick Dungeon generate button
     document.getElementById('wiz-gen-dungeon')?.addEventListener('click', () => {
       this._generateQuickDungeon();

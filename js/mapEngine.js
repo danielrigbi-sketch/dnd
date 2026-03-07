@@ -6,6 +6,7 @@
 
 import { typeColor } from './monsters.js';
 import { FOV } from 'rot-js';  // E3-A: Recursive Shadowcasting FOV
+import { TileEngine } from './tileEngine.js';  // E4-A: Dungeon tile renderer
 
 // ── Constants ────────────────────────────────────────────────────────
 const FT_PER_SQ   = 5;
@@ -57,6 +58,8 @@ export class MapEngine {
     this.ctx = canvas.getContext('2d');
     this.fw  = fowCanvas;
     this.fc  = fowCanvas.getContext('2d');
+    this.tileEngine = new TileEngine();  // E4-A
+    this.tileEngine.load().catch(e => console.warn('TileEngine load:', e));
 
     this.cName      = opts.cName      || '';
     this.userRole   = opts.userRole   || 'player';
@@ -218,6 +221,11 @@ export class MapEngine {
     this._rPhantomGrid(); // top layer in world space
 
     ctx.restore();
+
+    // E4-A: Tile layer — drawn in world space, before FOW
+    if(this.tileEngine?.ready){
+      this.tileEngine.render(this.ctx, this.S.cfg, this.vx, this.vy, this.vs);
+    }
 
     // FOW (screen-space composite)
     const _m=this.L.mode;
