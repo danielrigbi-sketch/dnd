@@ -100,6 +100,8 @@ export class MapEngine {
       wx: null,       // {rain:[], snow:[], wisps:[]} — lazy-init on first draw
       // SD-2: fog reveal flash queue [{gx,gy,t}]
       fogRevQ: [],
+      // E3-B: currently visible cells for this frame (Set of "gx,gy" keys)
+      currentFov: new Set(),
       // SD-3: iris transition {start, phase:'open'|'close', cb}
       iris: null,
     };
@@ -477,13 +479,17 @@ export class MapEngine {
     ctx.restore();
   }
 
-  // ── FOW (player view) ─────────────────────────────────────────────────
+  // ── FOW (player view) — E3-B: three fog states ──────────────────────
+  // State 1 — Current FOV  : full brightness (token sees right now)
+  // State 2 — Previously seen: desaturated + 50% dark overlay (explored)
+  // State 3 — Never seen   : solid black (unexplored)
   _rFow(){
     const {fw,fc,cv}=this;
     const W=cv.width, H=cv.height;
     if(fw.width!==W||fw.height!==H){ fw.width=W; fw.height=H; }
     fc.clearRect(0,0,W,H);
-    // Dark fill
+
+    // Layer A — solid black base (never-seen)
     fc.fillStyle=`rgba(0,0,0,${FOW_ALPHA})`;
     fc.fillRect(0,0,W,H);
 
@@ -493,8 +499,8 @@ export class MapEngine {
     const {pps,ox,oy}=this.S.cfg;
     const half=pps/2;
 
-    // SD-2: Helper — punch a soft-feathered hole at grid cell center
-    const punchCell=(gx,gy,alpha=1)=>{
+    // Helper — punch a feathered hole with given alpha
+    const punchCell=(gx,gy,alpha)=>{
       const cx=ox+gx*pps+half, cy=oy+gy*pps+half;
       const r=pps*0.78;
       const g=fc.createRadialGradient(cx,cy,0,cx,cy,r);
@@ -505,19 +511,26 @@ export class MapEngine {
       fc.fillRect(cx-r,cy-r,r*2,r*2);
     };
 
-    // Revealed cells (feathered)
+    // E3-B: previously-seen cells — punch at 40% (leaves dark tinted overlay)
     Object.keys(this.S.fog).forEach(k=>{
-      const {gx,gy}=kp(k);
-      punchCell(gx,gy,1);
+      if(!this.L.currentFov.has(k)){
+        const {gx,gy}=kp(k);
+        punchCell(gx,gy,0.40); // revealed but out of current FOV
+      }
     });
 
-    // SD-2: Reveal flash — newly revealed cells glow bright white briefly
+    // E3-B: current FOV cells — punch fully transparent
+    this.L.currentFov.forEach(k=>{
+      const {gx,gy}=kp(k);
+      punchCell(gx,gy,1.0);
+    });
+
+    // SD-2: Reveal flash
     const now=Date.now();
     const FLASH_DUR=600;
     this.L.fogRevQ=this.L.fogRevQ.filter(e=>{
       const elapsed=now-e.t;
       if(elapsed>FLASH_DUR) return false;
-      // Extra bright overlay that fades out — uses additive-style second punch
       const flashAlpha=(1-(elapsed/FLASH_DUR))*0.9;
       const cx=ox+e.gx*pps+half, cy=oy+e.gy*pps+half;
       const r=pps*1.1;
@@ -530,16 +543,25 @@ export class MapEngine {
     });
     if(this.L.fogRevQ.length>0) this._dirty();
 
-    // Own token vision radius (always visible)
-    const myTk=this.S.tokens[this.cName];
-    if(myTk){
-      const vr=this._visionR(this.cName);
-      for(let dx=-vr;dx<=vr;dx++) for(let dy=-vr;dy<=vr;dy++){
-        if(cheb(0,0,dx,dy)<=vr) punchCell(myTk.gx+dx,myTk.gy+dy,1);
-      }
-    }
     fc.restore();
+
+    // Layer B — "seen-but-dark" desaturation tint over previously-seen cells
+    // Draw a semi-transparent dark blue-grey overlay on explored-but-not-current cells
     this.ctx.drawImage(fw,0,0);
+    if(this.L.currentFov.size>0 || Object.keys(this.S.fog).length>0){
+      const mc=this.ctx;
+      mc.save();
+      mc.translate(this.vx,this.vy); mc.scale(this.vs,this.vs);
+      const {pps:p,ox:ox2,oy:oy2}=this.S.cfg;
+      mc.fillStyle='rgba(10,10,40,0.38)'; // dark blue desaturation tint
+      Object.keys(this.S.fog).forEach(k=>{
+        if(!this.L.currentFov.has(k)){
+          const {gx,gy}=kp(k);
+          mc.fillRect(ox2+gx*p+1, oy2+gy*p+1, p-2, p-2);
+        }
+      });
+      mc.restore();
+    }
   }
 
 
@@ -1045,7 +1067,8 @@ export class MapEngine {
     return Math.ceil(30/FT_PER_SQ); // default 30ft = 6 tiles
   }
 
-  // E3-A: Rot.js RecursiveShadowcasting FOV — walls/obstacles block line-of-sight.
+  // E3-A+B: Rot.js RecursiveShadowcasting FOV.
+  // Updates L.currentFov (local rendering) AND persists newly-seen cells to Firebase.
   // DM bypasses FOV and always sees all cells.
   _revealForToken(cn,gx,gy,r){
     if(!this.db) return;
@@ -1053,13 +1076,24 @@ export class MapEngine {
     const pl=this.S.players[cn]||{};
     if(pl.userRole==='dm') return; // DM sees all
 
-    // Light passability: true = open (not an obstacle)
     const passable=(x,y)=>!this.S.obstacles[ck(x,y)];
-    const cells={};
+    const visible={};
     const fov=new FOV.RecursiveShadowcasting(passable);
-    fov.compute(gx,gy,vr,(x,y)=>{ cells[ck(x,y)]=true; });
-    if(Object.keys(cells).length>0){
-      this.db.revealFogCells(this.activeRoom,this.S.activeScene,cells);
+    fov.compute(gx,gy,vr,(x,y)=>{ visible[ck(x,y)]=true; });
+
+    // E3-B: update local currentFov for three-state rendering
+    if(cn===this.cName){
+      this.L.currentFov=new Set(Object.keys(visible));
+      this._dirty();
+    }
+
+    // Persist only newly-seen cells to Firebase (avoid redundant writes)
+    const newCells={};
+    Object.keys(visible).forEach(k=>{
+      if(!this.S.fog[k]) newCells[k]=true;
+    });
+    if(Object.keys(newCells).length>0){
+      this.db.revealFogCells(this.activeRoom,this.S.activeScene,newCells);
     }
   }
 
