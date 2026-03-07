@@ -367,9 +367,6 @@ window.openShortRest = async function() {
         const newHdLeft = hdLeft - dice;
 
         await db.updatePlayerHPInDB(cName, newHp);
-        db.db?.ref?.(`rooms/${activeRoom}/players/${cName}`)
-            ? null  // handled by firebaseService
-            : null;
 
         showToast(`Rested for +${gained} HP (${dice}d${hdType}${conMod>=0?'+':''}${conMod*dice}). HP: ${newHp}/${maxHp}`, 'success', 5000);
         modal.remove();

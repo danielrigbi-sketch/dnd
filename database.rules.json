@@ -36,7 +36,20 @@
         },
 
         "map": {
-          ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+          "tokens": {
+            "$cName": {
+              ".write": "auth != null && (root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid || root.child('rooms/' + $roomId + '/players/' + $cName + '/authUid').val() === auth.uid)"
+            }
+          },
+          "config": {
+            ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+          },
+          "activeScene": {
+            ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+          },
+          "atmosphere": {
+            ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+          }
         },
 
         "scenes": {

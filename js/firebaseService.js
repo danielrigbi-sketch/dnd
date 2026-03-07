@@ -6,7 +6,7 @@ import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remov
 import { firebaseConfig } from "./constants.js";
 
 const app = initializeApp(firebaseConfig);
-export const db  = getDatabase(app);
+const db = getDatabase(app); // internal only — do not re-export raw db (ARCH-5)
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
