@@ -1,13 +1,11 @@
-// js/sceneWizard.js — Scene Wizard v127
+// js/sceneWizard.js — Scene Wizard v128
 // 6-step guided scene creation for CritRoll DM.
 //
-// FIXES v127 (Sprint SA):
-//   SA-1: File uploads converted to base64 (bgBase64 + bgThumb) — survives page reload
-//   SA-1: bgBase64 persisted in Firebase vault — image loads correctly on editScene()
-//   SA-1: _makeThumbnail() generates 300px JPEG preview for gallery cards
-//   SA-1: 4MB cap enforced at upload with clear user message
-//   SA-2: _data._id written back immediately after sceneId computed — no duplicates
-//   SA-3: Modal class unified to wiz-open / not(.wiz-open) — no wiz-hidden/wiz-visible
+// FIXES v128 (Sprint SB):
+//   SB-2: Step dots replaced with labeled pill bar (icon + name + checkmark)
+//   SB-2: goTo(n) method added for direct step navigation from pills
+//   SB-2: Keyboard nav: Alt+← / Alt+→, Escape to close
+//   SB-3: Right panel replaced with contextual help cards per step
 // =====================================================================
 import { MapEngine } from './mapEngine.js';
 import { t, getLang } from './i18n.js';
@@ -83,6 +81,9 @@ export class SceneWizard {
     this._step = 0;
     this._modal.classList.add('wiz-open');   // SA-3: single class toggle
     this._modal.dir = getLang() === 'he' ? 'rtl' : 'ltr';
+    // SB-2: keyboard navigation
+    this._boundKey = this._onKey.bind(this);
+    window.addEventListener('keydown', this._boundKey);
     window.addEventListener('resize', this._bound.resize);
     this._initEngine();
     this._render();
@@ -91,9 +92,24 @@ export class SceneWizard {
   close() {
     this._modal.classList.remove('wiz-open');   // SA-3: single class toggle
     window.removeEventListener('resize', this._bound.resize);
+    window.removeEventListener('keydown', this._boundKey);   // SB-2
     if (this._engine) { this._engine.destroy(); this._engine = null; }
     window._wizard = null;
     window._wizEng = null;
+  }
+
+  // SB-2: direct step jump (used by pill bar clicks)
+  goTo(n) {
+    this._syncFromEngine();
+    if (n >= 0 && n <= 5) { this._step = n; this._render(); }
+  }
+
+  // SB-2: keyboard navigation
+  _onKey(e) {
+    if (!this._modal.classList.contains('wiz-open')) return;
+    if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); this.next(); }
+    else if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); this.back(); }
+    else if (e.key === 'Escape') { e.preventDefault(); this.close(); }
   }
 
   // ── Engine (localOnly — no Firebase, paints directly to S state) ─────
@@ -143,21 +159,19 @@ export class SceneWizard {
   // ── Render ────────────────────────────────────────────────────────────
   _render() {
     const ICONS  = ['🖼','🔲','⚔️','🌑','🌩','💾'];
+    const LABELS = ['Image','Grid','World','Fog','Vibe','Save'];
     const TITLES = ['wiz_t0','wiz_t1','wiz_t2','wiz_t3','wiz_t4','wiz_t5'];
     const SUBS   = ['wiz_s0','wiz_s1','wiz_s2','wiz_s3','wiz_s4','wiz_s5'];
 
-    const icon  = ICONS[this._step];
-    const title = t(TITLES[this._step]);
-    const sub   = t(SUBS[this._step]);
-
-    document.getElementById('wiz-step-title').textContent = `${icon}  ${title}`;
-    document.getElementById('wiz-step-sub').textContent   = sub;
-    this._modal.dir = getLang() === 'he' ? 'rtl' : 'ltr';
-
-    document.querySelectorAll('.wiz-dot').forEach((d, i) => {
-      d.classList.toggle('active', i === this._step);
-      d.classList.toggle('done',   i < this._step);
+    // SB-2: Update pill bar instead of dots
+    document.querySelectorAll('.wiz-pill').forEach((pill, i) => {
+      pill.classList.toggle('active', i === this._step);
+      pill.classList.toggle('done',   i < this._step);
     });
+
+    document.getElementById('wiz-step-title').textContent = `${ICONS[this._step]}  ${t(TITLES[this._step])}`;
+    document.getElementById('wiz-step-sub').textContent   = t(SUBS[this._step]);
+    this._modal.dir = getLang() === 'he' ? 'rtl' : 'ltr';
 
     const isLast = this._step === 5;
     document.getElementById('wiz-back-btn').style.visibility = this._step === 0 ? 'hidden' : 'visible';
@@ -306,11 +320,27 @@ export class SceneWizard {
   }
 
   _buildRight() {
-    const tips = [
-      t('wiz_tip0'), t('wiz_tip1'), t('wiz_tip2'),
-      t('wiz_tip3'), t('wiz_tip4'), t('wiz_tip5'),
+    // SB-2: Richer contextual help card per step
+    const cards = [
+      { icon:'💡', title:'Tips', body: t('wiz_tip0') },
+      { icon:'🎯', title:'Align Grid', body: t('wiz_tip1') },
+      { icon:'🗺', title:'Build World', body: t('wiz_tip2') },
+      { icon:'👁', title:'Fog of War', body: t('wiz_tip3') },
+      { icon:'🌩', title:'Atmosphere', body: t('wiz_tip4') },
+      { icon:'💾', title:'Ready to Save', body: t('wiz_tip5') },
     ];
-    return `<div class="wiz-tip-box">${tips[this._step]||''}</div>`;
+    const c = cards[this._step] || cards[0];
+    return `
+      <div class="wiz-help-card">
+        <div class="wiz-help-icon">${c.icon}</div>
+        <div class="wiz-help-title">${c.title}</div>
+        <div class="wiz-help-body">${c.body}</div>
+        <div class="wiz-help-shortcuts">
+          <div class="wiz-shortcut-row"><kbd>Alt+→</kbd><span>Next step</span></div>
+          <div class="wiz-shortcut-row"><kbd>Alt+←</kbd><span>Back</span></div>
+          <div class="wiz-shortcut-row"><kbd>Esc</kbd><span>Close wizard</span></div>
+        </div>
+      </div>`;
   }
 
   // ── Wire controls ──────────────────────────────────────────────────────
