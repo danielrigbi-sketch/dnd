@@ -1,14 +1,15 @@
-// js/sceneWizard.js — Scene Wizard v128
+// js/sceneWizard.js — Scene Wizard v129
 // 6-step guided scene creation for CritRoll DM.
 //
-// FIXES v128 (Sprint SB):
-//   SB-2: Step dots replaced with labeled pill bar (icon + name + checkmark)
-//   SB-2: goTo(n) method added for direct step navigation from pills
-//   SB-2: Keyboard nav: Alt+← / Alt+→, Escape to close
-//   SB-3: Right panel replaced with contextual help cards per step
+// FIXES v129 (Sprint SC):
+//   SC-1: Monster/NPC picker panel in Step 2 (search, CR filter, type chips)
+//   SC-2: Spawned monsters write full statblock into Firebase via addNPCFromWizard()
+//   SC-2: Monster tokens use type-colour ring (red/green/purple/blue per type)
+//   SC-2: HP bar on tokens via existing maxHp system (no new infra needed)
 // =====================================================================
 import { MapEngine } from './mapEngine.js';
 import { t, getLang } from './i18n.js';
+import { npcDatabase, parseCR, typeColor } from './monsters.js';
 
 // ── Image helpers ──────────────────────────────────────────────────────────────
 /** Convert a base64 data URL to a 300px wide JPEG thumbnail (base64 data URL) */
@@ -41,6 +42,11 @@ export class SceneWizard {
 
     this._step   = 0;
     this._engine = null;
+    // SC: monster picker filter state
+    this._monSearch   = '';
+    this._monCRFilter = 'all';
+    this._monTypes    = new Set();   // empty = show all types
+    this._spawnedNPCs = [];          // [{key, name, uid}] — tracked for save step
 
     this._data = {
       _id: null,
@@ -241,31 +247,96 @@ export class SceneWizard {
           ${cfg.locked ? '✓ '+t('wiz_l1_approved') : '✓ '+t('wiz_l1_approve')}
         </button>`;
 
-      // ──── Step 2: Build world ─────────────────────────────────────────
-      case 2: return `
-        <div class="wiz-section">${t('wiz_l2_tool')}</div>
-        <div class="wiz-tool-grid">
-          <button class="wiz-tool-btn" id="wt-obs"  data-mode="obstacle">🧱 ${t('wiz_l2_obstacle')}</button>
-          <button class="wiz-tool-btn" id="wt-trig" data-mode="trigger">⚠️ ${t('wiz_l2_trap')}</button>
-          <button class="wiz-tool-btn" id="wt-view" data-mode="view">👆 ${t('wiz_l2_select')}</button>
-          <button class="wiz-tool-btn" id="wt-ruler" data-mode="ruler">📏 ${t('wiz_l2_ruler')}</button>
-        </div>
-        <div class="wiz-section" style="margin-top:10px;">${t('wiz_l2_brush')}</div>
-        <div style="display:flex;gap:5px;margin-top:5px;">
-          <button class="wiz-tool-btn active" id="wt-paint" data-tool="paint" style="flex:1;">🖌 ${t('wiz_l2_paint')}</button>
-          <button class="wiz-tool-btn" id="wt-erase" data-tool="erase" style="flex:1;">🧹 ${t('wiz_l2_erase')}</button>
-        </div>
-        <div class="wiz-section" style="margin-top:12px;">${t('wiz_l2_tokens')}</div>
-        <div id="wiz-token-list" style="display:flex;flex-direction:column;gap:4px;margin-top:5px;">
-          ${Object.entries(this.players).filter(([,p])=>p.userRole!=='dm').map(([cn,p])=>`
-            <div style="display:flex;align-items:center;gap:6px;padding:3px 0;">
-              <img src="${p.portrait||'assets/logo.png'}"
-                style="width:22px;height:22px;border-radius:50%;border:2px solid ${p.pColor||'#fff'}">
-              <span style="flex:1;font-size:11px;color:#ddd;">${cn}</span>
-              <button onclick="window._wizard?.startPlacing('${cn}')" class="wiz-tiny-btn">📍</button>
-            </div>
-          `).join('') || `<div style="font-size:11px;color:#555;">${t('wiz_l2_no_players')}</div>`}
-        </div>`;
+      // ──── Step 2: Build world + Monster Spawn ────────────────────────
+      case 2: {
+        // Build monster list with current filters applied
+        const searchLow = this._monSearch.toLowerCase();
+        const crRanges  = { 'all':[0,30], 'low':[0,0.5], 'med':[1,4], 'high':[5,10], 'epic':[11,30] };
+        const [crMin, crMax] = crRanges[this._monCRFilter] || [0,30];
+
+        const filteredMonsters = Object.entries(npcDatabase).filter(([key, m]) => {
+          if (searchLow && !key.includes(searchLow) && !(m.type||'').toLowerCase().includes(searchLow)) return false;
+          const cr = parseCR(m.cr);
+          if (cr < crMin || cr > crMax) return false;
+          if (this._monTypes.size > 0 && !this._monTypes.has(m.type)) return false;
+          return true;
+        });
+
+        const spawnedCounts = {};
+        this._spawnedNPCs.forEach(s => { spawnedCounts[s.key] = (spawnedCounts[s.key]||0) + 1; });
+
+        const typeList = [...new Set(Object.values(npcDatabase).map(m => m.type))];
+
+        return `
+          <div class="wiz-section">${t('wiz_l2_tool')}</div>
+          <div class="wiz-tool-grid">
+            <button class="wiz-tool-btn" id="wt-obs"  data-mode="obstacle">🧱 ${t('wiz_l2_obstacle')}</button>
+            <button class="wiz-tool-btn" id="wt-trig" data-mode="trigger">⚠️ ${t('wiz_l2_trap')}</button>
+            <button class="wiz-tool-btn" id="wt-view" data-mode="view">👆 ${t('wiz_l2_select')}</button>
+            <button class="wiz-tool-btn" id="wt-ruler" data-mode="ruler">📏 ${t('wiz_l2_ruler')}</button>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:5px;">
+            <button class="wiz-tool-btn active" id="wt-paint" data-tool="paint" style="flex:1;">🖌 ${t('wiz_l2_paint')}</button>
+            <button class="wiz-tool-btn" id="wt-erase" data-tool="erase" style="flex:1;">🧹 ${t('wiz_l2_erase')}</button>
+          </div>
+
+          <div class="wiz-section" style="margin-top:12px;">⚔️ SPAWN MONSTERS</div>
+
+          <!-- SC: Search box -->
+          <input id="wiz-mon-search" class="wiz-input" placeholder="🔍 Search monsters…"
+            value="${this._monSearch}" style="margin-top:5px;font-size:11px;padding:5px 7px;">
+
+          <!-- SC: CR filter pills -->
+          <div class="wiz-cr-filter">
+            ${['all','low','med','high','epic'].map(r => `
+              <button class="wiz-cr-btn ${this._monCRFilter===r?'active':''}" data-cr="${r}">
+                ${r==='all'?'All CR':r==='low'?'CR ½':r==='med'?'CR 1-4':r==='high'?'CR 5-10':'CR 11+'}
+              </button>`).join('')}
+          </div>
+
+          <!-- SC: Type filter chips -->
+          <div class="wiz-type-chips">
+            ${typeList.map(type => {
+              const col = typeColor[type] || '#888';
+              const active = this._monTypes.has(type);
+              return `<button class="wiz-type-chip ${active?'active':''}" data-type="${type}"
+                style="${active?`background:${col}22;border-color:${col};color:${col}`:''}">${type}</button>`;
+            }).join('')}
+          </div>
+
+          <!-- SC: Monster list -->
+          <div id="wiz-monster-list" class="wiz-monster-list">
+            ${filteredMonsters.length === 0
+              ? `<div style="font-size:10px;color:#555;text-align:center;padding:8px;">No monsters match filters</div>`
+              : filteredMonsters.map(([key, m]) => {
+                  const col = typeColor[m.type] || '#888';
+                  const count = spawnedCounts[key] || 0;
+                  return `
+                  <div class="wiz-monster-row" data-key="${key}">
+                    <span class="wiz-mon-emoji" style="color:${col}">${m.emoji||'👾'}</span>
+                    <div class="wiz-mon-info">
+                      <span class="wiz-mon-name">${key}</span>
+                      <span class="wiz-mon-meta">CR ${m.cr} · ${m.type} · ${m.hp}hp</span>
+                    </div>
+                    ${count>0?`<span class="wiz-mon-count">${count}</span>`:''}
+                    <button class="wiz-mon-spawn-btn" data-key="${key}" title="Spawn on map">+</button>
+                  </div>`;
+                }).join('')}
+          </div>
+
+          <!-- SC: PC tokens -->
+          <div class="wiz-section" style="margin-top:8px;">${t('wiz_l2_tokens')}</div>
+          <div id="wiz-token-list" style="display:flex;flex-direction:column;gap:3px;margin-top:4px;">
+            ${Object.entries(this.players).filter(([,p])=>p.userRole!=='dm').map(([cn,p])=>`
+              <div class="wiz-token-row">
+                <img src="${p.portrait||'assets/logo.png'}"
+                  style="width:20px;height:20px;border-radius:50%;border:2px solid ${p.pColor||'#fff'};flex-shrink:0;">
+                <span style="flex:1;font-size:10px;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cn}</span>
+                <button onclick="window._wizard?.startPlacing('${cn}')" class="wiz-tiny-btn" title="Place on map">📍</button>
+              </div>
+            `).join('') || `<div style="font-size:10px;color:#555;">${t('wiz_l2_no_players')}</div>`}
+          </div>`;
+      }
 
       // ──── Step 3: Fog of War ──────────────────────────────────────────
       case 3: return `
@@ -442,6 +513,36 @@ export class SceneWizard {
       });
     });
 
+    // ── SC: Monster picker wiring ─────────────────────────────────────────
+    // Search
+    document.getElementById('wiz-mon-search')?.addEventListener('input', e => {
+      this._monSearch = e.target.value;
+      this._leftPanel.innerHTML = this._buildLeft();
+      this._wireStep();
+    });
+    // CR filter
+    document.querySelectorAll('.wiz-cr-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._monCRFilter = btn.dataset.cr;
+        this._leftPanel.innerHTML = this._buildLeft();
+        this._wireStep();
+      });
+    });
+    // Type chips
+    document.querySelectorAll('.wiz-type-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const type = chip.dataset.type;
+        if (this._monTypes.has(type)) this._monTypes.delete(type);
+        else this._monTypes.add(type);
+        this._leftPanel.innerHTML = this._buildLeft();
+        this._wireStep();
+      });
+    });
+    // Spawn buttons — enter placing mode, NPC written to Firebase on map click
+    document.querySelectorAll('.wiz-mon-spawn-btn').forEach(btn => {
+      btn.addEventListener('click', () => this._spawnNPC(btn.dataset.key));
+    });
+
     // ── Step 3: Fog ───────────────────────────────────────────────────────
     document.getElementById('wiz-reveal-all')?.addEventListener('click', () => {
       const { mapW:mw, mapH:mh } = cfg;
@@ -479,6 +580,62 @@ export class SceneWizard {
   }
 
   startPlacing(cn) { this._engine?.startPlacing(cn); }
+
+  // ── SC: Spawn NPC from wizard ──────────────────────────────────────────
+  // Creates the character in Firebase (full statblock) then enters map placing
+  // mode so the DM can click where to put the token.
+  _spawnNPC(key) {
+    const m = npcDatabase[key];
+    if (!m) return;
+
+    // Build unique name with numeric suffix if duplicate
+    const existingKeys = this._spawnedNPCs.filter(s => s.key === key).length;
+    const baseName = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g,' ');
+    const finalName = existingKeys > 0 ? `${baseName} ${existingKeys + 1}` : baseName;
+
+    const col = typeColor[m.type] || '#c0392b';
+    const init = Math.floor(Math.random()*20) + 1 + (m.init||0);
+    const stats = {
+      maxHp: m.hp, hp: m.hp, ac: m.ac||10, speed: 30, pp: 10,
+      isHidden: false,
+      melee: m.melee||0, meleeDmg: m.meleeDmg||'1d4',
+      ranged: m.ranged||0, rangedDmg: m.rangedDmg||'1d4',
+      monsterType: m.type || 'Humanoid',   // SC: stored for token ring colour
+    };
+
+    // Write to Firebase via the exposed addNPCFromWizard callback
+    if (typeof window.addNPCFromWizard === 'function') {
+      window.addNPCFromWizard(finalName, col, m.img, init, stats);
+    }
+
+    this._spawnedNPCs.push({ key, name: finalName });
+
+    // Enter map placing mode immediately
+    this._engine?.startPlacing(finalName);
+
+    // Refresh left panel count badge
+    this._leftPanel.innerHTML = this._buildLeft();
+    this._wireStep();
+
+    // Visual feedback toast
+    this._toast(`📍 Click map to place ${finalName}`);
+  }
+
+  _toast(msg) {
+    let el = document.getElementById('wiz-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'wiz-toast';
+      el.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
+        'background:rgba(241,196,15,0.9);color:#1a1a1a;padding:8px 16px;border-radius:8px;' +
+        'font-size:12px;font-weight:bold;z-index:99999;pointer-events:none;transition:opacity 0.5s;';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => { el.style.opacity='0'; }, 2200);
+  }
 
   // ── Save ───────────────────────────────────────────────────────────────
   async _save(goLive) {
