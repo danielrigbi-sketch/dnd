@@ -226,6 +226,7 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-class').value = c.class || "";
     document.getElementById('cb-ac').value = c.ac || "";
     document.getElementById('cb-speed').value = c.speed || "";
+    document.getElementById('cb-darkvision').value = c.darkvision || "0";
     document.getElementById('cb-pp').value = c.pp || "";
     document.getElementById('cb-init').value = c.initBonus || "";
     document.getElementById('cb-hp').value = c.maxHp || "";
@@ -323,6 +324,7 @@ if(saveCharBtn) {
             const charClass = document.getElementById('cb-class')?.value;
             const ac = document.getElementById('cb-ac')?.value;
             const speed = document.getElementById('cb-speed')?.value;
+            const darkvision = document.getElementById('cb-darkvision')?.value;
             const pp = document.getElementById('cb-pp')?.value;
             const init = document.getElementById('cb-init')?.value;
             const hp = document.getElementById('cb-hp')?.value;
@@ -358,7 +360,7 @@ if(saveCharBtn) {
 
             const charData = {
                 name, race: charRace, class: charClass,
-                ac: parseInt(ac), speed: parseInt(speed), pp: parseInt(pp),
+                ac: parseInt(ac), speed: parseInt(speed), pp: parseInt(pp), darkvision: parseInt(darkvision)||0,
                 initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
                 melee: parseInt(melee), meleeDmg: meleeDmg,
                 ranged: parseInt(ranged), rangedDmg: rangedDmg,
