@@ -351,6 +351,7 @@
                     </div>
 
                     <button id="mute-btn" class="side-btn hover-btn" data-i18n="mute_sound" onclick="window.toggleMute()"></button>
+                    <button onclick="window.openCredits()" class="side-btn hover-btn" style="background:rgba(241,196,15,0.1); border:1px solid rgba(241,196,15,0.2); color:#f1c40f; font-size:11px; padding:6px 10px; letter-spacing:0.05em;" title="Credits &amp; Licensing">ⓘ Credits</button>
                 </div>
             </div>
         </div>
@@ -563,6 +564,47 @@
     <div id="cr-spinner-overlay" role="status" aria-live="polite">
         <div class="cr-spinner"></div>
         <div id="cr-spinner-label">Loading…</div>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════
+         CREDITS & LICENSING MODAL
+         Required: Game-Icons.net CC-BY 3.0, Open5e OGL
+         ════════════════════════════════════════════════ -->
+    <div id="credits-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:9000; justify-content:center; align-items:center; padding:20px;">
+        <div style="background:#1a1a2e; border:1px solid rgba(241,196,15,0.4); border-radius:16px; max-width:680px; width:100%; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.7); scrollbar-width:thin; scrollbar-color:#444 #1a1a2e;">
+            <!-- Header -->
+            <div style="position:sticky; top:0; background:#1a1a2e; border-bottom:1px solid rgba(255,255,255,0.1); padding:20px 24px 16px; display:flex; justify-content:space-between; align-items:center; z-index:1;">
+                <div>
+                    <div style="color:#f1c40f; font-size:20px; font-weight:900; letter-spacing:0.05em;">⚔ CritRoll VTT</div>
+                    <div style="color:#888; font-size:12px; margin-top:2px;">Open Source Credits &amp; Licensing</div>
+                </div>
+                <button onclick="document.getElementById('credits-modal').style.display='none'" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; width:32px; height:32px; border-radius:50%; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+            </div>
+            <!-- Body -->
+            <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
+
+                <!-- Required Attribution Banner -->
+                <div style="background:rgba(231,76,60,0.12); border:1px solid rgba(231,76,60,0.4); border-radius:10px; padding:14px 16px;">
+                    <div style="color:#e74c3c; font-weight:900; font-size:13px; margin-bottom:6px;">⚠ Required Attributions</div>
+                    <div style="color:#ccc; font-size:12px; line-height:1.6;">
+                        <strong style="color:white;">Game-Icons.net (CC-BY 3.0):</strong> Icons by Lorc, Delapouite &amp; contributors —
+                        <a href="https://game-icons.net/" target="_blank" style="color:#3498db;">game-icons.net</a><br>
+                        <strong style="color:white;">Open5e (CC-BY 4.0 + OGL):</strong> Monster, spell &amp; item data —
+                        <a href="https://open5e.com/" target="_blank" style="color:#3498db;">open5e.com</a>
+                    </div>
+                </div>
+
+                <!-- Library cards -->
+                <div id="credits-lib-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+
+                <!-- Footer note -->
+                <div style="color:#555; font-size:11px; text-align:center; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);">
+                    CritRoll is an independent fan project and is not affiliated with Wizards of the Coast or Hasbro.<br>
+                    Dungeons &amp; Dragons and D&amp;D are trademarks of Wizards of the Coast LLC.
+                </div>
+            </div>
+        </div>
     </div>
 
 </body>
