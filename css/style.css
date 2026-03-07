@@ -806,3 +806,73 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     color: white !important;
     box-shadow: 0 0 8px rgba(155,89,182,0.4);
 }
+
+/* ═══════════════════════════════════════════════
+   RTL (Hebrew) Layout Overrides
+   ═══════════════════════════════════════════════ */
+
+/* Side panel: in RTL the panel sits on the LEFT (visually right of content) */
+[dir="rtl"] #side-panel {
+    border-left: none;
+    border-right: 2px solid var(--primary);
+    box-shadow: 5px 0 20px rgba(0,0,0,0.6);
+}
+
+/* Game screen row direction flips in RTL — side panel comes first (right side) */
+[dir="rtl"] #game-screen {
+    flex-direction: row-reverse;
+}
+
+/* Log entries border */
+[dir="rtl"] .log-entry {
+    border-right: 4px solid;
+    border-left: none;
+    padding-right: 8px;
+    padding-left: 0;
+    text-align: right;
+}
+
+/* Vault card action buttons (edit/delete) — flip to top-right */
+[dir="rtl"] .vault-card-actions {
+    left: auto;
+    right: 5px;
+}
+
+/* Toast notifications — flip from right to left */
+[dir="rtl"] #toast-container {
+    right: auto;
+    left: 16px;
+}
+
+/* Auth box and lobby text */
+[dir="rtl"] .auth-box,
+[dir="rtl"] .lobby-box,
+[dir="rtl"] #side-panel {
+    text-align: right;
+}
+
+/* Input placeholders — already handled by placeholder attr in RTL */
+[dir="rtl"] .input-small {
+    text-align: right;
+}
+
+/* Flex rows: let browser handle naturally with dir — but force RTL for specific rows */
+[dir="rtl"] .flex-between,
+[dir="rtl"] .side-buttons-row {
+    direction: rtl;
+}
+
+/* Log panel */
+[dir="rtl"] #log-panel {
+    text-align: right;
+}
+
+/* Mobile: panel slides in from left in RTL */
+@media (max-width: 768px) {
+    [dir="rtl"] #side-panel {
+        transform: translateX(-100%);
+    }
+    [dir="rtl"] #side-panel.panel-visible {
+        transform: translateX(0);
+    }
+}

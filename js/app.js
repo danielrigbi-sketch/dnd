@@ -128,7 +128,7 @@ window.longRest = async (targetCName) => {
 
 window.rerollAllInitiatives = async () => {
     if (userRole !== 'dm') return;
-    const ok = await crConfirm('This will reset the current turn order.', 'Re-roll All Initiatives?', '🎲', 'Re-roll', 'Cancel');
+    const ok = await crConfirm(t('reroll_confirm_msg'), t('reroll_confirm_title'), '🎲', t('reroll_confirm_ok'), t('confirm_cancel'));
     if (!ok) return;
     // Reset turn to 0
     currentActiveTurn  = 0;
@@ -326,7 +326,7 @@ window.openShortRest = async function() {
     const conMod     = playerData.conMod || 0;
 
     if (hdLeft <= 0) {
-        showToast('No Hit Dice remaining until long rest.', 'warning');
+        showToast(t('toast_no_hit_dice'), 'warning');
         return;
     }
 
@@ -400,9 +400,12 @@ export async function startGame(role, charData, roomCode) {
         cName        = "DM_" + pName;
         pColor       = "#c0392b";
         charPortrait = document.getElementById('user-avatar')?.src || "assets/logo.png";
-        document.getElementById('master-combat-btn').style.display = 'block';
-        document.getElementById('dm-npc-controls').style.display   = 'flex';
-        document.getElementById('dm-turn-controls').style.display  = 'none';
+        document.getElementById('master-combat-btn').style.display    = 'block';
+        document.getElementById('dm-npc-controls').style.display      = 'flex';
+        document.getElementById('dm-turn-controls').style.display     = 'none';
+        document.getElementById('reroll-initiatives-btn').style.display = 'block';
+        document.getElementById('npc-gen-btn').style.display          = 'block';
+        document.getElementById('short-rest-btn').style.display       = 'none';
         localStorage.setItem('critroll_cName', 'DM');
         populateMonsterSelect();
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
@@ -427,7 +430,7 @@ export async function startGame(role, charData, roomCode) {
     try { await initDiceEngine(); isDiceBoxReady = true; }
     catch (e) { console.error("Dice engine failed:", e); }
     hideSpinner();
-    showToast('Joined room successfully!', 'success');
+    showToast(t('toast_joined'), 'success');
     setTimeout(() => { canAnimate = true; }, 800);
 }
 
@@ -506,7 +509,7 @@ window.toggleTurnTimer = () => {
     if (_turnTimerActive) {
         _stopTurnTimer();
         document.getElementById('timer-toggle-btn')?.classList.remove('active');
-        showToast('Timer off', 'info');
+        showToast(t('toast_timer_off'), 'info');
     } else {
         _startTurnTimer();
         document.getElementById('timer-toggle-btn')?.classList.add('active');
@@ -622,7 +625,7 @@ window.toggleStatus = async (targetCName, status) => {
 
 window.removeNPC = async (targetCName) => {
     if (userRole !== 'dm') return;
-    if (await crConfirm(`Remove ${targetCName} from the encounter?`, 'Remove Character', '🗑️', 'Remove', 'Cancel')) {
+    if (await crConfirm(`${t('remove_confirm_msg')||'Remove'} ${targetCName}?`, t('remove_char_title')||'Remove Character', '🗑️', t('remove_confirm_ok'), t('confirm_cancel'))) {
         db.removePlayerFromDB(targetCName);
         if (activeRoller?.cName === targetCName) window.resetRoller();
         if (currentActiveTurn !== null && sortedCombatants.length > 1) {
@@ -659,7 +662,7 @@ window.toggleMute = () => { isMuted = !isMuted; document.getElementById('mute-bt
 window.toggleCombat = async () => {
     if (userRole !== 'dm') return;
     if (await db.getCombatStatus()) {
-        if (await crConfirm(t('alert_end_combat') || 'End combat and reset initiative?', 'End Combat', '⚔️', 'End Combat', 'Cancel')) {
+        if (await crConfirm(t('alert_end_combat'), t('end_combat_title')||'End Combat', '⚔️', t('end_combat_confirm_ok'), t('confirm_cancel'))) {
             db.setCombatStatus(false);
             db.resetInitiativeInDB();
             currentActiveTurn = null; currentRoundNumber = 0; sortedCombatants = [];
@@ -937,7 +940,7 @@ window.deleteScene = async (sceneId) => {
     if (!uid) return;
     if (!(await crConfirm('This cannot be undone.', 'Delete Scene?', '🗺️', 'Delete', 'Cancel'))) return;
     db.deleteSceneFromVault(uid, sceneId);
-    showToast('Scene deleted.', 'info');
+    showToast(t('toast_scene_deleted'), 'info');
     if (activeSceneId === sceneId) window.deactivateScene();
 };
 

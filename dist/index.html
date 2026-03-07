@@ -9,8 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="/assets/logo-BC8cyOVF.png">
     
-  <script type="module" crossorigin src="/assets/index-fS-G_GPY.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-B_bzTGhZ.css">
+  <script type="module" crossorigin src="/assets/index-CwICck3P.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DqqAebY8.css">
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
 
@@ -24,6 +24,7 @@
             <h1 data-i18n="app_title" style="color: white; margin-bottom: 10px; font-size: 24px;"></h1>
             <p data-i18n="app_desc" style="color: #ccc; margin-bottom: 30px; font-size: 14px;"></p>
             
+            <div id="auth-error" style="display:none; background:rgba(231,76,60,0.15); border:1px solid #e74c3c; color:#ff6b6b; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:13px; text-align:center;"></div>
             <button type="submit" id="google-login-btn" class="hover-btn w-100 flex-center" style="background: white; color: #333; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 8px; gap: 10px;">
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width:20px; height:20px;">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.7 17.74 9.5 24 9.5z"></path>
@@ -168,6 +169,7 @@
                     <input type="number" id="cb-speed" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_speed">
                     <input type="number" id="cb-pp" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_pp">
                     <input type="number" id="cb-init" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_init">
+                    <input type="number" id="cb-darkvision" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_darkvision" min="0" step="30">
                 </div>
 
                 <div class="flex-row">
@@ -254,7 +256,7 @@
             <div class="your-turn-icon">⚔️</div>
             <div class="your-turn-text">YOUR TURN!</div>
             <div id="your-turn-name" class="your-turn-name"></div>
-            <div class="your-turn-hint">tap to dismiss</div>
+            <div class="your-turn-hint" data-i18n="tap_to_dismiss"></div>
         </div>
     </div>
 
@@ -314,7 +316,7 @@
                 <div id="scene-panel" style="display:none;">
                     <button id="scene-new-btn" onclick="window.openSceneWizard()" class="scene-new-btn">
                         <span class="scene-new-icon">✦</span>
-                        <span data-i18n="create_new_scene">New Scene</span>
+                        <span data-i18n="create_new_scene"></span>
                     </button>
                     <div id="scene-gallery"></div>
                 </div>
@@ -331,13 +333,13 @@
                         </div>
                         <div style="display:flex; gap:6px;">
                             <button onclick="window.prevTurn()" class="side-btn hover-btn" style="flex:1; background:var(--cr-bg-dark); padding:8px; font-size:18px;" title="Previous Turn" data-i18n="prev_turn">◀</button>
-                            <button onclick="window.nextTurn()" class="side-btn hover-btn" style="flex:2; background:var(--cr-orange); padding:8px; font-weight:900; font-size:13px;" data-i18n="next_turn">Next Turn ▶</button>
+                            <button onclick="window.nextTurn()" class="side-btn hover-btn" style="flex:2; background:var(--cr-orange); padding:8px; font-weight:900; font-size:13px;" data-i18n="next_turn_btn"></button>
                             <button onclick="window.openShortRest?.()" id="short-rest-btn" class="side-btn hover-btn" style="flex:1; background:var(--cr-green); padding:8px; font-size:16px; display:none;" title="Short Rest">😴</button>
                         </div>
-                        <button onclick="window.rerollAllInitiatives()" class="side-btn hover-btn" style="background:rgba(52,152,219,0.3); border:1px solid #3498db; color:#3498db; font-size:12px; padding:7px;">🎲 Re-roll All Initiatives</button>
+                        <button id="reroll-initiatives-btn" onclick="window.rerollAllInitiatives()" class="side-btn hover-btn" data-i18n="reroll_initiatives" style="display:none; background:rgba(52,152,219,0.3); border:1px solid #3498db; color:#3498db; font-size:12px; padding:7px;"></button>
                         <!-- S16: Turn Timer -->
                         <div style="display:flex; align-items:center; gap:6px;">
-                            <button id="timer-toggle-btn" onclick="window.toggleTurnTimer()" class="side-btn hover-btn" style="flex:1; background:rgba(155,89,182,0.3); border:1px solid #9b59b6; color:#9b59b6; font-size:12px; padding:7px;" title="Toggle turn countdown timer">⏱ Timer</button>
+                            <button id="timer-toggle-btn" onclick="window.toggleTurnTimer()" class="side-btn hover-btn" style="flex:1; background:rgba(155,89,182,0.3); border:1px solid #9b59b6; color:#9b59b6; font-size:12px; padding:7px;" title="Toggle turn countdown timer" data-i18n="timer_btn"></button>
                             <select id="timer-duration-select" onchange="window.setTimerDuration(+this.value)" style="flex:1; background:#1a1a2e; color:white; border:1px solid #555; border-radius:6px; padding:6px; font-size:11px;">
                                 <option value="30">30s</option>
                                 <option value="45">45s</option>
@@ -356,14 +358,15 @@
                         <button onclick="window.openSpellPanel?.()" class="side-btn hover-btn"
                             style="flex:1; background:rgba(142,68,173,0.25); border:1px solid #8e44ad;
                                    color:#c39bd3; font-size:12px; padding:7px; font-weight:700;"
-                            title="Open Spell Compendium (SRD spells)">🔮 Spells</button>
-                        <button onclick="window.openNPCPanel?.()" class="side-btn hover-btn"
+                            title="Open Spell Compendium (SRD spells)" data-i18n="spells_btn"></button>
+                        <button id="npc-gen-btn" onclick="window.openNPCPanel?.()" class="side-btn hover-btn"
+                            data-i18n="npc_gen_btn"
                             style="flex:1; background:rgba(39,174,96,0.2); border:1px solid #27ae60;
-                                   color:#82e0aa; font-size:12px; padding:7px; font-weight:700;"
-                            title="NPC Generator">🎲 NPC Gen</button>
+                                   color:#82e0aa; font-size:12px; padding:7px; font-weight:700; display:none;"
+                            title="NPC Generator"></button>
                     </div>
 
-                    <button onclick="window.openCredits()" class="side-btn hover-btn" style="background:rgba(241,196,15,0.1); border:1px solid rgba(241,196,15,0.2); color:#f1c40f; font-size:11px; padding:6px 10px; letter-spacing:0.05em;" title="Credits &amp; Licensing">ⓘ Credits</button>
+                    <button onclick="window.openCredits()" class="side-btn hover-btn" style="background:rgba(241,196,15,0.1); border:1px solid rgba(241,196,15,0.2); color:#f1c40f; font-size:11px; padding:6px 10px; letter-spacing:0.05em;" title="Credits &amp; Licensing" data-i18n="credits_btn"></button>
                 </div>
             </div>
         </div>
@@ -401,6 +404,13 @@
                             </button>
                             <button class="map-tb-btn" data-mode="aoe"            onclick="window._mapToolBtn(this)" title="Area of Effect (A)">
                                 <span class="map-tb-icon gi-tb" data-gi="toolbar-aoe">💥</span><span class="map-tb-label">AoE</span>
+                            </button>
+                            <div class="map-tb-sep"></div>
+                            <button class="map-tb-btn" onclick="window._handoutBtn()" title="Print Dungeon Handout (E7)" id="btn-handout">
+                                <span class="map-tb-icon">📜</span><span class="map-tb-label">Handout</span>
+                            </button>
+                            <button class="map-tb-btn" onclick="window._watabouBtn()" title="Open in Watabou OPD" id="btn-watabou">
+                                <span class="map-tb-icon">🗺</span><span class="map-tb-label">Watabou</span>
                             </button>
                             <div class="map-tb-sep"></div>
                             <button class="map-tb-btn" onclick="window.toggleTokenRoster()" title="Place Tokens on Map">
@@ -563,8 +573,8 @@
             <div id="cr-confirm-title"></div>
             <div id="cr-confirm-msg"></div>
             <div class="cr-confirm-btns">
-                <button class="cr-confirm-btn cancel" id="cr-confirm-cancel">Cancel</button>
-                <button class="cr-confirm-btn ok"     id="cr-confirm-ok">Confirm</button>
+                <button class="cr-confirm-btn cancel" id="cr-confirm-cancel" data-i18n="confirm_cancel"></button>
+                <button class="cr-confirm-btn ok"     id="cr-confirm-ok" data-i18n="confirm_ok"></button>
             </div>
         </div>
     </div>

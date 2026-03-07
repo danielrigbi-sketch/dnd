@@ -606,7 +606,7 @@ export class SceneWizard {
 
       // SA-1: enforce 4MB cap
       if (file.size > 4 * 1024 * 1024) {
-        if (window.showToast) showToast('Image too large (max 4 MB). Use an external URL instead.', 'warning');
+        if (window.showToast) showToast(t('toast_img_too_large'), 'warning');
         else alert('Image too large (max 4 MB). Please use an external URL instead.');
         return;
       }
@@ -904,7 +904,7 @@ export class SceneWizard {
     const rawName = document.getElementById('wiz-scene-name')?.value.trim()
                     || this._data.name;
     if (!rawName) {
-        if (window.showToast) showToast('Please give your scene a name first.', 'warning');
+        if (window.showToast) showToast(t('toast_scene_name_required'), 'warning');
         else alert('Please enter a scene name.');
         document.getElementById('wiz-scene-name')?.focus();
         return;
@@ -937,7 +937,7 @@ export class SceneWizard {
     }
 
     if (window.hideSpinner) hideSpinner();
-    if (window.showToast) showToast('Scene saved! ✨', 'success');
+    if (window.showToast) showToast(t('toast_scene_saved'), 'success');
     this.onSaved?.(sceneId, sceneData);
 
     if (goLive && this.db) {

@@ -380,7 +380,7 @@
 #wizard-right-panel::-webkit-scrollbar-thumb { background:rgba(241,196,15,0.25); border-radius:2px; }
 
 /* RTL */
-[dir="rtl"] #map-toolbar { direction:ltr; }
+[dir="rtl"] #map-toolbar { direction:ltr; right:auto; left:12px; }
 
 /* responsive */
 @media (max-width:700px) {
