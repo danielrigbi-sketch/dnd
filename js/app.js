@@ -595,6 +595,20 @@ window.addNPC = () => {
     const countEl = document.getElementById('npc-count'); if(countEl) countEl.value="1";
 };
 
+// SC: Wizard NPC spawner — called by sceneWizard._spawnNPC() with pre-built stats
+// Reuses the same Firebase write path as addNPC() without touching any form elements.
+window.addNPCFromWizard = (name, color, portrait, init, stats) => {
+    if (userRole !== 'dm') return;
+    db.joinPlayerToDB(name, "DM", color, "npc", portrait, stats);
+    db.setPlayerInitiativeInDB(name, "DM", init, color);
+    db.saveRollToDB({ cName:"DM", type:"STATUS",
+        status:`${t('log_added')} ${name} [${t('log_init')} ${init}]`, ts:Date.now() });
+    // SC: also write monsterType into the player record for token ring colour
+    if (stats.monsterType) {
+        db.updatePlayerField?.(name, 'monsterType', stats.monsterType);
+    }
+};
+
 window.roll3DDice = roll3DDice;
 
 function initMap() {
