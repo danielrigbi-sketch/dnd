@@ -342,6 +342,34 @@
     transform:scale(1.1);
 }
 
+/* E1-B: skeleton loader rows */
+@keyframes shimmer {
+  0%   { background-position:-200% 0; }
+  100% { background-position: 200% 0; }
+}
+.wiz-skeleton {
+    cursor:default; pointer-events:none; border-color:transparent !important;
+}
+.wiz-skel-icon {
+    width:8px; height:8px; border-radius:50%;
+    background:linear-gradient(90deg,#2a2a3a 25%,#3a3a4e 50%,#2a2a3a 75%);
+    background-size:200% 100%;
+    animation:shimmer 1.4s infinite; flex-shrink:0;
+}
+.wiz-skel-name, .wiz-skel-meta {
+    border-radius:3px;
+    background:linear-gradient(90deg,#2a2a3a 25%,#3a3a4e 50%,#2a2a3a 75%);
+    background-size:200% 100%;
+    animation:shimmer 1.4s infinite;
+}
+.wiz-skel-name { width:80px; height:9px; margin-bottom:4px; }
+.wiz-skel-meta { width:55px; height:7px; }
+
+/* E1-B: "Showing N of M" footer */
+.wiz-mon-more {
+    font-size:9px; color:#555; text-align:center; padding:5px 4px;
+    border-top:1px solid rgba(255,255,255,0.06); margin-top:2px;
+}
 
 
 /* scrollbars */

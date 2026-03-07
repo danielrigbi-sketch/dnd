@@ -1,5 +1,6 @@
-// ui.js v119
+// ui.js v119 + W1/E5-B: SVG condition icons via Game-Icons.net
 import { t } from "./i18n.js";
+import { iconHTML } from "./icons.js";
 
 let expandedCardId = null;
 let _lastPlayersData = null;
@@ -201,7 +202,10 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                         const _SC={Poisoned:'#27ae60',Charmed:'#e91e8c',Unconscious:'#636e72',Frightened:'#e67e22',Paralyzed:'#f39c12',Restrained:'#8e44ad',Blinded:'#7f8c8d',Prone:'#c0392b',Stunned:'#d35400',Incapacitated:'#2c3e50',Invisible:'#3498db',Exhausted:'#95a5a6',Deafened:'#7f8c8d',Grappled:'#e74c3c',Raging:'#c0392b',Hasted:'#2ecc71',Blessed:'#f1c40f',Concentrating:'#9b59b6'};
                         const _SI={Poisoned:'🤢',Charmed:'💕',Unconscious:'💀',Frightened:'😨',Paralyzed:'⚡',Restrained:'🕸️',Blinded:'👁️',Prone:'🔻',Stunned:'💫',Incapacitated:'💤',Invisible:'👻',Exhausted:'😵',Deafened:'👂',Grappled:'🤼',Raging:'😤',Hasted:'🏃',Blessed:'✨',Concentrating:'🔮'};
                         const col=_SC[s]||'#636e72', ico=_SI[s]||'';
-                        return `<span class="status-badge" style="background:${col}22;border-color:${col}66;color:${col};">${ico} ${s}</span>`;
+                        // E5-B: use SVG icon if available, fall back to emoji
+                        const svgIcon = iconHTML(s, col, '13px');
+                        const displayIcon = svgIcon || ico;
+                        return `<span class="status-badge" style="background:${col}22;border-color:${col}66;color:${col};display:inline-flex;align-items:center;gap:3px;">${displayIcon} ${s}</span>`;
                     }).join('')}
                     ${isDM ? `
                         <button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>

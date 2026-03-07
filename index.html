@@ -607,5 +607,52 @@
         </div>
     </div>
 
+    <!-- E5-B: Game-Icons.net CC-BY 3.0 attribution banner (first-launch) -->
+    <div id="gi-attribution-banner" style="
+        display:none; position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+        background:rgba(26,26,46,0.97); border:1px solid rgba(241,196,15,0.4);
+        border-radius:10px; padding:10px 16px; z-index:8500;
+        font-size:11px; color:#ccc; text-align:center;
+        box-shadow:0 4px 20px rgba(0,0,0,0.5);
+        max-width:420px; width:calc(100vw - 32px);
+        animation: slideUp 0.3s ease;">
+      <div style="margin-bottom:5px;">
+        <span style="color:#f1c40f; font-weight:bold;">⚔️ CritRoll</span> uses icons from
+        <a href="https://game-icons.net" target="_blank" rel="noopener"
+           style="color:#f1c40f; text-decoration:none;">game-icons.net</a>
+        by Lorc, Delapouite &amp; contributors
+        (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener"
+            style="color:#aaa; text-decoration:none;">CC-BY 3.0</a>).
+      </div>
+      <button onclick="dismissGIBanner()" style="
+          background:rgba(241,196,15,0.15); border:1px solid rgba(241,196,15,0.4);
+          color:#f1c40f; padding:4px 14px; border-radius:6px; cursor:pointer; font-size:11px;">
+        Got it
+      </button>
+    </div>
+    <style>
+      @keyframes slideUp {
+        from { opacity:0; transform:translateX(-50%) translateY(12px); }
+        to   { opacity:1; transform:translateX(-50%) translateY(0); }
+      }
+    </style>
+    <script>
+      function dismissGIBanner() {
+        document.getElementById('gi-attribution-banner').style.display = 'none';
+        try { localStorage.setItem('gi_credited', '1'); } catch(e) {}
+      }
+      // Show banner once per device if icons are present
+      window.addEventListener('DOMContentLoaded', () => {
+        try {
+          if (!localStorage.getItem('gi_credited')) {
+            setTimeout(() => {
+              const b = document.getElementById('gi-attribution-banner');
+              if (b) b.style.display = 'block';
+            }, 2000);
+          }
+        } catch(e) {}
+      });
+    </script>
+
 </body>
 </html>

@@ -1,0 +1,206 @@
+// js/open5e.js — Open5e API Client  (Wave 1 / E1-A)
+// Provides: fetchMonsters, fetchMonsterBySlug, fetchSpells, fetchSpellBySlug
+//
+// Caching strategy:
+//   Layer 1 — in-memory Map  (max 300 entries, per session, ~0ms hit)
+//   Layer 2 — localStorage   (key prefix "o5e:", TTL 7 days, survives reload)
+//
+// Open5e is CC-BY 4.0 + OGL 1.0a (see Credits modal for attribution)
+
+const API_BASE  = 'https://api.open5e.com/v1';
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+const LS_PREFIX = 'o5e:';
+const MEM_MAX   = 300;
+
+// ── In-memory LRU (insertion-order Map) ────────────────────────────────────────
+const _mem = new Map();
+function _memGet(k) {
+  if (!_mem.has(k)) return null;
+  // Move to end (most-recently-used)
+  const v = _mem.get(k); _mem.delete(k); _mem.set(k, v);
+  return v;
+}
+function _memSet(k, v) {
+  if (_mem.has(k)) _mem.delete(k);
+  _mem.set(k, v);
+  if (_mem.size > MEM_MAX) _mem.delete(_mem.keys().next().value); // evict oldest
+}
+
+// ── localStorage helpers ────────────────────────────────────────────────────────
+function _lsGet(k) {
+  try {
+    const raw = localStorage.getItem(LS_PREFIX + k);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) { localStorage.removeItem(LS_PREFIX + k); return null; }
+    return data;
+  } catch { return null; }
+}
+function _lsSet(k, data) {
+  try { localStorage.setItem(LS_PREFIX + k, JSON.stringify({ ts: Date.now(), data })); }
+  catch { /* quota exceeded — silent fail */ }
+}
+
+// ── Core fetch with two-layer cache ────────────────────────────────────────────
+async function _cachedFetch(endpoint, params = {}) {
+  const qs  = Object.entries(params).sort().map(([k,v]) => `${k}=${v}`).join('&');
+  const key = endpoint + (qs ? '?' + qs : '');
+
+  // L1 memory hit
+  const mem = _memGet(key);
+  if (mem) return mem;
+
+  // L2 localStorage hit
+  const ls = _lsGet(key);
+  if (ls) { _memSet(key, ls); return ls; }
+
+  // Fetch from network
+  const url = `${API_BASE}/${endpoint}/${qs ? '?' + qs : ''}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Open5e ${res.status}: ${url}`);
+  const json = await res.json();
+
+  _memSet(key, json);
+  _lsSet(key, json);
+  return json;
+}
+
+// ── Public API ──────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch a page of monsters with optional filters.
+ * @param {Object} opts
+ *   search    {string}  — name substring filter
+ *   type      {string}  — e.g. "Beast", "Undead"
+ *   cr_min    {number}
+ *   cr_max    {number}
+ *   page      {number}  — 1-based
+ *   page_size {number}  — max 100
+ * @returns {Promise<{count, next, previous, results: Monster[]}>}
+ */
+export async function fetchMonsters(opts = {}) {
+  const params = { limit: opts.page_size || 50 };
+  if (opts.search)   params.search        = opts.search;
+  if (opts.type)     params.type__iexact  = opts.type;
+  if (opts.cr_min != null) params.cr__gte = opts.cr_min;
+  if (opts.cr_max != null) params.cr__lte = opts.cr_max;
+  if (opts.page  > 1)      params.offset  = (opts.page - 1) * (opts.page_size || 50);
+  return _cachedFetch('monsters', params);
+}
+
+/**
+ * Fetch a single monster by slug (e.g. "goblin", "adult-red-dragon")
+ */
+export async function fetchMonsterBySlug(slug) {
+  const k = `monster:${slug}`;
+  const mem = _memGet(k);
+  if (mem) return mem;
+  const ls = _lsGet(k);
+  if (ls) { _memSet(k, ls); return ls; }
+
+  const res = await fetch(`${API_BASE}/monsters/${slug}/`);
+  if (!res.ok) throw new Error(`Open5e monster not found: ${slug}`);
+  const json = await res.json();
+  _memSet(k, json); _lsSet(k, json);
+  return json;
+}
+
+/**
+ * Fetch a page of spells with optional filters.
+ * @param {Object} opts
+ *   search      {string}
+ *   spell_class {string}  — e.g. "Wizard"
+ *   level       {number}  — 0 = cantrip
+ *   school      {string}  — e.g. "Evocation"
+ *   page        {number}
+ */
+export async function fetchSpells(opts = {}) {
+  const params = { limit: opts.page_size || 50 };
+  if (opts.search)      params.search          = opts.search;
+  if (opts.spell_class) params.spell_lists      = opts.spell_class.toLowerCase();
+  if (opts.level != null) params.level_int      = opts.level;
+  if (opts.school)      params.school__icontains = opts.school;
+  if (opts.page > 1)    params.offset           = (opts.page - 1) * (opts.page_size || 50);
+  return _cachedFetch('spells', params);
+}
+
+/**
+ * Fetch a single spell by slug
+ */
+export async function fetchSpellBySlug(slug) {
+  const k = `spell:${slug}`;
+  const mem = _memGet(k);
+  if (mem) return mem;
+  const ls = _lsGet(k);
+  if (ls) { _memSet(k, ls); return ls; }
+
+  const res = await fetch(`${API_BASE}/spells/${slug}/`);
+  if (!res.ok) throw new Error(`Open5e spell not found: ${slug}`);
+  const json = await res.json();
+  _memSet(k, json); _lsSet(k, json);
+  return json;
+}
+
+/**
+ * Map Open5e monster data → CritRoll player record shape
+ * (used when spawning from Open5e picker)
+ */
+export function open5eToNPC(m) {
+  // Parse AC — Open5e returns array [{type, value}] or just a number
+  const ac = Array.isArray(m.armor_class)
+    ? (m.armor_class[0]?.value || 10)
+    : (m.armor_class || 10);
+
+  // Parse speed — "30 ft." or { walk: "30 ft." }
+  const speedStr = (typeof m.speed === 'string' ? m.speed : m.speed?.walk) || '30 ft.';
+  const speed    = parseInt(speedStr) || 30;
+
+  // Parse CR — "1/4", "1/2", or number
+  const parseCR = cr => {
+    if (!cr) return 0;
+    if (String(cr).includes('/')) { const [a,b] = String(cr).split('/'); return parseInt(a)/parseInt(b); }
+    return parseFloat(cr) || 0;
+  };
+
+  // Primary melee action (first action with attack_bonus)
+  const meleeAction = (m.actions || []).find(a => a.attack_bonus != null);
+
+  return {
+    maxHp:       m.hit_points || 10,
+    hp:          m.hit_points || 10,
+    ac:          ac,
+    speed:       speed,
+    pp:          10 + Math.floor(((m.wisdom || 10) - 10) / 2),
+    isHidden:    false,
+    melee:       meleeAction?.attack_bonus || 0,
+    meleeDmg:    meleeAction?.damage_dice  || '1d6',
+    ranged:      0,
+    rangedDmg:   '1d6',
+    monsterType: m.type || 'Humanoid',
+    cr:          parseCR(m.challenge_rating),
+    // Extended fields for stat block
+    _open5eSlug: m.slug,
+    _str: m.strength  || 10, _dex: m.dexterity     || 10,
+    _con: m.constitution || 10, _int: m.intelligence || 10,
+    _wis: m.wisdom || 10, _cha: m.charisma || 10,
+  };
+}
+
+/** Return the CritRoll typeColor key for an Open5e type string */
+export function normaliseType(rawType) {
+  if (!rawType) return 'Humanoid';
+  const t = rawType.toLowerCase();
+  if (t.includes('undead'))     return 'Undead';
+  if (t.includes('beast'))      return 'Beast';
+  if (t.includes('dragon'))     return 'Dragon';
+  if (t.includes('fiend'))      return 'Fiend';
+  if (t.includes('aberration')) return 'Aberration';
+  if (t.includes('giant'))      return 'Giant';
+  if (t.includes('celestial'))  return 'Celestial';
+  if (t.includes('elemental'))  return 'Elemental';
+  if (t.includes('fey'))        return 'Fey';
+  if (t.includes('construct'))  return 'Construct';
+  if (t.includes('ooze'))       return 'Ooze';
+  if (t.includes('plant'))      return 'Plant';
+  return 'Humanoid';
+}

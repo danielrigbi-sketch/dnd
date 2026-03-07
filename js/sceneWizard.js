@@ -1,4 +1,4 @@
-// js/sceneWizard.js — Scene Wizard v129
+// js/sceneWizard.js — Scene Wizard v129 + Wave 1 (E1-B: Open5e monster gallery)
 // 6-step guided scene creation for CritRoll DM.
 //
 // FIXES v129 (Sprint SC):
@@ -6,10 +6,13 @@
 //   SC-2: Spawned monsters write full statblock into Firebase via addNPCFromWizard()
 //   SC-2: Monster tokens use type-colour ring (red/green/purple/blue per type)
 //   SC-2: HP bar on tokens via existing maxHp system (no new infra needed)
+// W1/E1-B: Open5e API replaces local 28-monster list
+//   — 450+ SRD monsters, skeleton loading, CR slider, type chips, search debounce
 // =====================================================================
 import { MapEngine } from './mapEngine.js';
 import { t, getLang } from './i18n.js';
 import { npcDatabase, parseCR, typeColor } from './monsters.js';
+import { fetchMonsters, open5eToNPC, normaliseType } from './open5e.js';
 
 // ── Image helpers ──────────────────────────────────────────────────────────────
 /** Convert a base64 data URL to a 300px wide JPEG thumbnail (base64 data URL) */
@@ -47,6 +50,13 @@ export class SceneWizard {
     this._monCRFilter = 'all';
     this._monTypes    = new Set();   // empty = show all types
     this._spawnedNPCs = [];          // [{key, name, uid}] — tracked for save step
+    // E1-B: Open5e state
+    this._o5eResults  = null;        // cached page of Open5e results
+    this._o5eLoading  = false;
+    this._o5eTotal    = 0;
+    this._o5ePage     = 1;
+    this._o5eDebounce = null;
+    this._o5eMonMap   = {};          // slug → open5e monster object
 
     this._data = {
       _id: null,
@@ -191,6 +201,10 @@ export class SceneWizard {
     // Engine mode per step
     const modes = ['view', 'phantom', 'obstacle', 'wizFog', 'view', 'view'];
     this._engine?.setMode(modes[this._step] || 'view');
+    // E1-B: auto-fetch when step 2 is rendered and no results yet
+    if (this._step === 2 && this._o5eResults === null && !this._o5eLoading) {
+      this._o5eFetch();
+    }
   }
 
   // ── Left Panel HTML ───────────────────────────────────────────────────
@@ -247,25 +261,63 @@ export class SceneWizard {
           ${cfg.locked ? '✓ '+t('wiz_l1_approved') : '✓ '+t('wiz_l1_approve')}
         </button>`;
 
-      // ──── Step 2: Build world + Monster Spawn ────────────────────────
+      // ──── Step 2: Build world + Open5e Monster Gallery (E1-B) ─────
       case 2: {
-        // Build monster list with current filters applied
-        const searchLow = this._monSearch.toLowerCase();
-        const crRanges  = { 'all':[0,30], 'low':[0,0.5], 'med':[1,4], 'high':[5,10], 'epic':[11,30] };
-        const [crMin, crMax] = crRanges[this._monCRFilter] || [0,30];
-
-        const filteredMonsters = Object.entries(npcDatabase).filter(([key, m]) => {
-          if (searchLow && !key.includes(searchLow) && !(m.type||'').toLowerCase().includes(searchLow)) return false;
-          const cr = parseCR(m.cr);
-          if (cr < crMin || cr > crMax) return false;
-          if (this._monTypes.size > 0 && !this._monTypes.has(m.type)) return false;
-          return true;
-        });
-
+        const typeList = ['Humanoid','Undead','Beast','Fiend','Dragon','Aberration','Giant',
+                          'Celestial','Elemental','Fey','Construct','Ooze','Plant'];
         const spawnedCounts = {};
         this._spawnedNPCs.forEach(s => { spawnedCounts[s.key] = (spawnedCounts[s.key]||0) + 1; });
+        const crLabels = { all:'All CR', low:'CR ½', med:'CR 1–4', high:'CR 5–10', epic:'CR 11+' };
 
-        const typeList = [...new Set(Object.values(npcDatabase).map(m => m.type))];
+        // Build monster rows HTML
+        let monstersHTML = '';
+        if (this._o5eLoading) {
+          monstersHTML = Array(6).fill(0).map(() => `
+            <div class="wiz-monster-row wiz-skeleton">
+              <div class="wiz-skel-icon"></div>
+              <div class="wiz-mon-info">
+                <div class="wiz-skel-name"></div>
+                <div class="wiz-skel-meta"></div>
+              </div>
+            </div>`).join('');
+        } else if (this._o5eResults && this._o5eResults.length > 0) {
+          monstersHTML = this._o5eResults.map(m => {
+            const type  = normaliseType(m.type);
+            const col   = typeColor[type] || '#888';
+            const cr    = m.challenge_rating || '?';
+            const hp    = m.hit_points || '?';
+            const count = spawnedCounts[m.slug] || 0;
+            return `
+              <div class="wiz-monster-row" data-slug="${m.slug}" data-o5e="1">
+                <span class="wiz-mon-type-dot" style="background:${col};width:8px;height:8px;border-radius:50%;flex-shrink:0;"></span>
+                <div class="wiz-mon-info">
+                  <span class="wiz-mon-name">${m.name}</span>
+                  <span class="wiz-mon-meta">CR ${cr} · ${type} · ${hp}hp</span>
+                </div>
+                ${count > 0 ? `<span class="wiz-mon-count">${count}</span>` : ''}
+                <button class="wiz-mon-spawn-btn" data-slug="${m.slug}" data-o5e="1" title="Spawn on map">+</button>
+              </div>`;
+          }).join('');
+          if (this._o5eTotal > this._o5eResults.length) {
+            monstersHTML += `<div class="wiz-mon-more">Showing ${this._o5eResults.length} of ${this._o5eTotal} — refine filters to narrow</div>`;
+          }
+        } else if (this._o5eResults !== null) {
+          monstersHTML = `<div style="font-size:10px;color:#555;text-align:center;padding:8px;">No monsters match filters</div>`;
+        } else {
+          // Initial — show local fallback while fetching
+          monstersHTML = Object.entries(npcDatabase).slice(0, 6).map(([key, m]) => {
+            const col = typeColor[m.type] || '#888';
+            return `
+              <div class="wiz-monster-row" data-key="${key}">
+                <span class="wiz-mon-type-dot" style="background:${col};width:8px;height:8px;border-radius:50%;flex-shrink:0;"></span>
+                <div class="wiz-mon-info">
+                  <span class="wiz-mon-name">${key}</span>
+                  <span class="wiz-mon-meta">CR ${m.cr} · ${m.type} · ${m.hp}hp</span>
+                </div>
+                <button class="wiz-mon-spawn-btn" data-key="${key}" title="Spawn on map">+</button>
+              </div>`;
+          }).join('') + `<div class="wiz-mon-more" style="color:#f1c40f;">⏳ Loading SRD monsters…</div>`;
+        }
 
         return `
           <div class="wiz-section">${t('wiz_l2_tool')}</div>
@@ -280,51 +332,32 @@ export class SceneWizard {
             <button class="wiz-tool-btn" id="wt-erase" data-tool="erase" style="flex:1;">🧹 ${t('wiz_l2_erase')}</button>
           </div>
 
-          <div class="wiz-section" style="margin-top:12px;">⚔️ SPAWN MONSTERS</div>
+          <div class="wiz-section" style="margin-top:12px;">⚔️ MONSTERS
+            <span style="font-size:9px;color:#888;font-weight:400;">${this._o5eTotal ? `· ${this._o5eTotal} SRD` : ''}</span>
+          </div>
 
-          <!-- SC: Search box -->
-          <input id="wiz-mon-search" class="wiz-input" placeholder="🔍 Search monsters…"
+          <input id="wiz-mon-search" class="wiz-input" placeholder="🔍 Search 450+ SRD monsters…"
             value="${this._monSearch}" style="margin-top:5px;font-size:11px;padding:5px 7px;">
 
-          <!-- SC: CR filter pills -->
           <div class="wiz-cr-filter">
             ${['all','low','med','high','epic'].map(r => `
               <button class="wiz-cr-btn ${this._monCRFilter===r?'active':''}" data-cr="${r}">
-                ${r==='all'?'All CR':r==='low'?'CR ½':r==='med'?'CR 1-4':r==='high'?'CR 5-10':'CR 11+'}
+                ${crLabels[r]}
               </button>`).join('')}
           </div>
 
-          <!-- SC: Type filter chips -->
           <div class="wiz-type-chips">
             ${typeList.map(type => {
-              const col = typeColor[type] || '#888';
+              const col    = typeColor[type] || '#888';
               const active = this._monTypes.has(type);
               return `<button class="wiz-type-chip ${active?'active':''}" data-type="${type}"
-                style="${active?`background:${col}22;border-color:${col};color:${col}`:''}">${type}</button>`;
+                style="${active?`background:${col}22;border-color:${col};color:${col}`:''}">
+                ${type}</button>`;
             }).join('')}
           </div>
 
-          <!-- SC: Monster list -->
-          <div id="wiz-monster-list" class="wiz-monster-list">
-            ${filteredMonsters.length === 0
-              ? `<div style="font-size:10px;color:#555;text-align:center;padding:8px;">No monsters match filters</div>`
-              : filteredMonsters.map(([key, m]) => {
-                  const col = typeColor[m.type] || '#888';
-                  const count = spawnedCounts[key] || 0;
-                  return `
-                  <div class="wiz-monster-row" data-key="${key}">
-                    <span class="wiz-mon-emoji" style="color:${col}">${m.emoji||'👾'}</span>
-                    <div class="wiz-mon-info">
-                      <span class="wiz-mon-name">${key}</span>
-                      <span class="wiz-mon-meta">CR ${m.cr} · ${m.type} · ${m.hp}hp</span>
-                    </div>
-                    ${count>0?`<span class="wiz-mon-count">${count}</span>`:''}
-                    <button class="wiz-mon-spawn-btn" data-key="${key}" title="Spawn on map">+</button>
-                  </div>`;
-                }).join('')}
-          </div>
+          <div id="wiz-monster-list" class="wiz-monster-list">${monstersHTML}</div>
 
-          <!-- SC: PC tokens -->
           <div class="wiz-section" style="margin-top:8px;">${t('wiz_l2_tokens')}</div>
           <div id="wiz-token-list" style="display:flex;flex-direction:column;gap:3px;margin-top:4px;">
             ${Object.entries(this.players).filter(([,p])=>p.userRole!=='dm').map(([cn,p])=>`
@@ -513,10 +546,20 @@ export class SceneWizard {
       });
     });
 
-    // ── SC: Monster picker wiring ─────────────────────────────────────────
-    // Search
+    // ── E1-B: Open5e monster picker wiring ───────────────────────────────
+    // Trigger initial fetch when step 2 is first rendered
+    if (this._step === 2 && this._o5eResults === null && !this._o5eLoading) {
+      this._o5eFetch();
+    }
+    // Search — 350ms debounce to avoid hammering API on each keystroke
     document.getElementById('wiz-mon-search')?.addEventListener('input', e => {
       this._monSearch = e.target.value;
+      clearTimeout(this._o5eDebounce);
+      this._o5eDebounce = setTimeout(() => {
+        this._o5eResults = null;
+        this._o5eFetch();
+      }, 350);
+      // Redraw immediately to show new value in input (results stay stale until fetch returns)
       this._leftPanel.innerHTML = this._buildLeft();
       this._wireStep();
     });
@@ -524,6 +567,8 @@ export class SceneWizard {
     document.querySelectorAll('.wiz-cr-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         this._monCRFilter = btn.dataset.cr;
+        this._o5eResults  = null;
+        this._o5eFetch();
         this._leftPanel.innerHTML = this._buildLeft();
         this._wireStep();
       });
@@ -534,13 +579,18 @@ export class SceneWizard {
         const type = chip.dataset.type;
         if (this._monTypes.has(type)) this._monTypes.delete(type);
         else this._monTypes.add(type);
+        this._o5eResults = null;
+        this._o5eFetch();
         this._leftPanel.innerHTML = this._buildLeft();
         this._wireStep();
       });
     });
-    // Spawn buttons — enter placing mode, NPC written to Firebase on map click
+    // Spawn buttons — handles both local (data-key) and Open5e (data-slug + data-o5e)
     document.querySelectorAll('.wiz-mon-spawn-btn').forEach(btn => {
-      btn.addEventListener('click', () => this._spawnNPC(btn.dataset.key));
+      btn.addEventListener('click', () => {
+        if (btn.dataset.o5e) this._spawnO5eNPC(btn.dataset.slug);
+        else this._spawnNPC(btn.dataset.key);
+      });
     });
 
     // ── Step 3: Fog ───────────────────────────────────────────────────────
@@ -580,6 +630,73 @@ export class SceneWizard {
   }
 
   startPlacing(cn) { this._engine?.startPlacing(cn); }
+
+  // ── E1-B: Fetch monsters from Open5e API ────────────────────────────────
+  async _o5eFetch() {
+    this._o5eLoading = true;
+    // Redraw with skeleton loaders
+    this._leftPanel.innerHTML = this._buildLeft();
+    this._wireStep();
+
+    try {
+      const crRanges = { all:[0,30], low:[0,0.5], med:[1,4], high:[5,10], epic:[11,30] };
+      const [crMin, crMax] = crRanges[this._monCRFilter] || [0,30];
+      const opts = { page_size: 50 };
+      if (this._monSearch)        opts.search = this._monSearch;
+      if (this._monCRFilter !== 'all') { opts.cr_min = crMin; opts.cr_max = crMax; }
+      if (this._monTypes.size === 1)   opts.type = [...this._monTypes][0];
+
+      const data = await fetchMonsters(opts);
+      this._o5eResults = data.results || [];
+      this._o5eTotal   = data.count   || 0;
+
+      // Cache slug → monster object for quick spawn lookup
+      this._o5eResults.forEach(m => { this._o5eMonMap[m.slug] = m; });
+
+      // If type filter has >1 type, filter client-side
+      if (this._monTypes.size > 1) {
+        this._o5eResults = this._o5eResults.filter(m => {
+          const t = normaliseType(m.type);
+          return this._monTypes.has(t);
+        });
+      }
+    } catch (err) {
+      console.warn('Open5e fetch failed, falling back to local:', err);
+      this._o5eResults = null; // null = show fallback
+    }
+
+    this._o5eLoading = false;
+    this._leftPanel.innerHTML = this._buildLeft();
+    this._wireStep();
+  }
+
+  // ── E1-B: Spawn NPC from Open5e data ───────────────────────────────────
+  _spawnO5eNPC(slug) {
+    const m = this._o5eMonMap[slug];
+    if (!m) { this._toast('⚠️ Monster data not loaded yet'); return; }
+
+    const type  = normaliseType(m.type);
+    const col   = typeColor[type] || '#c0392b';
+    const npcStats = open5eToNPC(m);
+
+    // Build unique name
+    const existing = this._spawnedNPCs.filter(s => s.key === slug).length;
+    const finalName = existing > 0 ? `${m.name} ${existing + 1}` : m.name;
+
+    const init = Math.floor(Math.random() * 20) + 1 + Math.floor(((m.dexterity || 10) - 10) / 2);
+    const img  = `https://api.dicebear.com/8.x/bottts/svg?seed=${slug}&backgroundColor=${col.replace('#','')}`;
+
+    if (typeof window.addNPCFromWizard === 'function') {
+      window.addNPCFromWizard(finalName, col, img, init, npcStats);
+    }
+
+    this._spawnedNPCs.push({ key: slug, name: finalName });
+    this._engine?.startPlacing(finalName);
+
+    this._leftPanel.innerHTML = this._buildLeft();
+    this._wireStep();
+    this._toast(`📍 Click map to place ${finalName}`);
+  }
 
   // ── SC: Spawn NPC from wizard ──────────────────────────────────────────
   // Creates the character in Firebase (full statblock) then enters map placing
