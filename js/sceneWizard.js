@@ -15,6 +15,7 @@ import { npcDatabase, parseCR, typeColor } from './monsters.js';
 import { fetchMonsters, open5eToNPC, normaliseType } from './open5e.js';
 import { generateDungeon, tilesToObstacleGrid, seedFromRoomCode } from './dungeonGenerator.js'; // E3-E
 import { TileEngine, AUTO_THEME } from './tileEngine.js'; // E4-B
+import { printHandout, openWatabou } from './handout.js'; // E7
 
 // ── Image helpers ──────────────────────────────────────────────────────────────
 /** Convert a base64 data URL to a 300px wide JPEG thumbnail (base64 data URL) */
@@ -40,6 +41,7 @@ export class SceneWizard {
     this.uid        = opts.uid  || null;
     this.cName      = opts.cName || 'DM';
     this.activeRoom = opts.activeRoom || 'public';
+    this._roomCode  = opts.roomCode  || opts.activeRoom || ''; // E7
     this.db         = opts.db   || null;
     this.onSaved    = opts.onSaved  || null;
     this.onGoLive   = opts.onGoLive || null;
@@ -465,7 +467,20 @@ export class SceneWizard {
         <div class="wiz-tip" style="margin-top:14px;">
           💾 <b>${t('wiz_l5_save_only')}</b> — ${t('wiz_l5_save_only_tip')}<br><br>
           ⚔️ <b>${t('wiz_l5_go_live')}</b> — ${t('wiz_l5_go_live_tip')}
-        </div>`;
+        </div>
+
+        <div class="wiz-divider" style="margin-top:14px;">${t('wiz_or')}</div>
+        <div class="wiz-section" style="margin-top:10px;">📜 ${t('wiz_handout')}</div>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button id="wiz-print-handout" class="wiz-btn" style="flex:1;background:rgba(46,204,113,0.2);border-color:#2ecc71;color:#2ecc71;">
+            📜 ${t('wiz_print_handout')}
+          </button>
+          <button id="wiz-open-watabou" class="wiz-btn" style="flex:1;background:rgba(155,89,182,0.2);border-color:#9b59b6;color:#d7bde2;">
+            🗺 Watabou
+          </button>
+        </div>
+        ${this._dungeonData ? `<div class="wiz-ok-badge" style="margin-top:4px;">✓ ${this._dungeonData.rooms?.length||0} rooms indexed</div>` : ''}
+        `;
 
       default: return '';
     }
@@ -508,6 +523,7 @@ export class SceneWizard {
     try {
       const dng = generateDungeon({ size, style, seed });
       this._dungeonData = dng;
+      window._lastDungeonData = dng; // E7: available for handout export
 
       // Apply obstacle grid to map engine
       const obsGrid = tilesToObstacleGrid(dng.tiles);
@@ -544,6 +560,19 @@ export class SceneWizard {
     const atm = this._data.atmosphere;
 
     // ── Step 0: Image ────────────────────────────────────────────────────
+    // E7: Print Handout + Watabou buttons (Step 5)
+    document.getElementById('wiz-print-handout')?.addEventListener('click', () => {
+      printHandout({
+        roomCode:   this._roomCode || '',
+        sceneName:  document.getElementById('wiz-scene-name')?.value || 'Dungeon',
+        dungeonData: this._dungeonData,
+        engine:     this._engine,
+      });
+    });
+    document.getElementById('wiz-open-watabou')?.addEventListener('click', () => {
+      openWatabou(this._roomCode || this._dungeonData?.seed);
+    });
+
     // E4-B: Tile picker buttons
     document.querySelectorAll('.wiz-tile-btn').forEach(btn => {
       btn.addEventListener('click', e => {

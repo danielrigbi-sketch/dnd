@@ -15,6 +15,7 @@ import { openStatBlock, openStatBlockData, closeStatBlock } from "./statBlock.js
 import { openSpellPanel, closeSpellPanel } from "./spellPanel.js";
 import { openNPCPanel, closeNPCPanel } from "./npcPanel.js";
 import { generateNPC } from "./faker.js";
+import { printHandout, openWatabou, captureMapCanvas } from "./handout.js"; // E7
 import { iconHTML } from "./icons.js";
 
 // Expose Wave 2 panels globally
@@ -753,6 +754,22 @@ function initMap() {
         _initSceneManager();
     }
 
+    // E7: Handout + Watabou toolbar buttons
+    window._handoutBtn = () => {
+      const eng = window._mapEng;
+      const roomCode = window._activeRoom || '';
+      const sceneName = eng?.S?.cfg?.name || 'Dungeon';
+      printHandout({
+        roomCode,
+        sceneName,
+        dungeonData: window._lastDungeonData || null,
+        engine: eng,
+      });
+    };
+    window._watabouBtn = () => {
+      openWatabou(window._activeRoom || Math.floor(Math.random()*999999));
+    };
+
     // Wire compact toolbar
     window._mapToolBtn = (btn) => {
         document.querySelectorAll('.map-tb-btn[data-mode]').forEach(b => b.classList.remove('active'));
@@ -877,7 +894,7 @@ function _updateTokenRoster() {
 window.openSceneWizard = (existingData=null) => {
     if (!sceneWizard) {
         sceneWizard = new SceneWizard({
-            uid, cName, activeRoom: db.getActiveRoom(), db,
+            uid, cName, activeRoom: db.getActiveRoom(), roomCode: db.getActiveRoom(), db, // E7: roomCode for handout seed
             players: sortedCombatants.reduce((a,c)=>{a[c.name]=c;return a;},{}),
             onSaved: (id, data) => {
                 _initSceneManager();  // SA-2: refresh gallery so new card appears immediately

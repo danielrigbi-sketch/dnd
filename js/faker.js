@@ -331,5 +331,54 @@ export function generateRumor() {
   return r;
 }
 
+// ── Room Descriptions (E7-B) ──────────────────────────────────────────────────
+const ROOM_PREFIXES = [
+  'Ancient','Crumbling','Damp','Echoing','Forgotten','Gloomy','Hidden',
+  'Ill-lit','Jagged','Musty','Narrow','Ominous','Rank','Shadowed',
+  'Silent','Torch-lit','Vaulted','Weathered',
+];
+const ROOM_CONTENTS = {
+  entrance:       ['heavy iron portcullis, rusted but functional','pile of old bones near the threshold','faded warning scratched into the stone'],
+  guardroom:      ['overturned table and scattered dice','weapon rack with broken spears','dried bloodstain on the floor'],
+  barracks:       ['rows of rotting cots','discarded armour pieces','half-eaten rations crawling with beetles'],
+  treasury:       ['empty iron strongbox','scattered coins glinting in the dust','shattered urns and spilled jewels'],
+  throne:         ['cracked obsidian throne','moth-eaten tapestries depicting a forgotten kingdom','shards of a smashed crown'],
+  armory:         ['racks of rusted weapons','empty scabbards hanging from hooks','whetstone worn smooth with use'],
+  chapel:         ['overturned altar stained with old sacrifice','broken holy symbol on the floor','candles burned to stubs'],
+  dungeon_cell:   ['rusted chains bolted to the wall','scratched tally marks counting years','mouldering skeleton in the corner'],
+  ritual_chamber: ['arcane circle etched into the floor','candles arranged in a pentagram','strange smell of sulphur and copper'],
+  boss_chamber:   ['enormous stone throne carved with serpents','scattered bones of previous adventurers','a feeling of dread that hangs in the air'],
+  corridor:       ['crumbling ceiling with loose stones','puddles of stagnant water','echoing drips in the darkness'],
+  cave:           ['stalactites dripping into black pools','bioluminescent moss casting pale light','scratches on the walls from large claws'],
+};
+
+/**
+ * Generate a short room description for a dungeon room.
+ * @param {string} roomType — e.g. 'entrance', 'treasury', 'boss_chamber'
+ * @param {number} [seed]   — optional seed for reproducibility
+ * @returns {string}
+ */
+export function generateRoomDescription(roomType = 'corridor', seed) {
+  const pool = ROOM_CONTENTS[roomType] || ROOM_CONTENTS.corridor;
+  const prefix = ROOM_PREFIXES[Math.abs((seed||0) + roomType.length) % ROOM_PREFIXES.length];
+  const detail = pool[Math.abs((seed||0) * 3 + 7) % pool.length];
+  return `${prefix} chamber — ${detail}.`;
+}
+
+/**
+ * Generate a full dungeon room entry for a handout.
+ * @param {object} room — from dungeonGenerator rooms array
+ * @param {number} idx
+ * @returns {{ id, name, type, description }}
+ */
+export function generateRoomEntry(room, idx) {
+  const seed = (room.x || 0) * 31 + (room.y || 0) * 17 + idx;
+  const type = room.type || 'corridor';
+  const description = generateRoomDescription(type, seed);
+  // Human-readable type label
+  const label = type.replace(/_/g,' ').replace(/\w/g,c=>c.toUpperCase());
+  return { id: room.id || `room_${idx+1}`, name: `Room ${idx+1} — ${label}`, type, description };
+}
+
 /** All available races */
 export { RACES, GENDERS };
