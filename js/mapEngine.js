@@ -1,7 +1,10 @@
-// js/mapEngine.js — Tactical Battlefield v127
+// js/mapEngine.js — Tactical Battlefield v128
 // Complete real-time tactical map for CritRoll D&D
 // Self-contained: no external render deps, uses injected Firebase helpers
+// SC: v128 — NPC tokens use type-colour ring from monsters.js typeColor map
 // =====================================================================
+
+import { typeColor } from './monsters.js';
 
 // ── Constants ────────────────────────────────────────────────────────
 const FT_PER_SQ   = 5;
@@ -354,7 +357,11 @@ export class MapEngine {
   _rToken(cn,tk,px,py,size,isActive,isGhost){
     const {ctx}=this;
     const pl=this.S.players[cn]||{};
-    const col=pl.pColor||'#3498db';
+    // SC: NPCs get their monster-type ring colour; fallback to pColor or default blue
+    const isNPC = pl.userRole === 'npc';
+    const monType = pl.monsterType || null;
+    const col = (isNPC && monType && typeColor[monType]) ? typeColor[monType]
+               : (pl.pColor || '#3498db');
     const portrait=pl.portrait;
     const statuses=pl.statuses||[];
     const isDying=(pl.hp||0)<=0;
