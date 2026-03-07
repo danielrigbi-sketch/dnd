@@ -1,7 +1,7 @@
-// js/mapEngine.js — Tactical Battlefield v128
+// js/mapEngine.js — Tactical Battlefield v129
 // Complete real-time tactical map for CritRoll D&D
-// Self-contained: no external render deps, uses injected Firebase helpers
 // SC: v128 — NPC tokens use type-colour ring from monsters.js typeColor map
+// SD: v129 — Animated weather particles, fog feathering + reveal flash, iris wipe, gallery parallax
 // =====================================================================
 
 import { typeColor } from './monsters.js';
@@ -95,6 +95,12 @@ export class MapEngine {
       pan:{on:false,sx:0,sy:0,vx0:0,vy0:0},
       firedLocal: new Set(),
       placing: null,  // cName being placed on map by DM
+      // SD-1: weather particle pool
+      wx: null,       // {rain:[], snow:[], wisps:[]} — lazy-init on first draw
+      // SD-2: fog reveal flash queue [{gx,gy,t}]
+      fogRevQ: [],
+      // SD-3: iris transition {start, phase:'open'|'close', cb}
+      iris: null,
     };
 
     this._evs = {};
@@ -221,6 +227,8 @@ export class MapEngine {
     // HUD (screen-space)
     this._rHUD();
     this._rModeHUD();
+    // SD-3: Iris wipe (always last — above everything)
+    this._rIris();
   }
 
   // ── Background ──────────────────────────────────────────────────────
@@ -477,26 +485,56 @@ export class MapEngine {
     // Dark fill
     fc.fillStyle=`rgba(0,0,0,${FOW_ALPHA})`;
     fc.fillRect(0,0,W,H);
-    // Punch revealed holes
+
     fc.save();
     fc.globalCompositeOperation='destination-out';
     fc.translate(this.vx,this.vy); fc.scale(this.vs,this.vs);
     const {pps,ox,oy}=this.S.cfg;
-    // Revealed cells
+    const half=pps/2;
+
+    // SD-2: Helper — punch a soft-feathered hole at grid cell center
+    const punchCell=(gx,gy,alpha=1)=>{
+      const cx=ox+gx*pps+half, cy=oy+gy*pps+half;
+      const r=pps*0.78;
+      const g=fc.createRadialGradient(cx,cy,0,cx,cy,r);
+      g.addColorStop(0,   `rgba(255,255,255,${alpha})`);
+      g.addColorStop(0.6, `rgba(255,255,255,${alpha*0.97})`);
+      g.addColorStop(1,   'rgba(255,255,255,0)');
+      fc.fillStyle=g;
+      fc.fillRect(cx-r,cy-r,r*2,r*2);
+    };
+
+    // Revealed cells (feathered)
     Object.keys(this.S.fog).forEach(k=>{
       const {gx,gy}=kp(k);
-      fc.fillStyle='rgba(255,255,255,1)';
-      fc.fillRect(ox+gx*pps-1,oy+gy*pps-1,pps+2,pps+2);
+      punchCell(gx,gy,1);
     });
+
+    // SD-2: Reveal flash — newly revealed cells glow bright white briefly
+    const now=Date.now();
+    const FLASH_DUR=600;
+    this.L.fogRevQ=this.L.fogRevQ.filter(e=>{
+      const elapsed=now-e.t;
+      if(elapsed>FLASH_DUR) return false;
+      // Extra bright overlay that fades out — uses additive-style second punch
+      const flashAlpha=(1-(elapsed/FLASH_DUR))*0.9;
+      const cx=ox+e.gx*pps+half, cy=oy+e.gy*pps+half;
+      const r=pps*1.1;
+      const fg=fc.createRadialGradient(cx,cy,0,cx,cy,r);
+      fg.addColorStop(0,   `rgba(255,255,255,${flashAlpha})`);
+      fg.addColorStop(1,   'rgba(255,255,255,0)');
+      fc.fillStyle=fg;
+      fc.fillRect(cx-r,cy-r,r*2,r*2);
+      return true;
+    });
+    if(this.L.fogRevQ.length>0) this._dirty();
+
     // Own token vision radius (always visible)
     const myTk=this.S.tokens[this.cName];
     if(myTk){
       const vr=this._visionR(this.cName);
       for(let dx=-vr;dx<=vr;dx++) for(let dy=-vr;dy<=vr;dy++){
-        if(cheb(0,0,dx,dy)<=vr){
-          fc.fillStyle='rgba(255,255,255,1)';
-          fc.fillRect(ox+(myTk.gx+dx)*pps-1,oy+(myTk.gy+dy)*pps-1,pps+2,pps+2);
-        }
+        if(cheb(0,0,dx,dy)<=vr) punchCell(myTk.gx+dx,myTk.gy+dy,1);
       }
     }
     fc.restore();
@@ -641,10 +679,38 @@ export class MapEngine {
   }
 
   // ── Weather/Atmosphere ───────────────────────────────────────────────────
+  // ── SD-1: Weather particle pool lazy-init ─────────────────────────────
+  _initWx(W,H){
+    if(this.L.wx) return;
+    const rng=(min,max)=>min+Math.random()*(max-min);
+    const rain=Array.from({length:280},()=>({
+      x:Math.random()*W, y:Math.random()*H,
+      vy:rng(10,20), vx:rng(-2,-0.5),
+      len:rng(8,18), alpha:rng(0.3,0.7), w:rng(0.5,1.5),
+    }));
+    const snow=Array.from({length:220},()=>({
+      x:Math.random()*W, y:Math.random()*H,
+      vy:rng(0.8,2.5), vx:rng(-0.8,0.8),
+      r:rng(1,3.5), alpha:rng(0.5,0.95),
+      drift:rng(0.5,2), driftPhase:Math.random()*Math.PI*2,
+    }));
+    const wisps=Array.from({length:12},()=>({
+      x:Math.random()*W, y:rng(H*0.1,H*0.9),
+      vx:rng(0.12,0.35)*(Math.random()<0.5?-1:1), vy:rng(-0.04,0.04),
+      rx:rng(60,130), ry:rng(20,45),
+      alpha:rng(0.04,0.11), phase:Math.random()*Math.PI*2,
+    }));
+    const embers=Array.from({length:140},()=>({
+      x:Math.random()*W, y:Math.random()*H,
+      vx:rng(2,6), vy:rng(-1.5,1.5),
+      r:rng(1,2.5), alpha:rng(0.4,0.85), life:Math.random(),
+    }));
+    this.L.wx={rain,snow,wisps,embers,lt:0};
+  }
+
   _rWeather(){
     const a = this.S.atmosphere;
     if(!a || a.weather==='none') {
-      // ambient light only
       if(a?.ambientLight==='dark'){
         this.ctx.fillStyle='rgba(0,0,0,0.65)'; this.ctx.fillRect(0,0,this.cv.width,this.cv.height);
       } else if(a?.ambientLight==='dim'){
@@ -654,48 +720,95 @@ export class MapEngine {
     }
     const W=this.cv.width, H=this.cv.height, ctx=this.ctx;
     const now=Date.now();
+    this._initWx(W,H);
+    const wx=this.L.wx;
     switch(a.weather){
-      case 'light_rain':  this._rRain(ctx,W,H,80,now,0.45,'#88aacc'); break;
-      case 'heavy_rain':  this._rRain(ctx,W,H,220,now,0.65,'#667799'); break;
-      case 'blizzard':    this._rSnow(ctx,W,H,200,now); break;
+      case 'light_rain':  this._rRain(ctx,W,H,wx.rain,now,0.38,'#8ab4cc',80); break;
+      case 'heavy_rain':  this._rRain(ctx,W,H,wx.rain,now,0.62,'#6080a8',280);
+                          this._rLightning(ctx,W,H,now); break;
+      case 'blizzard':    this._rSnowSD(ctx,W,H,wx.snow,now); break;
       case 'sandstorm':
-        ctx.fillStyle='rgba(210,160,60,0.38)'; ctx.fillRect(0,0,W,H);
-        this._rRain(ctx,W,H,120,now,0.5,'#c8a055'); break;
-      case 'fog':
-        ctx.fillStyle='rgba(200,210,220,0.52)'; ctx.fillRect(0,0,W,H); break;
+        ctx.fillStyle='rgba(200,150,50,0.32)'; ctx.fillRect(0,0,W,H);
+        this._rEmbers(ctx,W,H,wx.embers); break;
+      case 'fog':         this._rFogWisps(ctx,W,H,wx.wisps,now); break;
       case 'darkness':
         ctx.fillStyle='rgba(0,0,20,0.80)'; ctx.fillRect(0,0,W,H); break;
     }
-    // Ambient light overlay on top
     if(a.ambientLight==='dark'){
       ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(0,0,W,H);
     } else if(a.ambientLight==='dim'){
       ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.fillRect(0,0,W,H);
     }
-    // Only keep animating for weather with actual animation (rain/snow)
-    const _wa=this.S.atmosphere?.weather;
-    if(_wa==='light_rain'||_wa==='heavy_rain'||_wa==='blizzard'||_wa==='sandstorm') this._dirty();
+    if(a.weather!=='none'&&a.weather!=='darkness') this._dirty();
   }
 
-  _rRain(ctx,W,H,count,now,alpha,col){
-    ctx.save(); ctx.globalAlpha=alpha; ctx.strokeStyle=col;
-    ctx.lineWidth=1;
-    for(let i=0;i<count;i++){
-      const seed=(i*7919+now/16)%1;
-      const x=((i*137.5+now*0.08)%W);
-      const y=((seed*H+now*0.25)%H);
-      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-2,y+12); ctx.stroke();
+  // SD-1: Rain — persistent particle pool with slanted streaks
+  _rRain(ctx,W,H,pool,now,baseAlpha,col,count){
+    ctx.save(); ctx.strokeStyle=col;
+    for(let i=0;i<count&&i<pool.length;i++){
+      const p=pool[i];
+      p.x=(p.x+p.vx+W)%W; p.y=(p.y+p.vy+H)%H;
+      ctx.globalAlpha=p.alpha*baseAlpha; ctx.lineWidth=p.w;
+      ctx.beginPath(); ctx.moveTo(p.x,p.y);
+      ctx.lineTo(p.x+p.vx*p.len/p.vy,p.y+p.len); ctx.stroke();
     }
     ctx.restore();
   }
 
-  _rSnow(ctx,W,H,count,now){
-    ctx.save(); ctx.fillStyle='rgba(240,245,255,0.80)';
-    for(let i=0;i<count;i++){
-      const x=((i*173+now*0.03+Math.sin(now*0.001+i)*20)%W+W)%W;
-      const y=((i*11+now*0.06)%H);
-      const r=Math.max(1,((i%4)+1)*0.8);
-      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  // SD-1: Lightning flash
+  _rLightning(ctx,W,H,now){
+    if(!this.L.wx) return;
+    const wx=this.L.wx;
+    if(Math.random()<0.0017) wx.lt=now;
+    const age=now-wx.lt;
+    if(age<80){
+      const f=age<20?0.35:age<50?0.18:0.08;
+      ctx.fillStyle=`rgba(220,230,255,${f})`; ctx.fillRect(0,0,W,H);
+    }
+  }
+
+  // SD-1: Snow — organic drift
+  _rSnowSD(ctx,W,H,pool,now){
+    ctx.save(); ctx.fillStyle='rgba(240,246,255,1)';
+    for(const p of pool){
+      p.x=(p.x+p.vx+Math.sin(now*0.001*p.drift+p.driftPhase)*0.8+W)%W;
+      p.y=(p.y+p.vy+H)%H;
+      ctx.globalAlpha=p.alpha;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // SD-1: Fog wisps — drifting ellipses
+  _rFogWisps(ctx,W,H,pool,now){
+    ctx.fillStyle='rgba(195,210,220,0.40)'; ctx.fillRect(0,0,W,H);
+    ctx.save();
+    for(const p of pool){
+      p.x=(p.x+p.vx+W*2)%(W*1.4)-W*0.2;
+      p.y+=Math.sin(now*0.0003+p.phase)*0.15;
+      const breathe=0.5+0.5*Math.sin(now*0.0008+p.phase);
+      const a=p.alpha*(0.6+0.4*breathe);
+      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.rx);
+      g.addColorStop(0,`rgba(210,220,228,${a})`);
+      g.addColorStop(1,'rgba(210,220,228,0)');
+      ctx.fillStyle=g;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.scale(1,p.ry/p.rx); ctx.translate(-p.x,-p.y);
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.rx,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // SD-1: Sandstorm embers
+  _rEmbers(ctx,W,H,pool){
+    ctx.save();
+    for(const p of pool){
+      p.x=(p.x+p.vx+W)%W; p.y=(p.y+p.vy+H)%H;
+      p.life=(p.life+0.008)%1;
+      const a=p.alpha*Math.sin(p.life*Math.PI);
+      ctx.globalAlpha=a; ctx.shadowColor='rgba(255,160,40,0.8)'; ctx.shadowBlur=4;
+      ctx.fillStyle='rgba(255,180,60,1)';
+      ctx.beginPath(); ctx.ellipse(p.x,p.y,p.r*2,p.r*0.5,0,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
   }
@@ -1045,7 +1158,12 @@ export class MapEngine {
   _revealCell(gx,gy,r=1){
     const cells={};
     for(let dx=-r;dx<=r;dx++) for(let dy=-r;dy<=r;dy++){
-      if(cheb(0,0,dx,dy)<=r) cells[ck(gx+dx,gy+dy)]=true;
+      if(cheb(0,0,dx,dy)<=r) {
+        const key=ck(gx+dx,gy+dy);
+        cells[key]=true;
+        // SD-2: track newly revealed cells for flash animation
+        if(!this.S.fog[key]) this.L.fogRevQ.push({gx:gx+dx,gy:gy+dy,t:Date.now()});
+      }
     }
     if(this.localOnly){ Object.assign(this.S.fog,cells); this._dirty(); return; }
     if(!this.db) return;
@@ -1171,6 +1289,42 @@ export class MapEngine {
   }
   setMode(m){ this.L.mode=m; this._dirty(); }
   setTool(t){ this.L.tool=t; }
+
+  // SD-3: Trigger iris wipe — call when scene loads
+  // phase 'open': black fills screen then sweeps away revealing the scene
+  // phase 'close': iris closes to black (use before scene swap)
+  startIris(phase='open'){
+    this.L.iris={ start:Date.now(), phase };
+    this._dirty();
+  }
+
+  // SD-3: Render iris wipe overlay
+  _rIris(){
+    const iris=this.L.iris;
+    if(!iris) return;
+    const W=this.cv.width, H=this.cv.height;
+    const ctx=this.ctx;
+    const maxR=Math.hypot(W,H)/2+20;
+    const DUR=900;
+    const elapsed=Date.now()-iris.start;
+    const t=Math.min(1,elapsed/DUR);
+    const ease=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2; // easeInOutQuad
+
+    // 'open' = iris expands (reveals scene), 'close' = iris contracts (blackens)
+    const r=iris.phase==='open' ? maxR*ease : maxR*(1-ease);
+
+    ctx.save();
+    ctx.fillStyle='rgba(0,0,0,1)';
+    ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='destination-out';
+    ctx.beginPath();
+    ctx.arc(W/2,H/2,Math.max(0,r),0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    if(elapsed<DUR) this._dirty();
+    else this.L.iris=null;
+  }
   setAoeShape(s){ this.L.aoeShape=s; this._dirty(); }
   setAoeRadius(r){ this.L.aoeR=r; this._dirty(); }
   startPlacing(cn){ this.L.placing=cn; this.L.mode='view'; this._dirty(); }
