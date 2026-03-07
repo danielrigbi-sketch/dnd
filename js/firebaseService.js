@@ -12,7 +12,6 @@ const googleProvider = new GoogleAuthProvider();
 
 let activeRoom = 'public';
 export function setRoom(roomCode) { activeRoom = roomCode || 'public'; }
-export function getActiveRoom() { return activeRoom; }
 
 // ==========================================
 // Auth & Vault
