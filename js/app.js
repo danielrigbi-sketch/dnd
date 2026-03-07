@@ -9,6 +9,53 @@ import { t } from "./i18n.js";
 import { npcDatabase } from "./monsters.js";
 import { MapEngine } from "./mapEngine.js";
 import { SceneWizard } from "./sceneWizard.js";
+
+// ── Wave 2 imports ─────────────────────────────────────────────────────────────
+import { openStatBlock, openStatBlockData, closeStatBlock } from "./statBlock.js";
+import { openSpellPanel, closeSpellPanel } from "./spellPanel.js";
+import { openNPCPanel, closeNPCPanel } from "./npcPanel.js";
+import { generateNPC } from "./faker.js";
+import { iconHTML } from "./icons.js";
+
+// Expose Wave 2 panels globally
+window.openStatBlock     = openStatBlock;
+window.openStatBlockData = openStatBlockData;
+window.closeStatBlock    = closeStatBlock;
+window.openSpellPanel    = openSpellPanel;
+window.closeSpellPanel   = closeSpellPanel;
+window.openNPCPanel      = openNPCPanel;
+window.closeNPCPanel     = closeNPCPanel;
+
+// Spawn NPC token from NPC panel into active scene
+window._spawnNPCToken = function(npc) {
+  if (!window._sceneWizardInstance) return;
+  const token = {
+    name:     npc.name,
+    type:     npc.type || 'Humanoid',
+    cr:       npc.cr || '0',
+    hp:       npc.hp || 8,
+    maxHp:    npc.hp || 8,
+    ac:       npc.ac || 11,
+    melee:    2,
+    meleeDmg: '1d4',
+    ranged:   0,
+    rangedDmg:'1d4',
+    isHidden: true,
+    img:      `https://api.dicebear.com/8.x/bottts/svg?seed=${encodeURIComponent(npc.name)}&backgroundColor=7f8c8d`,
+  };
+  window._sceneWizardInstance._spawnToken?.(token);
+};
+
+// Upgrade toolbar icons from emoji → SVG after DOM ready
+function _upgradeToolbarIcons() {
+  document.querySelectorAll('.map-tb-icon.gi-tb').forEach(el => {
+    const key   = el.dataset.gi;
+    const color = '#ccc';
+    const svg   = iconHTML(key, color, '20px');
+    if (svg) { el.innerHTML = svg; el.style.display = 'flex'; el.style.alignItems = 'center'; }
+  });
+}
+
 // getActiveRoom is available via db.getActiveRoom()
 
 window.toggleDeathSave = async (targetCName, type, index) => {
@@ -185,6 +232,7 @@ function _initConfirmModal() {
     });
 }
 document.addEventListener('DOMContentLoaded', _initConfirmModal);
+document.addEventListener('DOMContentLoaded', _upgradeToolbarIcons);
 
 // =====================================================================
 // GLOBALS

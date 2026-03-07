@@ -295,6 +295,7 @@ export class SceneWizard {
                   <span class="wiz-mon-meta">CR ${cr} · ${type} · ${hp}hp</span>
                 </div>
                 ${count > 0 ? `<span class="wiz-mon-count">${count}</span>` : ''}
+                <button class="wiz-mon-info-btn" data-slug="${m.slug}" data-o5e="1" title="View stat block" style="background:none;border:1px solid #555;border-radius:4px;color:#aaa;font-size:11px;cursor:pointer;padding:3px 6px;margin-right:2px;">📖</button>
                 <button class="wiz-mon-spawn-btn" data-slug="${m.slug}" data-o5e="1" title="Spawn on map">+</button>
               </div>`;
           }).join('');
@@ -590,6 +591,12 @@ export class SceneWizard {
       btn.addEventListener('click', () => {
         if (btn.dataset.o5e) this._spawnO5eNPC(btn.dataset.slug);
         else this._spawnNPC(btn.dataset.key);
+      });
+    });
+    // Stat block info buttons
+    document.querySelectorAll('.wiz-mon-info-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (window.openStatBlock) window.openStatBlock(btn.dataset.slug);
       });
     });
 

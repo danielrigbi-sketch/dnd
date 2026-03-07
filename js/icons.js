@@ -15,6 +15,24 @@
 
 /** Map: condition / action name → SVG filename (without .svg extension) */
 export const ICONS = {
+  // ── Map Toolbar ────────────────────────────────────────────────────────────
+  'toolbar-select':  'toolbar-select',
+  'toolbar-wall':    'toolbar-wall',
+  'toolbar-trap':    'toolbar-trap',
+  'toolbar-reveal':  'toolbar-reveal',
+  'toolbar-fog':     'toolbar-fog',
+  'toolbar-ruler':   'toolbar-ruler',
+  'toolbar-aoe':     'toolbar-aoe',
+  'toolbar-tokens':  'toolbar-tokens',
+
+  // ── Roll Log ────────────────────────────────────────────────────────────────
+  'roll-melee':   'roll-melee',
+  'roll-ranged':  'roll-ranged',
+  'roll-save':    'roll-save',
+  'roll-d20':     'roll-d20',
+  'roll-damage':  'roll-damage',
+  'roll-heal':    'roll-heal',
+
   // ── Conditions ────────────────────────────────────────────────────────────
   'Poisoned':      'poisoned',
   'Charmed':       'charmed',

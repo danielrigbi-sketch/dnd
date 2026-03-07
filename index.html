@@ -351,6 +351,19 @@
                     </div>
 
                     <button id="mute-btn" class="side-btn hover-btn" data-i18n="mute_sound" onclick="window.toggleMute()"></button>
+
+                    <!-- Wave 2: Quick-access tool buttons -->
+                    <div style="display:flex; gap:6px; margin-bottom:4px;">
+                        <button onclick="window.openSpellPanel?.()" class="side-btn hover-btn"
+                            style="flex:1; background:rgba(142,68,173,0.25); border:1px solid #8e44ad;
+                                   color:#c39bd3; font-size:12px; padding:7px; font-weight:700;"
+                            title="Open Spell Compendium (SRD spells)">🔮 Spells</button>
+                        <button onclick="window.openNPCPanel?.()" class="side-btn hover-btn"
+                            style="flex:1; background:rgba(39,174,96,0.2); border:1px solid #27ae60;
+                                   color:#82e0aa; font-size:12px; padding:7px; font-weight:700;"
+                            title="NPC Generator">🎲 NPC Gen</button>
+                    </div>
+
                     <button onclick="window.openCredits()" class="side-btn hover-btn" style="background:rgba(241,196,15,0.1); border:1px solid rgba(241,196,15,0.2); color:#f1c40f; font-size:11px; padding:6px 10px; letter-spacing:0.05em;" title="Credits &amp; Licensing">ⓘ Credits</button>
                 </div>
             </div>
@@ -370,29 +383,29 @@
                         <!-- Compact DM toolbar (shown when map is active, DM only) -->
                         <div id="map-toolbar" style="display:none;">
                             <button class="map-tb-btn active" data-mode="view"    onclick="window._mapToolBtn(this)" title="Select / Move (V)">
-                                <span class="map-tb-icon">👆</span><span class="map-tb-label">Select</span>
+                                <span class="map-tb-icon gi-tb" data-gi="toolbar-select">👆</span><span class="map-tb-label">Select</span>
                             </button>
                             <button class="map-tb-btn" data-mode="obstacle"       onclick="window._mapToolBtn(this)" title="Paint Walls (O)">
-                                <span class="map-tb-icon">🧱</span><span class="map-tb-label">Wall</span>
+                                <span class="map-tb-icon gi-tb" data-gi="toolbar-wall">🧱</span><span class="map-tb-label">Wall</span>
                             </button>
                             <button class="map-tb-btn" data-mode="trigger"        onclick="window._mapToolBtn(this)" title="Place Trap / Trigger (T)">
-                                <span class="map-tb-icon">⚠️</span><span class="map-tb-label">Trap</span>
+                                <span class="map-tb-icon gi-tb" data-gi="toolbar-trap">⚠️</span><span class="map-tb-label">Trap</span>
                             </button>
                             <button class="map-tb-btn" data-mode="fogReveal"      onclick="window._mapToolBtn(this)" title="Reveal Fog (F)">
-                                <span class="map-tb-icon">🌟</span><span class="map-tb-label">Reveal</span>
+                                <span class="map-tb-icon gi-tb" data-gi="toolbar-reveal">🌟</span><span class="map-tb-label">Reveal</span>
                             </button>
                             <button class="map-tb-btn" data-mode="fogHide"        onclick="window._mapToolBtn(this)" title="Hide Fog (H)">
-                                <span class="map-tb-icon">🌑</span><span class="map-tb-label">Hide</span>
+                                <span class="map-tb-icon gi-tb" data-gi="toolbar-fog">🌑</span><span class="map-tb-label">Hide</span>
                             </button>
                             <button class="map-tb-btn" data-mode="ruler"          onclick="window._mapToolBtn(this)" title="Measure Distance (R)">
-                                <span class="map-tb-icon">📏</span><span class="map-tb-label">Ruler</span>
+                                <span class="map-tb-icon gi-tb" data-gi="toolbar-ruler">📏</span><span class="map-tb-label">Ruler</span>
                             </button>
                             <button class="map-tb-btn" data-mode="aoe"            onclick="window._mapToolBtn(this)" title="Area of Effect (A)">
-                                <span class="map-tb-icon">💥</span><span class="map-tb-label">AoE</span>
+                                <span class="map-tb-icon gi-tb" data-gi="toolbar-aoe">💥</span><span class="map-tb-label">AoE</span>
                             </button>
                             <div class="map-tb-sep"></div>
                             <button class="map-tb-btn" onclick="window.toggleTokenRoster()" title="Place Tokens on Map">
-                                <span class="map-tb-icon">👥</span><span class="map-tb-label">Tokens</span>
+                                <span class="map-tb-icon gi-tb" data-gi="toolbar-tokens">👥</span><span class="map-tb-label">Tokens</span>
                             </button>
                             <button class="map-tb-btn red" onclick="window.deactivateScene()" title="Close Map View">
                                 <span class="map-tb-icon">✕</span><span class="map-tb-label">Close</span>
