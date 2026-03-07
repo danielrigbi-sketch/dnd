@@ -23,6 +23,10 @@ function copyStaticAssets() {
     name: 'copy-static-assets',
     closeBundle() {
       copyDir('assets', 'dist/assets');
+      // Tile spritesheet + manifest
+      if (existsSync('public/tiles')) {
+        copyDir('public/tiles', 'dist/tiles');
+      }
       // E5-A: copy Game-Icons SVGs to dist/icons/
       if (existsSync('public/icons')) {
         copyDir('public/icons', 'dist/icons');

@@ -1,1568 +1,592 @@
-// js/mapEngine.js — Tactical Battlefield v129
-// Complete real-time tactical map for CritRoll D&D
-// SC: v128 — NPC tokens use type-colour ring from monsters.js typeColor map
-// SD: v129 — Animated weather particles, fog feathering + reveal flash, iris wipe, gallery parallax
-// =====================================================================
+// js/mapEngine.js — Tactical Battlefield v130 (REFACTORED)
+// Slim orchestrator. Rendering systems extracted to:
+//   engine/tokenSystem.js    — token render + all mouse/touch input
+//   engine/movementSystem.js — A* pathfinding, BFS range, path/HUD render
+//   engine/visibilitySystem.js — ROT.js FOV + trigger check
+//   engine/fowSystem.js      — FOW canvas compositing + reveal flash
+//   core/eventBus.js         — decoupled pub/sub
+//
+// This file owns: render loop, weather, backgrounds, grid, obstacles,
+//   triggers, ruler, AOE, iris wipe, Firebase setup, DM tool APIs.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { typeColor } from './monsters.js';
-import { FOV } from 'rot-js';  // E3-A: Recursive Shadowcasting FOV
-import { TileEngine } from './tileEngine.js';  // E4-A: Dungeon tile renderer
-import { Pathfinder } from './pathfinder.js';   // E6-A: EasyStar A* pathfinding
-import { PixiLayer } from './pixiLayer.js';     // E2-A: PixiJS v8 GPU overlay
+import { TileEngine } from './tileEngine.js';
+import { Pathfinder } from './pathfinder.js';
+import { PixiLayer } from './pixiLayer.js';
 
-// ── Constants ────────────────────────────────────────────────────────
-const FT_PER_SQ   = 5;
-const MAP_W_DEFAULT = 30;   // default grid columns when none specified
-const MAP_H_DEFAULT = 20;   // default grid rows when none specified
-const DEF_PPS     = 64;          // default pixels-per-square
-const MIN_PPS     = 16;
-const MAX_PPS     = 200;
-const FOW_ALPHA   = 0.88;
+import { mapBus }           from './core/eventBus.js';
+import { TokenSystem }      from './engine/tokenSystem.js';
+import { MovementSystem }   from './engine/movementSystem.js';
+import { VisibilitySystem } from './engine/visibilitySystem.js';
+import { FowSystem }        from './engine/fowSystem.js';
+
+// ── Constants ─────────────────────────────────────────────────────────
+const FT_PER_SQ     = 5;
+const MAP_W_DEFAULT = 30;
+const MAP_H_DEFAULT = 20;
+const DEF_PPS       = 64;
+const MIN_PPS       = 16;
+const MAX_PPS       = 200;
 const GRID_NORMAL   = 'rgba(200,200,200,0.18)';
-const GRID_LOCKED   = 'rgba(20,20,20,0.45)';   // thin black after approval
+const GRID_LOCKED   = 'rgba(20,20,20,0.45)';
 const GRID_CALIB    = 'rgba(255,220,60,0.50)';
-const GRID_PHANTOM  = 'rgba(50,230,100,0.75)';  // vivid green phantom
-const OBS_FILL    = 'rgba(160,0,0,0.55)';
-const TRIG_FILL   = 'rgba(255,180,0,0.40)';
-const TRIG_FIRED  = 'rgba(255,80,0,0.70)';
-const PATH_STROKE = 'rgba(80,200,255,0.85)';
-const REVEAL_FILL = 'rgba(0,200,100,0.28)';
+const OBS_FILL      = 'rgba(160,0,0,0.55)';
+const TRIG_FILL     = 'rgba(255,180,0,0.40)';
+const TRIG_FIRED    = 'rgba(255,80,0,0.70)';
 const AOE_COLS = {
-  circle:'rgba(255,70,0,0.32)', cone:'rgba(255,200,0,0.32)',
-  cube:'rgba(0,140,255,0.32)',  line:'rgba(200,0,220,0.45)',
-};
-const STS_ICON = {
-  Poisoned:'☠',Charmed:'♥',Unconscious:'💤',Frightened:'😱',
-  Paralyzed:'⚡',Restrained:'⛓',Blinded:'🚫',Prone:'⬇',Stunned:'💫',
-  Concentrating:'🔮',
+  circle: 'rgba(255,70,0,0.32)',  cone: 'rgba(255,200,0,0.32)',
+  cube:   'rgba(0,140,255,0.32)', line: 'rgba(200,0,220,0.45)',
 };
 
-
-// Lightweight debounce: delays fn until after 'ms' ms of inactivity.
 function _debounce(fn, ms) {
-    let t = null;
-    return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), ms);
-    };
+  let t = null;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-function ck(gx,gy){ return `${Math.floor(gx)}_${Math.floor(gy)}`; }
-function kp(k){ const[x,y]=k.split('_').map(Number); return{gx:x,gy:y}; }
-function cheb(ax,ay,bx,by){ return Math.max(Math.abs(ax-bx),Math.abs(ay-by)); }
-function lerp(a,b,t){ return a+(b-a)*t; }
+function ck(gx, gy) { return `${Math.floor(gx)}_${Math.floor(gy)}`; }
+function kp(k) { const [x, y] = k.split('_').map(Number); return { gx: x, gy: y }; }
 
-// ── MapEngine class ──────────────────────────────────────────────────
+// ── MapEngine ─────────────────────────────────────────────────────────
 export class MapEngine {
-  constructor(canvas, fowCanvas, opts={}) {
-    this.localOnly  = opts.localOnly || false; // wizard: no db needed
-    this.cv  = canvas;
-    this.ctx = canvas.getContext('2d');
-    this.fw  = fowCanvas;
-    this.fc  = fowCanvas.getContext('2d');
-    this.tileEngine = new TileEngine();  // E4-A
+  constructor(canvas, fowCanvas, opts = {}) {
+    this.localOnly  = opts.localOnly || false;
+    this.cv         = canvas;
+    this.ctx        = canvas.getContext('2d');
+    this.fw         = fowCanvas;
+    this.fc         = fowCanvas.getContext('2d');
+
+    this.tileEngine = new TileEngine();
     this.tileEngine.load().catch(e => console.warn('TileEngine load:', e));
-    this._pf = new Pathfinder();  // E6-A
-    this._pixi = new PixiLayer(); // E2-A — initialized lazily after DOM attach
+    this._pf    = new Pathfinder();
+    this._pixi  = new PixiLayer();
 
     this.cName      = opts.cName      || '';
     this.userRole   = opts.userRole   || 'player';
     this.activeRoom = opts.activeRoom || 'public';
     this.isMuted    = false;
-    this.db         = null;   // set via setupFirebase()
+    this.db         = null;
 
     // View transform
-    this.vx=0; this.vy=0; this.vs=1;
+    this.vx = 0; this.vy = 0; this.vs = 1;
 
-    // Firebase-synced state
+    // ── Shared state (Firebase-synced) ────────────────────────────────
     this.S = {
-      cfg: { bgUrl:'', pps:DEF_PPS, ox:0, oy:0, locked:false, mapW:30, mapH:20 },
-      atmosphere: { weather:'none', ambientLight:'bright', globalDarkvision:0 },
-      tokens:    {},  // {cName:{gx,gy,usedMv}}
-      fog:       {},  // {ck: true}  = revealed
-      obstacles: {},  // {ck: true}
-      triggers:  {},  // {ck:{label,fired}}
-      players:   {},  // mirrored from app
-      scenes:    {},
+      cfg:        { bgUrl: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20 },
+      atmosphere: { weather: 'none', ambientLight: 'bright', globalDarkvision: 0 },
+      tokens:     {},
+      fog:        {},
+      obstacles:  {},
+      triggers:   {},
+      players:    {},
+      scenes:     {},
       activeScene: 'default',
     };
 
-    // Local only
+    // ── Local only ────────────────────────────────────────────────────
     this.L = {
-      mode:'view',  // view|obstacle|trigger|fogReveal|fogHide|ruler|aoe|calibrate
-      tool:'paint', // paint|erase
-      aoeShape:'circle', aoeR:20,
-      rulerA: null, rulerB: null,
-      drag: null,   // {cName,startGX,startGY,curGX,curGY,path[]}
-      mw:{x:0,y:0}, ms:{x:0,y:0},
-      painting:false,
-      imgCache:{},
-      bg:null, bgLoading:false,
-      ati:null, sc:[],   // activeTurnIndex, sortedCombatants
-      dirty:true, raf:null,
-      pan:{on:false,sx:0,sy:0,vx0:0,vy0:0},
+      mode:      'view',
+      tool:      'paint',
+      aoeShape:  'circle', aoeR: 20,
+      rulerA:    null, rulerB: null,
+      drag:      null,
+      mw:        { x: 0, y: 0 }, ms: { x: 0, y: 0 },
+      painting:  false,
+      imgCache:  {},
+      bg:        null, bgLoading: false,
+      ati:       null, sc: [],
+      dirty:     true, raf: null,
+      pan:       { on: false, sx: 0, sy: 0, vx0: 0, vy0: 0 },
       firedLocal: new Set(),
-      placing: null,  // cName being placed on map by DM
-      // SD-1: weather particle pool
-      wx: null,       // {rain:[], snow:[], wisps:[]} — lazy-init on first draw
-      // SD-2: fog reveal flash queue [{gx,gy,t}]
-      fogRevQ: [],
-      // E3-B: currently visible cells for this frame (Set of "gx,gy" keys)
+      placing:   null,
+      wx:        null,
+      fogRevQ:   [],
       currentFov: new Set(),
-      // SD-3: iris transition {start, phase:'open'|'close', cb}
-      iris: null,
+      iris:       null,
     };
 
-    this._evs = {};
+    // ── Event bus (cross-subsystem communication) ─────────────────────
+    this.bus = mapBus;
+
+    // ── Subsystems ────────────────────────────────────────────────────
+    this.tokens     = new TokenSystem(this);
+    this.movement   = new MovementSystem(this);
+    this.visibility = new VisibilitySystem(this);
+    this.fow        = new FowSystem(this);
+
+    // Wire bus events that mapEngine needs to handle
+    this._busUnsubs = [
+      mapBus.on('token:moved', ({ cName, gx, gy }) => {
+        this.visibility.revealForToken(cName, gx, gy);
+        this.visibility.checkTrigger(gx, gy, cName);
+      }),
+    ];
+
     this._unsubs = [];
 
-    // Debounced Firebase writes for high-frequency painting operations
+    // Debounced Firebase writes
     this._debouncedWriteObstacle = _debounce((key, val) => {
-        if (this.db) this.db.setObstacle(this.activeRoom, this.S.activeScene, key, val);
+      if (this.db) this.db.setObstacle(this.activeRoom, this.S.activeScene, key, val);
     }, 50);
     this._debouncedWriteFog = _debounce((gx, gy, reveal) => {
-        if (this.db) {
-            if (reveal) this.db.revealFog(this.activeRoom, this.S.activeScene, gx, gy, 1);
-            else        this.db.hideFog(this.activeRoom, this.S.activeScene, gx, gy);
-        }
+      if (this.db) {
+        if (reveal) this.db.revealFog(this.activeRoom, this.S.activeScene, gx, gy, 1);
+        else        this.db.hideFog(this.activeRoom, this.S.activeScene, gx, gy);
+      }
     }, 50);
     this._debouncedSaveGridCfg = _debounce(() => {
-        if (this.db) this.db.setMapCfg(this.activeRoom, this.S.cfg);
+      if (this.db) this.db.setMapCfg(this.activeRoom, this.S.cfg);
     }, 300);
 
-    this._bindCanvas();
+    // Bind input through TokenSystem
+    this.tokens.bindInput(this.cv);
     this._loop();
   }
 
-  // ── Lifecycle ───────────────────────────────────────────────────────
-  destroy(){
+  // ── Lifecycle ─────────────────────────────────────────────────────────
+  destroy() {
     cancelAnimationFrame(this.L.raf);
-    Object.entries(this._evs).forEach(([ev,fn])=>this.cv.removeEventListener(ev,fn));
-    this._unsubs.forEach(u=>u());
+    this.tokens.unbindInput(this.cv);
+    this._unsubs.forEach(u => u());
+    this._busUnsubs.forEach(u => u());
   }
 
-  setActiveTurn(idx, sc){ this.L.ati=idx; this.L.sc=sc||[]; this._dirty(); }
-  setPlayers(p){
-    const newKeys=Object.keys(p||{}).sort().join(',');
-    const oldKeys=Object.keys(this.S.players).sort().join(',');
-    // E2-C: detect HP changes → trigger particles
-    if(this._pixi?.isReady && p){
-      Object.entries(p).forEach(([cn,pl])=>{
-        const prev=this.S.players[cn];
-        if(prev && typeof prev.hp==='number' && typeof pl.hp==='number' && prev.hp!==pl.hp){
-          this._pixi.onHPChange(cn,prev.hp,pl.hp,this.S.cfg,this.S.tokens[cn]);
+  setActiveTurn(idx, sc) { this.L.ati = idx; this.L.sc = sc || []; this._dirty(); }
+
+  setPlayers(p) {
+    const newKeys = Object.keys(p || {}).sort().join(',');
+    const oldKeys = Object.keys(this.S.players).sort().join(',');
+    if (this._pixi?.isReady && p) {
+      Object.entries(p).forEach(([cn, pl]) => {
+        const prev = this.S.players[cn];
+        if (prev && typeof prev.hp === 'number' && typeof pl.hp === 'number' && prev.hp !== pl.hp) {
+          this.bus.emit('hp:changed', { cName: cn, oldHp: prev.hp, newHp: pl.hp, cfg: this.S.cfg, token: this.S.tokens[cn] });
+          this._pixi.onHPChange(cn, prev.hp, pl.hp, this.S.cfg, this.S.tokens[cn]);
         }
       });
     }
-    this.S.players=p||{};
+    this.S.players = p || {};
     this._dirty();
-    // Only rebuild the token roster DOM when membership changes
-    if(newKeys!==oldKeys) this._updateDashTokenList();
+    if (newKeys !== oldKeys) this.tokens.updateDashTokenList();
   }
-  setMuted(v){ this.isMuted=v; }
 
-  // E2-A: Initialize PixiJS overlay — call after canvas container is in DOM
+  setMuted(v) { this.isMuted = v; }
+
   async initPixi(containerEl) {
     try {
       await this._pixi.init(containerEl);
       console.log('[PixiLayer] WebGL overlay ready ✓');
-    } catch(e) {
+    } catch (e) {
       console.warn('[PixiLayer] init failed, using Canvas 2D only:', e.message);
     }
   }
 
-  _dirty(){ this.L.dirty=true; }
+  _dirty() { this.L.dirty = true; }
 
-  // ── Firebase setup ──────────────────────────────────────────────────
-  setupFirebase(db){
+  // ── Firebase setup ────────────────────────────────────────────────────
+  setupFirebase(db) {
     this.db = db;
-    this._unsubs.forEach(u=>u());
+    this._unsubs.forEach(u => u());
     this._unsubs = [];
     const r = this.activeRoom, sc = this.S.activeScene;
 
     this._unsubs.push(
-      db.listenMapCfg(r, cfg=>{
-        if(!cfg) return;
+      db.listenMapCfg(r, cfg => {
+        if (!cfg) return;
         const wasUrl = this.S.cfg.bgUrl;
-        this.S.cfg = {...this.S.cfg,...cfg};
-        if(cfg.bgUrl && cfg.bgUrl!==wasUrl) this._loadBg(cfg.bgUrl);
+        this.S.cfg = { ...this.S.cfg, ...cfg };
+        if (cfg.bgUrl && cfg.bgUrl !== wasUrl) this._loadBg(cfg.bgUrl);
         this._dirty();
       }),
-      db.listenMapTokens(r, tks=>{
-        this.S.tokens = tks||{};
+      db.listenMapTokens(r, tks => { this.S.tokens = tks || {}; this._dirty(); }),
+      db.listenFog(r, sc, fog => { this.S.fog = fog || {}; this._dirty(); }),
+      db.listenObstacles(r, sc, obs => {
+        this.S.obstacles = obs || {};
+        this._pf?.invalidate();
         this._dirty();
       }),
-      db.listenFog(r, sc, fog=>{
-        this.S.fog = fog||{}; this._dirty();
-      }),
-      db.listenObstacles(r, sc, obs=>{
-        this.S.obstacles = obs||{}; this._pf?.invalidate(); this._dirty(); // E6-A
-      }),
-      db.listenTriggers(r, sc, trg=>{
-        this.S.triggers = trg||{}; this._dirty();
-      }),
-      db.listenActiveScene(r, sid=>{
-        if(sid && sid!==this.S.activeScene) this._switchScene(sid);
+      db.listenTriggers(r, sc, trg => { this.S.triggers = trg || {}; this._dirty(); }),
+      db.listenActiveScene(r, sid => {
+        if (sid && sid !== this.S.activeScene) this._switchScene(sid);
       }),
     );
   }
 
-  _switchScene(sid){
-    this._unsubs.forEach(u=>u()); this._unsubs=[];
-    this.S.activeScene=sid;
-    this.S.fog={}; this.S.obstacles={}; this.S.triggers={};
+  _switchScene(sid) {
+    this._unsubs.forEach(u => u());
+    this._unsubs = [];
+    this.S.activeScene = sid;
+    this.S.fog = {}; this.S.obstacles = {}; this.S.triggers = {};
     this.L.firedLocal.clear();
-    if(this.db) this.setupFirebase(this.db);
+    if (this.db) this.setupFirebase(this.db);
+    this.bus.emit('scene:switched', { sceneId: sid });
     this._dirty();
   }
 
-  // ── Render loop ─────────────────────────────────────────────────────
-  _loop(){
-    const tick=()=>{
-      if(this.L.dirty){ this._render(); this.L.dirty=false; }
-      this.L.raf=requestAnimationFrame(tick);
+  // ── Render loop ───────────────────────────────────────────────────────
+  _loop() {
+    const tick = () => {
+      if (this.L.dirty) { this._render(); this.L.dirty = false; }
+      this.L.raf = requestAnimationFrame(tick);
     };
-    this.L.raf=requestAnimationFrame(tick);
+    this.L.raf = requestAnimationFrame(tick);
   }
 
-  _render(){
-    const {ctx,cv,fw,fc}=this;
-    const W=cv.width, H=cv.height;
-    ctx.clearRect(0,0,W,H);
+  _render() {
+    const { ctx, cv } = this;
+    const W = cv.width, H = cv.height;
+    ctx.clearRect(0, 0, W, H);
 
     ctx.save();
-    ctx.translate(this.vx,this.vy);
-    ctx.scale(this.vs,this.vs);
+    ctx.translate(this.vx, this.vy);
+    ctx.scale(this.vs, this.vs);
 
     this._rBg();
     this._rGrid();
     this._rObstacles();
-    if(this.userRole==='dm') this._rTriggers();
-    if (!this._pixi?.isReady) this._rTokens(); // E2-B: Pixi handles tokens when ready
-    this._rMoveRange(); // E6-B
-    // E2-B: sync PixiJS token layer after Canvas 2D tokens
-    if(this._pixi?.isReady){
-      const activeName=this.L.sc?.[this.L.ati];
-      const dragging=this.L.drag?.cName;
-      this._pixi.setTransform(this.vx,this.vy,this.vs);
-      this._pixi.syncTokens(this.S.tokens,this.S.players,activeName,this.S.cfg,dragging);
+    if (this.userRole === 'dm') this._rTriggers();
+    if (!this._pixi?.isReady) this.tokens.render();
+    this.movement.renderRange();
+    if (this._pixi?.isReady) {
+      const activeName = this.L.sc?.[this.L.ati];
+      const dragging   = this.L.drag?.cName;
+      this._pixi.setTransform(this.vx, this.vy, this.vs);
+      this._pixi.syncTokens(this.S.tokens, this.S.players, activeName, this.S.cfg, dragging);
     }
-    this._rPath();
+    this.movement.renderPath();
     this._rRuler();
     this._rAoe();
-    this._rPhantomGrid(); // top layer in world space
+    this.fow.renderPhantomGrid();
 
     ctx.restore();
 
-    // E4-A: Tile layer — drawn in world space, before FOW
-    if(this.tileEngine?.ready){
+    if (this.tileEngine?.ready) {
       this.tileEngine.render(this.ctx, this.S.cfg, this.vx, this.vy, this.vs);
     }
 
-    // FOW (screen-space composite)
-    const _m=this.L.mode;
-    if(_m==='wizFog'||_m==='wizFogHide') this._rWizFog();
-    else if(this.userRole!=='dm') this._rFow();
-    else this._rFowDM();
-
-    // Weather overlay (screen-space)
+    this.fow.render();
     this._rWeather();
-    // HUD (screen-space)
-    this._rHUD();
+    this.movement.renderHUD();
     this._rModeHUD();
-    // SD-3: Iris wipe (always last — above everything)
     this._rIris();
   }
 
-  // ── Background ──────────────────────────────────────────────────────
-  // Returns the pixel dimensions the bg image should be drawn at in phantom
-  // mode: fit-inside the canvas at scale=1, preserving aspect ratio.
-  _getBgFit(){
-    const cw=this.cv.width, ch=this.cv.height;
-    if(!this.L.bg) return {w:cw,h:ch};
-    const nw=this.L.bg.naturalWidth||this.L.bg.width||cw;
-    const nh=this.L.bg.naturalHeight||this.L.bg.height||ch;
-    const scale=Math.min(cw/nw, ch/nh, 1); // never upscale beyond canvas
-    return {w:Math.round(nw*scale), h:Math.round(nh*scale)};
+  // ── Background ────────────────────────────────────────────────────────
+  _getBgFit() {
+    const cw = this.cv.width, ch = this.cv.height;
+    if (!this.L.bg) return { w: cw, h: ch };
+    const nw = this.L.bg.naturalWidth || this.L.bg.width || cw;
+    const nh = this.L.bg.naturalHeight || this.L.bg.height || ch;
+    const scale = Math.min(cw / nw, ch / nh, 1);
+    return { w: Math.round(nw * scale), h: Math.round(nh * scale) };
   }
 
-  _rBg(){
-    const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh}=this.S.cfg;
-
-    if(this.L.mode==='phantom'){
-      // Phantom mode: image at fixed canvas-fitted size so grid calibration
-      // doesn't scale the image — only grid density changes with pps.
-      const fit=this._getBgFit();
-      // Dark background behind image
-      ctx.fillStyle='#0d0a1e';
-      ctx.fillRect(ox,oy,fit.w,fit.h);
-      if(this.L.bg) ctx.drawImage(this.L.bg,ox,oy,fit.w,fit.h);
+  _rBg() {
+    const { ctx } = this;
+    const { pps, ox, oy, mapW: mw, mapH: mh } = this.S.cfg;
+    if (this.L.mode === 'phantom') {
+      const fit = this._getBgFit();
+      ctx.fillStyle = '#0d0a1e';
+      ctx.fillRect(ox, oy, fit.w, fit.h);
+      if (this.L.bg) ctx.drawImage(this.L.bg, ox, oy, fit.w, fit.h);
       return;
     }
-
-    const W=(mw||MAP_W_DEFAULT)*pps, H=(mh||MAP_H_DEFAULT)*pps;
-    // Checkerboard
-    for(let gx=0;gx<(mw||MAP_W_DEFAULT);gx++){
-      for(let gy=0;gy<(mh||MAP_H_DEFAULT);gy++){
-        ctx.fillStyle=(gx+gy)%2===0?'#1a1a2e':'#16213e';
-        ctx.fillRect(ox+gx*pps,oy+gy*pps,pps,pps);
+    for (let gx = 0; gx < (mw || MAP_W_DEFAULT); gx++) {
+      for (let gy = 0; gy < (mh || MAP_H_DEFAULT); gy++) {
+        ctx.fillStyle = (gx + gy) % 2 === 0 ? '#1a1a2e' : '#16213e';
+        ctx.fillRect(ox + gx * pps, oy + gy * pps, pps, pps);
       }
     }
-    if(this.L.bg) ctx.drawImage(this.L.bg,ox,oy,W,H);
+    if (this.L.bg) ctx.drawImage(this.L.bg, ox, oy, (mw || MAP_W_DEFAULT) * pps, (mh || MAP_H_DEFAULT) * pps);
   }
 
-  // ── Grid ────────────────────────────────────────────────────────────
-  _rGrid(){
-    if(this.L.mode==='phantom') return; // phantom drawn separately as top layer
-    const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh,locked}=this.S.cfg;
-    const m=this.L.mode;
-    ctx.strokeStyle = m==='calibrate' ? GRID_CALIB : locked ? GRID_LOCKED : GRID_NORMAL;
-    ctx.lineWidth = (m==='calibrate'?1.5:0.6)/this.vs;
+  _rGrid() {
+    if (this.L.mode === 'phantom') return;
+    const { ctx } = this;
+    const { pps, ox, oy, mapW: mw, mapH: mh, locked } = this.S.cfg;
+    const m = this.L.mode;
+    ctx.strokeStyle = m === 'calibrate' ? GRID_CALIB : locked ? GRID_LOCKED : GRID_NORMAL;
+    ctx.lineWidth = (m === 'calibrate' ? 1.5 : 0.6) / this.vs;
     ctx.beginPath();
-    for(let x=0;x<=(mw||MAP_W_DEFAULT);x++){
-      const px=ox+x*pps;
-      ctx.moveTo(px,oy); ctx.lineTo(px,oy+(mh||MAP_H_DEFAULT)*pps);
+    for (let x = 0; x <= (mw || MAP_W_DEFAULT); x++) {
+      const px = ox + x * pps; ctx.moveTo(px, oy); ctx.lineTo(px, oy + (mh || MAP_H_DEFAULT) * pps);
     }
-    for(let y=0;y<=(mh||MAP_H_DEFAULT);y++){
-      const py=oy+y*pps;
-      ctx.moveTo(ox,py); ctx.lineTo(ox+(mw||MAP_W_DEFAULT)*pps,py);
+    for (let y = 0; y <= (mh || MAP_H_DEFAULT); y++) {
+      const py = oy + y * pps; ctx.moveTo(ox, py); ctx.lineTo(ox + (mw || MAP_W_DEFAULT) * pps, py);
     }
     ctx.stroke();
-    // In calibrate mode show corner handles
-    if(m==='calibrate'){
-      ctx.fillStyle=GRID_CALIB;
-      for(let x=0;x<=(mw||MAP_W_DEFAULT);x+=5){
-        for(let y=0;y<=(mh||MAP_H_DEFAULT);y+=5){
-          ctx.fillRect(ox+x*pps-3/this.vs,oy+y*pps-3/this.vs,6/this.vs,6/this.vs);
+    if (m === 'calibrate') {
+      ctx.fillStyle = GRID_CALIB;
+      for (let x = 0; x <= (mw || MAP_W_DEFAULT); x += 5) {
+        for (let y = 0; y <= (mh || MAP_H_DEFAULT); y += 5) {
+          ctx.fillRect(ox + x * pps - 3 / this.vs, oy + y * pps - 3 / this.vs, 6 / this.vs, 6 / this.vs);
         }
       }
     }
   }
 
-  // ── Obstacles ───────────────────────────────────────────────────────
-  _rObstacles(){
-    const {ctx}=this, {pps,ox,oy}=this.S.cfg;
-    Object.keys(this.S.obstacles).forEach(k=>{
-      const {gx,gy}=kp(k);
-      const px=ox+gx*pps, py=oy+gy*pps;
-      ctx.fillStyle=OBS_FILL;
-      ctx.fillRect(px,py,pps,pps);
-      ctx.font=`${pps*0.45}px serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('🧱',px+pps/2,py+pps/2);
+  _rObstacles() {
+    const { ctx } = this;
+    const { pps, ox, oy } = this.S.cfg;
+    Object.keys(this.S.obstacles).forEach(k => {
+      const { gx, gy } = kp(k);
+      const px = ox + gx * pps, py = oy + gy * pps;
+      ctx.fillStyle = OBS_FILL; ctx.fillRect(px, py, pps, pps);
+      ctx.font = `${pps * 0.45}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('🧱', px + pps / 2, py + pps / 2);
     });
   }
 
-  // ── Triggers (DM only) ───────────────────────────────────────────────
-  _rTriggers(){
-    const {ctx}=this, {pps,ox,oy}=this.S.cfg;
-    Object.entries(this.S.triggers).forEach(([k,t])=>{
-      const {gx,gy}=kp(k);
-      const px=ox+gx*pps, py=oy+gy*pps;
-      ctx.fillStyle=t.fired?TRIG_FIRED:TRIG_FILL;
-      ctx.fillRect(px,py,pps,pps);
-      ctx.font=`${pps*0.4}px serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('⚠',px+pps/2,py+pps/2);
-      // Label
-      if(t.label){
-        ctx.fillStyle='rgba(255,220,0,0.9)';
-        ctx.font=`bold ${Math.max(8,pps*0.15)}px Arial`;
-        ctx.fillText(t.label,px+pps/2,py+pps*0.88);
+  _rTriggers() {
+    const { ctx } = this;
+    const { pps, ox, oy } = this.S.cfg;
+    Object.entries(this.S.triggers).forEach(([k, t]) => {
+      const { gx, gy } = kp(k);
+      const px = ox + gx * pps, py = oy + gy * pps;
+      ctx.fillStyle = t.fired ? TRIG_FIRED : TRIG_FILL; ctx.fillRect(px, py, pps, pps);
+      ctx.font = `${pps * 0.4}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('⚠', px + pps / 2, py + pps / 2);
+      if (t.label) {
+        ctx.fillStyle = 'rgba(255,220,0,0.9)';
+        ctx.font = `bold ${Math.max(8, pps * 0.15)}px Arial`;
+        ctx.fillText(t.label, px + pps / 2, py + pps * 0.88);
       }
     });
   }
 
-  // ── Tokens ───────────────────────────────────────────────────────────
-  _rTokens(){
-    const activeName = this.L.sc[this.L.ati]?.name;
-    Object.entries(this.S.tokens).forEach(([cn,tk])=>{
-      if(!tk||tk.gx==null) return;
-      if(this.L.drag?.cName===cn) return; // drawn separately (ghost)
-      const {pps,ox,oy}=this.S.cfg;
-      this._rToken(cn,tk,ox+tk.gx*pps,oy+tk.gy*pps,pps,cn===activeName,false);
-    });
-    // Ghost while dragging
-    if(this.L.drag){
-      const dt=this.L.drag, tk=this.S.tokens[dt.cName];
-      if(tk){
-        const {pps,ox,oy}=this.S.cfg;
-        this.ctx.globalAlpha=0.70;
-        this._rToken(dt.cName,tk,ox+dt.curGX*pps,oy+dt.curGY*pps,pps,false,true);
-        this.ctx.globalAlpha=1;
-      }
-    }
-    // Placing token cursor
-    if(this.L.placing){
-      const {pps,ox,oy}=this.S.cfg;
-      const {x:wx,y:wy}=this.L.mw;
-      const {gx,gy}=this._wg(wx,wy);
-      this.ctx.globalAlpha=0.55;
-      const pl=this.S.players[this.L.placing];
-      this.ctx.fillStyle=pl?.pColor||'#3498db';
-      this.ctx.fillRect(ox+gx*pps,oy+gy*pps,pps,pps);
-      this.ctx.globalAlpha=1;
-    }
-  }
-
-  _rToken(cn,tk,px,py,size,isActive,isGhost){
-    const {ctx}=this;
-    const pl=this.S.players[cn]||{};
-    // SC: NPCs get their monster-type ring colour; fallback to pColor or default blue
-    const isNPC = pl.userRole === 'npc';
-    const monType = pl.monsterType || null;
-    const col = (isNPC && monType && typeColor[monType]) ? typeColor[monType]
-               : (pl.pColor || '#3498db');
-    const portrait=pl.portrait;
-    const statuses=pl.statuses||[];
-    const isDying=(pl.hp||0)<=0;
-    const isConc=pl.concentrating;
-    const cx=px+size/2, cy=py+size/2, r=size*0.42;
-
-    // Active glow
-    if(isActive){
-      ctx.save();
-      ctx.shadowColor='#f1c40f'; ctx.shadowBlur=size*0.6;
-      ctx.beginPath(); ctx.arc(cx,cy,r+5/this.vs,0,Math.PI*2);
-      ctx.fillStyle='rgba(241,196,15,0.25)'; ctx.fill();
-      ctx.restore();
-      // Pulsing ring
-      ctx.beginPath(); ctx.arc(cx,cy,r+4/this.vs,0,Math.PI*2);
-      ctx.strokeStyle='rgba(241,196,15,0.9)';
-      ctx.lineWidth=2.5/this.vs; ctx.stroke();
-    }
-
-    // Clip circle for portrait
+  _rRuler() {
+    if (this.L.mode !== 'ruler' || !this.L.rulerA) return;
+    const { ctx } = this;
+    const { pps } = this.S.cfg;
+    const a = this.L.rulerA, b = this.L.rulerB || this.L.mw;
+    const dx = (b.x - a.x) / pps, dy = (b.y - a.y) / pps;
+    const ft = Math.round(Math.sqrt(dx * dx + dy * dy) * FT_PER_SQ);
     ctx.save();
-    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.clip();
-    if(portrait&&this.L.imgCache[portrait]){
-      ctx.drawImage(this.L.imgCache[portrait],px,py,size,size);
-    } else {
-      ctx.fillStyle=col; ctx.fillRect(px,py,size,size);
-      if(portrait&&!this.L.imgCache['__L'+portrait]){
-        this.L.imgCache['__L'+portrait]=true;
-        const img=new Image(); img.crossOrigin='anonymous';
-        img.onload=()=>{ this.L.imgCache[portrait]=img; this._dirty(); };
-        img.onerror=()=>{ this.L.imgCache[portrait]=false; };
-        img.src=portrait;
-      }
-    }
-    // Death overlay
-    if(isDying){
-      ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(px,py,size,size);
-      ctx.font=`${size*0.5}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('💀',cx,cy);
-    }
-    ctx.restore();
-
-    // Border ring
-    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
-    ctx.strokeStyle=isDying?'#e74c3c':isActive?'#f1c40f':col;
-    ctx.lineWidth=(isActive?3:2)/this.vs; ctx.stroke();
-
-    // Name tag
-    const tagH=size*0.22;
-    ctx.fillStyle='rgba(0,0,0,0.75)';
-    ctx.fillRect(px,py+size-tagH,size,tagH);
-    ctx.fillStyle='white';
-    ctx.font=`bold ${size*0.14}px Arial`;
-    ctx.textAlign='center'; ctx.textBaseline='bottom';
-    const label=cn.length>9?cn.slice(0,8)+'…':cn;
-    ctx.fillText(label,cx,py+size-1/this.vs);
-
-    // HP bar
-    if(pl.maxHp){
-      const pct=Math.max(0,(pl.hp||0)/pl.maxHp);
-      const bw=size*0.84, bh=4/this.vs, bx=px+(size-bw)/2, by=py+size+3/this.vs;
-      ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(bx,by,bw,bh);
-      ctx.fillStyle=pct>0.5?'#2ecc71':pct>0.25?'#f39c12':'#e74c3c';
-      ctx.fillRect(bx,by,bw*pct,bh);
-    }
-
-    // Status icons (top-right corner)
-    const all=[...statuses]; if(isConc) all.push('Concentrating');
-    all.slice(0,6).forEach((s,i)=>{
-      const sz=size*0.21, col=Math.floor(i/2), row=i%2;
-      const ix=px+size-sz*(col+1), iy=py+sz*row;
-      ctx.font=`${sz*0.92}px serif`;
-      ctx.textAlign='right'; ctx.textBaseline='top';
-      ctx.fillText(STS_ICON[s]||'❓',ix+sz,iy);
-    });
-  }
-
-  // ── Path preview — E6-B: movement range colour coding ────────────────
-  // Green  = within normal speed
-  // Orange = dash (up to 2× speed)
-  // Red    = over dash limit
-  _rPath(){
-    const dt=this.L.drag;
-    if(!dt||!dt.path||dt.path.length<2) return;
-    const {ctx}=this, {pps,ox,oy}=this.S.cfg;
-    const sq=(dt.path.length-1);
-    const ft=sq*FT_PER_SQ;
-
-    // Get token's speed
-    const pl=this.S.players[dt.cName]||{};
-    const speedFt=Number(pl.speed)||30;
-    const speedSq=Math.ceil(speedFt/FT_PER_SQ);
-    const usedMv=this.S.tokens[dt.cName]?.usedMv||0;
-    const remaining=Math.max(0,speedSq-usedMv);
-
-    // Color: within speed=cyan, within dash=orange, over=red
-    const stroke = sq<=remaining ? 'rgba(80,200,255,0.90)'
-                 : sq<=speedSq*2 ? 'rgba(230,126,34,0.90)'
-                 :                 'rgba(231,76,60,0.90)';
-
-    ctx.save();
-    ctx.translate(this.vx,this.vy); ctx.scale(this.vs,this.vs);
-    ctx.strokeStyle=stroke; ctx.lineWidth=3/this.vs;
-    ctx.setLineDash([8/this.vs,4/this.vs]);
-    ctx.lineJoin='round'; ctx.lineCap='round';
-    ctx.beginPath();
-    dt.path.forEach(([gx,gy],i)=>{
-      const wx=ox+(gx+0.5)*pps, wy=oy+(gy+0.5)*pps;
-      i===0?ctx.moveTo(wx,wy):ctx.lineTo(wx,wy);
-    });
-    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,0,0.9)'; ctx.lineWidth = 2 / this.vs;
+    ctx.setLineDash([8 / this.vs, 4 / this.vs]);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     ctx.setLineDash([]);
-
-    // Destination label
-    const last=dt.path[dt.path.length-1];
-    const wx=ox+(last[0]+0.5)*pps, wy=oy+(last[1]+0.5)*pps;
-    const label=`${ft}ft`;
-    ctx.fillStyle='rgba(0,0,0,0.75)';
-    const tw=44/this.vs;
-    ctx.fillRect(wx-tw/2,wy-18/this.vs,tw,15/this.vs);
-    ctx.fillStyle=stroke; ctx.font=`bold ${11/this.vs}px Arial`;
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(label,wx,wy-11/this.vs);
-
+    [a, b].forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4 / this.vs, 0, Math.PI * 2); ctx.fillStyle = '#f1c40f'; ctx.fill(); });
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const fs = Math.max(10, 13 / this.vs);
+    ctx.font = `bold ${fs}px Arial`;
+    const tw = ctx.measureText(`${ft} ft`).width;
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(mx - tw / 2 - 4 / this.vs, my - fs - 3 / this.vs, tw + 8 / this.vs, fs + 6 / this.vs);
+    ctx.fillStyle = '#f1c40f'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(`${ft} ft`, mx, my + 2 / this.vs);
     ctx.restore();
   }
 
-  // E6-B: Compute reachable cells via BFS (up to speedSq tiles) and render
-  // as a subtle tinted overlay. Called only when drag starts.
-  _rMoveRange(){
-    const dt=this.L.drag;
-    if(!dt) return;
-    const pl=this.S.players[dt.cName]||{};
-    const speedFt=Number(pl.speed)||30;
-    const speedSq=Math.ceil(speedFt/FT_PER_SQ);
-    const usedMv=this.S.tokens[dt.cName]?.usedMv||0;
-    const remaining=Math.max(0,speedSq-usedMv);
-    if(remaining<=0) return;
-
-    const {ctx}=this, {pps,ox,oy}=this.S.cfg;
+  _rAoe() {
+    if (this.L.mode !== 'aoe') return;
+    const { ctx } = this;
+    const { pps } = this.S.cfg;
+    const pos = this.L.mw, shape = this.L.aoeShape;
+    const rPx = (this.L.aoeR / FT_PER_SQ) * pps;
+    const col = AOE_COLS[shape] || AOE_COLS.circle;
+    const bord = col.replace(/[\d.]+\)$/, '0.9)');
     ctx.save();
-    ctx.translate(this.vx,this.vy); ctx.scale(this.vs,this.vs);
-
-    // BFS flood-fill within remaining squares (Chebyshev)
-    const visited=new Set();
-    const queue=[[dt.startGX,dt.startGY,0]];
-    while(queue.length>0){
-      const [cx,cy,dist]=queue.shift();
-      const k=`${cx},${cy}`;
-      if(visited.has(k)) continue;
-      visited.add(k);
-      if(dist>remaining) continue;
-      // Draw tinted cell
-      ctx.fillStyle='rgba(80,200,255,0.10)';
-      ctx.fillRect(ox+cx*pps+1,oy+cy*pps+1,pps-2,pps-2);
-      // Expand neighbours
-      for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){
-        if(dx===0&&dy===0) continue;
-        const nx=cx+dx, ny=cy+dy;
-        const nk=`${nx},${ny}`;
-        if(!visited.has(nk)&&!this.S.obstacles[nk]){
-          queue.push([nx,ny,dist+1]);
-        }
-      }
+    ctx.fillStyle = col; ctx.strokeStyle = bord; ctx.lineWidth = 2 / this.vs;
+    if (shape === 'circle') { ctx.beginPath(); ctx.arc(pos.x, pos.y, rPx, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    else if (shape === 'cube') { ctx.fillRect(pos.x - rPx, pos.y - rPx, rPx * 2, rPx * 2); ctx.strokeRect(pos.x - rPx, pos.y - rPx, rPx * 2, rPx * 2); }
+    else if (shape === 'cone') {
+      const ang = Math.atan2(pos.y - (this.L.rulerA?.y || pos.y - 1), pos.x - (this.L.rulerA?.x || pos.x));
+      const origin = this.L.rulerA || { x: pos.x, y: pos.y - rPx };
+      ctx.beginPath(); ctx.moveTo(origin.x, origin.y); ctx.arc(origin.x, origin.y, rPx, ang - Math.PI / 6, ang + Math.PI / 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (shape === 'line') {
+      const lw = pps * 0.5;
+      ctx.fillRect(pos.x - lw / 2, pos.y - rPx, lw, rPx * 2); ctx.strokeRect(pos.x - lw / 2, pos.y - rPx, lw, rPx * 2);
     }
+    const fs = Math.max(9, 11 / this.vs);
+    ctx.fillStyle = 'white'; ctx.font = `bold ${fs}px Arial`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(`${this.L.aoeR}ft`, pos.x, pos.y - rPx - 3 / this.vs);
     ctx.restore();
   }
 
-  // ── FOW (player view) — E3-B: three fog states ──────────────────────
-  // State 1 — Current FOV  : full brightness (token sees right now)
-  // State 2 — Previously seen: desaturated + 50% dark overlay (explored)
-  // State 3 — Never seen   : solid black (unexplored)
-  _rFow(){
-    const {fw,fc,cv}=this;
-    const W=cv.width, H=cv.height;
-    if(fw.width!==W||fw.height!==H){ fw.width=W; fw.height=H; }
-    fc.clearRect(0,0,W,H);
-
-    // Layer A — solid black base (never-seen)
-    fc.fillStyle=`rgba(0,0,0,${FOW_ALPHA})`;
-    fc.fillRect(0,0,W,H);
-
-    fc.save();
-    fc.globalCompositeOperation='destination-out';
-    fc.translate(this.vx,this.vy); fc.scale(this.vs,this.vs);
-    const {pps,ox,oy}=this.S.cfg;
-    const half=pps/2;
-
-    // Helper — punch a feathered hole with given alpha
-    const punchCell=(gx,gy,alpha)=>{
-      const cx=ox+gx*pps+half, cy=oy+gy*pps+half;
-      const r=pps*0.78;
-      const g=fc.createRadialGradient(cx,cy,0,cx,cy,r);
-      g.addColorStop(0,   `rgba(255,255,255,${alpha})`);
-      g.addColorStop(0.6, `rgba(255,255,255,${alpha*0.97})`);
-      g.addColorStop(1,   'rgba(255,255,255,0)');
-      fc.fillStyle=g;
-      fc.fillRect(cx-r,cy-r,r*2,r*2);
-    };
-
-    // E3-B: previously-seen cells — punch at 40% (leaves dark tinted overlay)
-    Object.keys(this.S.fog).forEach(k=>{
-      if(!this.L.currentFov.has(k)){
-        const {gx,gy}=kp(k);
-        punchCell(gx,gy,0.40); // revealed but out of current FOV
-      }
-    });
-
-    // E3-B: current FOV cells — punch fully transparent
-    this.L.currentFov.forEach(k=>{
-      const {gx,gy}=kp(k);
-      punchCell(gx,gy,1.0);
-    });
-
-    // SD-2: Reveal flash
-    const now=Date.now();
-    const FLASH_DUR=600;
-    this.L.fogRevQ=this.L.fogRevQ.filter(e=>{
-      const elapsed=now-e.t;
-      if(elapsed>FLASH_DUR) return false;
-      const flashAlpha=(1-(elapsed/FLASH_DUR))*0.9;
-      const cx=ox+e.gx*pps+half, cy=oy+e.gy*pps+half;
-      const r=pps*1.1;
-      const fg=fc.createRadialGradient(cx,cy,0,cx,cy,r);
-      fg.addColorStop(0,   `rgba(255,255,255,${flashAlpha})`);
-      fg.addColorStop(1,   'rgba(255,255,255,0)');
-      fc.fillStyle=fg;
-      fc.fillRect(cx-r,cy-r,r*2,r*2);
-      return true;
-    });
-    if(this.L.fogRevQ.length>0) this._dirty();
-
-    fc.restore();
-
-    // Layer B — "seen-but-dark" desaturation tint over previously-seen cells
-    // Draw a semi-transparent dark blue-grey overlay on explored-but-not-current cells
-    this.ctx.drawImage(fw,0,0);
-    if(this.L.currentFov.size>0 || Object.keys(this.S.fog).length>0){
-      const mc=this.ctx;
-      mc.save();
-      mc.translate(this.vx,this.vy); mc.scale(this.vs,this.vs);
-      const {pps:p,ox:ox2,oy:oy2}=this.S.cfg;
-      mc.fillStyle='rgba(10,10,40,0.38)'; // dark blue desaturation tint
-      Object.keys(this.S.fog).forEach(k=>{
-        if(!this.L.currentFov.has(k)){
-          const {gx,gy}=kp(k);
-          mc.fillRect(ox2+gx*p+1, oy2+gy*p+1, p-2, p-2);
-        }
-      });
-      mc.restore();
-    }
+  // ── Weather ───────────────────────────────────────────────────────────
+  _initWx(W, H) {
+    if (this.L.wx) return;
+    const rng = (min, max) => min + Math.random() * (max - min);
+    const rain   = Array.from({ length: 280 }, () => ({ x: Math.random() * W, y: Math.random() * H, vy: rng(10, 20), vx: rng(-2, -0.5), len: rng(8, 18), alpha: rng(0.3, 0.7), w: rng(0.5, 1.5) }));
+    const snow   = Array.from({ length: 220 }, () => ({ x: Math.random() * W, y: Math.random() * H, vy: rng(0.8, 2.5), vx: rng(-0.8, 0.8), r: rng(1, 3.5), alpha: rng(0.5, 0.95), drift: rng(0.5, 2), driftPhase: Math.random() * Math.PI * 2 }));
+    const wisps  = Array.from({ length: 12 },  () => ({ x: Math.random() * W, y: rng(H * 0.1, H * 0.9), vx: rng(0.12, 0.35) * (Math.random() < 0.5 ? -1 : 1), vy: rng(-0.04, 0.04), rx: rng(60, 130), ry: rng(20, 45), alpha: rng(0.04, 0.11), phase: Math.random() * Math.PI * 2 }));
+    const embers = Array.from({ length: 140 }, () => ({ x: Math.random() * W, y: Math.random() * H, vx: rng(2, 6), vy: rng(-1.5, 1.5), r: rng(1, 2.5), alpha: rng(0.4, 0.85), life: Math.random() }));
+    this.L.wx = { rain, snow, wisps, embers, lt: 0 };
   }
 
-
-  // ── Phantom green grid — wizard step 2 ──────────────────────────────
-  // Rendered as the top layer in world space (inside save/restore block)
-  _rPhantomGrid(){
-    if(this.L.mode!=='phantom') return;
-    const {ctx}=this, {pps,ox,oy}=this.S.cfg;
-
-    // Derive tile count from image's fixed fit size divided by current pps.
-    // This means +/- shows more/fewer tiles WITHOUT moving the image.
-    const fit=this._getBgFit();
-    const cols=Math.max(1,Math.floor(fit.w/pps));
-    const rows=Math.max(1,Math.floor(fit.h/pps));
-
-    // Keep mapW/mapH in sync so other steps use the right counts.
-    this.S.cfg.mapW=cols;
-    this.S.cfg.mapH=rows;
-
-    // Semi-transparent tint over image so grid is visible
-    ctx.fillStyle='rgba(0,0,0,0.18)';
-    ctx.fillRect(ox,oy,cols*pps,rows*pps);
-    // Vivid green grid lines
-    ctx.save();
-    ctx.strokeStyle=GRID_PHANTOM;
-    ctx.lineWidth=2/this.vs;
-    ctx.shadowColor='rgba(40,255,90,0.55)';
-    ctx.shadowBlur=6/this.vs;
-    ctx.beginPath();
-    for(let x=0;x<=cols;x++){ const px=ox+x*pps; ctx.moveTo(px,oy); ctx.lineTo(px,oy+rows*pps); }
-    for(let y=0;y<=rows;y++){ const py=oy+y*pps; ctx.moveTo(ox,py); ctx.lineTo(ox+cols*pps,py); }
-    ctx.stroke();
-    // Green dots at every intersection
-    ctx.fillStyle='rgba(60,255,110,0.90)';
-    ctx.shadowColor='rgba(40,255,90,0.7)';
-    ctx.shadowBlur=4/this.vs;
-    const dr=2.5/this.vs;
-    for(let x=0;x<=cols;x++) for(let y=0;y<=rows;y++){
-      ctx.beginPath(); ctx.arc(ox+x*pps,oy+y*pps,dr,0,Math.PI*2); ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  // ── Wizard fog — thick grey-white covering unrevealed tiles ──────────
-  // Rendered in screen space (after ctx.restore) using viewport transform
-  _rWizFog(){
-    const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh}=this.S.cfg;
-    ctx.save();
-    ctx.translate(this.vx,this.vy);
-    ctx.scale(this.vs,this.vs);
-    const cols=mw||MAP_W_DEFAULT, rows=mh||MAP_H_DEFAULT;
-    for(let gx=0;gx<cols;gx++) for(let gy=0;gy<rows;gy++){
-      if(!this.S.fog[ck(gx,gy)]){
-        const px=ox+gx*pps, py=oy+gy*pps;
-        ctx.fillStyle='rgba(205,212,218,0.94)';
-        ctx.fillRect(px,py,pps,pps);
-        // Inner vignette for depth
-        ctx.fillStyle='rgba(160,168,175,0.30)';
-        ctx.fillRect(px+2,py+2,pps-4,pps-4);
-      }
-    }
-    ctx.restore();
-  }
-
-  // ── FOW ghost for DM ─────────────────────────────────────────────────
-  _rFowDM(){
-    const {ctx}=this, {pps,ox,oy,mapW:mw,mapH:mh}=this.S.cfg;
-    for(let gx=0;gx<(mw||MAP_W_DEFAULT);gx++) for(let gy=0;gy<(mh||MAP_H_DEFAULT);gy++){
-      if(!this.S.fog[ck(gx,gy)]){
-        ctx.fillStyle='rgba(0,0,0,0.30)';
-        ctx.fillRect(ox+gx*pps,oy+gy*pps,pps,pps);
-      }
-    }
-  }
-
-  // ── Ruler ─────────────────────────────────────────────────────────────
-  _rRuler(){
-    if(this.L.mode!=='ruler'||!this.L.rulerA) return;
-    const {ctx}=this, {pps}=this.S.cfg;
-    const a=this.L.rulerA, b=this.L.rulerB||this.L.mw;
-    const dx=(b.x-a.x)/pps, dy=(b.y-a.y)/pps;
-    const squares=Math.sqrt(dx*dx+dy*dy);
-    const ft=Math.round(squares*FT_PER_SQ);
-    ctx.save();
-    ctx.strokeStyle='rgba(255,255,0,0.9)'; ctx.lineWidth=2/this.vs;
-    ctx.setLineDash([8/this.vs,4/this.vs]);
-    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-    ctx.setLineDash([]);
-    // Circle endpoints
-    [a,b].forEach(p=>{
-      ctx.beginPath(); ctx.arc(p.x,p.y,4/this.vs,0,Math.PI*2);
-      ctx.fillStyle='#f1c40f'; ctx.fill();
-    });
-    // Label
-    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
-    const fs=Math.max(10,13/this.vs);
-    ctx.font=`bold ${fs}px Arial`;
-    const tw=ctx.measureText(`${ft} ft`).width;
-    ctx.fillStyle='rgba(0,0,0,0.75)';
-    ctx.fillRect(mx-tw/2-4/this.vs,my-fs-3/this.vs,tw+8/this.vs,fs+6/this.vs);
-    ctx.fillStyle='#f1c40f'; ctx.textAlign='center'; ctx.textBaseline='bottom';
-    ctx.fillText(`${ft} ft`,mx,my+2/this.vs);
-    ctx.restore();
-  }
-
-  // ── AOE ───────────────────────────────────────────────────────────────
-  _rAoe(){
-    if(this.L.mode!=='aoe') return;
-    const {ctx}=this, {pps}=this.S.cfg;
-    const pos=this.L.mw, shape=this.L.aoeShape;
-    const rPx=(this.L.aoeR/FT_PER_SQ)*pps;
-    const col=AOE_COLS[shape]||AOE_COLS.circle;
-    const bord=col.replace(/[\d.]+\)$/,'0.9)');
-    ctx.save();
-    ctx.fillStyle=col; ctx.strokeStyle=bord; ctx.lineWidth=2/this.vs;
-    if(shape==='circle'){
-      ctx.beginPath(); ctx.arc(pos.x,pos.y,rPx,0,Math.PI*2); ctx.fill(); ctx.stroke();
-    } else if(shape==='cube'){
-      ctx.fillRect(pos.x-rPx,pos.y-rPx,rPx*2,rPx*2);
-      ctx.strokeRect(pos.x-rPx,pos.y-rPx,rPx*2,rPx*2);
-    } else if(shape==='cone'){
-      const ang=Math.atan2(pos.y-(this.L.rulerA?.y||pos.y-1),pos.x-(this.L.rulerA?.x||pos.x));
-      const origin=this.L.rulerA||{x:pos.x,y:pos.y-rPx};
-      ctx.beginPath();
-      ctx.moveTo(origin.x,origin.y);
-      ctx.arc(origin.x,origin.y,rPx,ang-Math.PI/6,ang+Math.PI/6);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-    } else if(shape==='line'){
-      const lw=pps*0.5;
-      ctx.fillRect(pos.x-lw/2,pos.y-rPx,lw,rPx*2);
-      ctx.strokeRect(pos.x-lw/2,pos.y-rPx,lw,rPx*2);
-    }
-    const fs=Math.max(9,11/this.vs);
-    ctx.fillStyle='white'; ctx.font=`bold ${fs}px Arial`;
-    ctx.textAlign='center'; ctx.textBaseline='bottom';
-    ctx.fillText(`${this.L.aoeR}ft`,pos.x,pos.y-rPx-3/this.vs);
-    ctx.restore();
-  }
-
-  // ── Weather/Atmosphere ───────────────────────────────────────────────────
-  // ── SD-1: Weather particle pool lazy-init ─────────────────────────────
-  _initWx(W,H){
-    if(this.L.wx) return;
-    const rng=(min,max)=>min+Math.random()*(max-min);
-    const rain=Array.from({length:280},()=>({
-      x:Math.random()*W, y:Math.random()*H,
-      vy:rng(10,20), vx:rng(-2,-0.5),
-      len:rng(8,18), alpha:rng(0.3,0.7), w:rng(0.5,1.5),
-    }));
-    const snow=Array.from({length:220},()=>({
-      x:Math.random()*W, y:Math.random()*H,
-      vy:rng(0.8,2.5), vx:rng(-0.8,0.8),
-      r:rng(1,3.5), alpha:rng(0.5,0.95),
-      drift:rng(0.5,2), driftPhase:Math.random()*Math.PI*2,
-    }));
-    const wisps=Array.from({length:12},()=>({
-      x:Math.random()*W, y:rng(H*0.1,H*0.9),
-      vx:rng(0.12,0.35)*(Math.random()<0.5?-1:1), vy:rng(-0.04,0.04),
-      rx:rng(60,130), ry:rng(20,45),
-      alpha:rng(0.04,0.11), phase:Math.random()*Math.PI*2,
-    }));
-    const embers=Array.from({length:140},()=>({
-      x:Math.random()*W, y:Math.random()*H,
-      vx:rng(2,6), vy:rng(-1.5,1.5),
-      r:rng(1,2.5), alpha:rng(0.4,0.85), life:Math.random(),
-    }));
-    this.L.wx={rain,snow,wisps,embers,lt:0};
-  }
-
-  _rWeather(){
+  _rWeather() {
     const a = this.S.atmosphere;
-    if(!a || a.weather==='none') {
-      if(a?.ambientLight==='dark'){
-        this.ctx.fillStyle='rgba(0,0,0,0.65)'; this.ctx.fillRect(0,0,this.cv.width,this.cv.height);
-      } else if(a?.ambientLight==='dim'){
-        this.ctx.fillStyle='rgba(0,0,0,0.32)'; this.ctx.fillRect(0,0,this.cv.width,this.cv.height);
-      }
+    if (!a || a.weather === 'none') {
+      if (a?.ambientLight === 'dark')  { this.ctx.fillStyle = 'rgba(0,0,0,0.65)'; this.ctx.fillRect(0, 0, this.cv.width, this.cv.height); }
+      else if (a?.ambientLight === 'dim') { this.ctx.fillStyle = 'rgba(0,0,0,0.32)'; this.ctx.fillRect(0, 0, this.cv.width, this.cv.height); }
       return;
     }
-    const W=this.cv.width, H=this.cv.height, ctx=this.ctx;
-    const now=Date.now();
-    this._initWx(W,H);
-    const wx=this.L.wx;
-    switch(a.weather){
-      case 'light_rain':  this._rRain(ctx,W,H,wx.rain,now,0.38,'#8ab4cc',80); break;
-      case 'heavy_rain':  this._rRain(ctx,W,H,wx.rain,now,0.62,'#6080a8',280);
-                          this._rLightning(ctx,W,H,now); break;
-      case 'blizzard':    this._rSnowSD(ctx,W,H,wx.snow,now); break;
-      case 'sandstorm':
-        ctx.fillStyle='rgba(200,150,50,0.32)'; ctx.fillRect(0,0,W,H);
-        this._rEmbers(ctx,W,H,wx.embers); break;
-      case 'fog':         this._rFogWisps(ctx,W,H,wx.wisps,now); break;
-      case 'darkness':
-        ctx.fillStyle='rgba(0,0,20,0.80)'; ctx.fillRect(0,0,W,H); break;
+    const W = this.cv.width, H = this.cv.height, ctx = this.ctx;
+    const now = Date.now();
+    this._initWx(W, H);
+    const wx = this.L.wx;
+    switch (a.weather) {
+      case 'light_rain': this._rRain(ctx, W, H, wx.rain, now, 0.38, '#8ab4cc', 80);  break;
+      case 'heavy_rain': this._rRain(ctx, W, H, wx.rain, now, 0.62, '#6080a8', 280); this._rLightning(ctx, W, H, now); break;
+      case 'blizzard':   this._rSnowSD(ctx, W, H, wx.snow, now); break;
+      case 'sandstorm':  ctx.fillStyle = 'rgba(200,150,50,0.32)'; ctx.fillRect(0, 0, W, H); this._rEmbers(ctx, W, H, wx.embers); break;
+      case 'fog':        this._rFogWisps(ctx, W, H, wx.wisps, now); break;
+      case 'darkness':   ctx.fillStyle = 'rgba(0,0,20,0.80)'; ctx.fillRect(0, 0, W, H); break;
     }
-    if(a.ambientLight==='dark'){
-      ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(0,0,W,H);
-    } else if(a.ambientLight==='dim'){
-      ctx.fillStyle='rgba(0,0,0,0.22)'; ctx.fillRect(0,0,W,H);
-    }
-    if(a.weather!=='none'&&a.weather!=='darkness') this._dirty();
+    if (a.ambientLight === 'dark')  { ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H); }
+    else if (a.ambientLight === 'dim') { ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(0, 0, W, H); }
+    if (a.weather !== 'none' && a.weather !== 'darkness') this._dirty();
   }
 
-  // SD-1: Rain — persistent particle pool with slanted streaks
-  _rRain(ctx,W,H,pool,now,baseAlpha,col,count){
-    ctx.save(); ctx.strokeStyle=col;
-    for(let i=0;i<count&&i<pool.length;i++){
-      const p=pool[i];
-      p.x=(p.x+p.vx+W)%W; p.y=(p.y+p.vy+H)%H;
-      ctx.globalAlpha=p.alpha*baseAlpha; ctx.lineWidth=p.w;
-      ctx.beginPath(); ctx.moveTo(p.x,p.y);
-      ctx.lineTo(p.x+p.vx*p.len/p.vy,p.y+p.len); ctx.stroke();
+  _rRain(ctx, W, H, pool, now, baseAlpha, col, count) {
+    ctx.save(); ctx.strokeStyle = col;
+    for (let i = 0; i < count && i < pool.length; i++) {
+      const p = pool[i]; p.x = (p.x + p.vx + W) % W; p.y = (p.y + p.vy + H) % H;
+      ctx.globalAlpha = p.alpha * baseAlpha; ctx.lineWidth = p.w;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.vx * p.len / p.vy, p.y + p.len); ctx.stroke();
     }
     ctx.restore();
   }
-
-  // SD-1: Lightning flash
-  _rLightning(ctx,W,H,now){
-    if(!this.L.wx) return;
-    const wx=this.L.wx;
-    if(Math.random()<0.0017) wx.lt=now;
-    const age=now-wx.lt;
-    if(age<80){
-      const f=age<20?0.35:age<50?0.18:0.08;
-      ctx.fillStyle=`rgba(220,230,255,${f})`; ctx.fillRect(0,0,W,H);
-    }
+  _rLightning(ctx, W, H, now) {
+    if (!this.L.wx) return;
+    const wx = this.L.wx;
+    if (Math.random() < 0.0017) wx.lt = now;
+    const age = now - wx.lt;
+    if (age < 80) { const f = age < 20 ? 0.35 : age < 50 ? 0.18 : 0.08; ctx.fillStyle = `rgba(220,230,255,${f})`; ctx.fillRect(0, 0, W, H); }
   }
-
-  // SD-1: Snow — organic drift
-  _rSnowSD(ctx,W,H,pool,now){
-    ctx.save(); ctx.fillStyle='rgba(240,246,255,1)';
-    for(const p of pool){
-      p.x=(p.x+p.vx+Math.sin(now*0.001*p.drift+p.driftPhase)*0.8+W)%W;
-      p.y=(p.y+p.vy+H)%H;
-      ctx.globalAlpha=p.alpha;
-      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+  _rSnowSD(ctx, W, H, pool, now) {
+    ctx.save(); ctx.fillStyle = 'rgba(240,246,255,1)';
+    for (const p of pool) { p.x = (p.x + p.vx + Math.sin(now * 0.001 * p.drift + p.driftPhase) * 0.8 + W) % W; p.y = (p.y + p.vy + H) % H; ctx.globalAlpha = p.alpha; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }
+  _rFogWisps(ctx, W, H, pool, now) {
+    ctx.fillStyle = 'rgba(195,210,220,0.40)'; ctx.fillRect(0, 0, W, H); ctx.save();
+    for (const p of pool) {
+      p.x = (p.x + p.vx + W * 2) % (W * 1.4) - W * 0.2; p.y += Math.sin(now * 0.0003 + p.phase) * 0.15;
+      const breathe = 0.5 + 0.5 * Math.sin(now * 0.0008 + p.phase); const a = p.alpha * (0.6 + 0.4 * breathe);
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.rx); g.addColorStop(0, `rgba(210,220,228,${a})`); g.addColorStop(1, 'rgba(210,220,228,0)');
+      ctx.fillStyle = g; ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, p.ry / p.rx); ctx.translate(-p.x, -p.y); ctx.beginPath(); ctx.arc(p.x, p.y, p.rx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
     ctx.restore();
   }
-
-  // SD-1: Fog wisps — drifting ellipses
-  _rFogWisps(ctx,W,H,pool,now){
-    ctx.fillStyle='rgba(195,210,220,0.40)'; ctx.fillRect(0,0,W,H);
+  _rEmbers(ctx, W, H, pool) {
     ctx.save();
-    for(const p of pool){
-      p.x=(p.x+p.vx+W*2)%(W*1.4)-W*0.2;
-      p.y+=Math.sin(now*0.0003+p.phase)*0.15;
-      const breathe=0.5+0.5*Math.sin(now*0.0008+p.phase);
-      const a=p.alpha*(0.6+0.4*breathe);
-      const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.rx);
-      g.addColorStop(0,`rgba(210,220,228,${a})`);
-      g.addColorStop(1,'rgba(210,220,228,0)');
-      ctx.fillStyle=g;
-      ctx.save(); ctx.translate(p.x,p.y); ctx.scale(1,p.ry/p.rx); ctx.translate(-p.x,-p.y);
-      ctx.beginPath(); ctx.arc(p.x,p.y,p.rx,0,Math.PI*2); ctx.fill();
-      ctx.restore();
+    for (const p of pool) {
+      p.x = (p.x + p.vx + W) % W; p.y = (p.y + p.vy + H) % H; p.life = (p.life + 0.008) % 1;
+      const a = p.alpha * Math.sin(p.life * Math.PI);
+      ctx.globalAlpha = a; ctx.shadowColor = 'rgba(255,160,40,0.8)'; ctx.shadowBlur = 4;
+      ctx.fillStyle = 'rgba(255,180,60,1)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 2, p.r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
   }
 
-  // SD-1: Sandstorm embers
-  _rEmbers(ctx,W,H,pool){
-    ctx.save();
-    for(const p of pool){
-      p.x=(p.x+p.vx+W)%W; p.y=(p.y+p.vy+H)%H;
-      p.life=(p.life+0.008)%1;
-      const a=p.alpha*Math.sin(p.life*Math.PI);
-      ctx.globalAlpha=a; ctx.shadowColor='rgba(255,160,40,0.8)'; ctx.shadowBlur=4;
-      ctx.fillStyle='rgba(255,180,60,1)';
-      ctx.beginPath(); ctx.ellipse(p.x,p.y,p.r*2,p.r*0.5,0,0,Math.PI*2); ctx.fill();
-    }
+  _rModeHUD() {
+    if (this.userRole !== 'dm') return;
+    const { ctx, cv } = this; const m = this.L.mode; if (m === 'view') return;
+    const labels = { obstacle: '🧱 Painting Obstacles', trigger: '⚠️ Placing Triggers', fogReveal: '🌟 Revealing Fog', fogHide: '🌑 Hiding Fog', ruler: '📏 Measuring', aoe: '💥 AOE Template', calibrate: '🔲 Calibrating Grid' };
+    const label = labels[m] || m;
+    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(cv.width / 2 - 120, 6, 240, 32);
+    ctx.strokeStyle = 'rgba(241,196,15,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(cv.width / 2 - 120, 6, 240, 32);
+    ctx.fillStyle = '#f1c40f'; ctx.font = 'bold 13px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, cv.width / 2, 22);
+  }
+
+  startIris(phase = 'open') { this.L.iris = { start: Date.now(), phase }; this._dirty(); }
+
+  _rIris() {
+    const iris = this.L.iris; if (!iris) return;
+    const W = this.cv.width, H = this.cv.height; const ctx = this.ctx;
+    const maxR = Math.hypot(W, H) / 2 + 20; const DUR = 900;
+    const elapsed = Date.now() - iris.start; const t = Math.min(1, elapsed / DUR);
+    const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const r = iris.phase === 'open' ? maxR * ease : maxR * (1 - ease);
+    ctx.save(); ctx.fillStyle = 'rgba(0,0,0,1)'; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, Math.max(0, r), 0, Math.PI * 2); ctx.fill();
     ctx.restore();
+    if (elapsed < DUR) this._dirty(); else this.L.iris = null;
   }
 
-  // ── HUD ───────────────────────────────────────────────────────────────
-  _rHUD(){
-    const dt=this.L.drag; if(!dt) return;
-    const {ctx,cv}=this;
-    const pl=this.S.players[dt.cName]||{};
-    const speed=pl.speed||MAP_W_DEFAULT;
-    const sq=(dt.path?.length||1)-1;
-    const prevUsed=this.S.tokens[dt.cName]?.usedMv||0;
-    const used=prevUsed+sq*FT_PER_SQ;
-    const rem=Math.max(0,speed-used);
-    const pct=rem/speed;
-    const over=used>speed;
-    const hx=10, hy=cv.height-64;
-    ctx.fillStyle='rgba(0,0,0,0.82)';
-    ctx.fillRect(hx,hy,230,54);
-    ctx.strokeStyle=over?'#e74c3c':'#2ecc71'; ctx.lineWidth=2;
-    ctx.strokeRect(hx,hy,230,54);
-    ctx.fillStyle='white'; ctx.font='bold 13px Arial';
-    ctx.textAlign='left'; ctx.textBaseline='top';
-    ctx.fillText(`⚡ ${rem}/${speed} ft remaining`,hx+10,hy+8);
-    if(over){ ctx.fillStyle='#e74c3c'; ctx.fillText('Over speed limit!',hx+10,hy+26); }
-    ctx.fillStyle='rgba(255,255,255,0.15)';
-    ctx.fillRect(hx+10,hy+40,210,8);
-    ctx.fillStyle=pct>0.5?'#2ecc71':pct>0.2?'#f39c12':'#e74c3c';
-    ctx.fillRect(hx+10,hy+40,210*Math.min(1,rem/speed),8);
+  // ── Public API ────────────────────────────────────────────────────────
+  _revealCell(gx, gy, r = 1) {
+    const cells = {};
+    for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) <= r) cells[ck(gx + dx, gy + dy)] = true;
+    }
+    if (this.localOnly) { Object.assign(this.S.fog, cells); this._dirty(); return; }
+    if (!this.db) return;
+    this.db.revealFogCells(this.activeRoom, this.S.activeScene, cells);
   }
 
-  _rModeHUD(){
-    if(this.userRole!=='dm') return;
-    const {ctx,cv}=this, m=this.L.mode;
-    if(m==='view') return;
-    const labels={
-      obstacle:'🧱 Painting Obstacles',trigger:'⚠️ Placing Triggers',
-      fogReveal:'🌟 Revealing Fog',fogHide:'🌑 Hiding Fog',
-      ruler:'📏 Measuring',aoe:'💥 AOE Template',calibrate:'🔲 Calibrating Grid',
-    };
-    const label=labels[m]||m;
-    ctx.fillStyle='rgba(0,0,0,0.7)';
-    ctx.fillRect(cv.width/2-120,6,240,32);
-    ctx.strokeStyle='rgba(241,196,15,0.6)'; ctx.lineWidth=1.5;
-    ctx.strokeRect(cv.width/2-120,6,240,32);
-    ctx.fillStyle='#f1c40f'; ctx.font='bold 13px Arial';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(label,cv.width/2,22);
+  _hideCell(gx, gy) {
+    if (this.localOnly) { delete this.S.fog[ck(gx, gy)]; this._dirty(); return; }
+    if (!this.db) return;
+    this.db.hideFogCell(this.activeRoom, this.S.activeScene, ck(gx, gy));
   }
 
-  // ── Input ─────────────────────────────────────────────────────────────
-  _bindCanvas(){
-    const evs={
-      mousedown:this._md.bind(this), mousemove:this._mm.bind(this),
-      mouseup:this._mu.bind(this),   wheel:this._mw.bind(this),
-      contextmenu:e=>e.preventDefault(),
-      touchstart:this._ts.bind(this), touchmove:this._tm.bind(this), touchend:this._te.bind(this),
-    };
-    Object.entries(evs).forEach(([ev,fn])=>{
-      this.cv.addEventListener(ev,fn,{passive:false});
-      this._evs[ev]=fn;
-    });
+  revealAll() {
+    if (!this.db) return;
+    const { mapW: mw, mapH: mh } = this.S.cfg;
+    const cells = {};
+    for (let gx = 0; gx < (mw || MAP_W_DEFAULT); gx++) for (let gy = 0; gy < (mh || MAP_H_DEFAULT); gy++) cells[ck(gx, gy)] = true;
+    this.db.revealFogCells(this.activeRoom, this.S.activeScene, cells);
   }
 
-  _cp(e){
-    const r=this.cv.getBoundingClientRect();
-    const cl=e.touches?e.touches[0]:e;
-    return{sx:cl.clientX-r.left, sy:cl.clientY-r.top};
-  }
-  _sw(sx,sy){ return{x:(sx-this.vx)/this.vs, y:(sy-this.vy)/this.vs}; }
-  _wg(wx,wy){ const {pps,ox,oy}=this.S.cfg; return{gx:Math.floor((wx-ox)/pps),gy:Math.floor((wy-oy)/pps)}; }
-  _gw(gx,gy){ const {pps,ox,oy}=this.S.cfg; return{wx:ox+gx*pps,wy:oy+gy*pps}; }
+  hideAll()           { if (this.db) this.db.resetFog(this.activeRoom, this.S.activeScene); }
+  getBgTileCount()    { if (this.L.mode !== 'phantom') return null; const fit = this._getBgFit(); const { pps } = this.S.cfg; return { cols: Math.max(1, Math.floor(fit.w / pps)), rows: Math.max(1, Math.floor(fit.h / pps)) }; }
 
-  _tokenAt(wx,wy){
-    const {gx,gy}=this._wg(wx,wy);
-    return Object.entries(this.S.tokens).find(([,t])=>t.gx===gx&&t.gy===gy)?.[0]||null;
+  _loadBg(url) {
+    this.L.bg = null; this.L.bgLoading = true;
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload  = () => { this.L.bg = img; this.L.bgLoading = false; this._dirty(); };
+    img.onerror = () => { this.L.bgLoading = false; };
+    img.src = url;
   }
 
-  _md(e){
-    e.preventDefault();
-    const {sx,sy}=this._cp(e);
-    const {x:wx,y:wy}=this._sw(sx,sy);
-    const {gx,gy}=this._wg(wx,wy);
-    this.L.mw={x:wx,y:wy}; this.L.ms={x:sx,y:sy};
-    const m=this.L.mode, isDM=this.userRole==='dm';
+  loadBgUrl(url)  { this._loadBg(url); if (this.db) this.db.setMapCfg(this.activeRoom, { ...this.S.cfg, bgUrl: url }); }
+  loadBgFile(file){ const r = new FileReader(); r.onload = e => { const img = new Image(); img.onload = () => { this.L.bg = img; this._dirty(); }; img.src = e.target.result; }; r.readAsDataURL(file); }
 
-    // Middle/right = pan
-    if(e.button===1||e.button===2){
-      this.L.pan={on:true,sx,sy,vx0:this.vx,vy0:this.vy}; return;
-    }
-
-    // Placing token on map
-    if(isDM&&this.L.placing){
-      this.placeToken(this.L.placing,gx,gy);
-      this.L.placing=null;
-      this._updateDashTokenList();
-      return;
-    }
-
-    if(m==='ruler'){
-      this.L.rulerA={x:wx,y:wy}; this.L.rulerB=null; this._dirty(); return;
-    }
-    if(m==='aoe'){
-      this.L.rulerA={x:wx,y:wy}; this._dirty(); return;
-    }
-    if(isDM&&m==='obstacle'){
-      this.L.painting=true; this._paintObs(gx,gy); return;
-    }
-    if(isDM&&m==='trigger'){
-      this._placeTrigger(gx,gy); return;
-    }
-    if(isDM&&(m==='fogReveal'||m==='wizFog')){
-      this.L.painting=true; this._revealCell(gx,gy); return;
-    }
-    if(isDM&&(m==='fogHide'||m==='wizFogHide')){
-      this.L.painting=true; this._hideCell(gx,gy); return;
-    }
-
-    // Token drag
-    const tn=this._tokenAt(wx,wy);
-    if(tn){
-      const ok=isDM||this._isMyTurn(tn);
-      if(ok){
-        const tk=this.S.tokens[tn];
-        this.L.drag={cName:tn,startGX:tk.gx,startGY:tk.gy,curGX:tk.gx,curGY:tk.gy,path:[[tk.gx,tk.gy]]};
-        this._dirty(); return;
-      }
-    }
-
-    // E6-C: Click-to-move — player clicks empty floor cell
-    // If it's the player's turn and they have a token, pathfind + move there
-    if(m==='view'&&!isDM&&this.cName){
-      const myTk=this.S.tokens[this.cName];
-      if(myTk&&this._isMyTurn(this.cName)&&!this._tokenAt(wx,wy)){
-        // Rebuild pathfinder grid if needed
-        const {cols=40,rows=30}=this.S.cfg;
-        if(!this._pf.isReady) this._pf.setGrid(this.S.obstacles,cols,rows);
-        this._pf.find(myTk.gx,myTk.gy,gx,gy).then(path=>{
-          if(!path||path.length<2) return;
-          // Simulate drag + endDrag for movement tracking
-          const fakeDrag={
-            cName:this.cName,
-            startGX:myTk.gx, startGY:myTk.gy,
-            curGX:path[path.length-1][0], curGY:path[path.length-1][1],
-            path
-          };
-          this.L.drag=fakeDrag;
-          this._endDrag();
-        });
-        return;
-      }
-    }
-
-    // Default pan
-    if(m==='view'||m==='calibrate'||m==='phantom'){
-      this.L.pan={on:true,sx,sy,vx0:this.vx,vy0:this.vy};
-    }
-  }
-
-  _mm(e){
-    const {sx,sy}=this._cp(e);
-    const {x:wx,y:wy}=this._sw(sx,sy);
-    const {gx,gy}=this._wg(wx,wy);
-    this.L.mw={x:wx,y:wy}; this.L.ms={x:sx,y:sy};
-    this._dirty();
-
-    if(this.L.pan.on){
-      this.vx=this.L.pan.vx0+(sx-this.L.pan.sx);
-      this.vy=this.L.pan.vy0+(sy-this.L.pan.sy);
-      this._dirty(); return;
-    }
-    if(this.L.mode==='ruler'&&this.L.rulerA){ this.L.rulerB={x:wx,y:wy}; this._dirty(); }
-
-    const isDM=this.userRole==='dm';
-    if(this.L.painting&&isDM){
-      const m=this.L.mode;
-      if(m==='obstacle')  this._paintObs(gx,gy);
-      if(m==='fogReveal'||m==='wizFog')     this._revealCell(gx,gy);
-      if(m==='fogHide'  ||m==='wizFogHide') this._hideCell(gx,gy);
-    }
-
-    if(this.L.drag){
-      const dt=this.L.drag;
-      if(dt.curGX!==gx||dt.curGY!==gy){
-        dt.curGX=gx; dt.curGY=gy;
-        dt.path=this._buildPath(dt.startGX,dt.startGY,gx,gy,dt.cName);
-        this._dirty();
-      }
-    }
-  }
-
-  _mu(e){
-    this.L.pan.on=false; this.L.painting=false;
-    if(this.L.drag) this._endDrag();
-  }
-
-  _mw(e){
-    e.preventDefault();
-    const {sx,sy}=this._cp(e);
-    const delta=e.deltaY<0?1.1:0.91;
-    const ns=Math.min(4,Math.max(0.2,this.vs*delta));
-    this.vx=sx-(sx-this.vx)*(ns/this.vs);
-    this.vy=sy-(sy-this.vy)*(ns/this.vs);
-    this.vs=ns; this._dirty();
-  }
-
-  _ts(e){ e.preventDefault(); this._md({...e,clientX:e.touches[0].clientX,clientY:e.touches[0].clientY,button:0}); }
-  _tm(e){ e.preventDefault(); this._mm({...e,clientX:e.touches[0].clientX,clientY:e.touches[0].clientY}); }
-  _te(e){ e.preventDefault(); this._mu(e); }
-
-  // ── Movement & drag ────────────────────────────────────────────────────
-  _isMyTurn(cn){
-    return cn===this.cName && this.L.sc[this.L.ati]?.name===this.cName;
-  }
-
-  // E6-A: EasyStar A* pathfinding
-  // Synchronously rebuilds grid if dirty, then finds path.
-  // Returns immediate greedy path for visual feedback; EasyStar result
-  // updates L.drag.path async and triggers re-render.
-  _buildPath(sx,sy,ex,ey,cName){
-    const {cols=40,rows=30}=this.S.cfg;
-
-    // Rebuild A* grid if obstacles changed
-    if(!this._pf.isReady){
-      this._pf.setGrid(this.S.obstacles, cols, rows);
-    }
-
-    // Kick off EasyStar async — update path when ready
-    this._pf.find(sx,sy,ex,ey).then(path=>{
-      if(path && this.L.drag && this.L.drag.cName===cName){
-        this.L.drag.path=path;
-        this._dirty();
-      }
-    });
-
-    // Greedy Chebyshev fallback for immediate frame
-    const cells=[[sx,sy]]; let cx=sx,cy=sy;
-    while((cx!==ex||cy!==ey)&&cells.length<120){
-      const dx=Math.sign(ex-cx), dy=Math.sign(ey-cy);
-      const opts=[[cx+dx,cy+dy],[cx+dx,cy],[cx,cy+dy]];
-      const next=opts.find(([nx,ny])=>!this.S.obstacles[ck(nx,ny)]&&(nx!==cx||ny!==cy));
-      if(!next) break;
-      [cx,cy]=next; cells.push([cx,cy]);
-    }
-    return cells;
-  }
-
-  _endDrag(){
-    const dt=this.L.drag; this.L.drag=null;
-    if(!dt||dt.curGX===dt.startGX&&dt.curGY===dt.startGY){ this._dirty(); return; }
-
-    const isDM=this.userRole==='dm';
-    const pl=this.S.players[dt.cName]||{};
-    const speed=pl.speed||MAP_W_DEFAULT;
-    const sq=(dt.path?.length||1)-1;
-    const prevUsed=this.S.tokens[dt.cName]?.usedMv||0;
-    const newUsed=prevUsed+sq*FT_PER_SQ;
-
-    if(!isDM&&newUsed>speed){ this._dirty(); return; } // reject
-
-    if(this.db){
-      this.db.moveMapToken(this.activeRoom,dt.cName,dt.curGX,dt.curGY,isDM?prevUsed:newUsed);
-      // Vision reveal
-      this._revealForToken(dt.cName,dt.curGX,dt.curGY);
-      // Trigger check
-      this._checkTrigger(dt.curGX,dt.curGY,dt.cName);
-    }
+  nudgeGrid(dpps, dox, doy) {
+    if (this.S.cfg.locked) return;
+    const pps = Math.min(MAX_PPS, Math.max(MIN_PPS, this.S.cfg.pps + (dpps || 0)));
+    this.S.cfg = { ...this.S.cfg, pps, ox: this.S.cfg.ox + (dox || 0), oy: this.S.cfg.oy + (doy || 0) };
     this._dirty();
   }
 
-  _visionR(cn){
-    // E3-A: respect per-character darkvision field (feet → tiles)
-    const pl=this.S.players[cn]||{};
-    const dvFt=Number(pl.darkvision)||0;
-    if(dvFt>0) return Math.ceil(dvFt/FT_PER_SQ);
-    return Math.ceil(30/FT_PER_SQ); // default 30ft = 6 tiles
-  }
+  lockGrid()          { if (this.db) this.db.setMapCfg(this.activeRoom, { ...this.S.cfg, locked: true }); }
+  unlockGrid()        { if (this.db) this.db.setMapCfg(this.activeRoom, { ...this.S.cfg, locked: false }); }
+  saveGridToFirebase(){ if (this.db) this.db.setMapCfg(this.activeRoom, this.S.cfg); }
 
-  // E3-A+B: Rot.js RecursiveShadowcasting FOV.
-  // Updates L.currentFov (local rendering) AND persists newly-seen cells to Firebase.
-  // DM bypasses FOV and always sees all cells.
-  _revealForToken(cn,gx,gy,r){
-    if(!this.db) return;
-    const vr=r||this._visionR(cn);
-    const pl=this.S.players[cn]||{};
-    if(pl.userRole==='dm') return; // DM sees all
-
-    const passable=(x,y)=>!this.S.obstacles[ck(x,y)];
-    const visible={};
-    const fov=new FOV.RecursiveShadowcasting(passable);
-    fov.compute(gx,gy,vr,(x,y)=>{ visible[ck(x,y)]=true; });
-
-    // E3-B: update local currentFov for three-state rendering
-    if(cn===this.cName){
-      this.L.currentFov=new Set(Object.keys(visible));
-      this._dirty();
-    }
-
-    // Persist only newly-seen cells to Firebase (avoid redundant writes)
-    const newCells={};
-    Object.keys(visible).forEach(k=>{
-      if(!this.S.fog[k]) newCells[k]=true;
-    });
-    if(Object.keys(newCells).length>0){
-      this.db.revealFogCells(this.activeRoom,this.S.activeScene,newCells);
-    }
-  }
-
-  _checkTrigger(gx,gy,cn){
-    const key=ck(gx,gy);
-    const t=this.S.triggers[key];
-    if(!t||t.fired||this.L.firedLocal.has(key)) return;
-    this.L.firedLocal.add(key);
-    if(this.db){
-      this.db.fireTrigger(this.activeRoom,this.S.activeScene,key);
-      this.db.saveRollToDB({
-        cName:'DM',type:'STATUS',
-        status:`⚠️ TRIGGER "${t.label||'Trap'}" — ${cn} at [${gx},${gy}]!`,
-        ts:Date.now()
-      });
-    }
-    // Sound: descending siren
-    if(!this.isMuted){
-      try{
-        const ac=new(window.AudioContext||window.webkitAudioContext)();
-        [440,330,220].forEach((f,i)=>{
-          const o=ac.createOscillator(),g=ac.createGain();
-          o.connect(g); g.connect(ac.destination);
-          o.type='sawtooth'; o.frequency.value=f;
-          const t0=ac.currentTime+i*0.15;
-          g.gain.setValueAtTime(0.25,t0);
-          g.gain.exponentialRampToValueAtTime(0.001,t0+0.35);
-          o.start(t0); o.stop(t0+0.35);
-        });
-      }catch(_){}
-    }
-  }
-
-  // ── DM tools ───────────────────────────────────────────────────────────
-  _paintObs(gx,gy){
-    const key=ck(gx,gy);
-    if(this.localOnly){
-      if(this.L.tool==='erase') delete this.S.obstacles[key];
-      else this.S.obstacles[key]=true;
-      this._pf?.invalidate(); // E6-A: obstacle changed → rebuild A* grid
-      this._dirty(); return;
-    }
-    if(!this.db) return;
-    this.db.setObstacle(this.activeRoom,this.S.activeScene,key,this.L.tool==='paint'?true:null);
-    this._pf?.invalidate(); // E6-A
-  }
-
-  _placeTrigger(gx,gy){
-    const key=ck(gx,gy);
-    if(this.localOnly){
-      if(this.S.triggers[key]){ delete this.S.triggers[key]; this._dirty(); return; }
-      this.L.pendingTrigger={gx,gy,key};
-      this._showTriggerForm(gx,gy); return;
-    }
-    if(!this.db) return;
-    const existing=this.S.triggers[key];
-    if(existing){ this.db.setTrigger(this.activeRoom,this.S.activeScene,key,null); return; }
-    // Store pending placement, show inline confirm UI
-    this.L.pendingTrigger={gx,gy,key};
-    this._showTriggerForm(gx,gy);
-  }
-
-  _showTriggerForm(gx,gy){
-    // Build or reuse a small inline form near the dashboard
-    let form=document.getElementById('map-trigger-form');
-    if(!form){
-      form=document.createElement('div');
-      form.id='map-trigger-form';
-      form.style.cssText='position:absolute;background:rgba(13,10,30,0.97);border:1.5px solid rgba(241,196,15,0.5);border-radius:10px;padding:10px 12px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,0.7);min-width:190px;';
-      document.getElementById('map-canvas-container')?.appendChild(form);
-    }
-    // Position near canvas centre
-    const cc=document.getElementById('map-canvas-container');
-    form.style.left=(cc?cc.clientWidth/2-95:120)+'px';
-    form.style.top='60px';
-    form.innerHTML=`
-      <div style="font-size:11px;color:#f1c40f;font-weight:bold;margin-bottom:6px;">⚠️ New Trigger at [${gx},${gy}]</div>
-      <input id="map-trigger-label" type="text" value="Trap"
-        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;border-radius:5px;padding:5px 7px;font-size:12px;outline:none;margin-bottom:7px;">
-      <div style="display:flex;gap:5px;">
-        <button id="map-trigger-confirm" style="flex:1;background:rgba(241,196,15,0.2);border:1px solid rgba(241,196,15,0.5);color:#f1c40f;border-radius:5px;padding:5px;font-size:11px;font-weight:bold;cursor:pointer;">✓ Place</button>
-        <button id="map-trigger-cancel"  style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#aaa;border-radius:5px;padding:5px;font-size:11px;cursor:pointer;">✕ Cancel</button>
-      </div>
-    `;
-    form.style.display='block';
-    const input=document.getElementById('map-trigger-label');
-    input?.focus(); input?.select();
-    document.getElementById('map-trigger-confirm').onclick=()=>{
-      const label=(input?.value.trim())||'Trap';
-      const pt=this.L.pendingTrigger;
-      if(pt){
-        if(this.localOnly){ this.S.triggers[pt.key]={label,fired:false}; this._dirty(); }
-        else if(this.db)   { this.db.setTrigger(this.activeRoom,this.S.activeScene,pt.key,{label,fired:false}); }
-      }
-      this.L.pendingTrigger=null;
-      form.style.display='none';
-    };
-    document.getElementById('map-trigger-cancel').onclick=()=>{
-      this.L.pendingTrigger=null;
-      form.style.display='none';
-    };
-    // Also close on Enter
-    input?.addEventListener('keydown',e=>{
-      if(e.key==='Enter') document.getElementById('map-trigger-confirm')?.click();
-      if(e.key==='Escape') document.getElementById('map-trigger-cancel')?.click();
-    });
-  }
-
-  _revealCell(gx,gy,r=1){
-    const cells={};
-    for(let dx=-r;dx<=r;dx++) for(let dy=-r;dy<=r;dy++){
-      if(cheb(0,0,dx,dy)<=r) {
-        const key=ck(gx+dx,gy+dy);
-        cells[key]=true;
-        // SD-2: track newly revealed cells for flash animation
-        if(!this.S.fog[key]) this.L.fogRevQ.push({gx:gx+dx,gy:gy+dy,t:Date.now()});
-      }
-    }
-    if(this.localOnly){ Object.assign(this.S.fog,cells); this._dirty(); return; }
-    if(!this.db) return;
-    this.db.revealFogCells(this.activeRoom,this.S.activeScene,cells);
-  }
-
-  _hideCell(gx,gy){
-    if(this.localOnly){ delete this.S.fog[ck(gx,gy)]; this._dirty(); return; }
-    if(!this.db) return;
-    this.db.hideFogCell(this.activeRoom,this.S.activeScene,ck(gx,gy));
-  }
-
-  revealAll(){
-    if(!this.db) return;
-    const {mapW:mw,mapH:mh}=this.S.cfg;
-    const cells={};
-    for(let gx=0;gx<(mw||MAP_W_DEFAULT);gx++) for(let gy=0;gy<(mh||MAP_H_DEFAULT);gy++) cells[ck(gx,gy)]=true;
-    this.db.revealFogCells(this.activeRoom,this.S.activeScene,cells);
-  }
-
-  hideAll(){
-    if(!this.db) return;
-    this.db.resetFog(this.activeRoom,this.S.activeScene);
-  }
-
-  getBgTileCount(){
-    if(this.L.mode!=='phantom') return null;
-    const fit=this._getBgFit();
-    const {pps}=this.S.cfg;
-    return {
-      cols:Math.max(1,Math.floor(fit.w/pps)),
-      rows:Math.max(1,Math.floor(fit.h/pps)),
-    };
-  }
-
-  // ── Background / Config ────────────────────────────────────────────────
-  _loadBg(url){
-    this.L.bg=null; this.L.bgLoading=true;
-    const img=new Image(); img.crossOrigin='anonymous';
-    img.onload=()=>{ this.L.bg=img; this.L.bgLoading=false; this._dirty(); };
-    img.onerror=()=>{ this.L.bgLoading=false; };
-    img.src=url;
-  }
-
-  loadBgUrl(url){
-    this._loadBg(url);
-    if(this.db) this.db.setMapCfg(this.activeRoom,{...this.S.cfg,bgUrl:url});
-  }
-
-  loadBgFile(file){
-    const r=new FileReader();
-    r.onload=e=>{
-      const img=new Image(); img.onload=()=>{ this.L.bg=img; this._dirty(); };
-      img.src=e.target.result;
-      // Store URL hint in Firebase for others (data URI not stored—too large)
-      // Only local preview; share via external URL instead
-    };
-    r.readAsDataURL(file);
-  }
-
-  nudgeGrid(dpps,dox,doy){
-    if(this.S.cfg.locked) return;
-    const pps=Math.min(MAX_PPS,Math.max(MIN_PPS,this.S.cfg.pps+(dpps||0)));
-    this.S.cfg={...this.S.cfg,pps,ox:this.S.cfg.ox+(dox||0),oy:this.S.cfg.oy+(doy||0)};
+  placeToken(cn, gx, gy) {
+    if (!this.db) return;
+    this.db.moveMapToken(this.activeRoom, cn, gx, gy, 0);
+    this.visibility.revealForToken(cn, gx, gy);
     this._dirty();
   }
 
-  lockGrid(){
-    if(!this.db) return;
-    const cfg={...this.S.cfg,locked:true};
-    this.db.setMapCfg(this.activeRoom,cfg);
-  }
+  removeToken(cn)      { if (this.db) { this.db.removeMapToken(this.activeRoom, cn); this._dirty(); } }
+  resetAllMovement()   { if (this.db) Object.keys(this.S.tokens).forEach(cn => this.db.resetTokenMv(this.activeRoom, cn)); }
 
-  unlockGrid(){
-    if(!this.db) return;
-    const cfg={...this.S.cfg,locked:false};
-    this.db.setMapCfg(this.activeRoom,cfg);
-  }
-
-  saveGridToFirebase(){
-    if(!this.db) return;
-    this.db.setMapCfg(this.activeRoom,this.S.cfg);
-  }
-
-  // ── Token placement ────────────────────────────────────────────────────
-  placeToken(cn,gx,gy){
-    if(!this.db) return;
-    this.db.moveMapToken(this.activeRoom,cn,gx,gy,0);
-    this._revealForToken(cn,gx,gy);
-    this._dirty();
-  }
-
-  removeToken(cn){
-    if(!this.db) return;
-    this.db.removeMapToken(this.activeRoom,cn);
-    this._dirty();
-  }
-
-  resetAllMovement(){
-    if(!this.db) return;
-    Object.keys(this.S.tokens).forEach(cn=>this.db.resetTokenMv(this.activeRoom,cn));
-  }
-
-  // ── Scene management ────────────────────────────────────────────────────
-  createScene(name,bgUrl=''){
-    if(!this.db) return;
-    const sid='scene_'+Date.now();
-    const cfg={...this.S.cfg,bgUrl};
-    this.db.saveScene(this.activeRoom,sid,{name,config:cfg});
-    this.db.setActiveScene(this.activeRoom,sid);
+  createScene(name, bgUrl = '') {
+    if (!this.db) return;
+    const sid = 'scene_' + Date.now();
+    this.db.saveScene(this.activeRoom, sid, { name, config: { ...this.S.cfg, bgUrl } });
+    this.db.setActiveScene(this.activeRoom, sid);
     return sid;
   }
 
-  loadScene(sid){
-    if(!this.db) return;
-    this.db.setActiveScene(this.activeRoom,sid);
-  }
+  loadScene(sid) { if (this.db) this.db.setActiveScene(this.activeRoom, sid); }
 
-  // ── Mode & tool setters ────────────────────────────────────────────────
-  setAtmosphere(a){
-    this.S.atmosphere = { ...this.S.atmosphere, ...(a||{}) };
-    this._dirty();
-  }
-  setMode(m){ this.L.mode=m; this._dirty(); }
-  setTool(t){ this.L.tool=t; }
+  setAtmosphere(a) { this.S.atmosphere = { ...this.S.atmosphere, ...(a || {}) }; this._dirty(); }
+  setMode(m)       { this.L.mode = m; this._dirty(); }
+  setTool(t)       { this.L.tool = t; }
+  setAoeShape(s)   { this.L.aoeShape = s; this._dirty(); }
+  setAoeRadius(r)  { this.L.aoeR = r; this._dirty(); }
+  startPlacing(cn) { this.L.placing = cn; this.L.mode = 'view'; this._dirty(); }
+  cancelPlacing()  { this.L.placing = null; this._dirty(); }
+  resize(w, h)     { this.cv.width = w; this.cv.height = h; this.fw.width = w; this.fw.height = h; this._dirty(); }
 
-  // SD-3: Trigger iris wipe — call when scene loads
-  // phase 'open': black fills screen then sweeps away revealing the scene
-  // phase 'close': iris closes to black (use before scene swap)
-  startIris(phase='open'){
-    this.L.iris={ start:Date.now(), phase };
-    this._dirty();
-  }
-
-  // SD-3: Render iris wipe overlay
-  _rIris(){
-    const iris=this.L.iris;
-    if(!iris) return;
-    const W=this.cv.width, H=this.cv.height;
-    const ctx=this.ctx;
-    const maxR=Math.hypot(W,H)/2+20;
-    const DUR=900;
-    const elapsed=Date.now()-iris.start;
-    const t=Math.min(1,elapsed/DUR);
-    const ease=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2; // easeInOutQuad
-
-    // 'open' = iris expands (reveals scene), 'close' = iris contracts (blackens)
-    const r=iris.phase==='open' ? maxR*ease : maxR*(1-ease);
-
-    ctx.save();
-    ctx.fillStyle='rgba(0,0,0,1)';
-    ctx.fillRect(0,0,W,H);
-    ctx.globalCompositeOperation='destination-out';
-    ctx.beginPath();
-    ctx.arc(W/2,H/2,Math.max(0,r),0,Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-
-    if(elapsed<DUR) this._dirty();
-    else this.L.iris=null;
-  }
-  setAoeShape(s){ this.L.aoeShape=s; this._dirty(); }
-  setAoeRadius(r){ this.L.aoeR=r; this._dirty(); }
-  startPlacing(cn){ this.L.placing=cn; this.L.mode='view'; this._dirty(); }
-  cancelPlacing(){ this.L.placing=null; this._dirty(); }
-
-  resize(w,h){ this.cv.width=w; this.cv.height=h; this.fw.width=w; this.fw.height=h; this._dirty(); }
-
-  _updateDashTokenList(){
-    const list=document.getElementById('map-token-roster');
-    if(!list) return;
-
-    const players=this.S.players, tokens=this.S.tokens;
-    const desired=Object.keys(players).filter(cn=>players[cn]?.userRole!=='dm');
-
-    // Remove rows for players no longer in the room
-    list.querySelectorAll('[data-cn]').forEach(row=>{
-      if(!players[row.dataset.cn]) row.remove();
-    });
-
-    desired.forEach(cn=>{
-      const p=players[cn];
-      const onMap=!!tokens[cn];
-      let row=list.querySelector(`[data-cn="${CSS.escape(cn)}"]`);
-
-      if(!row){
-        // Create new row
-        row=document.createElement('div');
-        row.className='map-token-row';
-        row.dataset.cn=cn;
-        list.appendChild(row);
-      }
-
-      // Only rewrite innerHTML if the "onMap" state or name changed
-      const prevOnMap=row.dataset.onmap==='1';
-      if(prevOnMap===onMap && row.dataset.rendered==='1') return;
-      row.dataset.onmap=onMap?'1':'0';
-      row.dataset.rendered='1';
-
-      row.innerHTML=`
-        <img src="${p?.portrait||'assets/logo.png'}" style="width:24px;height:24px;border-radius:50%;border:2px solid ${p?.pColor||'#fff'}">
-        <span style="flex:1;font-size:12px;color:white;">${cn}</span>
-        ${onMap
-          ?`<button onclick="window._mapEng.removeToken('${cn}')" class="map-dash-btn" style="width:auto;padding:3px 7px;background:rgba(231,76,60,0.4);border-color:#e74c3c;">✕</button>`
-          :`<button onclick="window._mapEng.startPlacing('${cn}')" class="map-dash-btn" style="width:auto;padding:3px 7px;">📍</button>`
-        }
-      `;
-    });
-  }
+  _updateDashTokenList() { this.tokens.updateDashTokenList(); }
 }

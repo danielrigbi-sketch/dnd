@@ -27,7 +27,6 @@ export class Pathfinder {
     this._es.setAcceptableTiles([PASSABLE]);
     this._es.enableDiagonals();
     this._es.enableCornerCutting();   // optional: false = strict corners
-    this._es.disableSyncBnB();
   }
 
   /**
