@@ -12,6 +12,7 @@
     "@faker-js/faker": "^10.3.0",
     "easystarjs": "^0.4.4",
     "firebase": "^10.8.0",
+    "pixi.js": "^8.16.0",
     "rot-js": "^2.2.1"
   },
   "devDependencies": {
