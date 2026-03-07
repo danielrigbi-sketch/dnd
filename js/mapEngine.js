@@ -7,6 +7,7 @@
 import { typeColor } from './monsters.js';
 import { FOV } from 'rot-js';  // E3-A: Recursive Shadowcasting FOV
 import { TileEngine } from './tileEngine.js';  // E4-A: Dungeon tile renderer
+import { Pathfinder } from './pathfinder.js';   // E6-A: EasyStar A* pathfinding
 
 // ── Constants ────────────────────────────────────────────────────────
 const FT_PER_SQ   = 5;
@@ -60,6 +61,7 @@ export class MapEngine {
     this.fc  = fowCanvas.getContext('2d');
     this.tileEngine = new TileEngine();  // E4-A
     this.tileEngine.load().catch(e => console.warn('TileEngine load:', e));
+    this._pf = new Pathfinder();  // E6-A
 
     this.cName      = opts.cName      || '';
     this.userRole   = opts.userRole   || 'player';
@@ -172,7 +174,7 @@ export class MapEngine {
         this.S.fog = fog||{}; this._dirty();
       }),
       db.listenObstacles(r, sc, obs=>{
-        this.S.obstacles = obs||{}; this._dirty();
+        this.S.obstacles = obs||{}; this._pf?.invalidate(); this._dirty(); // E6-A
       }),
       db.listenTriggers(r, sc, trg=>{
         this.S.triggers = trg||{}; this._dirty();
@@ -215,6 +217,7 @@ export class MapEngine {
     this._rObstacles();
     if(this.userRole==='dm') this._rTriggers();
     this._rTokens();
+    this._rMoveRange(); // E6-B
     this._rPath();
     this._rRuler();
     this._rAoe();
@@ -458,13 +461,32 @@ export class MapEngine {
     });
   }
 
-  // ── Path preview ─────────────────────────────────────────────────────
+  // ── Path preview — E6-B: movement range colour coding ────────────────
+  // Green  = within normal speed
+  // Orange = dash (up to 2× speed)
+  // Red    = over dash limit
   _rPath(){
     const dt=this.L.drag;
     if(!dt||!dt.path||dt.path.length<2) return;
     const {ctx}=this, {pps,ox,oy}=this.S.cfg;
+    const sq=(dt.path.length-1);
+    const ft=sq*FT_PER_SQ;
+
+    // Get token's speed
+    const pl=this.S.players[dt.cName]||{};
+    const speedFt=Number(pl.speed)||30;
+    const speedSq=Math.ceil(speedFt/FT_PER_SQ);
+    const usedMv=this.S.tokens[dt.cName]?.usedMv||0;
+    const remaining=Math.max(0,speedSq-usedMv);
+
+    // Color: within speed=cyan, within dash=orange, over=red
+    const stroke = sq<=remaining ? 'rgba(80,200,255,0.90)'
+                 : sq<=speedSq*2 ? 'rgba(230,126,34,0.90)'
+                 :                 'rgba(231,76,60,0.90)';
+
     ctx.save();
-    ctx.strokeStyle=PATH_STROKE; ctx.lineWidth=3/this.vs;
+    ctx.translate(this.vx,this.vy); ctx.scale(this.vs,this.vs);
+    ctx.strokeStyle=stroke; ctx.lineWidth=3/this.vs;
     ctx.setLineDash([8/this.vs,4/this.vs]);
     ctx.lineJoin='round'; ctx.lineCap='round';
     ctx.beginPath();
@@ -474,16 +496,59 @@ export class MapEngine {
     });
     ctx.stroke();
     ctx.setLineDash([]);
-    // Squares count label at destination
+
+    // Destination label
     const last=dt.path[dt.path.length-1];
-    const sq=dt.path.length-1;
-    const ft=sq*FT_PER_SQ;
     const wx=ox+(last[0]+0.5)*pps, wy=oy+(last[1]+0.5)*pps;
-    ctx.fillStyle='rgba(0,0,0,0.7)';
-    ctx.fillRect(wx-22/this.vs,wy-16/this.vs,44/this.vs,16/this.vs);
-    ctx.fillStyle='#80cfff'; ctx.font=`bold ${12/this.vs}px Arial`;
+    const label=`${ft}ft`;
+    ctx.fillStyle='rgba(0,0,0,0.75)';
+    const tw=44/this.vs;
+    ctx.fillRect(wx-tw/2,wy-18/this.vs,tw,15/this.vs);
+    ctx.fillStyle=stroke; ctx.font=`bold ${11/this.vs}px Arial`;
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(`${ft}ft`,wx,wy-8/this.vs);
+    ctx.fillText(label,wx,wy-11/this.vs);
+
+    ctx.restore();
+  }
+
+  // E6-B: Compute reachable cells via BFS (up to speedSq tiles) and render
+  // as a subtle tinted overlay. Called only when drag starts.
+  _rMoveRange(){
+    const dt=this.L.drag;
+    if(!dt) return;
+    const pl=this.S.players[dt.cName]||{};
+    const speedFt=Number(pl.speed)||30;
+    const speedSq=Math.ceil(speedFt/FT_PER_SQ);
+    const usedMv=this.S.tokens[dt.cName]?.usedMv||0;
+    const remaining=Math.max(0,speedSq-usedMv);
+    if(remaining<=0) return;
+
+    const {ctx}=this, {pps,ox,oy}=this.S.cfg;
+    ctx.save();
+    ctx.translate(this.vx,this.vy); ctx.scale(this.vs,this.vs);
+
+    // BFS flood-fill within remaining squares (Chebyshev)
+    const visited=new Set();
+    const queue=[[dt.startGX,dt.startGY,0]];
+    while(queue.length>0){
+      const [cx,cy,dist]=queue.shift();
+      const k=`${cx},${cy}`;
+      if(visited.has(k)) continue;
+      visited.add(k);
+      if(dist>remaining) continue;
+      // Draw tinted cell
+      ctx.fillStyle='rgba(80,200,255,0.10)';
+      ctx.fillRect(ox+cx*pps+1,oy+cy*pps+1,pps-2,pps-2);
+      // Expand neighbours
+      for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){
+        if(dx===0&&dy===0) continue;
+        const nx=cx+dx, ny=cy+dy;
+        const nk=`${nx},${ny}`;
+        if(!visited.has(nk)&&!this.S.obstacles[nk]){
+          queue.push([nx,ny,dist+1]);
+        }
+      }
+    }
     ctx.restore();
   }
 
@@ -969,6 +1034,30 @@ export class MapEngine {
       }
     }
 
+    // E6-C: Click-to-move — player clicks empty floor cell
+    // If it's the player's turn and they have a token, pathfind + move there
+    if(m==='view'&&!isDM&&this.cName){
+      const myTk=this.S.tokens[this.cName];
+      if(myTk&&this._isMyTurn(this.cName)&&!this._tokenAt(wx,wy)){
+        // Rebuild pathfinder grid if needed
+        const {cols=40,rows=30}=this.S.cfg;
+        if(!this._pf.isReady) this._pf.setGrid(this.S.obstacles,cols,rows);
+        this._pf.find(myTk.gx,myTk.gy,gx,gy).then(path=>{
+          if(!path||path.length<2) return;
+          // Simulate drag + endDrag for movement tracking
+          const fakeDrag={
+            cName:this.cName,
+            startGX:myTk.gx, startGY:myTk.gy,
+            curGX:path[path.length-1][0], curGY:path[path.length-1][1],
+            path
+          };
+          this.L.drag=fakeDrag;
+          this._endDrag();
+        });
+        return;
+      }
+    }
+
     // Default pan
     if(m==='view'||m==='calibrate'||m==='phantom'){
       this.L.pan={on:true,sx,sy,vx0:this.vx,vy0:this.vy};
@@ -1031,8 +1120,27 @@ export class MapEngine {
     return cn===this.cName && this.L.sc[this.L.ati]?.name===this.cName;
   }
 
+  // E6-A: EasyStar A* pathfinding
+  // Synchronously rebuilds grid if dirty, then finds path.
+  // Returns immediate greedy path for visual feedback; EasyStar result
+  // updates L.drag.path async and triggers re-render.
   _buildPath(sx,sy,ex,ey,cName){
-    // Chebyshev walk avoiding obstacles
+    const {cols=40,rows=30}=this.S.cfg;
+
+    // Rebuild A* grid if obstacles changed
+    if(!this._pf.isReady){
+      this._pf.setGrid(this.S.obstacles, cols, rows);
+    }
+
+    // Kick off EasyStar async — update path when ready
+    this._pf.find(sx,sy,ex,ey).then(path=>{
+      if(path && this.L.drag && this.L.drag.cName===cName){
+        this.L.drag.path=path;
+        this._dirty();
+      }
+    });
+
+    // Greedy Chebyshev fallback for immediate frame
     const cells=[[sx,sy]]; let cx=sx,cy=sy;
     while((cx!==ex||cy!==ey)&&cells.length<120){
       const dx=Math.sign(ex-cx), dy=Math.sign(ey-cy);
@@ -1141,10 +1249,12 @@ export class MapEngine {
     if(this.localOnly){
       if(this.L.tool==='erase') delete this.S.obstacles[key];
       else this.S.obstacles[key]=true;
+      this._pf?.invalidate(); // E6-A: obstacle changed → rebuild A* grid
       this._dirty(); return;
     }
     if(!this.db) return;
     this.db.setObstacle(this.activeRoom,this.S.activeScene,key,this.L.tool==='paint'?true:null);
+    this._pf?.invalidate(); // E6-A
   }
 
   _placeTrigger(gx,gy){
