@@ -1,9 +1,36 @@
 import { defineConfig } from 'vite';
+import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
+import { join } from 'path';
+
+// Recursively copy src dir into dest dir
+function copyDir(src, dest) {
+  if (!existsSync(dest)) mkdirSync(dest, { recursive: true });
+  for (const entry of readdirSync(src)) {
+    const srcPath  = join(src, entry);
+    const destPath = join(dest, entry);
+    if (statSync(srcPath).isDirectory()) {
+      copyDir(srcPath, destPath);
+    } else {
+      copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+// Plugin: copy the assets/ folder into dist/assets/ after build
+function copyStaticAssets() {
+  return {
+    name: 'copy-static-assets',
+    closeBundle() {
+      copyDir('assets', 'dist/assets');
+    }
+  };
+}
 
 export default defineConfig({
-  // Keep assets/ as the static public directory so audio/images are
-  // served at /assets/ in both dev and the dist build.
-  publicDir: 'assets',
+  // Disable Vite's built-in publicDir — we handle asset copying ourselves
+  publicDir: false,
+
+  plugins: [copyStaticAssets()],
 
   build: {
     outDir: 'dist',
