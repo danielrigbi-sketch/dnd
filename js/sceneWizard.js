@@ -1,17 +1,35 @@
-// js/sceneWizard.js — Scene Wizard v126
+// js/sceneWizard.js — Scene Wizard v127
 // 6-step guided scene creation for CritRoll DM.
 //
-// FIXES v126:
-//   Step 0: image + basic crop only (no grid controls)
-//   Step 1: phantom green grid, +/- to size, nudge to offset, Approve → locked black grid
-//   Step 2: obstacles/traps/tokens — local painting (no db needed in wizard)
-//   Step 3: fog — thick grey-white tiles, local painting
-//   Step 4: atmosphere — dark styled selects, live preview
-//   Step 5: save — stable sceneId, no duplicates
-//   Full Hebrew RTL via i18n; English fallback
+// FIXES v127 (Sprint SA):
+//   SA-1: File uploads converted to base64 (bgBase64 + bgThumb) — survives page reload
+//   SA-1: bgBase64 persisted in Firebase vault — image loads correctly on editScene()
+//   SA-1: _makeThumbnail() generates 300px JPEG preview for gallery cards
+//   SA-1: 4MB cap enforced at upload with clear user message
+//   SA-2: _data._id written back immediately after sceneId computed — no duplicates
+//   SA-3: Modal class unified to wiz-open / not(.wiz-open) — no wiz-hidden/wiz-visible
 // =====================================================================
 import { MapEngine } from './mapEngine.js';
 import { t, getLang } from './i18n.js';
+
+// ── Image helpers ──────────────────────────────────────────────────────────────
+/** Convert a base64 data URL to a 300px wide JPEG thumbnail (base64 data URL) */
+async function _makeThumbnail(dataUrl, maxW = 300) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.round(img.width  * scale);
+      const h = Math.round(img.height * scale);
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(cv.toDataURL('image/jpeg', 0.6));
+    };
+    img.onerror = () => resolve('');
+    img.src = dataUrl;
+  });
+}
 
 export class SceneWizard {
   constructor(opts = {}) {
@@ -30,7 +48,9 @@ export class SceneWizard {
       _id: null,
       name: '',
       bgUrl: '',
-      _bgBlob: null,      // local blob URL (not saved to firebase)
+      bgBase64: '',   // SA-1: persisted base64 image (survives reload)
+      bgThumb: '',    // SA-1: 300px JPEG thumbnail for gallery cards
+      _bgBlob: null,  // local blob URL (legacy, kept for URL-load path)
       config: { pps: 64, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20 },
       atmosphere: { weather: 'none', ambientLight: 'bright', globalDarkvision: 0 },
       fog: {}, obstacles: {}, triggers: {},
@@ -52,15 +72,16 @@ export class SceneWizard {
       this._data = JSON.parse(JSON.stringify(existingData));
     } else {
       this._data = {
-        _id: null, name: '', bgUrl: '', _bgBlob: null,
+        _id: null, name: '', bgUrl: '',
+        bgBase64: '', bgThumb: '',   // SA-1
+        _bgBlob: null,
         config: { pps: 64, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20 },
         atmosphere: { weather: 'none', ambientLight: 'bright', globalDarkvision: 0 },
         fog: {}, obstacles: {}, triggers: {}, createdAt: null,
       };
     }
     this._step = 0;
-    this._modal.classList.remove('wiz-hidden');
-    this._modal.classList.add('wiz-open');
+    this._modal.classList.add('wiz-open');   // SA-3: single class toggle
     this._modal.dir = getLang() === 'he' ? 'rtl' : 'ltr';
     window.addEventListener('resize', this._bound.resize);
     this._initEngine();
@@ -68,8 +89,7 @@ export class SceneWizard {
   }
 
   close() {
-    this._modal.classList.add('wiz-hidden');
-    this._modal.classList.remove('wiz-open');
+    this._modal.classList.remove('wiz-open');   // SA-3: single class toggle
     window.removeEventListener('resize', this._bound.resize);
     if (this._engine) { this._engine.destroy(); this._engine = null; }
     window._wizard = null;
@@ -90,7 +110,7 @@ export class SceneWizard {
     this._engine.S.triggers  = { ...d.triggers };
     this._engine.S.fog       = { ...d.fog };
     this._engine.setPlayers(this.players);
-    const bgSrc = d._bgBlob || d.bgUrl;
+    const bgSrc = d.bgBase64 || d._bgBlob || d.bgUrl;   // SA-1: base64 wins
     if (bgSrc) this._engine._loadBg(bgSrc);
     if (d.atmosphere) this._engine.setAtmosphere(d.atmosphere);
     this._engine._dirty();
@@ -171,8 +191,9 @@ export class SceneWizard {
           📂 ${t('wiz_l0_upload')}
           <input id="wiz-bg-file" type="file" accept="image/*" style="display:none">
         </label>
-        ${(this._data.bgUrl||this._data._bgBlob)?`
+        ${(this._data.bgBase64||this._data.bgUrl||this._data._bgBlob)?`
           <div class="wiz-ok-badge">✓ ${t('wiz_l0_loaded')}</div>
+          ${this._data.bgThumb ? `<img src="${this._data.bgThumb}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;margin-top:8px;border:1px solid rgba(241,196,15,0.3);">` : ''}
         `:''}
         <div class="wiz-tip" style="margin-top:12px;">${t('wiz_l0_tip')}</div>`;
 
@@ -308,17 +329,34 @@ export class SceneWizard {
       this._leftPanel.innerHTML = this._buildLeft();
       this._wireStep();
     });
-    document.getElementById('wiz-bg-file')?.addEventListener('change', e => {
+    document.getElementById('wiz-bg-file')?.addEventListener('change', async e => {
       const file = e.target.files?.[0];
       if (!file) return;
-      // Revoke old blob
-      if (this._data._bgBlob) URL.revokeObjectURL(this._data._bgBlob);
-      const blob = URL.createObjectURL(file);
-      this._data._bgBlob = blob;
-      this._data.bgUrl   = '';   // file upload overrides URL
-      eng?._loadBg(blob);
-      this._leftPanel.innerHTML = this._buildLeft();
-      this._wireStep();
+
+      // SA-1: enforce 4MB cap
+      if (file.size > 4 * 1024 * 1024) {
+        if (window.showToast) showToast('Image too large (max 4 MB). Use an external URL instead.', 'warning');
+        else alert('Image too large (max 4 MB). Please use an external URL instead.');
+        return;
+      }
+
+      // SA-1: convert to base64 for Firebase persistence
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        const dataUrl = ev.target.result;
+
+        // Revoke old blob if any
+        if (this._data._bgBlob) { URL.revokeObjectURL(this._data._bgBlob); }
+        this._data._bgBlob   = null;
+        this._data.bgUrl     = '';
+        this._data.bgBase64  = dataUrl;
+        this._data.bgThumb   = await _makeThumbnail(dataUrl, 300);
+
+        eng?._loadBg(dataUrl);
+        this._leftPanel.innerHTML = this._buildLeft();
+        this._wireStep();
+      };
+      reader.readAsDataURL(file);
     });
 
     // ── Step 1: Phantom grid ──────────────────────────────────────────────
@@ -429,8 +467,10 @@ export class SceneWizard {
 
     if (window.showSpinner) showSpinner('Saving scene…');
 
-    // Stable ID — edit reuses existing _id so Firebase upserts instead of inserting
+    // SA-2: write _id back immediately so repeat saves reuse the same Firebase path
     const sceneId = this._data._id || ('scene_' + Date.now());
+    this._data._id = sceneId;
+
     const sceneData = {
       _id:        sceneId,
       name,
@@ -440,7 +480,9 @@ export class SceneWizard {
       fog:        { ...this._data.fog },
       obstacles:  { ...this._data.obstacles },
       triggers:   { ...this._data.triggers },
-      bgUrl:      this._data.bgUrl || '',
+      bgUrl:      this._data.bgUrl    || '',
+      bgBase64:   this._data.bgBase64 || '',   // SA-1: persisted for reload
+      bgThumb:    this._data.bgThumb  || '',   // SA-1: gallery thumbnail
     };
 
     if (this.db && this.uid) {
