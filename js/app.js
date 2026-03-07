@@ -1,4 +1,4 @@
-// app.js v127  (S12: Toast/Confirm/Spinner)
+// app.js v130  (S10-S16: foundation, data-health, UX, turn timer, portrait upload)
 import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js";
 import { getFlavorText } from "./messages.js";
 import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js";
@@ -168,10 +168,18 @@ function _initConfirmModal() {
                 overlay.classList.remove('open');
                 _confirmResolve?.(false);
             }
-            // Also close scene wizard
             if (document.getElementById('scene-wizard-modal')?.classList.contains('wiz-open')) {
                 window._wizard?.close();
             }
+        }
+        // S12: Enter key rolls the active die when not typing in an input
+        if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey) {
+            const tag = document.activeElement?.tagName;
+            if (['INPUT','TEXTAREA','SELECT','BUTTON'].includes(tag)) return;
+            const btn = document.querySelector('.dice-btn.active') ||
+                        document.getElementById('roll-d20-btn') ||
+                        document.querySelector('.dice-btn');
+            if (btn) { e.preventDefault(); btn.click(); }
         }
     });
 }
@@ -389,6 +397,8 @@ window.nextTurn = () => {
     currentRoundNumber = round;
     db.setActiveTurn(next, round);
     updateTurnUI();
+    // S16: restart turn timer if active
+    if (_turnTimerActive) _startTurnTimer(_turnTimerDuration);
 };
 
 window.prevTurn = () => {
@@ -400,6 +410,63 @@ window.prevTurn = () => {
     currentRoundNumber = round;
     db.setActiveTurn(prev, round);
     updateTurnUI();
+};
+
+// =====================================================================
+// S16: TURN TIMER — DM-controlled per-turn countdown
+// =====================================================================
+let _turnTimerActive = false;
+let _turnTimerDuration = 60;   // seconds, configurable via setTimerDuration()
+let _turnTimerEnd = 0;
+let _turnTimerRaf = null;
+
+function _startTurnTimer(secs = _turnTimerDuration) {
+    _turnTimerActive = true;
+    _turnTimerEnd = Date.now() + secs * 1000;
+    cancelAnimationFrame(_turnTimerRaf);
+    _tickTurnTimer();
+}
+
+function _stopTurnTimer() {
+    _turnTimerActive = false;
+    cancelAnimationFrame(_turnTimerRaf);
+    _renderTimerDisplay(null);
+}
+
+function _tickTurnTimer() {
+    const rem = Math.max(0, Math.ceil((_turnTimerEnd - Date.now()) / 1000));
+    _renderTimerDisplay(rem);
+    if (rem > 0) {
+        _turnTimerRaf = requestAnimationFrame(_tickTurnTimer);
+    } else {
+        showToast("⏰ Time's up!", 'error');
+        if (userRole === 'dm') window.nextTurn();
+    }
+}
+
+function _renderTimerDisplay(rem) {
+    const el = document.getElementById('turn-timer-display');
+    if (!el) return;
+    if (rem === null) { el.textContent = ''; el.className = 'turn-timer'; return; }
+    el.textContent = rem + 's';
+    el.className = 'turn-timer' + (rem <= 10 ? ' urgent' : rem <= 20 ? ' warn' : '');
+}
+
+window.toggleTurnTimer = () => {
+    if (_turnTimerActive) {
+        _stopTurnTimer();
+        document.getElementById('timer-toggle-btn')?.classList.remove('active');
+        showToast('Timer off', 'info');
+    } else {
+        _startTurnTimer();
+        document.getElementById('timer-toggle-btn')?.classList.add('active');
+        showToast(`Timer: ${_turnTimerDuration}s per turn`, 'success');
+    }
+};
+
+window.setTimerDuration = (secs) => {
+    _turnTimerDuration = Math.max(10, Math.min(300, secs));
+    if (_turnTimerActive) _startTurnTimer(_turnTimerDuration);
 };
 
 function updateTurnUI() {
@@ -465,7 +532,7 @@ window.rollMacro = async (targetCName, attackName, bonus) => {
 
 window.rollDamageMacro = async (targetCName, attackName, diceString, bonus) => {
     if (isCooldown || !isDiceBoxReady) return;
-    if (!diceString || diceString === '0') return alert(t('alert_no_dmg'));
+    if (!diceString || diceString === '0') { showToast(t('alert_no_dmg'), 'error'); return; }
     isCooldown = true; setDiceCooldown(true); playStartRollSound(isMuted);
     const p = await db.getPlayerData(targetCName);
     const macroColor = p?.pColor || "#e74c3c";
@@ -555,7 +622,7 @@ window.toggleCombat = async () => {
 window.rollInit = async () => {
     const btn = document.getElementById('init-btn');
     if (btn) btn.disabled = true;
-    if (!await db.getCombatStatus()) { if (btn) btn.disabled = false; return alert(t('alert_not_started')); }
+    if (!await db.getCombatStatus()) { if (btn) btn.disabled = false; showToast(t('alert_not_started'), 'error'); return; }
     const rollResult = await window.roll('d20', true);
     db.setPlayerInitiativeInDB(cName, pName, rollResult, pColor);
 };
@@ -764,7 +831,6 @@ window.openSceneWizard = (existingData=null) => {
             uid, cName, activeRoom: db.getActiveRoom(), db,
             players: sortedCombatants.reduce((a,c)=>{a[c.name]=c;return a;},{}),
             onSaved: (id, data) => {
-                console.log('Scene saved:', id);
                 _initSceneManager();  // SA-2: refresh gallery so new card appears immediately
             },
             onGoLive: (id, data) => {
@@ -885,7 +951,14 @@ function setupDatabaseListeners() {
         } else { sortedCombatants = []; }
         updateInitiativeUI(playersData, userRole, activeRoller, currentActiveTurn, sortedCombatants);
         // Sync to map engine
-        if (mapEngine) { mapEngine.setPlayers(playersData||{}); _updateTokenRoster(); }
+        if (mapEngine) {
+            mapEngine.setPlayers(playersData||{});
+            _updateTokenRoster();
+            // S11: prune orphan map tokens for players no longer in the room
+            if (playersData && userRole === 'dm') {
+                db.pruneOrphanTokens(db.getActiveRoom(), Object.keys(playersData));
+            }
+        }
     }));
 
     _appUnsubs.push(db.listenToActiveTurn((turnIndex) => {
