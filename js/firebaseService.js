@@ -39,14 +39,29 @@ export function setDmUid(roomCode, uid) {
 }
 
 
-// On mobile Safari, signInWithPopup is blocked — use redirect flow instead.
-const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-export function loginWithGoogle() {
-    if (isMobile) return signInWithRedirect(auth, googleProvider);
-    return signInWithPopup(auth, googleProvider);
+// Use popup everywhere (iOS 16.4+ and Android Chrome support it).
+// If popup is blocked → fallback to redirect.
+export async function loginWithGoogle() {
+    try {
+        return await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+        // popup blocked or closed — fall back to redirect flow
+        if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+            return signInWithRedirect(auth, googleProvider);
+        }
+        throw err;
+    }
 }
-// Call once on startup to pick up the result of a redirect sign-in.
-export function checkRedirectResult() { return getRedirectResult(auth); }
+// Always call on startup to pick up any pending redirect result.
+export async function checkRedirectResult() {
+    try {
+        const result = await getRedirectResult(auth);
+        return result; // null if no pending redirect
+    } catch (err) {
+        console.warn('[Auth] getRedirectResult error:', err.code);
+        return null;
+    }
+}
 export function logoutUser()                   { return signOut(auth); }
 export function listenToAuthState(callback)    { onAuthStateChanged(auth, user => callback(user)); }
 export function saveCharacterToVault(uid, d)   { return set(push(ref(db, `users/${uid}/characters`)), d); }

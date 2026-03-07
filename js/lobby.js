@@ -29,8 +29,22 @@ if (loginBtn) {
     };
 }
 
-// On mobile, after a redirect sign-in, Firebase lands back here — pick up the result
-db.checkRedirectResult().catch(() => {});
+// Pick up any pending Google redirect result (mobile fallback flow).
+// popup-first means this rarely fires, but it's the safety net.
+db.checkRedirectResult().then(result => {
+    if (result?.user) {
+        // onAuthStateChanged will fire automatically — nothing else needed
+        console.log('[Auth] Redirect sign-in resolved:', result.user.email);
+    }
+}).catch(err => {
+    console.warn('[Auth] checkRedirectResult failed:', err?.code);
+    // Show user-visible error if the auth loop persists
+    const authErr = document.getElementById('auth-error');
+    if (authErr) {
+        authErr.textContent = 'התחברות נכשלה — נסה שוב או פתח בדפדפן אחר';
+        authErr.style.display = 'block';
+    }
+});
 const userDisplayName = document.getElementById('user-display-name');
 const userEmail = document.getElementById('user-email');
 const userAvatar = document.getElementById('user-avatar');
