@@ -5,6 +5,7 @@
 // =====================================================================
 
 import { typeColor } from './monsters.js';
+import { FOV } from 'rot-js';  // E3-A: Recursive Shadowcasting FOV
 
 // ── Constants ────────────────────────────────────────────────────────
 const FT_PER_SQ   = 5;
@@ -1037,19 +1038,29 @@ export class MapEngine {
   }
 
   _visionR(cn){
+    // E3-A: respect per-character darkvision field (feet → tiles)
     const pl=this.S.players[cn]||{};
-    if(pl.darkvision) return Math.ceil(60/FT_PER_SQ);
-    return Math.ceil(30/FT_PER_SQ);
+    const dvFt=Number(pl.darkvision)||0;
+    if(dvFt>0) return Math.ceil(dvFt/FT_PER_SQ);
+    return Math.ceil(30/FT_PER_SQ); // default 30ft = 6 tiles
   }
 
+  // E3-A: Rot.js RecursiveShadowcasting FOV — walls/obstacles block line-of-sight.
+  // DM bypasses FOV and always sees all cells.
   _revealForToken(cn,gx,gy,r){
     if(!this.db) return;
     const vr=r||this._visionR(cn);
+    const pl=this.S.players[cn]||{};
+    if(pl.userRole==='dm') return; // DM sees all
+
+    // Light passability: true = open (not an obstacle)
+    const passable=(x,y)=>!this.S.obstacles[ck(x,y)];
     const cells={};
-    for(let dx=-vr;dx<=vr;dx++) for(let dy=-vr;dy<=vr;dy++){
-      if(cheb(0,0,dx,dy)<=vr) cells[ck(gx+dx,gy+dy)]=true;
+    const fov=new FOV.RecursiveShadowcasting(passable);
+    fov.compute(gx,gy,vr,(x,y)=>{ cells[ck(x,y)]=true; });
+    if(Object.keys(cells).length>0){
+      this.db.revealFogCells(this.activeRoom,this.S.activeScene,cells);
     }
-    this.db.revealFogCells(this.activeRoom,this.S.activeScene,cells);
   }
 
   _checkTrigger(gx,gy,cn){

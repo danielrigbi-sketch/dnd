@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@faker-js/faker": "^10.3.0",
-    "firebase": "^10.8.0"
+    "firebase": "^10.8.0",
+    "rot-js": "^2.2.1"
   },
   "devDependencies": {
     "vite": "^5.4.0"
