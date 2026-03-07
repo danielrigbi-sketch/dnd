@@ -629,6 +629,22 @@ function initMap() {
         btn.classList.add('active');
         mapEngine?.setMode(btn.dataset.mode);
     };
+
+    // SB-3: Keyboard shortcuts for toolbar — only active when map is visible
+    window._mapKeyHandler = (e) => {
+        const mapActive = document.getElementById('map-toolbar')?.style.display !== 'none';
+        if (!mapActive) return;
+        // Skip if typing in an input
+        if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+        const keyMap = { v:'view', o:'obstacle', t:'trigger', f:'fogReveal', h:'fogHide', r:'ruler', a:'aoe' };
+        const mode = keyMap[e.key.toLowerCase()];
+        if (mode) {
+            const btn = document.querySelector(`.map-tb-btn[data-mode="${mode}"]`);
+            if (btn) btn.click();
+        }
+    };
+    document.addEventListener('keydown', window._mapKeyHandler);
+
     window.toggleTokenRoster = () => {
         const el = document.getElementById('map-token-roster-popup');
         const isVisible = el.style.display !== 'none';
