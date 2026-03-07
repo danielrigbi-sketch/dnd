@@ -1,6 +1,7 @@
 // lobby.js - Welcome screen and Authentication Controller
 // lobby.js v130 (S14: portrait upload via Firebase Storage)
 import * as db from "./firebaseService.js";
+import { uploadPortrait } from "./firebaseService.js"; // S14: direct import
 import { startGame, setUid } from "./app.js";
 import { setLanguage, getLang, t, updateDOM } from "./i18n.js";
 
@@ -99,7 +100,7 @@ if(inputFile) {
         try {
             const uid = currentUserUid;
             if (uid) {
-                const url = await db.uploadPortrait(uid, file, pct => {
+                const url = await uploadPortrait(uid, file, pct => {
                     if (progressEl) progressEl.textContent = `⬆ ${pct}%`;
                 });
                 selectedPortrait = url;    // swap preview for durable URL
