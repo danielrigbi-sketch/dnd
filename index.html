@@ -308,12 +308,13 @@
             <!-- ── Scene Manager (DM only) ── -->
             <div id="scene-manager-section" style="display:none;">
                 <div class="scene-mgr-header" onclick="window.toggleScenePanel()">
-                    <span data-i18n="my_scenes">🗺️ My Scenes</span>
+                    <span data-i18n="my_scenes">🗺️ Scene Vault</span>
                     <span id="scene-mgr-chevron">▼</span>
                 </div>
                 <div id="scene-panel" style="display:none;">
                     <button id="scene-new-btn" onclick="window.openSceneWizard()" class="scene-new-btn">
-                        <span data-i18n="create_new_scene">✦ Create New Scene</span>
+                        <span class="scene-new-icon">✦</span>
+                        <span data-i18n="create_new_scene">New Scene</span>
                     </button>
                     <div id="scene-gallery"></div>
                 </div>
@@ -430,19 +431,49 @@
     <!-- ═══════════════════════════════════════════════════════════════
          SCENE CREATION WIZARD — 6-step guided modal
          ═══════════════════════════════════════════════════════════════ -->
-    <div id="scene-wizard-modal" class="wiz-hidden">
+    <div id="scene-wizard-modal">
 
         <!-- Step header -->
         <div id="wiz-header">
-            <div id="wiz-dots">
-                <span class="wiz-dot active" onclick="window._wizard?.goTo(0)"></span>
-                <span class="wiz-dot"        onclick="window._wizard?.goTo(1)"></span>
-                <span class="wiz-dot"        onclick="window._wizard?.goTo(2)"></span>
-                <span class="wiz-dot"        onclick="window._wizard?.goTo(3)"></span>
-                <span class="wiz-dot"        onclick="window._wizard?.goTo(4)"></span>
-                <span class="wiz-dot"        onclick="window._wizard?.goTo(5)"></span>
+            <!-- SB-2: Labeled step pill bar replaces tiny dots -->
+            <div id="wiz-pills">
+                <button class="wiz-pill active" onclick="window._wizard?.goTo(0)">
+                    <span class="wiz-pill-icon">🖼</span>
+                    <span class="wiz-pill-label">Image</span>
+                    <span class="wiz-pill-check">✓</span>
+                </button>
+                <div class="wiz-pill-connector"></div>
+                <button class="wiz-pill" onclick="window._wizard?.goTo(1)">
+                    <span class="wiz-pill-icon">🔲</span>
+                    <span class="wiz-pill-label">Grid</span>
+                    <span class="wiz-pill-check">✓</span>
+                </button>
+                <div class="wiz-pill-connector"></div>
+                <button class="wiz-pill" onclick="window._wizard?.goTo(2)">
+                    <span class="wiz-pill-icon">⚔️</span>
+                    <span class="wiz-pill-label">World</span>
+                    <span class="wiz-pill-check">✓</span>
+                </button>
+                <div class="wiz-pill-connector"></div>
+                <button class="wiz-pill" onclick="window._wizard?.goTo(3)">
+                    <span class="wiz-pill-icon">🌑</span>
+                    <span class="wiz-pill-label">Fog</span>
+                    <span class="wiz-pill-check">✓</span>
+                </button>
+                <div class="wiz-pill-connector"></div>
+                <button class="wiz-pill" onclick="window._wizard?.goTo(4)">
+                    <span class="wiz-pill-icon">🌩</span>
+                    <span class="wiz-pill-label">Vibe</span>
+                    <span class="wiz-pill-check">✓</span>
+                </button>
+                <div class="wiz-pill-connector"></div>
+                <button class="wiz-pill" onclick="window._wizard?.goTo(5)">
+                    <span class="wiz-pill-icon">💾</span>
+                    <span class="wiz-pill-label">Save</span>
+                    <span class="wiz-pill-check">✓</span>
+                </button>
             </div>
-            <div>
+            <div style="flex:1;">
                 <div id="wiz-step-title" style="font-size:18px;font-weight:900;color:#f1c40f;"></div>
                 <div id="wiz-step-sub"   style="font-size:12px;color:#aaa;margin-top:2px;"></div>
             </div>
