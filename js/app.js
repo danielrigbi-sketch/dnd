@@ -1,9 +1,9 @@
 // app.js v127  (S12: Toast/Confirm/Spinner)
-import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js?v=126";
-import { getFlavorText } from "./messages.js?v=126";
-import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js?v=126";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js?v=126";
-import * as db from "./firebaseService.js?v=126";
+import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js";
+import { getFlavorText } from "./messages.js";
+import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js";
+import * as db from "./firebaseService.js";
 // getActiveRoom is available via db.getActiveRoom()
 
 window.toggleDeathSave = async (targetCName, type, index) => {
@@ -91,10 +91,10 @@ window.rerollAllInitiatives = async () => {
     }
     db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
 };
-import { t } from "./i18n.js?v=126";
-import { npcDatabase } from "./monsters.js?v=126";
-import { MapEngine } from "./mapEngine.js?v=126";
-import { SceneWizard } from "./sceneWizard.js?v=126";
+import { t } from "./i18n.js";
+import { npcDatabase } from "./monsters.js";
+import { MapEngine } from "./mapEngine.js";
+import { SceneWizard } from "./sceneWizard.js";
 
 
 // =====================================================================
@@ -312,12 +312,6 @@ window.openShortRest = async function() {
         db.db?.ref?.(`rooms/${activeRoom}/players/${cName}`)
             ? null  // handled by firebaseService
             : null;
-        // Store hdLeft via player update
-        import('./firebaseService.js?v=127').then(m => {
-            if (m.default?.db) {
-                const { getDatabase, ref, update } = m;
-            }
-        }).catch(() => {});
 
         showToast(`Rested for +${gained} HP (${dice}d${hdType}${conMod>=0?'+':''}${conMod*dice}). HP: ${newHp}/${maxHp}`, 'success', 5000);
         modal.remove();
