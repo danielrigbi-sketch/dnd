@@ -1,6 +1,7 @@
-// firebaseService.js v120
+// firebaseService.js v130  (S11: getActiveRoom+pruneOrphanTokens, S14: uploadPortrait)
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
+import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast, orderByKey, update, get } from "firebase/database";
 import { firebaseConfig } from "./constants.js";
 
@@ -11,6 +12,7 @@ const googleProvider = new GoogleAuthProvider();
 
 let activeRoom = 'public';
 export function setRoom(roomCode) { activeRoom = roomCode || 'public'; }
+export function getActiveRoom() { return activeRoom; }
 
 // ==========================================
 // Auth & Vault
@@ -252,4 +254,50 @@ export function setAtmosphere(room, atmosphere) {
 }
 export function listenAtmosphere(room, cb) {
     return onValue(ref(db, `rooms/${room}/map/atmosphere`), s => cb(s.val()));
+}
+
+// ── S11: Data Health ─────────────────────────────────────────────────────────
+
+/** S11: Remove map tokens for players no longer in the room's players/ node.
+ *  Safe to call on every player-list update; no-ops if no orphans.
+ */
+export async function pruneOrphanTokens(room, activeNames) {
+    if (!room) return;
+    try {
+        const snap = await get(ref(db, `rooms/${room}/map/tokens`));
+        const tokens = snap.val() || {};
+        const activeSet = new Set(activeNames.map(n => sanitizeCName(n)));
+        const orphans = Object.keys(tokens).filter(k => !activeSet.has(k));
+        await Promise.all(orphans.map(k => remove(ref(db, `rooms/${room}/map/tokens/${k}`))));
+    } catch (e) { /* silent — best effort */ }
+}
+
+/** S11: Patch a single field on any player record (used by wizard NPC spawner). */
+export function updatePlayerField(cName, field, value) {
+    update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { [field]: value });
+}
+
+// ── S14: Portrait Upload ──────────────────────────────────────────────────────
+
+const _storage = getStorage();
+
+/**
+ * S14: Upload a portrait File to Firebase Storage → return download URL.
+ * Path: portraits/{uid}/{timestamp}_{random}.{ext}
+ * @param {string}   uid        — Firebase Auth UID
+ * @param {File}     file       — image file from <input type="file">
+ * @param {Function} onProgress — optional callback(0–100)
+ * @returns {Promise<string>} public download URL
+ */
+export function uploadPortrait(uid, file, onProgress) {
+    return new Promise((resolve, reject) => {
+        const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `portraits/${uid}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const task = uploadBytesResumable(sRef(_storage, path), file, { contentType: file.type });
+        task.on('state_changed',
+            snap => { if (onProgress) onProgress(Math.round(snap.bytesTransferred / snap.totalBytes * 100)); },
+            err  => reject(err),
+            async () => resolve(await getDownloadURL(task.snapshot.ref))
+        );
+    });
 }
