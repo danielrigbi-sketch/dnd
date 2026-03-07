@@ -170,7 +170,7 @@ function renderVault(characters) {
             const charId = e.target.getAttribute('data-charid');
             const selectedChar = currentVaultCharacters[charId];
             const roomCodeInput = document.getElementById('room-code-input');
-            const roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "";
+            let roomCode = roomCodeInput && roomCodeInput.value.trim() ? roomCodeInput.value.trim() : "";
             if(!roomCode) { showToast(t("alert_no_room_code") || 'Enter a room code.', 'warning'); return; }
             // Sanitise input — strip spaces, uppercase
             roomCode = roomCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
