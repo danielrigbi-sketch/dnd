@@ -10,8 +10,8 @@
 //   Step 5: save — stable sceneId, no duplicates
 //   Full Hebrew RTL via i18n; English fallback
 // =====================================================================
-import { MapEngine } from './mapEngine.js?v=126';
-import { t, getLang } from './i18n.js?v=126';
+import { MapEngine } from './mapEngine.js';
+import { t, getLang } from './i18n.js';
 
 export class SceneWizard {
   constructor(opts = {}) {
