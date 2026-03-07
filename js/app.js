@@ -4,6 +4,10 @@ import { getFlavorText } from "./messages.js";
 import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js";
 import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js";
 import * as db from "./firebaseService.js";
+import { t } from "./i18n.js";
+import { npcDatabase } from "./monsters.js";
+import { MapEngine } from "./mapEngine.js";
+import { SceneWizard } from "./sceneWizard.js";
 // getActiveRoom is available via db.getActiveRoom()
 
 window.toggleDeathSave = async (targetCName, type, index) => {
@@ -91,10 +95,6 @@ window.rerollAllInitiatives = async () => {
     }
     db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
 };
-import { t } from "./i18n.js";
-import { npcDatabase } from "./monsters.js";
-import { MapEngine } from "./mapEngine.js";
-import { SceneWizard } from "./sceneWizard.js";
 
 
 // =====================================================================
@@ -503,7 +503,7 @@ window.toggleStatus = async (targetCName, status) => {
     db.updatePlayerStatusesInDB(targetCName, statuses);
 };
 
-window.removeNPC = (targetCName) => {
+window.removeNPC = async (targetCName) => {
     if (userRole !== 'dm') return;
     if (await crConfirm(`Remove ${targetCName} from the encounter?`, 'Remove Character', '🗑️', 'Remove', 'Cancel')) {
         db.removePlayerFromDB(targetCName);
@@ -732,7 +732,7 @@ window.editScene = async (sceneId) => {
     window.openSceneWizard({ ...s, _id: sceneId });
 };
 
-window.deleteScene = (sceneId) => {
+window.deleteScene = async (sceneId) => {
     if (!uid) return;
     if (!(await crConfirm('This cannot be undone.', 'Delete Scene?', '🗺️', 'Delete', 'Cancel'))) return;
     db.deleteSceneFromVault(uid, sceneId);
@@ -803,7 +803,7 @@ function setupDatabaseListeners() {
         } else {
             if (btn) { btn.disabled = true; btn.innerText = t('waiting_combat'); btn.style.opacity = "0.3"; }
         }
-    });
+    }));
 
     _appUnsubs.push(db.listenToPlayers((playersData) => {
         if (playersData) {
@@ -815,7 +815,7 @@ function setupDatabaseListeners() {
         updateInitiativeUI(playersData, userRole, activeRoller, currentActiveTurn, sortedCombatants);
         // Sync to map engine
         if (mapEngine) { mapEngine.setPlayers(playersData||{}); _updateTokenRoster(); }
-    });
+    }));
 
     _appUnsubs.push(db.listenToActiveTurn((turnIndex) => {
         const wasMyTurn = prevActiveTurn !== null && sortedCombatants[prevActiveTurn]?.name === cName;
@@ -835,13 +835,13 @@ function setupDatabaseListeners() {
             const el = document.querySelector(`[data-combatant="${CSS.escape(sortedCombatants[turnIndex].name)}"]`);
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-    });
+    }));
 
     _appUnsubs.push(db.listenToRoundNumber((round) => {
         currentRoundNumber = round;
         const el = document.getElementById('round-counter');
         if (el) el.innerText = round > 0 ? `Round ${round}` : '';
-    });
+    }));
 
     _appUnsubs.push(db.listenToNewRolls((data) => {
         if (!data || !canAnimate) return;
@@ -874,5 +874,5 @@ function setupDatabaseListeners() {
             }
         }
         addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res + data.mod), 20));
-    });
+    }));
 }
