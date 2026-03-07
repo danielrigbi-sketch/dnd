@@ -197,7 +197,12 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                 </div>
                 ${hpBlock}
                 <div class="status-container">
-                    ${(i.statuses || []).map(s => `<span class="status-badge" style="background:#636e72">${s}</span>`).join('')}
+                    ${(i.statuses || []).map(s => {
+                        const _SC={Poisoned:'#27ae60',Charmed:'#e91e8c',Unconscious:'#636e72',Frightened:'#e67e22',Paralyzed:'#f39c12',Restrained:'#8e44ad',Blinded:'#7f8c8d',Prone:'#c0392b',Stunned:'#d35400',Incapacitated:'#2c3e50',Invisible:'#3498db',Exhausted:'#95a5a6',Deafened:'#7f8c8d',Grappled:'#e74c3c',Raging:'#c0392b',Hasted:'#2ecc71',Blessed:'#f1c40f',Concentrating:'#9b59b6'};
+                        const _SI={Poisoned:'🤢',Charmed:'💕',Unconscious:'💀',Frightened:'😨',Paralyzed:'⚡',Restrained:'🕸️',Blinded:'👁️',Prone:'🔻',Stunned:'💫',Incapacitated:'💤',Invisible:'👻',Exhausted:'😵',Deafened:'👂',Grappled:'🤼',Raging:'😤',Hasted:'🏃',Blessed:'✨',Concentrating:'🔮'};
+                        const col=_SC[s]||'#636e72', ico=_SI[s]||'';
+                        return `<span class="status-badge" style="background:${col}22;border-color:${col}66;color:${col};">${ico} ${s}</span>`;
+                    }).join('')}
                     ${isDM ? `
                         <button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>
                         <button onclick="window.toggleConcentration('${i.name}')" title="Toggle Concentration" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; opacity:${i.concentrating?1:0.4};">🔮</button>
@@ -206,17 +211,21 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                 <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
                         ${[
-                            {n:'Poisoned',icon:'🤢'},{n:'Charmed',icon:'💕'},{n:'Unconscious',icon:'💀'},
-                            {n:'Frightened',icon:'😨'},{n:'Paralyzed',icon:'⚡'},{n:'Restrained',icon:'🕸️'},
-                            {n:'Blinded',icon:'👁️'},{n:'Prone',icon:'🔻'},{n:'Stunned',icon:'💫'},
-                            {n:'Incapacitated',icon:'💤'},{n:'Invisible',icon:'👻'},{n:'Exhausted',icon:'😵'},
-                            {n:'Deafened',icon:'👂'},{n:'Grappled',icon:'🤼'},{n:'Raging',icon:'😤'},
-                            {n:'Hasted',icon:'🏃'},{n:'Blessed',icon:'✨'},{n:'Concentrating',icon:'🔮'}
-                        ].map(c =>
-                            `<button onclick="window.toggleStatus('${i.name}', '${c.n}'); this.parentElement.parentElement.style.display='none';"
-                              title="${c.n}" style="font-size:11px; padding:4px 6px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:3px;">
-                              <span>${c.icon}</span><span style="font-size:9px;">${c.n}</span></button>`
-                        ).join('')}
+                            {n:'Poisoned',icon:'🤢',c:'#27ae60'},{n:'Charmed',icon:'💕',c:'#e91e8c'},
+                            {n:'Unconscious',icon:'💀',c:'#636e72'},{n:'Frightened',icon:'😨',c:'#e67e22'},
+                            {n:'Paralyzed',icon:'⚡',c:'#f39c12'},{n:'Restrained',icon:'🕸️',c:'#8e44ad'},
+                            {n:'Blinded',icon:'👁️',c:'#7f8c8d'},{n:'Prone',icon:'🔻',c:'#c0392b'},
+                            {n:'Stunned',icon:'💫',c:'#d35400'},{n:'Incapacitated',icon:'💤',c:'#2c3e50'},
+                            {n:'Invisible',icon:'👻',c:'#3498db'},{n:'Exhausted',icon:'😵',c:'#95a5a6'},
+                            {n:'Deafened',icon:'👂',c:'#7f8c8d'},{n:'Grappled',icon:'🤼',c:'#e74c3c'},
+                            {n:'Raging',icon:'😤',c:'#c0392b'},{n:'Hasted',icon:'🏃',c:'#2ecc71'},
+                            {n:'Blessed',icon:'✨',c:'#f1c40f'},{n:'Concentrating',icon:'🔮',c:'#9b59b6'}
+                        ].map(c => {
+                            const active = (i.statuses||[]).includes(c.n);
+                            return `<button onclick="window.toggleStatus('${i.name}', '${c.n}'); document.getElementById('status-picker-${i.name}').style.display='none';"
+                              title="${c.n}" style="font-size:11px; padding:4px 6px; background:${active ? c.c : 'rgba(255,255,255,0.06)'}; color:white; border:1px solid ${active ? c.c : 'rgba(255,255,255,0.1)'}; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:3px; transition:all 0.15s;">
+                              <span>${c.icon}</span><span style="font-size:9px;font-weight:${active?'700':'400'}">${c.n}</span></button>`;
+                        }).join('')}
                     </div>
                 </div>
                 <div id="details-${i.name}" class="card-details ${isOpen ? 'open' : ''}">
