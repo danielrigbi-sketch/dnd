@@ -6,7 +6,7 @@ import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remov
 import { firebaseConfig } from "./constants.js";
 
 const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
+export const db  = getDatabase(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
