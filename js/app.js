@@ -725,6 +725,17 @@ function _renderSceneGallery(scenes) {
             </div>
         </div>`;
     }).join('');
+
+    // SD-4: Gallery card parallax tilt on mouse hover
+    gallery.querySelectorAll('.scene-gallery-card').forEach(card => {
+        card.addEventListener('mousemove', e => {
+            const r = card.getBoundingClientRect();
+            const nx = (e.clientX - r.left) / r.width  - 0.5;
+            const ny = (e.clientY - r.top)  / r.height - 0.5;
+            card.style.transform = `perspective(300px) rotateY(${nx*12}deg) rotateX(${-ny*10}deg) scale(1.05)`;
+        });
+        card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+    });
 }
 
 function _updateTokenRoster() {
@@ -832,6 +843,8 @@ function _activateMapCanvas(sceneData) {
     if (userRole === 'dm') {
         document.getElementById('map-toolbar').style.display = 'flex';
     }
+    // SD-3: Iris wipe — cinematic reveal when scene loads
+    mapEngine.startIris('open');
     // Sync players & turn
     const playerMap = sortedCombatants.reduce((acc,c)=>{acc[c.name]=c;return acc;},{});
     mapEngine.setPlayers(playerMap);
