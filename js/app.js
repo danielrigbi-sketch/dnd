@@ -1021,3 +1021,43 @@ function setupDatabaseListeners() {
         addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res + data.mod), 20));
     }));
 }
+
+// ── Credits Modal ────────────────────────────────────────────────────────────
+const _CREDITS_LIBS = [
+    { name: 'Firebase', license: 'Apache 2.0', url: 'https://firebase.google.com/', desc: 'Realtime database, authentication, and cloud storage', color: '#F5820D' },
+    { name: 'Vite', license: 'MIT', url: 'https://vitejs.dev/', desc: 'Build toolchain and hot-module replacement', color: '#646CFF' },
+    { name: 'Open5e API / Dataset', license: 'CC-BY 4.0 + OGL 1.0a', url: 'https://open5e.com/', desc: 'SRD monster, spell, and item data', color: '#E74C3C', required: true },
+    { name: 'PixiJS', license: 'MIT', url: 'https://pixijs.com/', desc: 'WebGL 2D rendering engine', color: '#E72264' },
+    { name: 'Rot.js', license: 'BSD-3-Clause', url: 'https://github.com/ondras/rot.js', desc: 'FOV algorithms and procedural map generation', color: '#9B59B6' },
+    { name: 'Kenney Assets', license: 'CC0 Public Domain', url: 'https://kenney.nl/', desc: 'Tileset art and UI components', color: '#E67E22' },
+    { name: 'Game-Icons.net', license: 'CC-BY 3.0 ★ Required', url: 'https://game-icons.net/', desc: 'Icons by Lorc, Delapouite & contributors', color: '#E74C3C', required: true },
+    { name: 'EasyStar.js', license: 'MIT', url: 'https://github.com/prettymuchbryce/easystarjs', desc: 'A* grid pathfinding', color: '#3498DB' },
+    { name: "Watabou's One Page Dungeon", license: 'MIT / CC-BY', url: 'https://github.com/watabou/one-page-dungeon', desc: 'Procedural dungeon layout generator', color: '#27AE60' },
+    { name: 'Faker.js', license: 'MIT', url: 'https://fakerjs.dev/', desc: 'NPC name and lore generation', color: '#885522' },
+];
+
+window.openCredits = () => {
+    const list = document.getElementById('credits-lib-list');
+    if (list && !list.children.length) {
+        list.innerHTML = _CREDITS_LIBS.map(lib => `
+            <div style="display:flex; gap:12px; align-items:flex-start; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px 14px; ${lib.required ? 'border-left:3px solid #e74c3c;' : ''}">
+                <div style="min-width:8px; height:8px; border-radius:50%; background:${lib.color}; margin-top:5px;"></div>
+                <div style="flex:1; min-width:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <span style="color:white; font-weight:700; font-size:13px;">${lib.name}</span>
+                        <span style="background:${lib.color}22; border:1px solid ${lib.color}55; color:${lib.color}; font-size:10px; padding:2px 8px; border-radius:10px; white-space:nowrap;">${lib.license}</span>
+                    </div>
+                    <div style="color:#aaa; font-size:12px; margin-top:3px;">${lib.desc}</div>
+                    <a href="${lib.url}" target="_blank" style="color:#3498db; font-size:11px; opacity:0.8;">${lib.url}</a>
+                </div>
+            </div>
+        `).join('');
+    }
+    const m = document.getElementById('credits-modal');
+    if (m) { m.style.display = 'flex'; }
+};
+
+// Close on backdrop click
+document.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('credits-modal')) window.openCredits && document.getElementById('credits-modal').style.display = 'none';
+});
