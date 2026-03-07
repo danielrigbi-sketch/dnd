@@ -354,16 +354,34 @@
                         <canvas id="fow-canvas"></canvas>
                         <!-- Compact DM toolbar (shown when map is active, DM only) -->
                         <div id="map-toolbar" style="display:none;">
-                            <button class="map-tb-btn active" data-mode="view"    onclick="window._mapToolBtn(this)">👆</button>
-                            <button class="map-tb-btn" data-mode="obstacle"       onclick="window._mapToolBtn(this)">🧱</button>
-                            <button class="map-tb-btn" data-mode="trigger"        onclick="window._mapToolBtn(this)">⚠️</button>
-                            <button class="map-tb-btn" data-mode="fogReveal"      onclick="window._mapToolBtn(this)">🌟</button>
-                            <button class="map-tb-btn" data-mode="fogHide"        onclick="window._mapToolBtn(this)">🌑</button>
-                            <button class="map-tb-btn" data-mode="ruler"          onclick="window._mapToolBtn(this)">📏</button>
-                            <button class="map-tb-btn" data-mode="aoe"            onclick="window._mapToolBtn(this)">💥</button>
+                            <button class="map-tb-btn active" data-mode="view"    onclick="window._mapToolBtn(this)" title="Select / Move (V)">
+                                <span class="map-tb-icon">👆</span><span class="map-tb-label">Select</span>
+                            </button>
+                            <button class="map-tb-btn" data-mode="obstacle"       onclick="window._mapToolBtn(this)" title="Paint Walls (O)">
+                                <span class="map-tb-icon">🧱</span><span class="map-tb-label">Wall</span>
+                            </button>
+                            <button class="map-tb-btn" data-mode="trigger"        onclick="window._mapToolBtn(this)" title="Place Trap / Trigger (T)">
+                                <span class="map-tb-icon">⚠️</span><span class="map-tb-label">Trap</span>
+                            </button>
+                            <button class="map-tb-btn" data-mode="fogReveal"      onclick="window._mapToolBtn(this)" title="Reveal Fog (F)">
+                                <span class="map-tb-icon">🌟</span><span class="map-tb-label">Reveal</span>
+                            </button>
+                            <button class="map-tb-btn" data-mode="fogHide"        onclick="window._mapToolBtn(this)" title="Hide Fog (H)">
+                                <span class="map-tb-icon">🌑</span><span class="map-tb-label">Hide</span>
+                            </button>
+                            <button class="map-tb-btn" data-mode="ruler"          onclick="window._mapToolBtn(this)" title="Measure Distance (R)">
+                                <span class="map-tb-icon">📏</span><span class="map-tb-label">Ruler</span>
+                            </button>
+                            <button class="map-tb-btn" data-mode="aoe"            onclick="window._mapToolBtn(this)" title="Area of Effect (A)">
+                                <span class="map-tb-icon">💥</span><span class="map-tb-label">AoE</span>
+                            </button>
                             <div class="map-tb-sep"></div>
-                            <button class="map-tb-btn" title="Token List"         onclick="window.toggleTokenRoster()">👥</button>
-                            <button class="map-tb-btn red" title="Close Map"      onclick="window.deactivateScene()">✕</button>
+                            <button class="map-tb-btn" onclick="window.toggleTokenRoster()" title="Place Tokens on Map">
+                                <span class="map-tb-icon">👥</span><span class="map-tb-label">Tokens</span>
+                            </button>
+                            <button class="map-tb-btn red" onclick="window.deactivateScene()" title="Close Map View">
+                                <span class="map-tb-icon">✕</span><span class="map-tb-label">Close</span>
+                            </button>
                         </div>
                         <!-- Token roster popup (DM) -->
                         <div id="map-token-roster-popup" style="display:none;">
