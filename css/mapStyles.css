@@ -417,3 +417,61 @@
     border:1px solid rgba(50,210,100,0.40); border-radius:6px;
     color:#3de070; font-size:11px; text-align:center;
 }
+
+/* ── SD-4: Gallery card gold shimmer + parallax support ──────────────── */
+
+/* Card needs transform-style for 3D tilt */
+.scene-gallery-card {
+    transform-style: preserve-3d;
+    will-change: transform;
+    transition: transform 0.08s ease, border-color 0.2s, box-shadow 0.2s;
+}
+/* Smooth return when mouse leaves */
+.scene-gallery-card:not(:hover) {
+    transition: transform 0.35s ease, border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Gold shimmer sweep on hover */
+.scene-gallery-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -75%;
+    width: 50%; height: 100%;
+    background: linear-gradient(
+        100deg,
+        transparent 0%,
+        rgba(241,196,15,0.18) 50%,
+        transparent 100%
+    );
+    pointer-events: none;
+    opacity: 0;
+    transform: skewX(-15deg);
+    transition: opacity 0.2s;
+    z-index: 2;
+}
+.scene-gallery-card:hover::before {
+    opacity: 1;
+    animation: card-shimmer 0.65s ease forwards;
+}
+@keyframes card-shimmer {
+    0%   { left: -75%; opacity: 1; }
+    100% { left: 125%; opacity: 0.4; }
+}
+
+/* Active (LIVE) card gets a pulsing gold halo */
+.scene-gallery-card.active::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 10px;
+    background: transparent;
+    border: 2px solid rgba(241,196,15,0.7);
+    animation: live-pulse 2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 3;
+}
+@keyframes live-pulse {
+    0%,100% { box-shadow: 0 0 8px rgba(241,196,15,0.3);  opacity: 0.8; }
+    50%      { box-shadow: 0 0 18px rgba(241,196,15,0.65); opacity: 1; }
+}
+
