@@ -169,7 +169,7 @@ function _initConfirmModal() {
                 _confirmResolve?.(false);
             }
             // Also close scene wizard
-            if (document.getElementById('scene-wizard-modal')?.classList.contains('wiz-visible')) {
+            if (document.getElementById('scene-wizard-modal')?.classList.contains('wiz-open')) {
                 window._wizard?.close();
             }
         }
@@ -649,14 +649,41 @@ function _initSceneManager() {
 function _renderSceneGallery(scenes) {
     const gallery = document.getElementById('scene-gallery');
     if (!gallery) return;
-    const entries = Object.entries(scenes).sort(([,a],[,b]) => (b.createdAt||0)-(a.createdAt||0));
+
+    // SA-2: dedup — if two entries share same name+createdAt bucket (within 5s), keep newer id
+    const seen = new Map();  // key: name+bucket → [id, createdAt]
+    const deduped = {};
+    Object.entries(scenes).forEach(([id, s]) => {
+        const bucket = (s.name||'') + '_' + Math.floor((s.createdAt||0) / 5000);
+        const prev = seen.get(bucket);
+        if (prev) {
+            // keep whichever id is lexicographically newer (scene_<timestamp> → larger = newer)
+            const keepId = id > prev ? id : prev;
+            const dropId = id > prev ? prev : id;
+            seen.set(bucket, keepId);
+            deduped[keepId] = scenes[keepId] || scenes[id];
+            delete deduped[dropId];
+        } else {
+            seen.set(bucket, id);
+            deduped[id] = s;
+        }
+    });
+
+    const entries = Object.entries(deduped).sort(([,a],[,b]) => (b.createdAt||0)-(a.createdAt||0));
     if (!entries.length) {
         gallery.innerHTML = '<div style="font-size:11px;color:#555;font-style:italic;padding:4px 0;">No scenes yet. Create your first!</div>';
         return;
     }
-    gallery.innerHTML = entries.map(([id, s]) => `
-        <div class="scene-gallery-card ${id===activeSceneId?'active':''}" id="sgc-${id}">
-            <div class="scene-thumb">${s.atmosphere?.weather==='fog'?'🌫':s.atmosphere?.weather==='heavy_rain'?'⛈':s.atmosphere?.weather==='blizzard'?'❄️':'🗺'}</div>
+    gallery.innerHTML = entries.map(([id, s]) => {
+        // SA-1: show thumbnail if available, else weather emoji
+        const thumbHtml = s.bgThumb
+            ? `<img src="${s.bgThumb}" class="scene-thumb-img" alt="${s.name||'Scene'}">`
+            : `<div class="scene-thumb">${s.atmosphere?.weather==='fog'?'🌫':s.atmosphere?.weather==='heavy_rain'?'⛈':s.atmosphere?.weather==='blizzard'?'❄️':'🗺'}</div>`;
+        const isLive = id === activeSceneId;
+        return `
+        <div class="scene-gallery-card ${isLive?'active':''}" id="sgc-${id}">
+            ${thumbHtml}
+            ${isLive ? '<div class="scene-live-badge">🎲 LIVE</div>' : ''}
             <div class="scene-card-info">
                 <div class="scene-card-name">${s.name||'Unnamed'}</div>
                 <div class="scene-card-sub">${new Date(s.createdAt||0).toLocaleDateString()}</div>
@@ -666,8 +693,8 @@ function _renderSceneGallery(scenes) {
                 <button class="scene-card-btn edit"  title="Edit"     onclick="window.editScene('${id}')">✎</button>
                 <button class="scene-card-btn del"   title="Delete"   onclick="window.deleteScene('${id}')">🗑</button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 function _updateTokenRoster() {
@@ -697,6 +724,7 @@ window.openSceneWizard = (existingData=null) => {
             players: sortedCombatants.reduce((a,c)=>{a[c.name]=c;return a;},{}),
             onSaved: (id, data) => {
                 console.log('Scene saved:', id);
+                _initSceneManager();  // SA-2: refresh gallery so new card appears immediately
             },
             onGoLive: (id, data) => {
                 activeSceneId = id;
