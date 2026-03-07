@@ -975,6 +975,11 @@ function _activateMapCanvas(sceneData) {
     if (userRole === 'dm') {
         document.getElementById('map-toolbar').style.display = 'flex';
     }
+    // E2-A: Initialize PixiJS overlay (lazy — only once)
+    if (!mapEngine._pixiInited) {
+      mapEngine._pixiInited = true;
+      mapEngine.initPixi(container); // async, non-blocking
+    }
     // SD-3: Iris wipe — cinematic reveal when scene loads
     mapEngine.startIris('open');
     // Sync players & turn

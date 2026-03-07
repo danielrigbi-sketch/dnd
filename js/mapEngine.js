@@ -8,6 +8,7 @@ import { typeColor } from './monsters.js';
 import { FOV } from 'rot-js';  // E3-A: Recursive Shadowcasting FOV
 import { TileEngine } from './tileEngine.js';  // E4-A: Dungeon tile renderer
 import { Pathfinder } from './pathfinder.js';   // E6-A: EasyStar A* pathfinding
+import { PixiLayer } from './pixiLayer.js';     // E2-A: PixiJS v8 GPU overlay
 
 // ── Constants ────────────────────────────────────────────────────────
 const FT_PER_SQ   = 5;
@@ -62,6 +63,7 @@ export class MapEngine {
     this.tileEngine = new TileEngine();  // E4-A
     this.tileEngine.load().catch(e => console.warn('TileEngine load:', e));
     this._pf = new Pathfinder();  // E6-A
+    this._pixi = new PixiLayer(); // E2-A — initialized lazily after DOM attach
 
     this.cName      = opts.cName      || '';
     this.userRole   = opts.userRole   || 'player';
@@ -143,12 +145,32 @@ export class MapEngine {
   setPlayers(p){
     const newKeys=Object.keys(p||{}).sort().join(',');
     const oldKeys=Object.keys(this.S.players).sort().join(',');
+    // E2-C: detect HP changes → trigger particles
+    if(this._pixi?.isReady && p){
+      Object.entries(p).forEach(([cn,pl])=>{
+        const prev=this.S.players[cn];
+        if(prev && typeof prev.hp==='number' && typeof pl.hp==='number' && prev.hp!==pl.hp){
+          this._pixi.onHPChange(cn,prev.hp,pl.hp,this.S.cfg,this.S.tokens[cn]);
+        }
+      });
+    }
     this.S.players=p||{};
     this._dirty();
     // Only rebuild the token roster DOM when membership changes
     if(newKeys!==oldKeys) this._updateDashTokenList();
   }
   setMuted(v){ this.isMuted=v; }
+
+  // E2-A: Initialize PixiJS overlay — call after canvas container is in DOM
+  async initPixi(containerEl) {
+    try {
+      await this._pixi.init(containerEl);
+      console.log('[PixiLayer] WebGL overlay ready ✓');
+    } catch(e) {
+      console.warn('[PixiLayer] init failed, using Canvas 2D only:', e.message);
+    }
+  }
+
   _dirty(){ this.L.dirty=true; }
 
   // ── Firebase setup ──────────────────────────────────────────────────
@@ -216,8 +238,15 @@ export class MapEngine {
     this._rGrid();
     this._rObstacles();
     if(this.userRole==='dm') this._rTriggers();
-    this._rTokens();
+    if (!this._pixi?.isReady) this._rTokens(); // E2-B: Pixi handles tokens when ready
     this._rMoveRange(); // E6-B
+    // E2-B: sync PixiJS token layer after Canvas 2D tokens
+    if(this._pixi?.isReady){
+      const activeName=this.L.sc?.[this.L.ati];
+      const dragging=this.L.drag?.cName;
+      this._pixi.setTransform(this.vx,this.vy,this.vs);
+      this._pixi.syncTokens(this.S.tokens,this.S.players,activeName,this.S.cfg,dragging);
+    }
     this._rPath();
     this._rRuler();
     this._rAoe();
