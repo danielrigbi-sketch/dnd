@@ -4,6 +4,7 @@ import { getFlavorText } from "./messages.js";
 import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js";
 import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js";
 import * as db from "./firebaseService.js";
+import { pruneOrphanTokens } from "./firebaseService.js"; // S11: direct import prevents Rollup tree-shaking
 import { t } from "./i18n.js";
 import { npcDatabase } from "./monsters.js";
 import { MapEngine } from "./mapEngine.js";
@@ -956,7 +957,7 @@ function setupDatabaseListeners() {
             _updateTokenRoster();
             // S11: prune orphan map tokens for players no longer in the room
             if (playersData && userRole === 'dm') {
-                db.pruneOrphanTokens(db.getActiveRoom(), Object.keys(playersData));
+                pruneOrphanTokens(db.getActiveRoom(), Object.keys(playersData));
             }
         }
     }));
