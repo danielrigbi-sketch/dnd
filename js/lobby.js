@@ -1,4 +1,5 @@
 // lobby.js - Welcome screen and Authentication Controller
+// lobby.js v130 (S14: portrait upload via Firebase Storage)
 import * as db from "./firebaseService.js";
 import { startGame, setUid } from "./app.js";
 import { setLanguage, getLang, t, updateDOM } from "./i18n.js";
@@ -82,15 +83,31 @@ if(inputUrl) {
 }
 
 if(inputFile) {
-    inputFile.addEventListener('change', (e) => {
+    inputFile.addEventListener('change', async (e) => {
         const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                selectedPortrait = event.target.result;
-                if(previewImg) previewImg.src = selectedPortrait;
-            };
-            reader.readAsDataURL(file);
+        if (!file) return;
+        // S14: show instant local preview, then upload to Firebase Storage
+        const reader = new FileReader();
+        reader.onload = evt => {
+            selectedPortrait = evt.target.result;   // base64 preview while uploading
+            if (previewImg) previewImg.src = selectedPortrait;
+        };
+        reader.readAsDataURL(file);
+        // Upload — show progress badge next to file input
+        const progressEl = document.getElementById('portrait-upload-progress');
+        if (progressEl) { progressEl.textContent = '⬆ 0%'; progressEl.style.display = 'inline'; }
+        try {
+            const uid = currentUserUid;
+            if (uid) {
+                const url = await db.uploadPortrait(uid, file, pct => {
+                    if (progressEl) progressEl.textContent = `⬆ ${pct}%`;
+                });
+                selectedPortrait = url;    // swap preview for durable URL
+                if (previewImg) previewImg.src = url;
+                if (progressEl) { progressEl.textContent = '✅'; setTimeout(() => { progressEl.style.display = 'none'; }, 1500); }
+            }
+        } catch (err) {
+            if (progressEl) { progressEl.textContent = '⚠ upload failed'; setTimeout(() => { progressEl.style.display = 'none'; }, 2500); }
         }
     });
 }
