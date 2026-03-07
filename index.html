@@ -128,6 +128,7 @@
                 
                 <div id="portrait-file-area" style="display: none;">
                     <input type="file" id="cb-portrait-file" accept="image/*" class="builder-input w-100" style="color: white; padding: 6px;">
+                    <span id="portrait-upload-progress" style="display:none; font-size:11px; color:#f1c40f; margin-top:4px;"></span>
                 </div>
 
                 <div style="margin-top: 10px;">
@@ -335,6 +336,18 @@
                             <button onclick="window.openShortRest?.()" id="short-rest-btn" class="side-btn hover-btn" style="flex:1; background:var(--cr-green); padding:8px; font-size:16px; display:none;" title="Short Rest">😴</button>
                         </div>
                         <button onclick="window.rerollAllInitiatives()" class="side-btn hover-btn" style="background:rgba(52,152,219,0.3); border:1px solid #3498db; color:#3498db; font-size:12px; padding:7px;">🎲 Re-roll All Initiatives</button>
+                        <!-- S16: Turn Timer -->
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <button id="timer-toggle-btn" onclick="window.toggleTurnTimer()" class="side-btn hover-btn" style="flex:1; background:rgba(155,89,182,0.3); border:1px solid #9b59b6; color:#9b59b6; font-size:12px; padding:7px;" title="Toggle turn countdown timer">⏱ Timer</button>
+                            <select id="timer-duration-select" onchange="window.setTimerDuration(+this.value)" style="flex:1; background:#1a1a2e; color:white; border:1px solid #555; border-radius:6px; padding:6px; font-size:11px;">
+                                <option value="30">30s</option>
+                                <option value="45">45s</option>
+                                <option value="60" selected>60s</option>
+                                <option value="90">90s</option>
+                                <option value="120">2min</option>
+                            </select>
+                            <span id="turn-timer-display" class="turn-timer"></span>
+                        </div>
                     </div>
 
                     <button id="mute-btn" class="side-btn hover-btn" data-i18n="mute_sound" onclick="window.toggleMute()"></button>
