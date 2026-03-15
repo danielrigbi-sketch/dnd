@@ -10,6 +10,7 @@
 //   — 450+ SRD monsters, skeleton loading, CR slider, type chips, search debounce
 // =====================================================================
 import { MapEngine } from './mapEngine.js';
+import { VideoLayer } from './videoLayer.js';
 import { t, getLang } from './i18n.js';
 import { npcDatabase, parseCR, typeColor } from './monsters.js';
 import { fetchMonsters, open5eToNPC, normaliseType } from './open5e.js';
@@ -71,6 +72,7 @@ export class SceneWizard {
       _id: null,
       name: '',
       bgUrl: '',
+      bgVideoUrl: '',  // YouTube animated background URL
       bgBase64: '',   // SA-1: persisted base64 image (survives reload)
       bgThumb: '',    // SA-1: 300px JPEG thumbnail for gallery cards
       _bgBlob: null,  // local blob URL (legacy, kept for URL-load path)
@@ -95,7 +97,7 @@ export class SceneWizard {
       this._data = JSON.parse(JSON.stringify(existingData));
     } else {
       this._data = {
-        _id: null, name: '', bgUrl: '',
+        _id: null, name: '', bgUrl: '', bgVideoUrl: '',
         bgBase64: '', bgThumb: '',   // SA-1
         _bgBlob: null,
         config: { pps: 64, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20 },
@@ -160,6 +162,12 @@ export class SceneWizard {
     this._engine.setPlayers(this.players);
     const bgSrc = d.bgBase64 || d._bgBlob || d.bgUrl;   // SA-1: base64 wins
     if (bgSrc) this._engine._loadBg(bgSrc);
+    if (d.bgVideoUrl) {
+      // Init video layer using wizard canvas wrap, then load
+      const wrap = document.getElementById('wizard-canvas-wrap');
+      if (wrap) this._engine.initVideo(wrap);
+      this._engine.loadBgVideo(d.bgVideoUrl);
+    }
     if (d.atmosphere) this._engine.setAtmosphere(d.atmosphere);
     this._engine._dirty();
     window._wizard = this;
@@ -230,23 +238,57 @@ export class SceneWizard {
     switch (this._step) {
 
       // ──── Step 0: Image only ─────────────────────────────────────────
-      case 0: return `
+      case 0: {
+        const isVideo   = !!this._data.bgVideoUrl;
+        const ytId      = isVideo ? VideoLayer.parseVideoId(this._data.bgVideoUrl) : null;
+        const hasStatic = !!(this._data.bgBase64 || this._data.bgUrl || this._data._bgBlob);
+        return `
+        <!-- Background type toggle -->
         <div class="wiz-section">${t('wiz_l0_image')}</div>
-        <input id="wiz-bg-url" class="wiz-input" type="url"
-          placeholder="${t('wiz_l0_url_ph')}"
-          value="${this._data.bgUrl||''}">
-        <button id="wiz-bg-load" class="wiz-btn gold">🖼 ${t('wiz_l0_load_url')}</button>
-        <div class="wiz-divider">${t('wiz_or')}</div>
-        <label class="wiz-file-label" style="cursor:pointer;">
-          📂 ${t('wiz_l0_upload')}
-          <input id="wiz-bg-file" type="file" accept="image/*" style="display:none">
-        </label>
-        ${(this._data.bgBase64||this._data.bgUrl||this._data._bgBlob)?`
-          <div class="wiz-ok-badge">✓ ${t('wiz_l0_loaded')}</div>
-          ${this._data.bgThumb ? `<img src="${this._data.bgThumb}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;margin-top:8px;border:1px solid rgba(241,196,15,0.3);">` : ''}
-        `:''}
-        <div class="wiz-tip" style="margin-top:12px;">${t('wiz_l0_tip')}</div>
+        <div style="display:flex;gap:10px;margin-bottom:10px;">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#ccc;padding:5px 9px;border-radius:8px;border:1px solid ${!isVideo?'rgba(241,196,15,0.55)':'rgba(255,255,255,0.12)'};background:${!isVideo?'rgba(241,196,15,0.08)':'transparent'};">
+            <input type="radio" name="wiz-bg-type" value="static" ${!isVideo?'checked':''} style="accent-color:#f1c40f;"> 🖼 Static Image
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#ccc;padding:5px 9px;border-radius:8px;border:1px solid ${isVideo?'rgba(241,196,15,0.55)':'rgba(255,255,255,0.12)'};background:${isVideo?'rgba(241,196,15,0.08)':'transparent'};">
+            <input type="radio" name="wiz-bg-type" value="video" ${isVideo?'checked':''} style="accent-color:#f1c40f;"> 🎬 Animated (YouTube)
+          </label>
+        </div>
 
+        <!-- Static image panel -->
+        <div id="wiz-static-bg-panel" style="display:${isVideo?'none':'block'};">
+          <input id="wiz-bg-url" class="wiz-input" type="url"
+            placeholder="${t('wiz_l0_url_ph')}"
+            value="${this._data.bgUrl||''}">
+          <button id="wiz-bg-load" class="wiz-btn gold">🖼 ${t('wiz_l0_load_url')}</button>
+          <div class="wiz-divider">${t('wiz_or')}</div>
+          <label class="wiz-file-label" style="cursor:pointer;">
+            📂 ${t('wiz_l0_upload')}
+            <input id="wiz-bg-file" type="file" accept="image/*" style="display:none">
+          </label>
+          ${hasStatic ? `
+            <div class="wiz-ok-badge">✓ ${t('wiz_l0_loaded')}</div>
+            ${this._data.bgThumb ? `<img src="${this._data.bgThumb}" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px;margin-top:8px;border:1px solid rgba(241,196,15,0.3);">` : ''}
+          ` : ''}
+          <div class="wiz-tip" style="margin-top:12px;">${t('wiz_l0_tip')}</div>
+        </div>
+
+        <!-- YouTube animated map panel -->
+        <div id="wiz-video-bg-panel" style="display:${isVideo?'block':'none'};">
+          <div style="color:#aaa;font-size:11px;margin-bottom:6px;">Paste a YouTube URL to use an animated battle map as your scene background.</div>
+          <input id="wiz-yt-url" class="wiz-input" type="url" dir="ltr"
+            placeholder="https://www.youtube.com/watch?v=…"
+            value="${this._data.bgVideoUrl||''}">
+          <button id="wiz-yt-load" class="wiz-btn gold" style="margin-top:5px;">▶ Load &amp; Preview</button>
+          ${isVideo && ytId ? `
+            <div class="wiz-ok-badge" style="margin-top:8px;">✓ YouTube video set</div>
+            <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg"
+              style="width:100%;border-radius:6px;margin-top:6px;border:1px solid rgba(241,196,15,0.3);"
+              onerror="this.style.display='none'" alt="Video thumbnail">
+          ` : ''}
+          <div class="wiz-tip" style="margin-top:10px;">Video autoplays muted &amp; loops for all players in real time. Works best with ambient animated battle map loops from YouTube.</div>
+        </div>
+
+        <!-- Quick dungeon generator (available for both bg types) -->
         <div class="wiz-divider" style="margin-top:16px;">${t('wiz_or')}</div>
         <div class="wiz-section">🗺 ${t('wiz_quick_dungeon')}</div>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
@@ -265,7 +307,7 @@ export class SceneWizard {
           🎲 ${t('wiz_gen_dungeon_btn')}
         </button>
         ${this._dungeonGenerated ? `<div class="wiz-ok-badge" style="margin-top:6px;">✓ ${t('wiz_dungeon_ready')} — ${this._dungeonInfo||''}</div>` : ''}
-        `;
+        `; }
 
       // ──── Step 1: Phantom grid calibration ───────────────────────────
       case 1: return `
@@ -591,11 +633,56 @@ export class SceneWizard {
       this._generateQuickDungeon();
     });
 
+    // Background type radio toggle
+    document.querySelectorAll('input[name="wiz-bg-type"]').forEach(radio => {
+      radio.addEventListener('change', e => {
+        const isVideo = e.target.value === 'video';
+        const staticP = document.getElementById('wiz-static-bg-panel');
+        const videoP  = document.getElementById('wiz-video-bg-panel');
+        if (staticP) staticP.style.display = isVideo ? 'none' : 'block';
+        if (videoP)  videoP.style.display  = isVideo ? 'block' : 'none';
+        // Update label highlight styles
+        document.querySelectorAll('input[name="wiz-bg-type"]').forEach(r => {
+          const lbl = r.closest('label');
+          if (!lbl) return;
+          const active = r.value === e.target.value;
+          lbl.style.border      = `1px solid ${active ? 'rgba(241,196,15,0.55)' : 'rgba(255,255,255,0.12)'}`;
+          lbl.style.background  = active ? 'rgba(241,196,15,0.08)' : 'transparent';
+        });
+      });
+    });
+
+    // YouTube: Load & Preview
+    document.getElementById('wiz-yt-load')?.addEventListener('click', () => {
+      const url = document.getElementById('wiz-yt-url')?.value.trim();
+      if (!url) return;
+      const id = VideoLayer.parseVideoId(url);
+      if (!id) {
+        if (window.showToast) showToast('Invalid YouTube URL — please paste a youtube.com or youtu.be link.', 'warning');
+        return;
+      }
+      this._data.bgVideoUrl = url;
+      this._data.bgUrl      = '';
+      this._data.bgBase64   = '';
+      this._data._bgBlob    = null;
+      // Live preview in wizard engine
+      if (eng) {
+        const wrap = document.getElementById('wizard-canvas-wrap');
+        if (wrap && !eng._video?.isActive()) eng.initVideo(wrap);
+        eng.loadBgVideo(url);
+      }
+      // Rebuild to show thumbnail + badge
+      this._leftPanel.innerHTML = this._buildLeft();
+      this._wireStep();
+    });
+
     document.getElementById('wiz-bg-load')?.addEventListener('click', () => {
       const url = document.getElementById('wiz-bg-url')?.value.trim();
       if (!url) return;
-      this._data.bgUrl   = url;
-      this._data._bgBlob = null;
+      this._data.bgUrl      = url;
+      this._data.bgVideoUrl = '';
+      this._data._bgBlob    = null;
+      eng?._video?.unload();
       eng?._loadBg(url);
       this._leftPanel.innerHTML = this._buildLeft();
       this._wireStep();
@@ -927,9 +1014,10 @@ export class SceneWizard {
       fog:        { ...this._data.fog },
       obstacles:  { ...this._data.obstacles },
       triggers:   { ...this._data.triggers },
-      bgUrl:      this._data.bgUrl    || '',
-      bgBase64:   this._data.bgBase64 || '',   // SA-1: persisted for reload
-      bgThumb:    this._data.bgThumb  || '',   // SA-1: gallery thumbnail
+      bgUrl:      this._data.bgUrl      || '',
+      bgVideoUrl: this._data.bgVideoUrl || '',
+      bgBase64:   this._data.bgBase64   || '',   // SA-1: persisted for reload
+      bgThumb:    this._data.bgThumb    || '',   // SA-1: gallery thumbnail
     };
 
     if (this.db && this.uid) {
@@ -941,7 +1029,11 @@ export class SceneWizard {
     this.onSaved?.(sceneId, sceneData);
 
     if (goLive && this.db) {
-      this.db.setMapCfg(this.activeRoom, { ...sceneData.config, bgUrl: sceneData.bgUrl });
+      this.db.setMapCfg(this.activeRoom, {
+        ...sceneData.config,
+        bgUrl:      sceneData.bgVideoUrl ? '' : sceneData.bgUrl,
+        bgVideoUrl: sceneData.bgVideoUrl || '',
+      });
       if (Object.keys(sceneData.fog).length)
         this.db.revealFogCells(this.activeRoom, sceneId, sceneData.fog);
       Object.keys(sceneData.obstacles).forEach(k =>

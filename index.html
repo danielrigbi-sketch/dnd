@@ -394,6 +394,8 @@
 
                     <!-- Map canvas: absolute, behind everything, hidden until scene activates -->
                     <div id="map-canvas-container" class="map-bg-hidden">
+                        <!-- YouTube animated background layer (z-index:0, below #map-canvas) -->
+                        <div id="video-bg-layer"><div id="video-bg-inner"></div></div>
                         <canvas id="map-canvas"></canvas>
                         <canvas id="fow-canvas"></canvas>
                         <!-- Compact DM toolbar (shown when map is active, DM only) -->
@@ -418,6 +420,11 @@
                             </button>
                             <button class="map-tb-btn" data-mode="aoe"            onclick="window._mapToolBtn(this)" title="Area of Effect (A)">
                                 <span class="map-tb-icon gi-tb" data-gi="toolbar-aoe">💥</span><span class="map-tb-label">AoE</span>
+                            </button>
+                            <div class="map-tb-sep"></div>
+                            <!-- Video background controls (shown when a YouTube video is active) -->
+                            <button class="map-tb-btn" id="btn-video-bg" onclick="window._videoToggleBtn()" title="Video Background Controls" style="display:none;">
+                                <span class="map-tb-icon">🎬</span><span class="map-tb-label">Video</span>
                             </button>
                             <div class="map-tb-sep"></div>
                             <button class="map-tb-btn" onclick="window._handoutBtn()" title="Print Dungeon Handout (E7)" id="btn-handout">

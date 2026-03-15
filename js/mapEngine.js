@@ -14,6 +14,7 @@ import { typeColor } from './monsters.js';
 import { TileEngine } from './tileEngine.js';
 import { Pathfinder } from './pathfinder.js';
 import { PixiLayer } from './pixiLayer.js';
+import { VideoLayer } from './videoLayer.js';
 
 import { mapBus }           from './core/eventBus.js';
 import { TokenSystem }      from './engine/tokenSystem.js';
@@ -60,6 +61,7 @@ export class MapEngine {
     this.tileEngine.load().catch(e => console.warn('TileEngine load:', e));
     this._pf    = new Pathfinder();
     this._pixi  = new PixiLayer();
+    this._video = new VideoLayer();
 
     this.cName      = opts.cName      || '';
     this.userRole   = opts.userRole   || 'player';
@@ -72,7 +74,7 @@ export class MapEngine {
 
     // ── Shared state (Firebase-synced) ────────────────────────────────
     this.S = {
-      cfg:        { bgUrl: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20 },
+      cfg:        { bgUrl: '', bgVideoUrl: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20 },
       atmosphere: { weather: 'none', ambientLight: 'bright', globalDarkvision: 0 },
       tokens:     {},
       fog:        {},
@@ -149,6 +151,7 @@ export class MapEngine {
     this.tokens.unbindInput(this.cv);
     this._unsubs.forEach(u => u());
     this._busUnsubs.forEach(u => u());
+    this._video?.unload();
   }
 
   setActiveTurn(idx, sc) { this.L.ati = idx; this.L.sc = sc || []; this._dirty(); }
@@ -181,6 +184,10 @@ export class MapEngine {
     }
   }
 
+  initVideo(containerEl) {
+    this._video.init(containerEl);
+  }
+
   _dirty() { this.L.dirty = true; }
 
   // ── Firebase setup ────────────────────────────────────────────────────
@@ -193,9 +200,18 @@ export class MapEngine {
     this._unsubs.push(
       db.listenMapCfg(r, cfg => {
         if (!cfg) return;
-        const wasUrl = this.S.cfg.bgUrl;
+        const wasUrl      = this.S.cfg.bgUrl;
+        const wasVideoUrl = this.S.cfg.bgVideoUrl;
         this.S.cfg = { ...this.S.cfg, ...cfg };
+        // Handle static background changes
         if (cfg.bgUrl && cfg.bgUrl !== wasUrl) this._loadBg(cfg.bgUrl);
+        // Handle video background changes
+        if (cfg.bgVideoUrl && cfg.bgVideoUrl !== wasVideoUrl) {
+          this._video?.load(cfg.bgVideoUrl);
+        } else if (!cfg.bgVideoUrl && wasVideoUrl) {
+          this._video?.unload();
+          if (this.S.cfg.bgUrl) this._loadBg(this.S.cfg.bgUrl);
+        }
         this._dirty();
       }),
       db.listenMapTokens(r, tks => { this.S.tokens = tks || {}; this._dirty(); }),
@@ -260,6 +276,12 @@ export class MapEngine {
 
     ctx.restore();
 
+    // Sync video iframe transform to match canvas world transform (runs in screen space)
+    if (this._video?.isActive()) {
+      const { pps, ox, oy, mapW, mapH } = this.S.cfg;
+      this._video.syncTransform(this.vx, this.vy, this.vs, ox, oy, pps, mapW || MAP_W_DEFAULT, mapH || MAP_H_DEFAULT);
+    }
+
     if (this.tileEngine?.ready) {
       this.tileEngine.render(this.ctx, this.S.cfg, this.vx, this.vy, this.vs);
     }
@@ -282,6 +304,8 @@ export class MapEngine {
   }
 
   _rBg() {
+    // When a YouTube video is active it fills the layer beneath — skip static bg rendering
+    if (this._video?.isActive()) return;
     const { ctx } = this;
     const { pps, ox, oy, mapW: mw, mapH: mh } = this.S.cfg;
     if (this.L.mode === 'phantom') {
@@ -538,14 +562,33 @@ export class MapEngine {
   getBgTileCount()    { if (this.L.mode !== 'phantom') return null; const fit = this._getBgFit(); const { pps } = this.S.cfg; return { cols: Math.max(1, Math.floor(fit.w / pps)), rows: Math.max(1, Math.floor(fit.h / pps)) }; }
 
   _loadBg(url) {
-    this.L.bg = null; this.L.bgLoading = true;
+    // Keep the old image visible while the new one loads (prevents checkerboard flash)
+    this.L.bgLoading = true;
     const img = new Image(); img.crossOrigin = 'anonymous';
     img.onload  = () => { this.L.bg = img; this.L.bgLoading = false; this._dirty(); };
-    img.onerror = () => { this.L.bgLoading = false; };
+    img.onerror = () => {
+      this.L.bgLoading = false;
+      if (typeof window.showToast === 'function') window.showToast('Could not load background image — check the URL or CORS policy.', 'warning');
+      this._dirty();
+    };
     img.src = url;
   }
 
-  loadBgUrl(url)  { this._loadBg(url); if (this.db) this.db.setMapCfg(this.activeRoom, { ...this.S.cfg, bgUrl: url }); }
+  loadBgUrl(url) {
+    this._video?.unload();
+    this.S.cfg.bgVideoUrl = '';
+    this._loadBg(url);
+    if (this.db) this.db.setMapCfg(this.activeRoom, { ...this.S.cfg, bgUrl: url, bgVideoUrl: '' });
+  }
+
+  loadBgVideo(url) {
+    this.L.bg = null;
+    this.S.cfg.bgVideoUrl = url;
+    this.S.cfg.bgUrl      = '';
+    this._video?.load(url);
+    if (this.db) this.db.setMapCfg(this.activeRoom, { ...this.S.cfg, bgUrl: '', bgVideoUrl: url });
+  }
+
   loadBgFile(file){ const r = new FileReader(); r.onload = e => { const img = new Image(); img.onload = () => { this.L.bg = img; this._dirty(); }; img.src = e.target.result; }; r.readAsDataURL(file); }
 
   nudgeGrid(dpps, dox, doy) {

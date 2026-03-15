@@ -748,6 +748,8 @@ function initMap() {
 
     mapEngine = new MapEngine(cv, fwc, { cName, userRole, activeRoom: db.getActiveRoom() });
     window._mapEng = mapEngine;
+    // Initialise the YouTube video background layer
+    mapEngine.initVideo(container);
     resize();
     window.addEventListener('resize', resize);
 
@@ -778,6 +780,38 @@ function initMap() {
         document.querySelectorAll('.map-tb-btn[data-mode]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         mapEngine?.setMode(btn.dataset.mode);
+    };
+
+    // Video background toolbar button — toggle play/pause or prompt for a new URL
+    window._videoToggleBtn = () => {
+        const eng = window._mapEng;
+        if (!eng) return;
+        const isActive = eng._video?.isActive();
+        if (isActive) {
+            // Prompt DM to change video or stop it
+            const choice = confirm('🎬 Video Background is active.\n\nClick OK to stop the video and return to a static background.\nClick Cancel to keep it playing.');
+            if (choice) {
+                eng.loadBgVideo(''); // unload
+                eng._video?.unload();
+                eng.S.cfg.bgVideoUrl = '';
+                if (eng.db) eng.db.setMapCfg(eng.activeRoom, { ...eng.S.cfg, bgVideoUrl: '', bgUrl: eng.S.cfg.bgUrl });
+                document.getElementById('btn-video-bg').style.display = 'none';
+            }
+        } else {
+            const url = window.prompt('🎬 Enter a YouTube URL for the animated battle map background:');
+            if (url && url.trim()) {
+                eng.loadBgVideo(url.trim());
+                document.getElementById('btn-video-bg').style.display = '';
+            }
+        }
+    };
+
+    // Show/hide the video toolbar button based on whether a video is active
+    // Exposed so scene activation can call it after loading a scene with bgVideoUrl
+    window._syncVideoToolbarBtn = () => {
+        const btn = document.getElementById('btn-video-bg');
+        if (!btn) return;
+        btn.style.display = window._mapEng?._video?.isActive() ? '' : 'none';
     };
 
     // SB-3: Keyboard shortcuts for toolbar — only active when map is visible
@@ -977,7 +1011,12 @@ function _activateMapCanvas(sceneData) {
         mapEngine._fbConnected = true;
         mapEngine.setupFirebase(db);
     }
-    if (sceneData.bgUrl) mapEngine.loadBgUrl(sceneData.bgUrl);
+    // Load background — video takes priority over static image
+    if (sceneData.bgVideoUrl) {
+        mapEngine.loadBgVideo(sceneData.bgVideoUrl);
+    } else if (sceneData.bgUrl) {
+        mapEngine.loadBgUrl(sceneData.bgUrl);
+    }
     if (sceneData.atmosphere) mapEngine.setAtmosphere(sceneData.atmosphere);
     const container = document.getElementById('map-canvas-container');
     container?.classList.remove('map-bg-hidden');
@@ -993,6 +1032,8 @@ function _activateMapCanvas(sceneData) {
     }
     // SD-3: Iris wipe — cinematic reveal when scene loads
     mapEngine.startIris('open');
+    // Sync video toolbar button visibility after a short delay (YT player needs time to init)
+    setTimeout(() => window._syncVideoToolbarBtn?.(), 1500);
     // Sync players & turn
     const playerMap = sortedCombatants.reduce((acc,c)=>{acc[c.name]=c;return acc;},{});
     mapEngine.setPlayers(playerMap);
@@ -1115,6 +1156,7 @@ const _CREDITS = [
     { n: 'EasyStar.js', l: 'MIT', u: 'https://github.com/prettymuchbryce/easystarjs', d: 'A* grid pathfinding', c: '#3498DB' },
     { n: "Watabou's Dungeon", l: 'MIT / CC-BY', u: 'https://github.com/watabou/one-page-dungeon', d: 'Procedural dungeon layout generator', c: '#27AE60' },
     { n: 'Faker.js', l: 'MIT', u: 'https://fakerjs.dev/', d: 'NPC name and lore generation', c: '#885522' },
+    { n: 'YouTube IFrame API', l: 'YouTube Terms of Service', u: 'https://developers.google.com/youtube/iframe_api_reference', d: 'Animated battle map video backgrounds via YouTube embed', c: '#FF0000' },
 ];
 
 function _buildCreditCard(lib) {
