@@ -1206,6 +1206,17 @@ function setupDatabaseListeners() {
         }
         addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res + data.mod), 20));
     }));
+
+    // Listen for active scene — shows map canvas for players (and DM on page refresh)
+    _appUnsubs.push(db.listenActiveScene(db.getActiveRoom(), (sceneId) => {
+        if (sceneId) {
+            activeSceneId = sceneId;
+            if (!mapEngine?._fbConnected) _activateMapCanvas({});
+        } else {
+            if (activeSceneId) window.deactivateScene();
+            activeSceneId = null;
+        }
+    }));
 }
 
 // ── Credits Modal ────────────────────────────────────────────────────────────
