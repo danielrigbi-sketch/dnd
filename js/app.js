@@ -875,10 +875,25 @@ function _renderSceneGallery(scenes) {
         return;
     }
     gallery.innerHTML = entries.map(([id, s]) => {
-        // SA-1: show thumbnail if available, else weather emoji
-        const thumbHtml = s.bgThumb
-            ? `<img src="${s.bgThumb}" class="scene-thumb-img" alt="${s.name||'Scene'}">`
-            : `<div class="scene-thumb">${s.atmosphere?.weather==='fog'?'🌫':s.atmosphere?.weather==='heavy_rain'?'⛈':s.atmosphere?.weather==='blizzard'?'❄️':'🗺'}</div>`;
+        // SA-1: show thumbnail if available; for video scenes use YouTube thumbnail; else emoji
+        let thumbHtml;
+        if (s.bgThumb) {
+            thumbHtml = `<img src="${s.bgThumb}" class="scene-thumb-img" alt="${s.name||'Scene'}">`;
+        } else if (s.bgVideoUrl) {
+            // Extract video ID from any YouTube URL format for the thumbnail
+            let ytId = null;
+            try {
+                const u = new URL(s.bgVideoUrl);
+                if (u.hostname === 'youtu.be') ytId = u.pathname.replace(/^\//, '').split('/')[0];
+                else if (u.searchParams.get('v')) ytId = u.searchParams.get('v');
+                else if (u.pathname.includes('/embed/')) ytId = u.pathname.split('/embed/')[1]?.split('?')[0];
+            } catch (_) { ytId = /^[A-Za-z0-9_\-]{11}$/.test(s.bgVideoUrl) ? s.bgVideoUrl : null; }
+            thumbHtml = ytId
+                ? `<img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" class="scene-thumb-img" alt="${s.name||'Scene'}" onerror="this.style.display='none'">`
+                : `<div class="scene-thumb">🎬</div>`;
+        } else {
+            thumbHtml = `<div class="scene-thumb">${s.atmosphere?.weather==='fog'?'🌫':s.atmosphere?.weather==='heavy_rain'?'⛈':s.atmosphere?.weather==='blizzard'?'❄️':'🗺'}</div>`;
+        }
         const isLive = id === activeSceneId;
         return `
         <div class="scene-gallery-card ${isLive?'active':''}" id="sgc-${id}">

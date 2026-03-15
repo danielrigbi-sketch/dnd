@@ -562,6 +562,12 @@ export class MapEngine {
   getBgTileCount()    { if (this.L.mode !== 'phantom') return null; const fit = this._getBgFit(); const { pps } = this.S.cfg; return { cols: Math.max(1, Math.floor(fit.w / pps)), rows: Math.max(1, Math.floor(fit.h / pps)) }; }
 
   _loadBg(url) {
+    // Reject YouTube URLs — those must go through loadBgVideo(), not here
+    if (/youtu\.?be/i.test(url)) {
+      if (typeof window.showToast === 'function') window.showToast('Use the Animated (YouTube) option in the Scene Wizard for YouTube links.', 'warning');
+      this.L.bgLoading = false;
+      return;
+    }
     // Keep the old image visible while the new one loads (prevents checkerboard flash)
     this.L.bgLoading = true;
     const img = new Image(); img.crossOrigin = 'anonymous';
