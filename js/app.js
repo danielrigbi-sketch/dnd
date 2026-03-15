@@ -752,6 +752,9 @@ function initMap() {
     mapEngine.initVideo(container);
     resize();
     window.addEventListener('resize', resize);
+    // Also observe the container directly — catches layout changes (e.g. side panel expanding)
+    // that don't fire a window resize event
+    new ResizeObserver(resize).observe(container);
 
     // Show scene manager for DM
     if (userRole === 'dm') {

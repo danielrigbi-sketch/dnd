@@ -123,9 +123,8 @@ export class MovementSystem {
 
     const { ctx } = e;
     const { pps, ox, oy } = e.S.cfg;
+    // NOTE: ctx already has translate(vx,vy)+scale(vs,vs) from mapEngine._render()
     ctx.save();
-    ctx.translate(e.vx, e.vy);
-    ctx.scale(e.vs, e.vs);
 
     // BFS flood-fill (Chebyshev) within remaining squares
     const visited = new Set();
@@ -174,9 +173,8 @@ export class MovementSystem {
                  : sq <= speedSq * 2 ? 'rgba(230,126,34,0.90)'
                  :                     'rgba(231,76,60,0.90)';
 
+    // NOTE: ctx already has translate(vx,vy)+scale(vs,vs) from mapEngine._render()
     ctx.save();
-    ctx.translate(e.vx, e.vy);
-    ctx.scale(e.vs, e.vs);
     ctx.strokeStyle = stroke;
     ctx.lineWidth = 3 / e.vs;
     ctx.setLineDash([8 / e.vs, 4 / e.vs]);
