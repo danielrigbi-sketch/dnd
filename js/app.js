@@ -17,6 +17,7 @@ import { openNPCPanel, closeNPCPanel } from "./npcPanel.js";
 import { generateNPC } from "./faker.js";
 import { printHandout, openWatabou, captureMapCanvas } from "./handout.js"; // E7
 import { iconHTML } from "./icons.js";
+import { initMonsterBook } from "./monsterBook.js";
 
 // Expose Wave 2 panels globally
 window.openStatBlock     = openStatBlock;
@@ -398,12 +399,14 @@ export async function startGame(role, charData, roomCode) {
         pColor       = "#c0392b";
         charPortrait = document.getElementById('user-avatar')?.src || "assets/logo.png";
         document.getElementById('master-combat-btn').style.display    = 'block';
-        document.getElementById('dm-npc-controls').style.display      = 'flex';
+        document.getElementById('dm-npc-section').style.display       = 'block';
         document.getElementById('dm-turn-controls').style.display     = 'none';
         document.getElementById('reroll-initiatives-btn').style.display = 'block';
         document.getElementById('npc-gen-btn').style.display          = 'block';
+        document.getElementById('monster-book-btn').style.display     = 'block';
         document.getElementById('short-rest-btn').style.display       = 'none';
         localStorage.setItem('critroll_cName', 'DM');
+        initMonsterBook();
         populateMonsterSelect();
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true });
     }
@@ -955,6 +958,14 @@ window.deactivateScene = () => {
 window.toggleScenePanel = () => {
     const panel = document.getElementById('scene-panel');
     const chev  = document.getElementById('scene-mgr-chevron');
+    const open  = panel.style.display === 'none';
+    panel.style.display = open ? 'flex' : 'none';
+    if (chev) chev.textContent = open ? '▲' : '▼';
+};
+
+window.toggleNPCPanel = () => {
+    const panel = document.getElementById('dm-npc-controls');
+    const chev  = document.getElementById('npc-panel-chevron');
     const open  = panel.style.display === 'none';
     panel.style.display = open ? 'flex' : 'none';
     if (chev) chev.textContent = open ? '▲' : '▼';
