@@ -138,7 +138,44 @@ export class PixiLayer {
       }
     }
 
-    // Create or update each token
+    // Pass 1: compute token screen centres for label offset calculation
+    const _centres = {};
+    for (const [cn, tk] of Object.entries(tokens)) {
+      const pl = players[cn] || {};
+      const tileSize    = getTileSize(pl.size);
+      const visualScale = getVisualScale(pl.size);
+      const renderSize  = Math.round(tileSize * pps * visualScale);
+      const tinyOff = tileSize === 1 ? Math.round((pps - renderSize) / 2) : 0;
+      _centres[cn] = {
+        cx: ox + tk.gx * pps + tinyOff + renderSize / 2,
+        cy: oy + tk.gy * pps + tinyOff + renderSize / 2,
+        size: renderSize,
+      };
+    }
+
+    // Pass 2: for each token, compute a label direction vector that pushes away from neighbours
+    const _labelOffsets = {};
+    for (const cn of Object.keys(tokens)) {
+      const { cx, cy } = _centres[cn];
+      let fdx = 0, fdy = 0;
+      for (const [other, { cx: ocx, cy: ocy }] of Object.entries(_centres)) {
+        if (other === cn) continue;
+        const ddx = cx - ocx, ddy = cy - ocy;
+        const dist = Math.hypot(ddx, ddy);
+        const threshold = pps * 2.5;
+        if (dist < threshold && dist > 0) {
+          const w = 1 - dist / threshold; // stronger push when closer
+          fdx += (ddx / dist) * w;
+          fdy += (ddy / dist) * w;
+        }
+      }
+      // Bias toward straight-down so label stays below when no neighbours
+      fdy += 0.6;
+      const len = Math.hypot(fdx, fdy) || 1;
+      _labelOffsets[cn] = { dx: fdx / len, dy: fdy / len };
+    }
+
+    // Pass 3: create or update each token sprite
     for (const [cn, tk] of Object.entries(tokens)) {
       const pl = players[cn] || {};
       const isActive = cn === activeName;
@@ -172,7 +209,7 @@ export class PixiLayer {
         this._tokens.set(cn, this._createTokenSprite(cn, pl, renderSize));
       }
 
-      this._updateTokenSprite(this._tokens.get(cn), cn, pl, tk, px, py, renderSize, isActive, isGhost, isDying, stackCount);
+      this._updateTokenSprite(this._tokens.get(cn), cn, pl, tk, px, py, renderSize, isActive, isGhost, isDying, stackCount, _labelOffsets[cn]);
     }
   }
 
@@ -271,6 +308,10 @@ export class PixiLayer {
     const hpBar = new Graphics();
     container.addChild(hpBar);
 
+    // Leader line from token centre to label (shown when label is offset sideways)
+    const leaderLine = new Graphics();
+    container.addChild(leaderLine);
+
     // Name badge (pill background + text)
     const nameBadge = new Graphics();
     container.addChild(nameBadge);
@@ -295,11 +336,11 @@ export class PixiLayer {
     container.addChild(stackText);
 
     this._root.addChild(container);
-    return { container, shadow, glow, portrait, mask, initialText, hpBar, nameBadge, nameText, stackBadge, stackText, size, lastPortrait: null };
+    return { container, shadow, glow, portrait, mask, initialText, hpBar, leaderLine, nameBadge, nameText, stackBadge, stackText, size, lastPortrait: null };
   }
 
-  _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying, stackCount = 0) {
-    const { container, shadow, glow, portrait, mask, initialText, hpBar, nameBadge, nameText, stackBadge, stackText } = obj;
+  _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying, stackCount = 0, labelOffset = { dx: 0, dy: 1 }) {
+    const { container, shadow, glow, portrait, mask, initialText, hpBar, leaderLine, nameBadge, nameText, stackBadge, stackText } = obj;
 
     container.x = px;
     container.y = py;
@@ -395,17 +436,29 @@ export class PixiLayer {
       hpBar.roundRect(bx + bw - 1, by, 1, bh, 0).fill({ color: 0xffffff, alpha: 0 }); // spacer
     }
 
-    // ── Name badge (pill) — sits below the HP bar ──
+    // ── Name badge (pill) — positioned away from nearby tokens ──
     const label = cn.length > 12 ? cn.slice(0, 11) + '…' : cn;
     if (nameText.text !== label) nameText.text = label;
     nameText.style.fontSize = Math.max(13, size * 0.22);
-    nameText.x = size / 2;
-    nameText.y = size + 28;
+    // Label offset: radius from token centre where pill is placed
+    const labelRadius = size * 0.55 + 24;
+    const lx = size / 2 + labelOffset.dx * labelRadius;
+    const ly = size / 2 + labelOffset.dy * labelRadius + (pl.maxHp ? 6 : 0); // nudge past HP bar when present
+    nameText.x = lx;
+    nameText.y = ly;
     // Draw pill behind text
     nameBadge.clear();
     const tw = nameText.width + 10, th = nameText.height + 6;
-    nameBadge.roundRect(size / 2 - tw / 2, size + 28 - th / 2, tw, th, 6)
-             .fill({ color: 0x000000, alpha: 0.75 });
+    nameBadge.roundRect(lx - tw / 2, ly - th / 2, tw, th, 6)
+             .fill({ color: 0x000000, alpha: 0.80 });
+    // Leader line: only when label is significantly offset from "directly below"
+    leaderLine.clear();
+    const isDefaultPos = Math.abs(labelOffset.dx) < 0.15 && labelOffset.dy > 0.7;
+    if (!isDefaultPos) {
+      leaderLine.moveTo(size / 2, size / 2)
+                .lineTo(lx, ly)
+                .stroke({ color: 0xffffff, alpha: 0.35, width: 1.5 });
+    }
 
     // ── Stacking badge ──
     stackBadge.clear();

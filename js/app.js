@@ -540,8 +540,9 @@ window.roll = async (type, isInit = false) => {
     if (!isInit) { isCooldown = true; setDiceCooldown(true); }
     playStartRollSound(isMuted);
     let rollCName = cName, rollPName = pName, rollColor = pColor;
-    if (userRole === 'dm' && activeRoller && !isInit) {
+    if (userRole === 'dm' && activeRoller) {
         rollCName = activeRoller.cName; rollPName = activeRoller.pName; rollColor = activeRoller.color;
+        await updateDiceColor(rollColor);
     } else { await updateDiceColor(pColor); }
     let finalRes, res1 = null, res2 = null;
     try {
@@ -676,8 +677,20 @@ window.rollInit = async () => {
     const btn = document.getElementById('init-btn');
     if (btn) btn.disabled = true;
     if (!await db.getCombatStatus()) { if (btn) btn.disabled = false; showToast(t('alert_not_started'), 'error'); return; }
-    const rollResult = await window.roll('d20', true);
-    db.setPlayerInitiativeInDB(cName, pName, rollResult, pColor);
+    // When DM acts as a monster, roll initiative for that monster
+    const targetName  = (userRole === 'dm' && activeRoller) ? activeRoller.cName  : cName;
+    const targetPName = (userRole === 'dm' && activeRoller) ? activeRoller.pName  : pName;
+    const targetColor = (userRole === 'dm' && activeRoller) ? activeRoller.color  : pColor;
+    let rollResult;
+    if (isDiceBoxReady) {
+        rollResult = await window.roll('d20', true);
+    } else {
+        // Fallback: plain random d20 when 3D dice box not yet ready (e.g. late-joining player)
+        const mod = parseInt(localStorage.getItem('critroll_initBonus')) || 0;
+        rollResult = Math.ceil(Math.random() * 20) + mod;
+    }
+    if (rollResult == null) { if (btn) btn.disabled = false; return; }
+    db.setPlayerInitiativeInDB(targetName, targetPName, rollResult, targetColor);
 };
 
 window.handlePresetChange = (val) => {

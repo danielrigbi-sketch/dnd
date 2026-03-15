@@ -117,10 +117,10 @@ export class TokenSystem {
     if (isDM && (m === 'fogReveal' || m === 'wizFog')) { eng.L.painting = true; eng._revealCell(gx, gy); return; }
     if (isDM && (m === 'fogHide'  || m === 'wizFogHide')) { eng.L.painting = true; eng._hideCell(gx, gy); return; }
 
-    // Token drag
+    // Token drag — DM can drag any token; players can always drag their own token
     const tn = this.tokenAt(wx, wy);
     if (tn) {
-      const ok = isDM || this._isMyTurn(tn);
+      const ok = isDM || tn === eng.cName;
       if (ok) {
         const tk = eng.S.tokens[tn];
         eng.L.drag = { cName: tn, startGX: tk.gx, startGY: tk.gy, curGX: tk.gx, curGY: tk.gy, path: [[tk.gx, tk.gy]] };
@@ -133,7 +133,7 @@ export class TokenSystem {
     // E6-C: Click-to-move (player clicks empty floor cell on their turn)
     if (m === 'view' && !isDM && eng.cName) {
       const myTk = eng.S.tokens[eng.cName];
-      if (myTk && this._isMyTurn(eng.cName) && !this.tokenAt(wx, wy)) {
+      if (myTk && !this.tokenAt(wx, wy)) {
         const { cols = 40, rows = 30 } = eng.S.cfg;
         if (!eng._pf.isReady) eng._pf.setGrid(eng.S.obstacles, cols, rows);
         eng._pf.find(myTk.gx, myTk.gy, gx, gy).then(path => {
