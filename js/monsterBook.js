@@ -8,6 +8,7 @@
 
 import { fetchMonsters, open5eToNPC, normaliseType } from './open5e.js';
 import { t } from './i18n.js';
+import { translateIfHe, translateAllIfHe } from './translator.js';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let _search     = '';
@@ -235,7 +236,7 @@ function _buildList() {
 
 let _selectedPortrait = '';
 
-function _showCustomizeForm(slug) {
+async function _showCustomizeForm(slug) {
   const m = _results.find(r => r.slug === slug);
   if (!m) return;
 
@@ -252,6 +253,7 @@ function _showCustomizeForm(slug) {
   `;
   const labelStyle = `font-size:11px; color:#aaa; display:block;`;
 
+  // Render the skeleton form immediately so the user isn't waiting
   _renderResults(`
     <div style="padding:4px;">
       <button id="mb-back-btn"
@@ -272,6 +274,11 @@ function _showCustomizeForm(slug) {
           </div>
           ${m.alignment ? `<div style="font-size:10px; color:#777; margin-top:2px;">${m.alignment}</div>` : ''}
         </div>
+      </div>
+
+      <!-- Lore / depiction placeholder — filled by async translation -->
+      <div id="mb-lore-section" style="margin-bottom:10px;">
+        ${m.desc ? `<div style="color:#555; font-size:11px; font-style:italic;">${t('loading') || 'טוען...'}</div>` : ''}
       </div>
 
       <!-- Portrait picker -->
@@ -306,14 +313,13 @@ function _showCustomizeForm(slug) {
         </label>
       </div>
 
-      ${m.special_abilities?.length ? `
-        <div style="font-size:10px; color:#666; margin-bottom:8px; padding:6px 8px;
-                    background:rgba(255,255,255,0.03); border-radius:5px; border-left:2px solid ${col};">
-          <strong style="color:#888;">${t('mb_abilities') || 'יכולות מיוחדות'}:</strong>
-          ${m.special_abilities.slice(0,3).map(a => `<span style="color:#777;"> ${a.name}.</span>`).join('')}
-          ${m.special_abilities.length > 3 ? `<span style="color:#555;"> +${m.special_abilities.length - 3} more</span>` : ''}
-        </div>
-      ` : ''}
+      <!-- Special abilities placeholder — filled by async translation -->
+      <div id="mb-abilities-section" style="margin-bottom:8px;">
+        ${m.special_abilities?.length ? `<div style="color:#555; font-size:11px; font-style:italic;">${t('loading') || 'טוען...'}</div>` : ''}
+      </div>
+
+      <!-- Actions placeholder -->
+      <div id="mb-actions-section" style="margin-bottom:10px;"></div>
 
       <button id="mb-spawn-confirm"
         style="width:100%; padding:10px; border-radius:8px; font-size:13px; font-weight:700;
@@ -339,8 +345,81 @@ function _showCustomizeForm(slug) {
     _doSpawn(m, finalName, { ...stats, ...overrides }, col);
   };
 
-  // Load portrait options asynchronously — doesn't block form
+  // Run translations + portrait load in parallel — all non-blocking
   _loadPortraitPicker(slug, m.name);
+  _loadLoreSection(m, col);
+  _loadAbilitiesSection(m, col);
+}
+
+// ── Async lore & abilities loaders ────────────────────────────────────────────
+
+async function _loadLoreSection(m, col) {
+  const el = document.getElementById('mb-lore-section');
+  if (!el || !m.desc) return;
+
+  const lore = await translateIfHe(m.desc);
+  if (!document.getElementById('mb-lore-section')) return; // user navigated away
+
+  el.innerHTML = `
+    <div style="padding:8px 10px; background:rgba(255,255,255,0.03); border-radius:6px;
+                border-left:3px solid ${col}; margin-bottom:4px;">
+      <div style="font-size:10px; font-weight:700; color:#888; margin-bottom:4px; letter-spacing:0.5px;">
+        ${t('mb_lore') || '📜 רקע ותיאור'}
+      </div>
+      <div style="font-size:11px; color:#bbb; line-height:1.55; max-height:100px; overflow-y:auto;">
+        ${lore}
+      </div>
+    </div>
+  `;
+}
+
+async function _loadAbilitiesSection(m, col) {
+  const abEl = document.getElementById('mb-abilities-section');
+  const acEl = document.getElementById('mb-actions-section');
+
+  // Translate special abilities
+  if (abEl && m.special_abilities?.length) {
+    const abilities = m.special_abilities.slice(0, 5);
+    const descs     = await translateAllIfHe(abilities.map(a => a.desc || ''));
+    if (!document.getElementById('mb-abilities-section')) return;
+
+    abEl.innerHTML = `
+      <div style="font-size:10px; font-weight:700; color:#888; margin-bottom:4px; letter-spacing:0.5px;">
+        ✨ ${t('mb_abilities') || 'יכולות מיוחדות'}
+      </div>
+      ${abilities.map((a, i) => `
+        <div style="margin-bottom:5px; padding:5px 8px; background:rgba(255,255,255,0.03);
+                    border-radius:5px; border-left:2px solid ${col}88;">
+          <div style="font-size:11px; font-weight:700; color:#ddd;">${a.name}</div>
+          ${descs[i] ? `<div style="font-size:10px; color:#888; margin-top:2px; line-height:1.4;">${descs[i]}</div>` : ''}
+        </div>
+      `).join('')}
+      ${m.special_abilities.length > 5 ? `<div style="font-size:10px; color:#555; padding:2px 8px;">+${m.special_abilities.length - 5} more…</div>` : ''}
+    `;
+  }
+
+  // Translate main actions
+  if (acEl && m.actions?.length) {
+    const actions = m.actions.slice(0, 4);
+    const descs   = await translateAllIfHe(actions.map(a => a.desc || ''));
+    if (!document.getElementById('mb-actions-section')) return;
+
+    acEl.innerHTML = `
+      <div style="font-size:10px; font-weight:700; color:#888; margin-bottom:4px; letter-spacing:0.5px;">
+        ⚔️ ${t('mb_actions') || 'פעולות'}
+      </div>
+      ${actions.map((a, i) => `
+        <div style="margin-bottom:5px; padding:5px 8px; background:rgba(255,255,255,0.03);
+                    border-radius:5px; border-left:2px solid #e74c3c55;">
+          <div style="font-size:11px; font-weight:700; color:#ddd;">
+            ${a.name}${a.attack_bonus != null ? ` <span style="color:#f1948a; font-weight:400;">(+${a.attack_bonus})</span>` : ''}
+            ${a.damage_dice ? ` <span style="color:#aaa; font-size:10px;">${a.damage_dice}</span>` : ''}
+          </div>
+          ${descs[i] ? `<div style="font-size:10px; color:#888; margin-top:2px; line-height:1.4;">${descs[i]}</div>` : ''}
+        </div>
+      `).join('')}
+    `;
+  }
 }
 
 async function _loadPortraitPicker(slug, name) {
