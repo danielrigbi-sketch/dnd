@@ -1225,6 +1225,11 @@ function _activateMapCanvas(sceneData) {
       mapEngine._pixiInited = true;
       mapEngine.initPixi(container); // async, non-blocking
     }
+    // 3D mini layer — init once alongside PixiJS
+    if (!mapEngine._miniInited) {
+      mapEngine._miniInited = true;
+      mapEngine.initMini(container);
+    }
     // SD-3: Iris wipe — cinematic reveal when scene loads
     mapEngine.startIris('open');
     // Sync video toolbar button visibility after a short delay (YT player needs time to init)

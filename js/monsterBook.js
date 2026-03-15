@@ -296,6 +296,13 @@ async function _showCustomizeForm(slug) {
         <label style="${labelStyle}">${t('mb_name') || 'Name'}
           <input id="mb-c-name" value="${m.name.replace(/"/g, '&quot;')}" style="${inputStyle}">
         </label>
+        <label style="${labelStyle}">${t('gender_label') || 'Gender'}
+          <select id="mb-c-gender" style="${inputStyle}">
+            <option value="male"${(stats.gender||'male')==='male'?' selected':''}>♂ Male</option>
+            <option value="female"${(stats.gender||'')==='female'?' selected':''}>♀ Female</option>
+            <option value="nonbinary"${(stats.gender||'')==='nonbinary'?' selected':''}>⚧ Non-binary</option>
+          </select>
+        </label>
         <label style="${labelStyle}">HP (Max)
           <input id="mb-c-hp" type="number" value="${stats.maxHp}" min="1" style="${inputStyle}">
         </label>
@@ -379,6 +386,7 @@ async function _showCustomizeForm(slug) {
     const newDex    = _n('mb-c-_dex') || 10;
     const initBonus = Math.floor((newDex - 10) / 2);
     const overrides = {
+      gender:   document.getElementById('mb-c-gender')?.value || 'male',
       maxHp:    _n('mb-c-hp')       || stats.maxHp,
       hp:       _n('mb-c-hp')       || stats.hp,
       ac:       _n('mb-c-ac')       || stats.ac,
