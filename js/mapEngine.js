@@ -74,7 +74,7 @@ export class MapEngine {
 
     // ── Shared state (Firebase-synced) ────────────────────────────────
     this.S = {
-      cfg:        { bgUrl: '', bgVideoUrl: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20 },
+      cfg:        { bgUrl: '', bgVideoUrl: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20, fowEnabled: false },
       atmosphere: { weather: 'none', ambientLight: 'bright', globalDarkvision: 0 },
       tokens:     {},
       fog:        {},
@@ -277,6 +277,7 @@ export class MapEngine {
       const dragging   = this.L.drag?.cName;
       this._pixi.setTransform(this.vx, this.vy, this.vs);
       this._pixi.syncTokens(this.S.tokens, this.S.players, activeName, this.S.cfg, dragging);
+      this._pixi.renderFrame(); // PixiJS ticker is stopped; force render each frame
     }
     this.movement.renderPath();
     this._rRuler();
@@ -295,7 +296,7 @@ export class MapEngine {
       this.tileEngine.render(this.ctx, this.S.cfg, this.vx, this.vy, this.vs);
     }
 
-    this.fow.render();
+    if (this.S.cfg.fowEnabled) this.fow.render();
     this._rWeather();
     this.movement.renderHUD();
     this._rModeHUD();

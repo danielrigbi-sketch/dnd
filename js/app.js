@@ -779,7 +779,39 @@ function initMap() {
     window._mapToolBtn = (btn) => {
         document.querySelectorAll('.map-tb-btn[data-mode]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        mapEngine?.setMode(btn.dataset.mode);
+        const mode = btn.dataset.mode;
+        mapEngine?.setMode(mode);
+        // Show/hide calibration panel
+        const panel = document.getElementById('map-calib-panel');
+        if (panel) {
+            panel.style.display = mode === 'calibrate' ? 'block' : 'none';
+            if (mode === 'calibrate') window._calibRefresh();
+        }
+    };
+
+    // Calibration panel helpers
+    window._calibRefresh = () => {
+        const cfg = window._mapEng?.S?.cfg;
+        if (!cfg) return;
+        document.getElementById('calib-pps').textContent = Math.round(cfg.pps);
+        document.getElementById('calib-ox').textContent  = Math.round(cfg.ox);
+        document.getElementById('calib-oy').textContent  = Math.round(cfg.oy);
+    };
+    window._calibNudge = (field, delta) => {
+        const eng = window._mapEng;
+        if (!eng) return;
+        if (field === 'pps') {
+            eng.S.cfg.pps = Math.max(16, Math.min(200, eng.S.cfg.pps + delta));
+        } else {
+            eng.S.cfg[field] = (eng.S.cfg[field] || 0) + delta;
+        }
+        eng.saveGridToFirebase();
+        eng._dirty();
+        window._calibRefresh();
+    };
+    window._calibDone = () => {
+        const btn = document.querySelector('.map-tb-btn[data-mode="view"]');
+        if (btn) btn.click();
     };
 
     // Video background toolbar button — toggle play/pause or prompt for a new URL
@@ -821,6 +853,18 @@ function initMap() {
         // Skip if typing in an input
         if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
         const keyMap = { v:'view', o:'obstacle', t:'trigger', f:'fogReveal', h:'fogHide', r:'ruler', a:'aoe', c:'calibrate' };
+        // Arrow keys for calibration nudge when in calibrate mode
+        if (window._mapEng?.L?.mode === 'calibrate') {
+            const arrowMap = {
+                ArrowLeft: () => window._calibNudge('ox', e.shiftKey ? -5 : -1),
+                ArrowRight:() => window._calibNudge('ox', e.shiftKey ?  5 :  1),
+                ArrowUp:   () => window._calibNudge('oy', e.shiftKey ? -5 : -1),
+                ArrowDown: () => window._calibNudge('oy', e.shiftKey ?  5 :  1),
+                PageUp:    () => window._calibNudge('pps', e.shiftKey ? 5 : 1),
+                PageDown:  () => window._calibNudge('pps', e.shiftKey ? -5 : -1),
+            };
+            if (arrowMap[e.key]) { e.preventDefault(); arrowMap[e.key](); return; }
+        }
         const mode = keyMap[e.key.toLowerCase()];
         if (mode) {
             const btn = document.querySelector(`.map-tb-btn[data-mode="${mode}"]`);
@@ -1033,6 +1077,8 @@ function _activateMapCanvas(sceneData) {
         mapEngine.loadBgUrl(sceneData.bgUrl);
     }
     if (sceneData.atmosphere) mapEngine.setAtmosphere(sceneData.atmosphere);
+    // Apply scene-level FOW toggle (default off when not explicitly set)
+    mapEngine.S.cfg.fowEnabled = !!(sceneData.config?.fowEnabled);
     const container = document.getElementById('map-canvas-container');
     container?.classList.remove('map-bg-hidden');
     container?.classList.add('map-bg-active');

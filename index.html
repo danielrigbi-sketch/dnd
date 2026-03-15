@@ -451,6 +451,34 @@
                         <div id="map-token-roster"></div>
                     </div>
 
+                    <!-- Grid Calibration Panel (shown when Calibrate mode is active) -->
+                    <div id="map-calib-panel" style="display:none;">
+                        <div class="map-popup-title">🔲 Grid Calibration</div>
+                        <div class="calib-row">
+                            <span class="calib-label">Tile size</span>
+                            <button class="calib-btn" onclick="window._calibNudge('pps',-1)">−</button>
+                            <span class="calib-val" id="calib-pps">64</span>
+                            <span class="calib-unit">px</span>
+                            <button class="calib-btn" onclick="window._calibNudge('pps',1)">+</button>
+                        </div>
+                        <div class="calib-row">
+                            <span class="calib-label">Offset X</span>
+                            <button class="calib-btn" onclick="window._calibNudge('ox',-1)">←</button>
+                            <span class="calib-val" id="calib-ox">0</span>
+                            <span class="calib-unit">px</span>
+                            <button class="calib-btn" onclick="window._calibNudge('ox',1)">→</button>
+                        </div>
+                        <div class="calib-row">
+                            <span class="calib-label">Offset Y</span>
+                            <button class="calib-btn" onclick="window._calibNudge('oy',-1)">↑</button>
+                            <span class="calib-val" id="calib-oy">0</span>
+                            <span class="calib-unit">px</span>
+                            <button class="calib-btn" onclick="window._calibNudge('oy',1)">↓</button>
+                        </div>
+                        <div class="calib-hint">Arrow keys nudge offset · Shift+Arrow adjusts tile size · Click+drag one tile on map</div>
+                        <button class="wiz-btn gold" style="width:100%;margin-top:8px;font-size:11px;" onclick="window._calibDone()">✓ Done</button>
+                    </div>
+
                     <!-- Floating UI above map (always visible) -->
                     <div id="log-container">
                         <div class="log-header" data-i18n="event_log"></div>

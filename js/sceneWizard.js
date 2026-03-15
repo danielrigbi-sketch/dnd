@@ -498,7 +498,14 @@ export class SceneWizard {
           <option value="0"  ${atm.globalDarkvision===0?'selected':''}>👁 ${t('wiz_dv_per')}</option>
           <option value="30" ${atm.globalDarkvision===30?'selected':''}>🦅 ${t('wiz_dv_30')}</option>
           <option value="60" ${atm.globalDarkvision===60?'selected':''}>🐱 ${t('wiz_dv_60')}</option>
-        </select>`;
+        </select>
+        <div class="wiz-section" style="margin-top:16px;">Fog of War</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:#ccc;">
+          <input type="checkbox" id="wiz-fow-enabled" ${this._data.config?.fowEnabled ? 'checked' : ''}
+            style="width:16px;height:16px;cursor:pointer;">
+          Enable Fog of War &amp; Line-of-Sight
+        </label>
+        <div class="wiz-tip" style="margin-top:6px;">When off, all tiles are fully visible to all players. Turn on for stealth-heavy sessions where exploration matters.</div>`;
 
       // ──── Step 5: Save ────────────────────────────────────────────────
       case 5: return `
@@ -849,6 +856,10 @@ export class SceneWizard {
     });
     document.getElementById('wiz-dv')?.addEventListener('change', e => {
       atm.globalDarkvision = parseInt(e.target.value) || 0;
+    });
+    document.getElementById('wiz-fow-enabled')?.addEventListener('change', e => {
+      this._data.config = { ...this._data.config, fowEnabled: e.target.checked };
+      if (eng) { eng.S.cfg.fowEnabled = e.target.checked; eng._dirty(); }
     });
 
     // ── Step 5: Save ──────────────────────────────────────────────────────

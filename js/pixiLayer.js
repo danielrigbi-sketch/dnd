@@ -402,6 +402,13 @@ export class PixiLayer {
     }
   }
 
+  /** Force PixiJS to render the current scene tree to its canvas.
+   *  Must be called each frame — the ticker is stopped by default (only runs for particles). */
+  renderFrame() {
+    if (!this._ready) return;
+    this._app.renderer.render(this._app.stage);
+  }
+
   _resize(container) {
     if (!this._ready) return;
     this._app.renderer.resize(container.clientWidth, container.clientHeight);

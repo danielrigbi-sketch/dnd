@@ -78,6 +78,27 @@
 .map-dash-btn.danger { background:rgba(231,76,60,0.2); border-color:var(--cr-hp-low); color:#ff7675; }
 .map-dash-btn.danger:hover { background:rgba(231,76,60,0.4); }
 
+/* ── Grid Calibration Panel ─── */
+#map-calib-panel {
+    position:absolute; top:66px; left:50%; transform:translateX(-50%); z-index:30;
+    background:rgba(10,8,20,0.97); border:1.5px solid rgba(241,196,15,0.55);
+    border-radius:12px; padding:12px 14px; min-width:220px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.7);
+}
+.calib-row { display:flex; align-items:center; gap:6px; margin-bottom:7px; }
+.calib-label { font-size:10px; color:#aaa; width:55px; flex-shrink:0; }
+.calib-val { font-size:14px; font-weight:bold; color:#fff; min-width:32px; text-align:center; }
+.calib-unit { font-size:10px; color:#666; }
+.calib-btn {
+    width:26px; height:26px; background:rgba(241,196,15,0.15);
+    border:1px solid rgba(241,196,15,0.3); color:var(--cr-gold);
+    border-radius:6px; cursor:pointer; font-size:14px; font-weight:bold;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    transition:0.1s;
+}
+.calib-btn:hover { background:rgba(241,196,15,0.35); }
+.calib-hint { font-size:9px; color:#666; text-align:center; margin-top:4px; line-height:1.5; }
+
 /* ── Scene Manager in side panel ─── */
 .scene-mgr-header {
     display:flex; align-items:center; justify-content:space-between;
