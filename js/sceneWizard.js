@@ -1055,8 +1055,9 @@ export class SceneWizard {
     if (goLive && this.db) {
       this.db.setMapCfg(this.activeRoom, {
         ...sceneData.config,
-        bgUrl:      sceneData.bgVideoUrl ? '' : sceneData.bgUrl,
+        bgUrl:      sceneData.bgVideoUrl ? '' : (sceneData.bgUrl || ''),
         bgVideoUrl: sceneData.bgVideoUrl || '',
+        bgBase64:   sceneData.bgVideoUrl ? '' : (sceneData.bgBase64 || ''),
       });
       if (Object.keys(sceneData.fog).length)
         this.db.revealFogCells(this.activeRoom, sceneId, sceneData.fog);
