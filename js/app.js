@@ -533,6 +533,7 @@ export async function startGame(role, charData, roomCode) {
         document.getElementById('reroll-initiatives-btn').style.display = 'block';
         document.getElementById('npc-gen-btn').style.display          = 'block';
         document.getElementById('monster-book-btn').style.display     = 'block';
+        document.getElementById('dm-music-btn').style.display         = 'block';
         document.getElementById('short-rest-btn').style.display       = 'none';
         localStorage.setItem('critroll_cName', 'DM');
         initMonsterBook();

@@ -97,6 +97,21 @@ if(inputUrl) {
     });
 }
 
+// ── 3D Mini preview description ────────────────────────────────────────────
+function _updateMiniDesc() {
+    const desc = document.getElementById('cb-mini-desc');
+    if (!desc) return;
+    const race   = document.getElementById('cb-race')?.value  || '';
+    const cls    = document.getElementById('cb-class')?.value || '';
+    const gender = document.getElementById('cb-gender')?.value || 'male';
+    if (!race && !cls) { desc.textContent = 'Select Race + Class + Gender above'; return; }
+    const gLabel = { male: 'Male', female: 'Female', nonbinary: 'Non-binary' }[gender] || gender;
+    desc.textContent = `${race || '?'} ${cls || '?'} · ${gLabel} — auto-generated on map`;
+}
+['cb-race', 'cb-class', 'cb-gender'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', _updateMiniDesc);
+});
+
 if(inputFile) {
     inputFile.addEventListener('change', async (e) => {
         const file = e.target.files[0];
@@ -258,6 +273,7 @@ function openBuilderForEdit(charId) {
         switchPortraitTab(tabPreset, areaPreset);
         document.querySelectorAll('.builder-portrait-btn').forEach(btn => { btn.classList.remove('active'); if (btn.src === selectedPortrait) btn.classList.add('active'); });
     }
+    _updateMiniDesc();
     if (attacksList) attacksList.innerHTML = '';
     // Sprint 6: load spell slots
     for (let lv = 1; lv <= 9; lv++) {
@@ -295,6 +311,7 @@ if(newCharBtn) {
         document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('.builder-portrait-btn').classList.add('active');
         if (attacksList) attacksList.innerHTML = '';
+        _updateMiniDesc();
     };
 }
 
