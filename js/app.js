@@ -343,6 +343,17 @@ function _updateMusicNowPlaying() {
         el.textContent = 'No track playing';
     }
     if (muteBtn) muteBtn.textContent = musicPlayer.localMuted ? '🔇' : '🔊';
+    // Player music button — visible when music is active (all roles)
+    const playerBtn = document.getElementById('player-music-btn');
+    if (playerBtn) {
+        const hasTrack = !!musicPlayer.currentId;
+        // Hide for DM (they use the toolbar button); show for everyone else when music is active
+        const isDM = document.getElementById('map-toolbar')?.style.display !== 'none';
+        playerBtn.style.display = (hasTrack && !isDM) ? 'flex' : 'none';
+        playerBtn.style.alignItems = 'center';
+        playerBtn.style.justifyContent = 'center';
+        playerBtn.textContent = musicPlayer.localMuted ? '🔇' : '🔊';
+    }
 }
 
 window._toggleMusicPanel = () => {

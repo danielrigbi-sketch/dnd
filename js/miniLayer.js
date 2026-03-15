@@ -36,7 +36,7 @@ let _renderer  = null;
 let _scene     = null;
 let _camera    = null;
 let _canvas    = null;
-let _clock     = null;
+let _lastTick  = 0;   // replaces THREE.Clock (deprecated in r183)
 let _raf       = null;
 let _w = 1, _h = 1;
 
@@ -75,7 +75,6 @@ export function initMiniLayer(containerEl) {
   _renderer.setClearColor(0x000000, 0);
 
   _scene  = new THREE.Scene();
-  _clock  = new THREE.Clock();
   _camera = _makeCamera(_w, _h);
 
   // Lighting rig
@@ -227,8 +226,9 @@ function _updateToken(cn, tk, pl, pps, activeName) {
   const pixelSize = pps * tileSize * _vs * MINI_SCALE;
 
   // Screen-space centre of this token's footprint
-  const sx = _ox + (tk.gx + tileSize / 2) * pps * _vs + _vx;
-  const sy = _oy + (tk.gy + tileSize / 2) * pps * _vs + _vy;
+  // Transform mirrors PixiJS: translate(vx,vy) then scale(vs) → screen = vx + (ox + world)*vs
+  const sx = _vx + (_ox + (tk.gx + tileSize / 2) * pps) * _vs;
+  const sy = _vy + (_oy + (tk.gy + tileSize / 2) * pps) * _vs;
 
   // Three.js world: centre-origin, Y-up
   entry.group.position.set(sx - _w / 2, _h / 2 - sy, 0);
@@ -354,13 +354,14 @@ function _makePlaceholder(colorHex) {
 // ── Render loop ────────────────────────────────────────────────────────────────
 
 function _startLoop() {
-  const tick = () => {
+  const tick = (now) => {
     _raf = requestAnimationFrame(tick);
-    const dt = _clock.getDelta();
+    const dt = _lastTick ? (now - _lastTick) / 1000 : 0;
+    _lastTick = now;
     for (const e of _tokens.values()) e.mixer?.update(dt);
     _renderer.render(_scene, _camera);
   };
-  tick();
+  requestAnimationFrame(tick);
 }
 
 export function destroyMiniLayer() {
@@ -368,5 +369,5 @@ export function destroyMiniLayer() {
   for (const cn of [..._tokens.keys()]) _removeToken(cn);
   _renderer?.dispose();
   _canvas?.remove();
-  _renderer = null; _scene = null; _camera = null; _canvas = null;
+  _renderer = null; _scene = null; _camera = null; _canvas = null; _lastTick = 0;
 }
