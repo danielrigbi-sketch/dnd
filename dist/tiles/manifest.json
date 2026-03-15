@@ -1,0 +1,114 @@
+{
+  "tileSize": 16,
+  "cols": 8,
+  "rows": 8,
+  "source": "dungeon.png",
+  "source2x": "dungeon_2x.png",
+  "license": "CC0 \u2014 generated procedural tileset",
+  "tiles": {
+    "floor": {
+      "col": 0,
+      "row": 0
+    },
+    "floor_alt": {
+      "col": 1,
+      "row": 0
+    },
+    "void": {
+      "col": 2,
+      "row": 0
+    },
+    "water": {
+      "col": 3,
+      "row": 0
+    },
+    "grass": {
+      "col": 4,
+      "row": 0
+    },
+    "stone_floor": {
+      "col": 5,
+      "row": 0
+    },
+    "wood_floor": {
+      "col": 6,
+      "row": 0
+    },
+    "dirt": {
+      "col": 7,
+      "row": 0
+    },
+    "wall_n": {
+      "col": 0,
+      "row": 1
+    },
+    "wall_s": {
+      "col": 1,
+      "row": 1
+    },
+    "wall_e": {
+      "col": 2,
+      "row": 1
+    },
+    "wall_w": {
+      "col": 3,
+      "row": 1
+    },
+    "pillar": {
+      "col": 4,
+      "row": 1
+    },
+    "wall_corner": {
+      "col": 5,
+      "row": 1
+    },
+    "wall_rough": {
+      "col": 7,
+      "row": 1
+    },
+    "door_closed": {
+      "col": 0,
+      "row": 2
+    },
+    "door_open": {
+      "col": 1,
+      "row": 2
+    },
+    "door_locked": {
+      "col": 2,
+      "row": 2
+    },
+    "stairs_down": {
+      "col": 0,
+      "row": 3
+    },
+    "stairs_up": {
+      "col": 1,
+      "row": 3
+    },
+    "chest_closed": {
+      "col": 2,
+      "row": 3
+    },
+    "chest_open": {
+      "col": 3,
+      "row": 3
+    },
+    "altar": {
+      "col": 4,
+      "row": 3
+    },
+    "shrine": {
+      "col": 5,
+      "row": 3
+    },
+    "torch": {
+      "col": 6,
+      "row": 3
+    },
+    "barrel": {
+      "col": 7,
+      "row": 3
+    }
+  }
+}

@@ -162,27 +162,74 @@ export function open5eToNPC(m) {
     return parseFloat(cr) || 0;
   };
 
-  // Primary melee action (first action with attack_bonus)
-  const meleeAction = (m.actions || []).find(a => a.attack_bonus != null);
+  // Primary melee action (first action with attack_bonus, non-ranged)
+  const meleeAction  = (m.actions || []).find(a =>
+    a.attack_bonus != null &&
+    a.attack_type !== 'ranged' &&
+    !(a.desc || '').toLowerCase().includes('ranged weapon')
+  );
+  // Primary ranged action
+  const rangedAction = (m.actions || []).find(a =>
+    a.attack_type === 'ranged' ||
+    (a.desc || '').toLowerCase().includes('ranged weapon') ||
+    (a.desc || '').toLowerCase().includes('ranged attack')
+  );
 
   return {
+    // ── Core combat ──────────────────────────────────────────────────────────
     maxHp:       m.hit_points || 10,
     hp:          m.hit_points || 10,
     ac:          ac,
     speed:       speed,
     pp:          10 + Math.floor(((m.wisdom || 10) - 10) / 2),
     isHidden:    false,
-    melee:       meleeAction?.attack_bonus || 0,
-    meleeDmg:    meleeAction?.damage_dice  || '1d6',
-    ranged:      0,
-    rangedDmg:   '1d6',
-    monsterType: m.type || 'Humanoid',
+    melee:       meleeAction?.attack_bonus  ?? 0,
+    meleeDmg:    meleeAction?.damage_dice   || '1d6',
+    ranged:      rangedAction?.attack_bonus ?? 0,
+    rangedDmg:   rangedAction?.damage_dice  || '1d6',
+
+    // ── Identity ─────────────────────────────────────────────────────────────
+    monsterType: m.type        || 'Humanoid',
+    size:        m.size        || 'Medium',
+    alignment:   m.alignment   || '',
     cr:          parseCR(m.challenge_rating),
-    // Extended fields for stat block
+    xp:          m.xp          || 0,
+    hitDice:     m.hit_dice    || '',
+
+    // ── Ability scores ───────────────────────────────────────────────────────
+    _str: m.strength      || 10, _dex: m.dexterity     || 10,
+    _con: m.constitution  || 10, _int: m.intelligence   || 10,
+    _wis: m.wisdom        || 10, _cha: m.charisma       || 10,
+
+    // ── Saving throws (null = not proficient, use raw ability mod) ───────────
+    savingThrows: {
+      str: m.strength_save,     dex: m.dexterity_save,
+      con: m.constitution_save, int: m.intelligence_save,
+      wis: m.wisdom_save,       cha: m.charisma_save,
+    },
+
+    // ── Skills ───────────────────────────────────────────────────────────────
+    skills: m.skills || {},
+
+    // ── Damage modifiers ─────────────────────────────────────────────────────
+    damageImmunities:      m.damage_immunities      || '',
+    damageResistances:     m.damage_resistances     || '',
+    damageVulnerabilities: m.damage_vulnerabilities || '',
+    conditionImmunities:   m.condition_immunities   || '',
+
+    // ── Senses & language ────────────────────────────────────────────────────
+    senses:    m.senses    || '',
+    languages: m.languages || '',
+
+    // ── Full action lists ─────────────────────────────────────────────────────
+    actions:          m.actions           || [],
+    bonusActions:     m.bonus_actions     || [],
+    reactions:        m.reactions         || [],
+    legendaryActions: m.legendary_actions || [],
+    specialAbilities: m.special_abilities || [],
+
+    // ── Meta ──────────────────────────────────────────────────────────────────
     _open5eSlug: m.slug,
-    _str: m.strength  || 10, _dex: m.dexterity     || 10,
-    _con: m.constitution || 10, _int: m.intelligence || 10,
-    _wis: m.wisdom || 10, _cha: m.charisma || 10,
   };
 }
 
