@@ -254,7 +254,18 @@ export class PixiLayer {
     container.addChild(mask);
     container.addChild(portrait);
 
-    // HP bar
+    // Initial-letter fallback (shown when no portrait image)
+    const initialText = new Text({ text: '', style: new TextStyle({
+      fontFamily: 'Arial', fontSize: Math.max(20, size * 0.42),
+      fontWeight: 'bold', fill: 0xffffff,
+      stroke: { color: 0x00000, width: 3 },
+    })});
+    initialText.anchor.set(0.5, 0.5);
+    initialText.x = size / 2;
+    initialText.y = size / 2;
+    container.addChild(initialText);
+
+    // HP bar (sits just below the disc, above the name pill)
     const hpBar = new Graphics();
     container.addChild(hpBar);
 
@@ -268,7 +279,7 @@ export class PixiLayer {
     })});
     nameText.anchor.set(0.5, 0.5);
     nameText.x = size / 2;
-    nameText.y = size + 20;
+    nameText.y = size + 28;
     container.addChild(nameText);
 
     // Stacking badge (top-right corner)
@@ -282,11 +293,11 @@ export class PixiLayer {
     container.addChild(stackText);
 
     this._root.addChild(container);
-    return { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText, stackBadge, stackText, size, lastPortrait: null };
+    return { container, shadow, glow, portrait, mask, initialText, hpBar, nameBadge, nameText, stackBadge, stackText, size, lastPortrait: null };
   }
 
   _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying, stackCount = 0) {
-    const { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText, stackBadge, stackText } = obj;
+    const { container, shadow, glow, portrait, mask, initialText, hpBar, nameBadge, nameText, stackBadge, stackText } = obj;
 
     container.x = px;
     container.y = py;
@@ -325,8 +336,23 @@ export class PixiLayer {
         mask.circle(size / 2, size / 2, size * 0.44).fill(0xffffff);
         obj._hasPortrait = true;
       }).catch(() => {
-        portrait.texture = Texture.WHITE;
-        obj._hasPortrait = false;
+        // CORS failure — retry without crossOrigin via plain Image + canvas
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = c.height = 256;
+          try {
+            c.getContext('2d').drawImage(img, 0, 0, 256, 256);
+            portrait.texture = Texture.from(c);
+            portrait.width = size;
+            portrait.height = size;
+            mask.clear();
+            mask.circle(size / 2, size / 2, size * 0.44).fill(0xffffff);
+            obj._hasPortrait = true;
+          } catch (_) { obj._hasPortrait = false; }
+        };
+        img.onerror = () => { obj._hasPortrait = false; };
+        img.src = url;
       });
     } else if (!url) {
       portrait.texture = Texture.WHITE;
@@ -343,26 +369,40 @@ export class PixiLayer {
       portrait.tint = 0xffffff;
     }
 
-    // ── HP bar ──
+    // ── Initial letter (shown when no portrait) ──
+    initialText.style.fontSize = Math.max(20, size * 0.42);
+    if (obj._hasPortrait) {
+      initialText.visible = false;
+    } else {
+      // First letter of the token name, uppercased
+      initialText.text = (cn[0] || '?').toUpperCase();
+      initialText.x = size / 2;
+      initialText.y = size / 2;
+      initialText.visible = true;
+    }
+
+    // ── HP bar (just below disc, above name pill) ──
     hpBar.clear();
     if (pl.maxHp) {
       const pct = Math.max(0, (pl.hp || 0) / pl.maxHp);
-      const bw = size * 0.84, bh = 7, bx = (size - bw) / 2, by = size + 3;
-      hpBar.roundRect(bx, by, bw, bh, 3).fill({ color: 0x000000, alpha: 0.65 });
+      const bw = size * 0.84, bh = 8, bx = (size - bw) / 2, by = size + 4;
+      hpBar.roundRect(bx, by, bw, bh, 4).fill({ color: 0x000000, alpha: 0.70 });
       const barCol = pct > 0.5 ? 0x2ecc71 : pct > 0.25 ? 0xf39c12 : 0xe74c3c;
-      hpBar.roundRect(bx, by, bw * pct, bh, 3).fill(barCol);
+      hpBar.roundRect(bx, by, Math.max(bh, bw * pct), bh, 4).fill(barCol);
+      // HP fraction text inside / next to bar
+      hpBar.roundRect(bx + bw - 1, by, 1, bh, 0).fill({ color: 0xffffff, alpha: 0 }); // spacer
     }
 
-    // ── Name badge (pill) ──
+    // ── Name badge (pill) — sits below the HP bar ──
     const label = cn.length > 12 ? cn.slice(0, 11) + '…' : cn;
     if (nameText.text !== label) nameText.text = label;
     nameText.style.fontSize = Math.max(13, size * 0.22);
     nameText.x = size / 2;
-    nameText.y = size + 20;
+    nameText.y = size + 28;
     // Draw pill behind text
     nameBadge.clear();
     const tw = nameText.width + 10, th = nameText.height + 6;
-    nameBadge.roundRect(size / 2 - tw / 2, size + 20 - th / 2, tw, th, 6)
+    nameBadge.roundRect(size / 2 - tw / 2, size + 28 - th / 2, tw, th, 6)
              .fill({ color: 0x000000, alpha: 0.75 });
 
     // ── Stacking badge ──
