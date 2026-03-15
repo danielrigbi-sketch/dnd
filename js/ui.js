@@ -178,7 +178,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
 
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center; ${isDead?'opacity:0.55;':''}">
-                    <img src="${i.portrait || 'https://via.placeholder.com/50'}" class="char-portrait" style="${portraitStyle}">
+                    <img src="${i.portrait || 'https://placehold.co/50x50/555/fff?text=?'}" class="char-portrait" style="${portraitStyle}">
                     <div style="flex:1; min-width:0;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
                             <span style="font-weight:900; color:white; font-size:1.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">

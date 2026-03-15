@@ -43,7 +43,7 @@ window._spawnNPCToken = function(npc) {
     ranged:   0,
     rangedDmg:'1d4',
     isHidden: true,
-    img:      `https://api.dicebear.com/8.x/bottts/svg?seed=${encodeURIComponent(npc.name)}&backgroundColor=7f8c8d`,
+    img:      `https://api.dicebear.com/8.x/bottts/png?seed=${encodeURIComponent(npc.name)}&backgroundColor=7f8c8d`,
   };
   window._sceneWizardInstance._spawnToken?.(token);
 };
@@ -701,7 +701,7 @@ window.addNPC = () => {
     const npcRangedDmg = document.getElementById('npc-ranged-dmg')?.value||'1d6';
     const count = parseInt(document.getElementById('npc-count')?.value)||1;
     const isHidden = document.getElementById('npc-hidden')?.checked;
-    const portrait = (presetVal !== 'custom' && npcDatabase[presetVal]) ? npcDatabase[presetVal].img : "https://via.placeholder.com/50/c0392b/ffffff?text=NPC";
+    const portrait = (presetVal !== 'custom' && npcDatabase[presetVal]) ? npcDatabase[presetVal].img : "https://placehold.co/50/c0392b/ffffff?text=NPC";
     for (let i = 1; i <= count; i++) {
         const finalName = count > 1 ? `${baseName} ${i}` : baseName;
         const finalInit = Math.floor(Math.random()*20)+1 + npcInitBonus;

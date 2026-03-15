@@ -244,7 +244,7 @@ async function _showCustomizeForm(slug) {
   const col   = TYPE_COLOR[type] || '#c0392b';
   const stats = open5eToNPC(m);
 
-  _selectedPortrait = `https://api.dicebear.com/8.x/adventurer/svg?seed=${slug}`;
+  _selectedPortrait = `https://api.dicebear.com/8.x/adventurer/png?seed=${slug}`;
 
   const inputStyle = `
     width:100%; box-sizing:border-box; padding:5px 8px; border-radius:5px;
@@ -472,7 +472,7 @@ function _doSpawn(m, finalName, stats, col) {
   const initBonus = Math.floor(((m.dexterity || 10) - 10) / 2);
   const init      = Math.floor(Math.random() * 20) + 1 + initBonus;
   const portrait  = _selectedPortrait ||
-    `https://api.dicebear.com/8.x/adventurer/svg?seed=${m.slug}`;
+    `https://api.dicebear.com/8.x/adventurer/png?seed=${m.slug}`;
 
   if (typeof window.addNPCFromWizard === 'function') {
     window.addNPCFromWizard(name, col, portrait, init, stats);

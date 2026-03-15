@@ -68,7 +68,7 @@ const previewImg = document.getElementById('portrait-preview');
 const inputUrl = document.getElementById('cb-portrait-url');
 const inputFile = document.getElementById('cb-portrait-file');
 
-let selectedPortrait = "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
+let selectedPortrait = "https://api.dicebear.com/8.x/adventurer/png?seed=human_m&backgroundColor=f1c40f";
 
 function switchPortraitTab(activeTab, activeArea) {
     [tabPreset, tabUrl, tabFile].forEach(t => t.classList.remove('active'));
@@ -249,7 +249,7 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-ranged').value = c.ranged || "";
     document.getElementById('cb-ranged-dmg').value = c.rangedDmg || "1d6";
     document.getElementById('cb-color').value = c.color || "#3498db";
-    selectedPortrait = c.portrait || "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
+    selectedPortrait = c.portrait || "https://api.dicebear.com/8.x/adventurer/png?seed=human_m&backgroundColor=f1c40f";
     if(previewImg) previewImg.src = selectedPortrait;
     if (selectedPortrait.startsWith("data:image")) { switchPortraitTab(tabFile, areaFile); }
     else if (!selectedPortrait.includes("dicebear.com/8.x/adventurer")) { switchPortraitTab(tabUrl, areaUrl); if(inputUrl) inputUrl.value = selectedPortrait; }
@@ -289,7 +289,7 @@ if(newCharBtn) {
         });
         document.getElementById('cb-color').value = "#3498db";
         switchPortraitTab(tabPreset, areaPreset);
-        selectedPortrait = "https://api.dicebear.com/8.x/adventurer/svg?seed=human_m&backgroundColor=f1c40f";
+        selectedPortrait = "https://api.dicebear.com/8.x/adventurer/png?seed=human_m&backgroundColor=f1c40f";
         if(previewImg) previewImg.src = selectedPortrait;
         document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('.builder-portrait-btn').classList.add('active');

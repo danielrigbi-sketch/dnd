@@ -914,7 +914,7 @@ export class SceneWizard {
     const finalName = existing > 0 ? `${m.name} ${existing + 1}` : m.name;
 
     const init = Math.floor(Math.random() * 20) + 1 + Math.floor(((m.dexterity || 10) - 10) / 2);
-    const img  = `https://api.dicebear.com/8.x/bottts/svg?seed=${slug}&backgroundColor=${col.replace('#','')}`;
+    const img  = `https://api.dicebear.com/8.x/bottts/png?seed=${slug}&backgroundColor=${col.replace('#','')}`;
 
     if (typeof window.addNPCFromWizard === 'function') {
       window.addNPCFromWizard(finalName, col, img, init, npcStats);
