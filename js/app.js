@@ -262,6 +262,12 @@ let _appUnsubs = [];
 
 // ── Background Music ──────────────────────────────────────────────────────────
 const musicPlayer = new MusicPlayer();
+musicPlayer.onBlocked(() => showToast('🎵 Click anywhere to start music', 'info'));
+// Unlock pending autoplay on the first user gesture
+const _unlockMusic = () => musicPlayer.unlock();
+document.addEventListener('click',     _unlockMusic);
+document.addEventListener('keydown',   _unlockMusic);
+document.addEventListener('touchstart', _unlockMusic, { passive: true });
 let _musicPanelOpen = false;
 let _musicActiveCat = 'battle';
 let _musicPanelBuilt = false;
