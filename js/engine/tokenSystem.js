@@ -228,7 +228,13 @@ export class TokenSystem {
     const { sx, sy } = this._cp(e);
     const delta = e.deltaY < 0 ? 1.1 : 0.91;
     const eng = this.e;
-    const ns = Math.min(4, Math.max(0.2, eng.vs * delta));
+    // Minimum zoom: map must fill at least the canvas in both dimensions
+    const { mapW = 30, mapH = 20, pps } = eng.S.cfg;
+    const vsMin = Math.min(
+      eng.cv.width  / Math.max(1, (mapW || 30) * pps),
+      eng.cv.height / Math.max(1, (mapH || 20) * pps)
+    );
+    const ns = Math.min(4, Math.max(vsMin, eng.vs * delta));
     eng.vx = sx - (sx - eng.vx) * (ns / eng.vs);
     eng.vy = sy - (sy - eng.vy) * (ns / eng.vs);
     eng.vs = ns;

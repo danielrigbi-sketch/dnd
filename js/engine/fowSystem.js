@@ -138,15 +138,21 @@ export class FowSystem {
   _renderDM() {
     const { e } = this;
     const { ctx } = e;
+    // fow.render() is called after ctx.restore() so ctx is in screen-space.
+    // Re-apply viewport transform so world-space tile coords map correctly.
+    ctx.save();
+    ctx.translate(e.vx, e.vy);
+    ctx.scale(e.vs, e.vs);
     const { pps, ox, oy, mapW: mw, mapH: mh } = e.S.cfg;
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
     for (let gx = 0; gx < (mw || MAP_W_DEFAULT); gx++) {
       for (let gy = 0; gy < (mh || MAP_H_DEFAULT); gy++) {
         if (!e.S.fog[ck(gx, gy)]) {
-          ctx.fillStyle = 'rgba(0,0,0,0.30)';
           ctx.fillRect(ox + gx * pps, oy + gy * pps, pps, pps);
         }
       }
     }
+    ctx.restore();
   }
 
   // ── Wizard FOW (step 4 — thick grey-white unrevealed tiles) ──────────

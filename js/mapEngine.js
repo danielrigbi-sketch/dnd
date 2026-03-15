@@ -215,7 +215,15 @@ export class MapEngine {
         }
         this._dirty();
       }),
-      db.listenMapTokens(r, tks => { this.S.tokens = tks || {}; this._dirty(); }),
+      db.listenMapTokens(r, tks => {
+        this.S.tokens = tks || {};
+        // Reveal vision for own token on every sync (handles load + reconnect)
+        const myTk = this.S.tokens[this.cName];
+        if (myTk && myTk.gx != null && this.userRole !== 'dm') {
+          this.visibility.revealForToken(this.cName, myTk.gx, myTk.gy);
+        }
+        this._dirty();
+      }),
       db.listenFog(r, sc, fog => { this.S.fog = fog || {}; this._dirty(); }),
       db.listenObstacles(r, sc, obs => {
         this.S.obstacles = obs || {};
@@ -265,7 +273,7 @@ export class MapEngine {
     if (!this._pixi?.isReady) this.tokens.render();
     this.movement.renderRange();
     if (this._pixi?.isReady) {
-      const activeName = this.L.sc?.[this.L.ati];
+      const activeName = this.L.sc?.[this.L.ati]?.name;
       const dragging   = this.L.drag?.cName;
       this._pixi.setTransform(this.vx, this.vy, this.vs);
       this._pixi.syncTokens(this.S.tokens, this.S.players, activeName, this.S.cfg, dragging);
@@ -632,6 +640,8 @@ export class MapEngine {
 
   placeToken(cn, gx, gy) {
     if (!this.db) return;
+    // Optimistic local update so the token renders immediately (before Firebase echoes back)
+    this.S.tokens[cn] = { ...(this.S.tokens[cn] || {}), gx, gy, usedMv: 0 };
     this.db.moveMapToken(this.activeRoom, cn, gx, gy, 0);
     this.visibility.revealForToken(cn, gx, gy);
     this._dirty();
