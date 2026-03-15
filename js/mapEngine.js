@@ -283,7 +283,7 @@ export class MapEngine {
       const activeName = this.L.sc?.[this.L.ati]?.name;
       const dragging   = this.L.drag?.cName;
       this._pixi.setTransform(this.vx, this.vy, this.vs);
-      this._pixi.syncTokens(this.S.tokens, this.S.players, activeName, this.S.cfg, dragging);
+      this._pixi.syncTokens(this.S.tokens, this.S.players, activeName, this.S.cfg, dragging, () => this._dirty());
       this._pixi.renderFrame(); // PixiJS ticker is stopped; force render each frame
     }
     this.movement.renderPath();

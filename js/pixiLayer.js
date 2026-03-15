@@ -12,7 +12,7 @@ import {
   Application, Assets, Sprite, Graphics, Container,
   Filter, BlurFilter, ColorMatrixFilter,
   Text, TextStyle, Ticker, ParticleContainer,
-  Texture, RenderTexture,
+  Texture, RenderTexture, ImageSource,
 } from 'pixi.js';
 import { getTileSize, getVisualScale, footprintsOverlap } from './engine/sizeUtils.js';
 
@@ -40,6 +40,7 @@ export class PixiLayer {
     this._root        = null;        // root Container (world-space transform)
     this._particleRoot = null;       // screen-space particle overlay
     this._canvas      = null;        // the PixiJS canvas element
+    this._dirtyFn     = null;        // callback → mapEngine._dirty()
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────
@@ -123,8 +124,9 @@ export class PixiLayer {
    * @param {object} cfg      — mapEngine S.cfg { pps, ox, oy }
    * @param {string} draggingName — token being dragged (rendered ghost, skip normal)
    */
-  syncTokens(tokens, players, activeName, cfg, draggingName) {
+  syncTokens(tokens, players, activeName, cfg, draggingName, dirtyFn) {
     if (!this._ready) return;
+    if (dirtyFn) this._dirtyFn = dirtyFn;
     const { pps, ox, oy } = cfg;
 
     // Remove tokens that no longer exist
@@ -324,36 +326,36 @@ export class PixiLayer {
     }
 
     // ── Portrait texture ──
+    // Load via plain <img> (CORS-first, fallback without) then push into PixiJS
+    // via ImageSource — WebGL accepts cross-origin images for display without CORS headers.
     const url = pl.portrait;
     if (url && url !== obj.lastPortrait) {
       obj.lastPortrait = url;
-      obj._hasPortrait = false; // loading in progress
-      Assets.load(url).then(tex => {
-        portrait.texture = tex;
-        portrait.width = size;
-        portrait.height = size;
-        mask.clear();
-        mask.circle(size / 2, size / 2, size * 0.44).fill(0xffffff);
-        obj._hasPortrait = true;
-      }).catch(() => {
-        // CORS failure — retry without crossOrigin via plain Image + canvas
+      obj._hasPortrait = false;
+      const _loadImg = (withCors) => {
         const img = new Image();
+        if (withCors) img.crossOrigin = 'anonymous';
         img.onload = () => {
-          const c = document.createElement('canvas');
-          c.width = c.height = 256;
           try {
-            c.getContext('2d').drawImage(img, 0, 0, 256, 256);
-            portrait.texture = Texture.from(c);
+            const source = new ImageSource({ resource: img });
+            const tex = new Texture({ source });
+            portrait.texture = tex;
             portrait.width = size;
             portrait.height = size;
             mask.clear();
             mask.circle(size / 2, size / 2, size * 0.44).fill(0xffffff);
             obj._hasPortrait = true;
-          } catch (_) { obj._hasPortrait = false; }
+            this._dirtyFn?.(); // trigger re-render so portrait appears immediately
+          } catch (_) {
+            if (withCors) _loadImg(false); else obj._hasPortrait = false;
+          }
         };
-        img.onerror = () => { obj._hasPortrait = false; };
+        img.onerror = () => {
+          if (withCors) _loadImg(false); else obj._hasPortrait = false;
+        };
         img.src = url;
-      });
+      };
+      _loadImg(true);
     } else if (!url) {
       portrait.texture = Texture.WHITE;
       portrait.width = size;
