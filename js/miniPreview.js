@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { assembleModel } from './miniAssembler.js';
 
-const W = 160, H = 160;  // rendered at 2× for crisp display in 80px slot
+// Canvas is sized dynamically to the container; these are the initial defaults
+const W = 480, H = 400;
 
 let _renderer = null;
 let _scene    = null;
@@ -22,22 +23,24 @@ export function initMiniPreview(wrapEl) {
   if (_renderer) return;
 
   const canvas = document.createElement('canvas');
-  canvas.width  = W;
-  canvas.height = H;
   canvas.style.cssText = 'width:100%;height:100%;display:block;border-radius:6px;';
   wrapEl.appendChild(canvas);
 
+  // Match physical canvas to the container size
+  const cw = wrapEl.clientWidth  || W;
+  const ch = wrapEl.clientHeight || H;
+
   _renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
   _renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  _renderer.setSize(W, H, false);
-  _renderer.setClearColor(0x000000, 0);
+  _renderer.setSize(cw, ch, false);
+  _renderer.setClearColor(0x111118, 1);   // dark bg so model is visible
 
   _scene  = new THREE.Scene();
 
-  // Slight isometric-ish perspective — front + above
-  _camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
-  _camera.position.set(0, 0.7, 2.6);
-  _camera.lookAt(0, 0.55, 0);
+  // Camera frames a 1-unit-tall character: tight FOV, camera centred on torso
+  _camera = new THREE.PerspectiveCamera(32, cw / ch, 0.1, 100);
+  _camera.position.set(0, 0.55, 2.2);
+  _camera.lookAt(0, 0.5, 0);
 
   // Lighting (matches miniLayer rig)
   _scene.add(new THREE.AmbientLight(0xffffff, 1.1));
