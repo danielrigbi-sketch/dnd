@@ -820,7 +820,7 @@ function initMap() {
         if (!mapActive) return;
         // Skip if typing in an input
         if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
-        const keyMap = { v:'view', o:'obstacle', t:'trigger', f:'fogReveal', h:'fogHide', r:'ruler', a:'aoe' };
+        const keyMap = { v:'view', o:'obstacle', t:'trigger', f:'fogReveal', h:'fogHide', r:'ruler', a:'aoe', c:'calibrate' };
         const mode = keyMap[e.key.toLowerCase()];
         if (mode) {
             const btn = document.querySelector(`.map-tb-btn[data-mode="${mode}"]`);

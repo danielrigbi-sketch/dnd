@@ -99,6 +99,15 @@ export class TokenSystem {
 
     if (m === 'ruler') { eng.L.rulerA = { x: wx, y: wy }; eng.L.rulerB = null; eng._dirty(); return; }
     if (m === 'aoe')   { eng.L.rulerA = { x: wx, y: wy }; eng._dirty(); return; }
+
+    // Calibrate: click+drag to define one tile → sets pps + snaps origin
+    if (isDM && m === 'calibrate') {
+      eng.L.calibAnchor = { x: wx, y: wy };
+      eng.L.calibDrag   = null;
+      eng._dirty();
+      return;
+    }
+
     if (isDM && m === 'obstacle') { eng.L.painting = true; this._paintObs(gx, gy); return; }
     if (isDM && m === 'trigger')  { this._placeTrigger(gx, gy); return; }
     if (isDM && (m === 'fogReveal' || m === 'wizFog')) { eng.L.painting = true; eng._revealCell(gx, gy); return; }
@@ -160,6 +169,13 @@ export class TokenSystem {
       return;
     }
 
+    // Update calibration drag endpoint
+    if (eng.L.calibAnchor) {
+      eng.L.calibDrag = { x: wx, y: wy };
+      eng._dirty();
+      return;
+    }
+
     if (eng.L.mode === 'ruler' && eng.L.rulerA) { eng.L.rulerB = { x: wx, y: wy }; eng._dirty(); }
 
     const isDM = eng.userRole === 'dm';
@@ -182,8 +198,28 @@ export class TokenSystem {
 
   _mu() {
     const eng = this.e;
-    eng.L.pan.on = false;
+    eng.L.pan.on   = false;
     eng.L.painting = false;
+
+    // Finalize calibration: compute pps from dragged distance, snap grid origin
+    if (eng.L.calibAnchor && eng.L.calibDrag) {
+      const { x: ax, y: ay } = eng.L.calibAnchor;
+      const { x: bx, y: by } = eng.L.calibDrag;
+      const newPps = Math.max(16, Math.round(Math.max(Math.abs(bx - ax), Math.abs(by - ay))));
+      // Snap ox/oy so the anchor point falls exactly on a grid intersection
+      const newOx  = ((ax % newPps) + newPps) % newPps;
+      const newOy  = ((ay % newPps) + newPps) % newPps;
+      eng.S.cfg = { ...eng.S.cfg, pps: newPps, ox: newOx, oy: newOy };
+      eng.saveGridToFirebase();
+      eng.setMode('view');
+      // Deactivate calibrate button, activate select button in toolbar
+      document.querySelectorAll('.map-tb-btn[data-mode]').forEach(b => b.classList.remove('active'));
+      document.querySelector('.map-tb-btn[data-mode="view"]')?.classList.add('active');
+      if (typeof window.showToast === 'function') window.showToast(`Grid calibrated: ${newPps}px per tile`, 'success');
+    }
+    eng.L.calibAnchor = null;
+    eng.L.calibDrag   = null;
+
     if (eng.L.drag) eng.movement.endDrag();
   }
 

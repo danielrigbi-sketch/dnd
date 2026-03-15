@@ -101,6 +101,7 @@ export class MapEngine {
       pan:       { on: false, sx: 0, sy: 0, vx0: 0, vy0: 0 },
       firedLocal: new Set(),
       placing:   null,
+      calibAnchor: null, calibDrag: null,
       wx:        null,
       fogRevQ:   [],
       currentFov: new Set(),
@@ -340,11 +341,32 @@ export class MapEngine {
     }
     ctx.stroke();
     if (m === 'calibrate') {
+      // Dot markers at every 5th grid intersection
       ctx.fillStyle = GRID_CALIB;
       for (let x = 0; x <= (mw || MAP_W_DEFAULT); x += 5) {
         for (let y = 0; y <= (mh || MAP_H_DEFAULT); y += 5) {
           ctx.fillRect(ox + x * pps - 3 / this.vs, oy + y * pps - 3 / this.vs, 6 / this.vs, 6 / this.vs);
         }
+      }
+      // Live tile drag preview
+      if (this.L.calibAnchor) {
+        const a  = this.L.calibAnchor;
+        const b  = this.L.calibDrag || this.L.mw;
+        const dw = b.x - a.x, dh = b.y - a.y;
+        const sz = Math.max(16, Math.round(Math.max(Math.abs(dw), Math.abs(dh))));
+        ctx.save();
+        ctx.fillStyle   = 'rgba(255,220,60,0.18)';
+        ctx.fillRect(a.x, a.y, dw, dh);
+        ctx.strokeStyle = 'rgba(255,220,60,1)';
+        ctx.lineWidth   = 2.5 / this.vs;
+        ctx.strokeRect(a.x, a.y, dw, dh);
+        // Size label inside the rectangle
+        ctx.fillStyle    = '#fff176';
+        ctx.font         = `bold ${Math.max(10, 14 / this.vs)}px Arial`;
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${sz}px/tile`, a.x + dw / 2, a.y + dh / 2);
+        ctx.restore();
       }
     }
   }
