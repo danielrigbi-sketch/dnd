@@ -384,51 +384,104 @@ export class TokenSystem {
     const isDying  = typeof pl.hp === 'number' && pl.maxHp > 0 && pl.hp <= 0;
     const isConc   = pl.concentrating;
 
+    // 2MT tokens are pre-made circular PNGs — render full tile, no clip/ring
+    const isTmt = typeof portrait === 'string' && portrait.includes('tools.2minutetabletop.com');
+
     // Multi-tile sizing
-    const tileSize   = getTileSize(pl.size);
+    const tileSize    = getTileSize(pl.size);
     const visualScale = getVisualScale(pl.size);
-    const renderSize = Math.round(tileSize * size * visualScale);
-    // For tiny tokens, centre the smaller disc within the tile
-    const tinyOffset = tileSize === 1 ? (size - renderSize) / 2 : 0;
+    // 2MT: fill 98% of tile; standard: use visual scale (disc slightly smaller)
+    const renderSize  = isTmt
+      ? Math.round(tileSize * size * 0.98)
+      : Math.round(tileSize * size * visualScale);
+    const tinyOffset  = (!isTmt && tileSize === 1) ? (size - renderSize) / 2 : 0;
     const rpx = px + tinyOffset, rpy = py + tinyOffset;
 
-    const cx = rpx + renderSize / 2, cy = rpy + renderSize / 2, r = renderSize * 0.42;
+    const cx = rpx + renderSize / 2, cy = rpy + renderSize / 2;
+    const r  = renderSize * (isTmt ? 0.46 : 0.42);
 
-    if (isActive) {
-      ctx.save();
-      ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = size * 0.6;
-      ctx.beginPath(); ctx.arc(cx, cy, r + 5 / this.e.vs, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(241,196,15,0.25)'; ctx.fill();
-      ctx.restore();
-      ctx.beginPath(); ctx.arc(cx, cy, r + 4 / this.e.vs, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(241,196,15,0.9)';
-      ctx.lineWidth = 2.5 / this.e.vs; ctx.stroke();
-    }
-
-    ctx.save();
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
-    if (portrait && this.e.L.imgCache[portrait]) {
-      ctx.drawImage(this.e.L.imgCache[portrait], rpx, rpy, renderSize, renderSize);
-    } else {
-      ctx.fillStyle = col; ctx.fillRect(rpx, rpy, renderSize, renderSize);
-      if (portrait && !this.e.L.imgCache['__L' + portrait]) {
-        this.e.L.imgCache['__L' + portrait] = true;
-        const img = new Image();
-        img.onload  = () => { this.e.L.imgCache[portrait] = img; this.e._dirty(); };
-        img.onerror = () => { this.e.L.imgCache[portrait] = false; };
-        img.src = portrait;
+    if (isTmt) {
+      // ── 2MT token: full-tile PNG, transparent bg, no clip mask ─────────────
+      // Active glow / player-color halo drawn BEHIND the image
+      if (isActive) {
+        ctx.save();
+        ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = size * 0.9;
+        ctx.beginPath(); ctx.arc(cx, cy, r + 4 / this.e.vs, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(241,196,15,0.22)'; ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.globalAlpha = 0.20;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = col; ctx.fill();
+        ctx.restore();
       }
-    }
-    if (isDying) {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(rpx, rpy, renderSize, renderSize);
-      ctx.font = `${renderSize * 0.5}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('💀', cx, cy);
-    }
-    ctx.restore();
 
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = isDying ? '#e74c3c' : isActive ? '#f1c40f' : col;
-    ctx.lineWidth = (isActive ? 3 : 2) / this.e.vs; ctx.stroke();
+      if (portrait && this.e.L.imgCache[portrait]) {
+        ctx.drawImage(this.e.L.imgCache[portrait], rpx, rpy, renderSize, renderSize);
+      } else {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = col; ctx.fill();
+        if (portrait && !this.e.L.imgCache['__L' + portrait]) {
+          this.e.L.imgCache['__L' + portrait] = true;
+          const img = new Image();
+          img.onload  = () => { this.e.L.imgCache[portrait] = img; this.e._dirty(); };
+          img.onerror = () => { this.e.L.imgCache[portrait] = false; };
+          img.src = portrait;
+        }
+      }
+      if (isDying) {
+        ctx.save(); ctx.globalAlpha = 0.55;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
+        ctx.font = `${renderSize * 0.38}px serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('💀', cx, cy);
+      }
+      // Active: thin yellow ring on top of the image
+      if (isActive) {
+        ctx.beginPath(); ctx.arc(cx, cy, r + 2 / this.e.vs, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(241,196,15,0.92)';
+        ctx.lineWidth = 2.5 / this.e.vs; ctx.stroke();
+      }
+    } else {
+      // ── Standard circular token (DiceBear / custom URL) ────────────────────
+      if (isActive) {
+        ctx.save();
+        ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = size * 0.6;
+        ctx.beginPath(); ctx.arc(cx, cy, r + 5 / this.e.vs, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(241,196,15,0.25)'; ctx.fill();
+        ctx.restore();
+        ctx.beginPath(); ctx.arc(cx, cy, r + 4 / this.e.vs, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(241,196,15,0.9)';
+        ctx.lineWidth = 2.5 / this.e.vs; ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+      if (portrait && this.e.L.imgCache[portrait]) {
+        ctx.drawImage(this.e.L.imgCache[portrait], rpx, rpy, renderSize, renderSize);
+      } else {
+        ctx.fillStyle = col; ctx.fillRect(rpx, rpy, renderSize, renderSize);
+        if (portrait && !this.e.L.imgCache['__L' + portrait]) {
+          this.e.L.imgCache['__L' + portrait] = true;
+          const img = new Image();
+          img.onload  = () => { this.e.L.imgCache[portrait] = img; this.e._dirty(); };
+          img.onerror = () => { this.e.L.imgCache[portrait] = false; };
+          img.src = portrait;
+        }
+      }
+      if (isDying) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(rpx, rpy, renderSize, renderSize);
+        ctx.font = `${renderSize * 0.5}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('💀', cx, cy);
+      }
+      ctx.restore();
+
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = isDying ? '#e74c3c' : isActive ? '#f1c40f' : col;
+      ctx.lineWidth = (isActive ? 3 : 2) / this.e.vs; ctx.stroke();
+    }
 
     // Name tag at bottom of the full footprint
     const tagH = renderSize * 0.22;

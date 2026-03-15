@@ -71,7 +71,8 @@ const previewImg = document.getElementById('portrait-preview');
 const inputUrl = document.getElementById('cb-portrait-url');
 const inputFile = document.getElementById('cb-portrait-file');
 
-let selectedPortrait = "https://api.dicebear.com/8.x/adventurer/png?seed=human_m&backgroundColor=f1c40f";
+const TMT_DEFAULT = 'https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png';
+let selectedPortrait = TMT_DEFAULT;
 
 function switchPortraitTab(activeTab, activeArea) {
     [tabPreset, tabTmt, tabUrl, tabFile].forEach(t => t && t.classList.remove('active'));
@@ -84,6 +85,9 @@ if(tabPreset) tabPreset.onclick = () => switchPortraitTab(tabPreset, areaPreset)
 if(tabTmt)   tabTmt.onclick   = () => { switchPortraitTab(tabTmt, areaTmt); _refreshTmtTab(); };
 if(tabUrl) tabUrl.onclick = () => switchPortraitTab(tabUrl, areaUrl);
 if(tabFile) tabFile.onclick = () => switchPortraitTab(tabFile, areaFile);
+
+// Token Art is the default tab
+if(tabTmt && areaTmt) switchPortraitTab(tabTmt, areaTmt);
 
 document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
     btn.onclick = () => {
@@ -295,11 +299,12 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-ranged').value = c.ranged || "";
     document.getElementById('cb-ranged-dmg').value = c.rangedDmg || "1d6";
     document.getElementById('cb-color').value = c.color || "#3498db";
-    selectedPortrait = c.portrait || "https://api.dicebear.com/8.x/adventurer/png?seed=human_m&backgroundColor=f1c40f";
+    selectedPortrait = c.portrait || TMT_DEFAULT;
     if(previewImg) previewImg.src = selectedPortrait;
     if (selectedPortrait.startsWith("data:image")) { switchPortraitTab(tabFile, areaFile); }
     else if (selectedPortrait.includes("tools.2minutetabletop.com")) {
         switchPortraitTab(tabTmt, areaTmt);
+        _refreshTmtTab();
         document.querySelectorAll('.builder-portrait-btn').forEach(btn => { btn.classList.remove('active'); if (btn.src === selectedPortrait) btn.classList.add('active'); });
     }
     else if (!selectedPortrait.includes("dicebear.com/8.x/adventurer")) { switchPortraitTab(tabUrl, areaUrl); if(inputUrl) inputUrl.value = selectedPortrait; }
@@ -339,11 +344,10 @@ if(newCharBtn) {
             if(input.tagName === 'SELECT') input.selectedIndex = 0;
         });
         document.getElementById('cb-color').value = "#3498db";
-        switchPortraitTab(tabPreset, areaPreset);
-        selectedPortrait = "https://api.dicebear.com/8.x/adventurer/png?seed=human_m&backgroundColor=f1c40f";
+        selectedPortrait = TMT_DEFAULT;
         if(previewImg) previewImg.src = selectedPortrait;
-        document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector('.builder-portrait-btn').classList.add('active');
+        switchPortraitTab(tabTmt, areaTmt);
+        _refreshTmtTab();
         if (attacksList) attacksList.innerHTML = '';
     
     };
