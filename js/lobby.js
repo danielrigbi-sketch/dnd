@@ -4,6 +4,7 @@ import * as db from "./firebaseService.js";
 import { uploadPortrait } from "./firebaseService.js"; // S14: direct import
 import { startGame, setUid } from "./app.js";
 import { setLanguage, getLang, t, updateDOM } from "./i18n.js";
+import { tmt2mtPlayerTokens } from "./tmt.js";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -80,7 +81,7 @@ function switchPortraitTab(activeTab, activeArea) {
 }
 
 if(tabPreset) tabPreset.onclick = () => switchPortraitTab(tabPreset, areaPreset);
-if(tabTmt)   tabTmt.onclick   = () => switchPortraitTab(tabTmt, areaTmt);
+if(tabTmt)   tabTmt.onclick   = () => { switchPortraitTab(tabTmt, areaTmt); _refreshTmtTab(); };
 if(tabUrl) tabUrl.onclick = () => switchPortraitTab(tabUrl, areaUrl);
 if(tabFile) tabFile.onclick = () => switchPortraitTab(tabFile, areaFile);
 
@@ -91,6 +92,46 @@ document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
         selectedPortrait = btn.src;
         if(previewImg) previewImg.src = selectedPortrait;
     };
+});
+
+// ── Dynamic 2MT tab: refresh tokens when class/race/gender changes ─────────────
+function _refreshTmtTab() {
+    if (!areaTmt) return;
+    const cls    = document.getElementById('cb-class')?.value  || '';
+    const race   = document.getElementById('cb-race')?.value   || '';
+    const gender = document.getElementById('cb-gender')?.value || 'male';
+    const urls   = tmt2mtPlayerTokens(cls, race, gender);
+    if (!urls.length) return;
+
+    // Replace the dynamic section inside areaTmt (keep attribution header)
+    const header = areaTmt.querySelector('.tmt-attr');
+    const dyn    = areaTmt.querySelector('.tmt-dynamic');
+    if (!dyn) return;
+
+    const label  = [cls, race, gender].filter(Boolean).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' · ');
+    dyn.innerHTML = `
+        <div style="font-size:9px;color:#aaa;text-align:center;letter-spacing:.5px;margin-bottom:3px;">${label}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;">
+            ${urls.map(u => `<img src="${u}" data-src="${u}" class="builder-portrait-btn"
+                style="width:44px;height:44px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid transparent;transition:border-color .15s;"
+                onerror="this.style.display='none'" loading="lazy" title="${cls} ${race}">`).join('')}
+        </div>`;
+
+    dyn.querySelectorAll('.builder-portrait-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedPortrait = btn.dataset.src;
+            if (previewImg) previewImg.src = selectedPortrait;
+        };
+    });
+}
+
+// Listen for class/race/gender changes to update the tab if it's open
+['cb-class','cb-race','cb-gender'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => {
+        if (tabTmt?.classList.contains('active')) _refreshTmtTab();
+    });
 });
 
 if(inputUrl) {
