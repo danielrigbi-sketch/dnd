@@ -59,9 +59,11 @@ const attacksList = document.getElementById('custom-attacks-list');
 let currentEditCharId = null;
 
 const tabPreset = document.getElementById('tab-portrait-preset');
+const tabTmt   = document.getElementById('tab-portrait-2mt');
 const tabUrl = document.getElementById('tab-portrait-url');
 const tabFile = document.getElementById('tab-portrait-file');
 const areaPreset = document.getElementById('portrait-preset-area');
+const areaTmt  = document.getElementById('portrait-2mt-area');
 const areaUrl = document.getElementById('portrait-url-area');
 const areaFile = document.getElementById('portrait-file-area');
 const previewImg = document.getElementById('portrait-preview');
@@ -71,13 +73,14 @@ const inputFile = document.getElementById('cb-portrait-file');
 let selectedPortrait = "https://api.dicebear.com/8.x/adventurer/png?seed=human_m&backgroundColor=f1c40f";
 
 function switchPortraitTab(activeTab, activeArea) {
-    [tabPreset, tabUrl, tabFile].forEach(t => t.classList.remove('active'));
-    [areaPreset, areaUrl, areaFile].forEach(a => a.style.display = 'none');
+    [tabPreset, tabTmt, tabUrl, tabFile].forEach(t => t && t.classList.remove('active'));
+    [areaPreset, areaTmt, areaUrl, areaFile].forEach(a => a && (a.style.display = 'none'));
     activeTab.classList.add('active');
     activeArea.style.display = 'flex';
 }
 
 if(tabPreset) tabPreset.onclick = () => switchPortraitTab(tabPreset, areaPreset);
+if(tabTmt)   tabTmt.onclick   = () => switchPortraitTab(tabTmt, areaTmt);
 if(tabUrl) tabUrl.onclick = () => switchPortraitTab(tabUrl, areaUrl);
 if(tabFile) tabFile.onclick = () => switchPortraitTab(tabFile, areaFile);
 
@@ -254,6 +257,10 @@ function openBuilderForEdit(charId) {
     selectedPortrait = c.portrait || "https://api.dicebear.com/8.x/adventurer/png?seed=human_m&backgroundColor=f1c40f";
     if(previewImg) previewImg.src = selectedPortrait;
     if (selectedPortrait.startsWith("data:image")) { switchPortraitTab(tabFile, areaFile); }
+    else if (selectedPortrait.includes("tools.2minutetabletop.com")) {
+        switchPortraitTab(tabTmt, areaTmt);
+        document.querySelectorAll('.builder-portrait-btn').forEach(btn => { btn.classList.remove('active'); if (btn.src === selectedPortrait) btn.classList.add('active'); });
+    }
     else if (!selectedPortrait.includes("dicebear.com/8.x/adventurer")) { switchPortraitTab(tabUrl, areaUrl); if(inputUrl) inputUrl.value = selectedPortrait; }
     else {
         switchPortraitTab(tabPreset, areaPreset);

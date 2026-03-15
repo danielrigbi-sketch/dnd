@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="/assets/logo-BC8cyOVF.png">
     
-  <script type="module" crossorigin src="/assets/index-Ci60EBdD.js"></script>
+  <script type="module" crossorigin src="/assets/index-D1Y8M2Bf.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index--NYWYGKG.css">
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
@@ -110,8 +110,9 @@
             <div class="text-center" style="margin-bottom: 15px; border-bottom: 1px dashed #555; padding-bottom: 10px;">
                 <div data-i18n="cb_portrait" style="font-size: 12px; color: #ccc; margin-bottom: 5px;"></div>
                 
-                <div class="flex-center" style="gap: 10px; margin-bottom: 10px;">
+                <div class="flex-center" style="gap: 8px; margin-bottom: 10px; flex-wrap:wrap;">
                     <button type="button" id="tab-portrait-preset" class="portrait-tab active" data-i18n="port_tab_preset"></button>
+                    <button type="button" id="tab-portrait-2mt" class="portrait-tab" data-i18n="port_tab_2mt"></button>
                     <button type="button" id="tab-portrait-url" class="portrait-tab" data-i18n="port_tab_url"></button>
                     <button type="button" id="tab-portrait-file" class="portrait-tab" data-i18n="port_tab_file"></button>
                 </div>
@@ -143,6 +144,37 @@
                     </div>
                 </div>
                 
+                <!-- 2 Minute Tabletop Token Art -->
+                <div id="portrait-2mt-area" style="display:none; flex-direction:column; gap:6px;">
+                    <div style="font-size:10px; color:#888; text-align:center; margin-bottom:2px;">
+                        Art by <a href="https://2minutetabletop.com" target="_blank" style="color:#f1c40f;">2 Minute Tabletop</a> (CC-BY 4.0)
+                    </div>
+                    <!-- Row 1: Warriors & Martial -->
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png" class="builder-portrait-btn" title="Human Fighter">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/legendarypaladin2/preview.png" class="builder-portrait-btn" title="Paladin">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/dragonbornfighter/preview.png" class="builder-portrait-btn" title="Dragonborn Fighter">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/tieflingfighter4/preview.png" class="builder-portrait-btn" title="Tiefling Fighter">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/halflingfighter/preview.png" class="builder-portrait-btn" title="Halfling Fighter">
+                    </div>
+                    <!-- Row 2: Casters & Support -->
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/elfwizard4/preview.png" class="builder-portrait-btn" title="Elf Wizard">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/owlfolkwizard1/preview.png" class="builder-portrait-btn" title="Owlfolk Wizard">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/halforccleric1/preview.png" class="builder-portrait-btn" title="Half-Orc Cleric">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/orccleric/preview.png" class="builder-portrait-btn" title="Orc Cleric">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/warforgedranger2/preview.png" class="builder-portrait-btn" title="Warforged Ranger">
+                    </div>
+                    <!-- Row 3: Rogues, Rangers & Bards -->
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/rogue/preview.png" class="builder-portrait-btn" title="Rogue">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanrogue3/preview.png" class="builder-portrait-btn" title="Human Rogue">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/legendaryranger2/preview.png" class="builder-portrait-btn" title="Legendary Ranger">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/satyrbard1/preview.png" class="builder-portrait-btn" title="Satyr Bard">
+                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/yuantipurebloodbarbarian1/preview.png" class="builder-portrait-btn" title="Barbarian">
+                    </div>
+                </div>
+
                 <div id="portrait-url-area" style="display: none;">
                     <input type="text" id="cb-portrait-url" class="builder-input text-left" dir="ltr" data-i18n-placeholder="port_url_ph" style="width:100%;">
                 </div>
