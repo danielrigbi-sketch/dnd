@@ -59,6 +59,8 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .builder-portrait-btn { width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: 0.2s; object-fit: cover; background: #222; }
 .builder-portrait-btn:hover { border-color: #aaa; transform: scale(1.05); }
 .builder-portrait-btn.active { border-color: var(--cr-gold); box-shadow: 0 0 10px var(--cr-gold); transform: scale(1.15); }
+.builder-portrait-btn.tmt { border-radius: 0; background: transparent; width: 52px; height: 52px; }
+.builder-portrait-btn.tmt.active { border-radius: 4px; }
 
 /* ====================================================
    VAULT CARDS

@@ -74,6 +74,15 @@ const inputFile = document.getElementById('cb-portrait-file');
 const TMT_DEFAULT = 'https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png';
 let selectedPortrait = TMT_DEFAULT;
 
+function _isTmtUrl(url) { return typeof url === 'string' && url.includes('tools.2minutetabletop.com'); }
+function _setPreview(url) {
+    selectedPortrait = url;
+    if (!previewImg) return;
+    previewImg.src = url;
+    previewImg.style.borderRadius = _isTmtUrl(url) ? '0' : '50%';
+    previewImg.style.background   = _isTmtUrl(url) ? 'transparent' : '#222';
+}
+
 function switchPortraitTab(activeTab, activeArea) {
     [tabPreset, tabTmt, tabUrl, tabFile].forEach(t => t && t.classList.remove('active'));
     [areaPreset, areaTmt, areaUrl, areaFile].forEach(a => a && (a.style.display = 'none'));
@@ -93,8 +102,7 @@ document.querySelectorAll('.builder-portrait-btn').forEach(btn => {
     btn.onclick = () => {
         document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        selectedPortrait = btn.src;
-        if(previewImg) previewImg.src = selectedPortrait;
+        _setPreview(btn.src);
     };
 });
 
@@ -116,8 +124,7 @@ function _refreshTmtTab() {
     dyn.innerHTML = `
         <div style="font-size:9px;color:#aaa;text-align:center;letter-spacing:.5px;margin-bottom:3px;">${label}</div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;">
-            ${urls.map(u => `<img src="${u}" data-src="${u}" class="builder-portrait-btn"
-                style="width:44px;height:44px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid transparent;transition:border-color .15s;"
+            ${urls.map(u => `<img src="${u}" data-src="${u}" class="builder-portrait-btn tmt"
                 onerror="this.style.display='none'" loading="lazy" title="${cls} ${race}">`).join('')}
         </div>`;
 
@@ -125,8 +132,7 @@ function _refreshTmtTab() {
         btn.onclick = () => {
             document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            selectedPortrait = btn.dataset.src;
-            if (previewImg) previewImg.src = selectedPortrait;
+            _setPreview(btn.dataset.src);
         };
     });
 }
@@ -141,7 +147,7 @@ function _refreshTmtTab() {
 if(inputUrl) {
     inputUrl.addEventListener('input', (e) => {
         const val = e.target.value.trim();
-        if(val) { selectedPortrait = val; if(previewImg) previewImg.src = val; }
+        if(val) { _setPreview(val); }
     });
 }
 
@@ -153,8 +159,7 @@ if(inputFile) {
         // S14: show instant local preview, then upload to Firebase Storage
         const reader = new FileReader();
         reader.onload = evt => {
-            selectedPortrait = evt.target.result;   // base64 preview while uploading
-            if (previewImg) previewImg.src = selectedPortrait;
+            _setPreview(evt.target.result);   // base64 preview while uploading
         };
         reader.readAsDataURL(file);
         // Upload — show progress badge next to file input
@@ -166,8 +171,7 @@ if(inputFile) {
                 const url = await uploadPortrait(uid, file, pct => {
                     if (progressEl) progressEl.textContent = `⬆ ${pct}%`;
                 });
-                selectedPortrait = url;    // swap preview for durable URL
-                if (previewImg) previewImg.src = url;
+                _setPreview(url);    // swap preview for durable URL
                 if (progressEl) { progressEl.textContent = '✅'; setTimeout(() => { progressEl.style.display = 'none'; }, 1500); }
             }
         } catch (err) {
@@ -288,6 +292,7 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-race').value   = c.race   || "";
     document.getElementById('cb-class').value  = c.class  || "";
     document.getElementById('cb-gender').value = c.gender || 'male';
+    document.getElementById('cb-size').value   = c.size   || 'Medium';
     document.getElementById('cb-ac').value = c.ac || "";
     document.getElementById('cb-speed').value = c.speed || "";
     document.getElementById('cb-darkvision').value = c.darkvision || "0";
@@ -299,8 +304,7 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-ranged').value = c.ranged || "";
     document.getElementById('cb-ranged-dmg').value = c.rangedDmg || "1d6";
     document.getElementById('cb-color').value = c.color || "#3498db";
-    selectedPortrait = c.portrait || TMT_DEFAULT;
-    if(previewImg) previewImg.src = selectedPortrait;
+    _setPreview(c.portrait || TMT_DEFAULT);
     if (selectedPortrait.startsWith("data:image")) { switchPortraitTab(tabFile, areaFile); }
     else if (selectedPortrait.includes("tools.2minutetabletop.com")) {
         switchPortraitTab(tabTmt, areaTmt);
@@ -344,8 +348,7 @@ if(newCharBtn) {
             if(input.tagName === 'SELECT') input.selectedIndex = 0;
         });
         document.getElementById('cb-color').value = "#3498db";
-        selectedPortrait = TMT_DEFAULT;
-        if(previewImg) previewImg.src = selectedPortrait;
+        _setPreview(TMT_DEFAULT);
         switchPortraitTab(tabTmt, areaTmt);
         _refreshTmtTab();
         if (attacksList) attacksList.innerHTML = '';
@@ -393,6 +396,7 @@ if(saveCharBtn) {
             const charRace   = document.getElementById('cb-race')?.value;
             const charClass  = document.getElementById('cb-class')?.value;
             const charGender = document.getElementById('cb-gender')?.value || 'male';
+            const charSize   = document.getElementById('cb-size')?.value   || 'Medium';
             const ac = document.getElementById('cb-ac')?.value;
             const speed = document.getElementById('cb-speed')?.value;
             const darkvision = document.getElementById('cb-darkvision')?.value;
@@ -430,7 +434,7 @@ if(saveCharBtn) {
             if (!isValid || !selectedPortrait) return;
 
             const charData = {
-                name, race: charRace, class: charClass, gender: charGender,
+                name, race: charRace, class: charClass, gender: charGender, size: charSize,
                 ac: parseInt(ac), speed: parseInt(speed), pp: parseInt(pp), darkvision: parseInt(darkvision)||0,
                 initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
                 melee: parseInt(melee), meleeDmg: meleeDmg,
