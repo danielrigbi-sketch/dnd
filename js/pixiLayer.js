@@ -14,6 +14,7 @@ import {
   Text, TextStyle, Ticker, ParticleContainer,
   Texture, RenderTexture,
 } from 'pixi.js';
+import { getTileSize, getVisualScale, footprintsOverlap } from './engine/sizeUtils.js';
 
 // ── Constants ────────────────────────────────────────────────────────
 const GLOW_COLOR    = 0xf1c40f;
@@ -140,16 +141,36 @@ export class PixiLayer {
       const pl = players[cn] || {};
       const isActive = cn === activeName;
       const isGhost  = cn === draggingName;
-      const isDying  = (pl.hp || 0) <= 0 && pl.maxHp > 0;
-      const px = ox + tk.gx * pps;
-      const py = oy + tk.gy * pps;
+      // Only "dying" when hp is explicitly a number set to 0 — avoids false positives on fresh tokens
+      const isDying  = typeof pl.hp === 'number' && pl.maxHp > 0 && pl.hp <= 0;
+
+      // Multi-tile sizing
+      const tileSize   = getTileSize(pl.size);
+      const visualScale = getVisualScale(pl.size);
+      const renderSize  = Math.round(tileSize * pps * visualScale);
+      // Tiny: centre within the 1-tile cell
+      const tinyOff = tileSize === 1 ? Math.round((pps - renderSize) / 2) : 0;
+      const px = ox + tk.gx * pps + tinyOff;
+      const py = oy + tk.gy * pps + tinyOff;
+
+      // Stacking badge: count other tokens at same anchor cell
+      const stackCount = Object.values(tokens).filter(
+        other => other !== tk && other.gx === tk.gx && other.gy === tk.gy
+      ).length;
 
       if (!this._tokens.has(cn)) {
-        this._tokens.set(cn, this._createTokenSprite(cn, pl, pps));
+        this._tokens.set(cn, this._createTokenSprite(cn, pl, renderSize));
       }
 
       const obj = this._tokens.get(cn);
-      this._updateTokenSprite(obj, cn, pl, tk, px, py, pps, isActive, isGhost, isDying);
+      // Recreate sprite if renderSize changed (size category changed)
+      if (obj.size !== renderSize) {
+        this._root.removeChild(obj.container);
+        obj.container.destroy({ children: true });
+        this._tokens.set(cn, this._createTokenSprite(cn, pl, renderSize));
+      }
+
+      this._updateTokenSprite(this._tokens.get(cn), cn, pl, tk, px, py, renderSize, isActive, isGhost, isDying, stackCount);
     }
   }
 
@@ -241,21 +262,31 @@ export class PixiLayer {
     const nameBadge = new Graphics();
     container.addChild(nameBadge);
     const nameText = new Text({ text: cn, style: new TextStyle({
-      fontFamily: 'Arial', fontSize: size * 0.15,
+      fontFamily: 'Arial', fontSize: Math.max(13, size * 0.22),
       fontWeight: 'bold', fill: 0xffffff,
-      stroke: { color: 0x000000, width: 3 },
+      stroke: { color: 0x000000, width: 4 },
     })});
     nameText.anchor.set(0.5, 0.5);
     nameText.x = size / 2;
-    nameText.y = size + 14;
+    nameText.y = size + 20;
     container.addChild(nameText);
 
+    // Stacking badge (top-right corner)
+    const stackBadge = new Graphics();
+    container.addChild(stackBadge);
+    const stackText = new Text({ text: '', style: new TextStyle({
+      fontFamily: 'Arial', fontSize: Math.max(9, size * 0.18),
+      fontWeight: 'bold', fill: 0xffffff,
+    })});
+    stackText.anchor.set(0.5, 0.5);
+    container.addChild(stackText);
+
     this._root.addChild(container);
-    return { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText, size, lastPortrait: null };
+    return { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText, stackBadge, stackText, size, lastPortrait: null };
   }
 
-  _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying) {
-    const { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText } = obj;
+  _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying, stackCount = 0) {
+    const { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText, stackBadge, stackText } = obj;
 
     container.x = px;
     container.y = py;
@@ -285,25 +316,32 @@ export class PixiLayer {
     const url = pl.portrait;
     if (url && url !== obj.lastPortrait) {
       obj.lastPortrait = url;
+      obj._hasPortrait = false; // loading in progress
       Assets.load(url).then(tex => {
         portrait.texture = tex;
         portrait.width = size;
         portrait.height = size;
         mask.clear();
         mask.circle(size / 2, size / 2, size * 0.44).fill(0xffffff);
+        obj._hasPortrait = true;
       }).catch(() => {
         portrait.texture = Texture.WHITE;
-        portrait.tint = _hexColor(pl.pColor || '#3498db');
+        obj._hasPortrait = false;
       });
     } else if (!url) {
       portrait.texture = Texture.WHITE;
-      portrait.tint = _hexColor(pl.pColor || '#3498db');
       portrait.width = size;
       portrait.height = size;
     }
 
-    // Death overlay tint
-    portrait.tint = isDying ? DEAD_TINT : 0xffffff;
+    // Tint: dying = dark red overlay; no portrait = player color disc; normal = no tint
+    if (isDying) {
+      portrait.tint = DEAD_TINT;
+    } else if (!obj._hasPortrait) {
+      portrait.tint = _hexColor(pl.pColor || '#3498db');
+    } else {
+      portrait.tint = 0xffffff;
+    }
 
     // ── HP bar ──
     hpBar.clear();
@@ -316,16 +354,32 @@ export class PixiLayer {
     }
 
     // ── Name badge (pill) ──
-    const label = cn.length > 10 ? cn.slice(0, 9) + '…' : cn;
+    const label = cn.length > 12 ? cn.slice(0, 11) + '…' : cn;
     if (nameText.text !== label) nameText.text = label;
-    nameText.style.fontSize = size * 0.15;
+    nameText.style.fontSize = Math.max(13, size * 0.22);
     nameText.x = size / 2;
-    nameText.y = size + 14;
+    nameText.y = size + 20;
     // Draw pill behind text
     nameBadge.clear();
-    const tw = nameText.width + 8, th = nameText.height + 4;
-    nameBadge.roundRect(size / 2 - tw / 2, size + 14 - th / 2, tw, th, 5)
-             .fill({ color: 0x000000, alpha: 0.7 });
+    const tw = nameText.width + 10, th = nameText.height + 6;
+    nameBadge.roundRect(size / 2 - tw / 2, size + 20 - th / 2, tw, th, 6)
+             .fill({ color: 0x000000, alpha: 0.75 });
+
+    // ── Stacking badge ──
+    stackBadge.clear();
+    if (stackCount > 0) {
+      const label = `×${stackCount + 1}`;
+      stackText.text = label;
+      stackText.style.fontSize = Math.max(9, size * 0.18);
+      const sw = stackText.width + 6, sh = stackText.height + 4;
+      const sx = size - sw - 2, sy = 2;
+      stackBadge.roundRect(sx, sy, sw, sh, 3).fill({ color: 0xc0392b, alpha: 0.92 });
+      stackText.x = sx + sw / 2;
+      stackText.y = sy + sh / 2;
+      stackText.visible = true;
+    } else {
+      stackText.visible = false;
+    }
 
     // Request re-render if active (pulsing glow)
     if (isActive) this._dirty = true;

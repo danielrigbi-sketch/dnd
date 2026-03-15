@@ -119,8 +119,11 @@ export class SceneWizard {
     this._boundKey = this._onKey.bind(this);
     window.addEventListener('keydown', this._boundKey);
     window.addEventListener('resize', this._bound.resize);
-    this._initEngine();
-    this._render();
+    // Wait one frame so the modal is painted before measuring canvas dimensions
+    requestAnimationFrame(() => {
+      this._initEngine();
+      this._render();
+    });
   }
 
   close() {
@@ -505,7 +508,13 @@ export class SceneWizard {
             style="width:16px;height:16px;cursor:pointer;">
           Enable Fog of War &amp; Line-of-Sight
         </label>
-        <div class="wiz-tip" style="margin-top:6px;">When off, all tiles are fully visible to all players. Turn on for stealth-heavy sessions where exploration matters.</div>`;
+        <div class="wiz-tip" style="margin-top:6px;">When off, all tiles are fully visible to all players. Turn on for stealth-heavy sessions where exploration matters.</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:#ccc;margin-top:10px;">
+          <input type="checkbox" id="wiz-collision-enabled" ${this._data.config?.collisionEnabled ? 'checked' : ''}
+            style="width:16px;height:16px;cursor:pointer;">
+          Enforce tile collision (tokens block each other's movement)
+        </label>
+        <div class="wiz-tip" style="margin-top:6px;">Off by default — tokens can freely share spaces. Enable for strict D&amp;D 5e positioning where creatures block passage.</div>`;
 
       // ──── Step 5: Save ────────────────────────────────────────────────
       case 5: return `
@@ -860,6 +869,10 @@ export class SceneWizard {
     document.getElementById('wiz-fow-enabled')?.addEventListener('change', e => {
       this._data.config = { ...this._data.config, fowEnabled: e.target.checked };
       if (eng) { eng.S.cfg.fowEnabled = e.target.checked; eng._dirty(); }
+    });
+    document.getElementById('wiz-collision-enabled')?.addEventListener('change', e => {
+      this._data.config = { ...this._data.config, collisionEnabled: e.target.checked };
+      if (eng) { eng.S.cfg.collisionEnabled = e.target.checked; }
     });
 
     // ── Step 5: Save ──────────────────────────────────────────────────────
