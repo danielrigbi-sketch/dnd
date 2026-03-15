@@ -117,10 +117,14 @@ export class TokenSystem {
     if (isDM && (m === 'fogReveal' || m === 'wizFog')) { eng.L.painting = true; eng._revealCell(gx, gy); return; }
     if (isDM && (m === 'fogHide'  || m === 'wizFogHide')) { eng.L.painting = true; eng._hideCell(gx, gy); return; }
 
-    // Token drag — DM can drag any token; players can always drag their own token
+    // Token drag — DM can drag any token; players can only drag on their turn
     const tn = this.tokenAt(wx, wy);
     if (tn) {
-      const ok = isDM || tn === eng.cName;
+      const inCombat = eng.L.sc?.length > 0 && eng.L.ati !== null;
+      const ok = isDM || (tn === eng.cName && (!inCombat || this._isMyTurn(tn)));
+      if (!ok && tn === eng.cName && inCombat && !this._isMyTurn(tn)) {
+        eng.bus.emit('ui:toast', { msg: "It's not your turn!", type: 'warning' });
+      }
       if (ok) {
         const tk = eng.S.tokens[tn];
         eng.L.drag = { cName: tn, startGX: tk.gx, startGY: tk.gy, curGX: tk.gx, curGY: tk.gy, path: [[tk.gx, tk.gy]] };
@@ -132,6 +136,11 @@ export class TokenSystem {
 
     // E6-C: Click-to-move (player clicks empty floor cell on their turn)
     if (m === 'view' && !isDM && eng.cName) {
+      const inCombat = eng.L.sc?.length > 0 && eng.L.ati !== null;
+      if (inCombat && !this._isMyTurn(eng.cName)) {
+        eng.bus.emit('ui:toast', { msg: "It's not your turn!", type: 'warning' });
+        return;
+      }
       const myTk = eng.S.tokens[eng.cName];
       if (myTk && !this.tokenAt(wx, wy)) {
         const { cols = 40, rows = 30 } = eng.S.cfg;

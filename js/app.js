@@ -766,6 +766,17 @@ window.removeNPC = async (targetCName) => {
     }
 };
 
+window.reorderInitiative = (fromName, toName) => {
+    if (userRole !== 'dm') return;
+    const fromC = sortedCombatants.find(c => c.name === fromName);
+    const toC   = sortedCombatants.find(c => c.name === toName);
+    if (!fromC || !toC) return;
+    // Swap scores so Firebase sort reflects new order
+    const tmp = fromC.score;
+    db.setPlayerInitiativeInDB(fromName, fromC.pName, toC.score,   fromC.pColor);
+    db.setPlayerInitiativeInDB(toName,   toC.pName,   tmp,          toC.pColor);
+};
+
 window.toggleVisibility = (targetCName, current) => {
     if (userRole !== 'dm') return;
     db.updatePlayerVisibilityInDB(targetCName, !current);
@@ -891,6 +902,8 @@ function initMap() {
 
     mapEngine = new MapEngine(cv, fwc, { cName, userRole, activeRoom: db.getActiveRoom() });
     window._mapEng = mapEngine;
+    // Forward ui:toast bus events to showToast
+    mapEngine.bus.on('ui:toast', ({ msg, type }) => showToast(msg, type || 'info'));
     // Initialise the YouTube video background layer
     mapEngine.initVideo(container);
     resize();

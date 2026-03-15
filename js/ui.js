@@ -69,6 +69,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
 
         div.className = `tracker-item ${extraClasses}`;
         div.setAttribute('data-combatant', i.name);
+        if (isDM) div.draggable = true;
 
         const playerColor = i.pColor || '#e74c3c';
         div.style.borderRight = `4px solid ${playerColor}`;
@@ -298,6 +299,38 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
         }
         list.appendChild(div);
     });
+
+    // ── Drag-to-reorder (DM only) ──────────────────────────────────────────
+    if (isDM) {
+        let _dragSrc = null;
+        list.querySelectorAll('.tracker-item[draggable]').forEach(row => {
+            row.addEventListener('dragstart', e => {
+                _dragSrc = row;
+                row.style.opacity = '0.4';
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            row.addEventListener('dragend', () => {
+                _dragSrc = null;
+                list.querySelectorAll('.tracker-item').forEach(r => {
+                    r.style.opacity = '';
+                    r.style.borderTop = '';
+                });
+            });
+            row.addEventListener('dragover', e => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                list.querySelectorAll('.tracker-item').forEach(r => r.style.borderTop = '');
+                if (row !== _dragSrc) row.style.borderTop = '2px solid #f1c40f';
+            });
+            row.addEventListener('drop', e => {
+                e.preventDefault();
+                if (!_dragSrc || _dragSrc === row) return;
+                const from = _dragSrc.dataset.combatant;
+                const to   = row.dataset.combatant;
+                window.reorderInitiative?.(from, to);
+            });
+        });
+    }
 }
 
 window.toggleStatusPicker = (name) => {
