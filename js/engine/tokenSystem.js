@@ -165,6 +165,7 @@ export class TokenSystem {
     if (eng.L.pan.on) {
       eng.vx = eng.L.pan.vx0 + (sx - eng.L.pan.sx);
       eng.vy = eng.L.pan.vy0 + (sy - eng.L.pan.sy);
+      eng._clampPan();
       eng._dirty();
       return;
     }
@@ -238,6 +239,7 @@ export class TokenSystem {
     eng.vx = sx - (sx - eng.vx) * (ns / eng.vs);
     eng.vy = sy - (sy - eng.vy) * (ns / eng.vs);
     eng.vs = ns;
+    eng._clampPan();
     eng._dirty();
   }
 

@@ -601,14 +601,23 @@ export class MapEngine {
     }
     // Keep the old image visible while the new one loads (prevents checkerboard flash)
     this.L.bgLoading = true;
-    const img = new Image(); img.crossOrigin = 'anonymous';
-    img.onload  = () => { this.L.bg = img; this.L.bgLoading = false; this._dirty(); };
-    img.onerror = () => {
-      this.L.bgLoading = false;
-      if (typeof window.showToast === 'function') window.showToast('Could not load background image — check the URL or CORS policy.', 'warning');
-      this._dirty();
+
+    // Try CORS-safe first (keeps canvas un-tainted). If server has no CORS headers, retry
+    // without crossOrigin so the image still displays (canvas reads will be disabled but
+    // we never read pixels from the background).
+    const _try = (withCors) => {
+      const img = new Image();
+      if (withCors) img.crossOrigin = 'anonymous';
+      img.onload  = () => { this.L.bg = img; this.L.bgLoading = false; this._dirty(); };
+      img.onerror = () => {
+        if (withCors) { _try(false); return; } // silent CORS fallback
+        this.L.bgLoading = false;
+        if (typeof window.showToast === 'function') window.showToast('Could not load background image — check the URL.', 'warning');
+        this._dirty();
+      };
+      img.src = url;
     };
-    img.src = url;
+    _try(true);
   }
 
   loadBgUrl(url) {
@@ -627,6 +636,25 @@ export class MapEngine {
   }
 
   loadBgFile(file){ const r = new FileReader(); r.onload = e => { const img = new Image(); img.onload = () => { this.L.bg = img; this._dirty(); }; img.src = e.target.result; }; r.readAsDataURL(file); }
+
+  /** Clamp vx/vy so the map never slides fully off-canvas.
+   *  At minimum zoom the map fills the canvas exactly; zoomed in, we prevent
+   *  panning past the map's own edges. */
+  _clampPan() {
+    const W = this.cv.width, H = this.cv.height;
+    const { ox, oy, pps, mapW, mapH } = this.S.cfg;
+    const mW = (mapW || MAP_W_DEFAULT) * pps * this.vs;
+    const mH = (mapH || MAP_H_DEFAULT) * pps * this.vs;
+    const oxS = ox * this.vs, oyS = oy * this.vs;
+    // Map screen bounds: left = vx+oxS, right = vx+oxS+mW, top = vy+oyS, bottom = vy+oyS+mH
+    // Keep: left ≤ 0 AND right ≥ W (map always covers canvas width)
+    const vxMax = -oxS;
+    const vxMin = W - oxS - mW;
+    const vyMax = -oyS;
+    const vyMin = H - oyS - mH;
+    this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
+    this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
+  }
 
   nudgeGrid(dpps, dox, doy) {
     if (this.S.cfg.locked) return;
