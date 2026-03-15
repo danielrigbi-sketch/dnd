@@ -69,7 +69,16 @@ export class MovementSystem {
     if (!isDM && newUsed > speed) { e._dirty(); return; } // reject over-limit
 
     if (e.db) {
-      e.db.moveMapToken(e.activeRoom, dt.cName, dt.curGX, dt.curGY, isDM ? prevUsed : newUsed);
+      const committedGX = dt.curGX, committedGY = dt.curGY;
+      e.db.moveMapToken(e.activeRoom, dt.cName, committedGX, committedGY, isDM ? prevUsed : newUsed)
+        ?.catch?.(() => {
+          // Rollback token position locally if Firebase write fails
+          if (e.S.tokens[dt.cName]) {
+            e.S.tokens[dt.cName].gx = dt.startGX;
+            e.S.tokens[dt.cName].gy = dt.startGY;
+            e._dirty();
+          }
+        });
 
       // Emit bus event — VisibilitySystem subscribes
       e.bus.emit('token:moved', {
@@ -93,8 +102,9 @@ export class MovementSystem {
     const speedFt = Number(pl.speed) || 30;
     const speedSq = Math.ceil(speedFt / FT_PER_SQ);
     const usedMv = e.S.tokens[dt.cName]?.usedMv || 0;
-    const remaining = Math.max(0, speedSq - usedMv);
-    if (remaining <= 0) return;
+    const usedSq = Math.ceil(usedMv / FT_PER_SQ);
+    const remainingSq = Math.max(0, speedSq - usedSq);
+    if (remainingSq <= 0) return;
 
     const { ctx } = e;
     const { pps, ox, oy } = e.S.cfg;
@@ -110,7 +120,7 @@ export class MovementSystem {
       const k = `${cx},${cy}`;
       if (visited.has(k)) continue;
       visited.add(k);
-      if (dist > remaining) continue;
+      if (dist > remainingSq) continue;
       ctx.fillStyle = 'rgba(80,200,255,0.10)';
       ctx.fillRect(ox + cx * pps + 1, oy + cy * pps + 1, pps - 2, pps - 2);
       for (let dx = -1; dx <= 1; dx++) {
@@ -142,7 +152,8 @@ export class MovementSystem {
     const speedFt = Number(pl.speed) || 30;
     const speedSq = Math.ceil(speedFt / FT_PER_SQ);
     const usedMv = e.S.tokens[dt.cName]?.usedMv || 0;
-    const remaining = Math.max(0, speedSq - usedMv);
+    const usedSq = Math.ceil(usedMv / FT_PER_SQ);
+    const remaining = Math.max(0, speedSq - usedSq);
 
     const stroke = sq <= remaining   ? 'rgba(80,200,255,0.90)'
                  : sq <= speedSq * 2 ? 'rgba(230,126,34,0.90)'

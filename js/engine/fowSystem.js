@@ -27,6 +27,10 @@ export class FowSystem {
         const { gx, gy } = kp(k);
         engine.L.fogRevQ.push({ gx, gy, t: now });
       }
+      // Keep queue bounded to prevent memory bloat in long sessions
+      if (engine.L.fogRevQ.length > 200) {
+        engine.L.fogRevQ.splice(0, engine.L.fogRevQ.length - 200);
+      }
       engine._dirty();
     });
   }

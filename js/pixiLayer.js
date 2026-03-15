@@ -78,8 +78,9 @@ export class PixiLayer {
     this._particleRoot = new Container();
     this._app.stage.addChild(this._particleRoot);
 
-    // Ticker for particles
+    // Ticker for particles — starts stopped, runs only when particles are active
     this._app.ticker.add(() => this._tick());
+    this._app.ticker.stop();
 
     // Handle resize
     this._ro = new ResizeObserver(() => this._resize(container));
@@ -127,7 +128,11 @@ export class PixiLayer {
 
     // Remove tokens that no longer exist
     for (const [cn, obj] of this._tokens) {
-      if (!tokens[cn]) { this._root.removeChild(obj.container); this._tokens.delete(cn); }
+      if (!tokens[cn]) {
+        this._root.removeChild(obj.container);
+        obj.container.destroy({ children: true, texture: false });
+        this._tokens.delete(cn);
+      }
     }
 
     // Create or update each token
@@ -179,6 +184,9 @@ export class PixiLayer {
     if (label) {
       this._spawnDamageNumber(sx, sy, String(label), palette[0], type);
     }
+
+    // Ensure ticker is running while particles are active
+    if (!this._app.ticker.started) this._app.ticker.start();
   }
 
   /**
@@ -371,9 +379,10 @@ export class PixiLayer {
       return true;
     });
 
-    // Pulsing glow on active token — force redraw each tick
-    if (this._dirty || this._particles.length > 0) {
+    // Stop ticker when no more particles to save CPU
+    if (this._particles.length === 0) {
       this._dirty = false;
+      this._app.ticker.stop();
     }
   }
 

@@ -258,7 +258,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                         </div>
                         ${i.spellSlots && Object.keys(i.spellSlots.max || {}).length > 0 ? `
                         <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1);">
-                            <div style="font-size:10px; color:#9b59b6; font-weight:bold; margin-bottom:6px;">🔮 Spell Slots</div>
+                            <div style="font-size:10px; color:#9b59b6; font-weight:bold; margin-bottom:6px;">🔮 ${t('spell_slots')}</div>
                             <div class="spell-slots-grid">
                                 ${Object.entries(i.spellSlots.max).sort(([a],[b]) => a-b).map(([lv, max]) => {
                                     const used = (i.spellSlots.used || {})[lv] || 0;
@@ -281,12 +281,12 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                 }).join('')}
                             </div>
                             ${canViewStats ? `
-                                <button onclick="window.longRest('${i.name}')" class="long-rest-btn">🌙 Long Rest — Full Restore</button>
+                                <button onclick="window.longRest('${i.name}')" class="long-rest-btn">🌙 ${t('long_rest')}</button>
                             ` : ''}
                         </div>
                         ` : canViewStats ? `
                         <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1);">
-                            ${isDM ? `<button onclick="window.longRest('${i.name}')" class="long-rest-btn">🌙 Long Rest</button>` : ''}
+                            ${isDM ? `<button onclick="window.longRest('${i.name}')" class="long-rest-btn">🌙 ${t('long_rest')}</button>` : ''}
                         </div>
                         ` : ''}
                     ` : `
