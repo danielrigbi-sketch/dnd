@@ -13,7 +13,8 @@
     "easystarjs": "^0.4.4",
     "firebase": "^10.8.0",
     "pixi.js": "^8.16.0",
-    "rot-js": "^2.2.1"
+    "rot-js": "^2.2.1",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "vite": "^5.4.0"

@@ -165,6 +165,11 @@
                         <option value="Ranger" data-i18n="class_ranger"></option>
                         <option value="Warlock" data-i18n="class_warlock"></option>
                     </select>
+                    <select id="cb-gender" class="builder-input" style="flex:0 0 auto; min-width:90px;">
+                        <option value="male" data-i18n="gender_male">Male</option>
+                        <option value="female" data-i18n="gender_female">Female</option>
+                        <option value="nonbinary" data-i18n="gender_nonbinary">Non-binary</option>
+                    </select>
                 </div>
 
                 <div class="flex-row">
@@ -522,7 +527,15 @@
     <!-- ═══════════════════════════════════════════════════════════════
          SCENE CREATION WIZARD — 6-step guided modal
          ═══════════════════════════════════════════════════════════════ -->
-    <!-- ── Background Music Panel (DM only) ── -->
+    <!-- ── Player music mute button (shown for all roles when music is active) ── -->
+    <button id="player-music-btn" onclick="window._musicLocalMute()" title="Mute / unmute background music"
+            style="display:none; position:fixed; bottom:14px; right:14px; z-index:1190;
+                   background:rgba(18,18,42,0.88); border:1px solid rgba(255,255,255,0.18);
+                   color:#ccc; border-radius:50%; width:40px; height:40px; font-size:18px;
+                   cursor:pointer; box-shadow:0 3px 12px rgba(0,0,0,0.5); backdrop-filter:blur(4px);
+                   transition:opacity .2s;">🔊</button>
+
+    <!-- ── Background Music Panel ── -->
     <div id="music-panel" style="display:none; position:fixed; bottom:76px; left:50%; transform:translateX(-50%); z-index:1200;
          background:#12122a; border:1px solid rgba(255,255,255,0.14); border-radius:14px; width:380px; max-width:96vw;
          box-shadow:0 10px 40px rgba(0,0,0,0.7); overflow:hidden;">

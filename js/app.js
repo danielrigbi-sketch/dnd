@@ -262,6 +262,12 @@ let _appUnsubs = [];
 
 // ── Background Music ──────────────────────────────────────────────────────────
 const musicPlayer = new MusicPlayer();
+musicPlayer.onBlocked(() => showToast('🎵 Click anywhere to start music', 'info'));
+// Unlock pending autoplay on the first user gesture
+const _unlockMusic = () => musicPlayer.unlock();
+document.addEventListener('click',     _unlockMusic);
+document.addEventListener('keydown',   _unlockMusic);
+document.addEventListener('touchstart', _unlockMusic, { passive: true });
 let _musicPanelOpen = false;
 let _musicActiveCat = 'battle';
 let _musicPanelBuilt = false;
@@ -337,6 +343,17 @@ function _updateMusicNowPlaying() {
         el.textContent = 'No track playing';
     }
     if (muteBtn) muteBtn.textContent = musicPlayer.localMuted ? '🔇' : '🔊';
+    // Player music button — visible when music is active (all roles)
+    const playerBtn = document.getElementById('player-music-btn');
+    if (playerBtn) {
+        const hasTrack = !!musicPlayer.currentId;
+        // Hide for DM (they use the toolbar button); show for everyone else when music is active
+        const isDM = document.getElementById('map-toolbar')?.style.display !== 'none';
+        playerBtn.style.display = (hasTrack && !isDM) ? 'flex' : 'none';
+        playerBtn.style.alignItems = 'center';
+        playerBtn.style.justifyContent = 'center';
+        playerBtn.textContent = musicPlayer.localMuted ? '🔇' : '🔊';
+    }
 }
 
 window._toggleMusicPanel = () => {
@@ -1218,6 +1235,11 @@ function _activateMapCanvas(sceneData) {
     if (!mapEngine._pixiInited) {
       mapEngine._pixiInited = true;
       mapEngine.initPixi(container); // async, non-blocking
+    }
+    // 3D mini layer — init once alongside PixiJS
+    if (!mapEngine._miniInited) {
+      mapEngine._miniInited = true;
+      mapEngine.initMini(container);
     }
     // SD-3: Iris wipe — cinematic reveal when scene loads
     mapEngine.startIris('open');
