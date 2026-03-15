@@ -307,6 +307,16 @@ async function _showCustomizeForm(slug) {
             <option value="nonbinary"${(stats.gender||'')==='nonbinary'?' selected':''}>⚧ Non-binary</option>
           </select>
         </label>
+        <label style="${labelStyle}">Size
+          <select id="mb-c-size" style="${inputStyle}">
+            <option value="Tiny"${stats.size==='Tiny'?' selected':''}>Tiny (½×½)</option>
+            <option value="Small"${stats.size==='Small'?' selected':''}>Small (1×1)</option>
+            <option value="Medium"${(!stats.size||stats.size==='Medium')?' selected':''}>Medium (1×1)</option>
+            <option value="Large"${stats.size==='Large'?' selected':''}>Large (2×2)</option>
+            <option value="Huge"${stats.size==='Huge'?' selected':''}>Huge (3×3)</option>
+            <option value="Gargantuan"${stats.size==='Gargantuan'?' selected':''}>Gargantuan (4×4)</option>
+          </select>
+        </label>
         <label style="${labelStyle}">HP (Max)
           <input id="mb-c-hp" type="number" value="${stats.maxHp}" min="1" style="${inputStyle}">
         </label>
@@ -391,6 +401,7 @@ async function _showCustomizeForm(slug) {
     const initBonus = Math.floor((newDex - 10) / 2);
     const overrides = {
       gender:   document.getElementById('mb-c-gender')?.value || 'male',
+      size:     document.getElementById('mb-c-size')?.value   || stats.size || 'Medium',
       maxHp:    _n('mb-c-hp')       || stats.maxHp,
       hp:       _n('mb-c-hp')       || stats.hp,
       ac:       _n('mb-c-ac')       || stats.ac,
