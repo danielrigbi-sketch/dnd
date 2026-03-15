@@ -236,8 +236,9 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-main-title').innerText = t('title_edit_char');
     document.getElementById('save-char-btn').innerText = t('btn_update_char');
     document.getElementById('cb-name').value = c.name || "";
-    document.getElementById('cb-race').value = c.race || "";
-    document.getElementById('cb-class').value = c.class || "";
+    document.getElementById('cb-race').value   = c.race   || "";
+    document.getElementById('cb-class').value  = c.class  || "";
+    document.getElementById('cb-gender').value = c.gender || 'male';
     document.getElementById('cb-ac').value = c.ac || "";
     document.getElementById('cb-speed').value = c.speed || "";
     document.getElementById('cb-darkvision').value = c.darkvision || "0";
@@ -334,8 +335,9 @@ if(saveCharBtn) {
             e.preventDefault();
             if (!currentUserUid) return;
             const name = document.getElementById('cb-name')?.value.trim();
-            const charRace = document.getElementById('cb-race')?.value;
-            const charClass = document.getElementById('cb-class')?.value;
+            const charRace   = document.getElementById('cb-race')?.value;
+            const charClass  = document.getElementById('cb-class')?.value;
+            const charGender = document.getElementById('cb-gender')?.value || 'male';
             const ac = document.getElementById('cb-ac')?.value;
             const speed = document.getElementById('cb-speed')?.value;
             const darkvision = document.getElementById('cb-darkvision')?.value;
@@ -373,7 +375,7 @@ if(saveCharBtn) {
             if (!isValid || !selectedPortrait) return;
 
             const charData = {
-                name, race: charRace, class: charClass,
+                name, race: charRace, class: charClass, gender: charGender,
                 ac: parseInt(ac), speed: parseInt(speed), pp: parseInt(pp), darkvision: parseInt(darkvision)||0,
                 initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
                 melee: parseInt(melee), meleeDmg: meleeDmg,

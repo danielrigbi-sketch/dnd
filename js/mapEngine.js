@@ -15,6 +15,7 @@ import { TileEngine } from './tileEngine.js';
 import { Pathfinder } from './pathfinder.js';
 import { PixiLayer } from './pixiLayer.js';
 import { VideoLayer } from './videoLayer.js';
+import { initMiniLayer, syncMinis, destroyMiniLayer } from './miniLayer.js';
 
 import { mapBus }           from './core/eventBus.js';
 import { TokenSystem }      from './engine/tokenSystem.js';
@@ -186,6 +187,15 @@ export class MapEngine {
     }
   }
 
+  initMini(containerEl) {
+    try {
+      initMiniLayer(containerEl);
+      console.log('[MiniLayer] 3D overlay ready ✓');
+    } catch (e) {
+      console.warn('[MiniLayer] init failed:', e.message);
+    }
+  }
+
   initVideo(containerEl) {
     this._video.init(containerEl);
   }
@@ -285,6 +295,12 @@ export class MapEngine {
       this._pixi.setTransform(this.vx, this.vy, this.vs);
       this._pixi.syncTokens(this.S.tokens, this.S.players, activeName, this.S.cfg, dragging, () => this._dirty());
       this._pixi.renderFrame(); // PixiJS ticker is stopped; force render each frame
+    }
+    // 3D miniature overlay — synced every frame, renders on its own RAF loop
+    {
+      const activeName = this.L.sc?.[this.L.ati]?.name;
+      const { pps, ox, oy } = this.S.cfg;
+      syncMinis(this.vx, this.vy, this.vs, ox, oy, pps, this.S.tokens, this.S.players, activeName);
     }
     this.movement.renderPath();
     this._rRuler();

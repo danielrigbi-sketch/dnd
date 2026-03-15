@@ -262,6 +262,12 @@ let _appUnsubs = [];
 
 // ── Background Music ──────────────────────────────────────────────────────────
 const musicPlayer = new MusicPlayer();
+musicPlayer.onBlocked(() => showToast('🎵 Click anywhere to start music', 'info'));
+// Unlock pending autoplay on the first user gesture
+const _unlockMusic = () => musicPlayer.unlock();
+document.addEventListener('click',     _unlockMusic);
+document.addEventListener('keydown',   _unlockMusic);
+document.addEventListener('touchstart', _unlockMusic, { passive: true });
 let _musicPanelOpen = false;
 let _musicActiveCat = 'battle';
 let _musicPanelBuilt = false;
@@ -1218,6 +1224,11 @@ function _activateMapCanvas(sceneData) {
     if (!mapEngine._pixiInited) {
       mapEngine._pixiInited = true;
       mapEngine.initPixi(container); // async, non-blocking
+    }
+    // 3D mini layer — init once alongside PixiJS
+    if (!mapEngine._miniInited) {
+      mapEngine._miniInited = true;
+      mapEngine.initMini(container);
     }
     // SD-3: Iris wipe — cinematic reveal when scene loads
     mapEngine.startIris('open');
