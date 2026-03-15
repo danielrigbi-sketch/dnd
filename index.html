@@ -430,6 +430,9 @@
                         <button class="map-tb-btn" id="btn-video-bg" onclick="window._videoToggleBtn()" title="Video Background Controls" style="display:none;">
                             <span class="map-tb-icon">🎬</span><span class="map-tb-label">Video</span>
                         </button>
+                        <button class="map-tb-btn" id="btn-music" onclick="window._toggleMusicPanel()" title="Background Music">
+                            <span class="map-tb-icon">🎵</span><span class="map-tb-label">Music</span>
+                        </button>
                         <div class="map-tb-sep"></div>
                         <button class="map-tb-btn" onclick="window._handoutBtn()" title="Print Dungeon Handout (E7)" id="btn-handout">
                             <span class="map-tb-icon">📜</span><span class="map-tb-label">Handout</span>
@@ -519,6 +522,41 @@
     <!-- ═══════════════════════════════════════════════════════════════
          SCENE CREATION WIZARD — 6-step guided modal
          ═══════════════════════════════════════════════════════════════ -->
+    <!-- ── Background Music Panel (DM only) ── -->
+    <div id="music-panel" style="display:none; position:fixed; bottom:76px; left:50%; transform:translateX(-50%); z-index:1200;
+         background:#12122a; border:1px solid rgba(255,255,255,0.14); border-radius:14px; width:380px; max-width:96vw;
+         box-shadow:0 10px 40px rgba(0,0,0,0.7); overflow:hidden;">
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04);">
+        <span style="font-weight:800; color:white; font-size:14px; letter-spacing:.3px;">🎵 Background Music</span>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <button id="music-mute-btn" onclick="window._musicLocalMute()" title="Mute music locally"
+                  style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#aaa; border-radius:6px; padding:3px 10px; font-size:13px; cursor:pointer;">🔊</button>
+          <button onclick="window._toggleMusicPanel()" style="background:none; border:none; color:#aaa; font-size:20px; cursor:pointer; line-height:1; padding:0 2px;">✕</button>
+        </div>
+      </div>
+      <div style="padding:12px 14px;">
+        <!-- Category tabs -->
+        <div id="music-cat-tabs" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
+        <!-- Track list -->
+        <div id="music-track-list" style="max-height:190px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-bottom:10px;"></div>
+        <!-- Volume -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="color:#aaa; font-size:13px; flex-shrink:0;">🔊 Vol</span>
+          <input type="range" id="music-volume" min="0" max="100" value="50"
+                 style="flex:1; accent-color:#9b59b6;"
+                 oninput="window._musicVolumeChange(+this.value)">
+          <button id="music-stop-btn" onclick="window._musicStop()"
+                  style="background:rgba(231,76,60,0.18); border:1px solid rgba(231,76,60,0.45); color:#e74c3c;
+                         border-radius:7px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0;">■ Stop</button>
+        </div>
+        <!-- Now playing -->
+        <div id="music-now-playing" style="margin-top:9px; font-size:11px; color:#9b59b6; text-align:center; min-height:16px; font-style:italic;"></div>
+        <div style="margin-top:4px; font-size:10px; color:rgba(255,255,255,0.3); text-align:center;">
+          Kevin MacLeod (CC BY 4.0) · FreePD (CC0)
+        </div>
+      </div>
+    </div>
+
     <!-- ── Monster Book Modal ── -->
     <div id="monster-book-modal" class="modal-overlay" style="display:none; z-index:1300; align-items:center; justify-content:center;">
         <div class="modal-box" style="max-width:540px; width:95vw; max-height:80vh; display:flex; flex-direction:column; padding:0; overflow:hidden; border-radius:12px;">

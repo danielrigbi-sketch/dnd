@@ -18,6 +18,7 @@ import { generateNPC } from "./faker.js";
 import { printHandout, openWatabou, captureMapCanvas } from "./handout.js"; // E7
 import { iconHTML } from "./icons.js";
 import { initMonsterBook } from "./monsterBook.js";
+import { MusicPlayer, MUSIC_LIBRARY, MUSIC_CATEGORIES, TRACK_BY_ID } from "./musicPlayer.js";
 
 // Expose Wave 2 panels globally
 window.openStatBlock     = openStatBlock;
@@ -258,6 +259,117 @@ let sceneWizard = null;
 let activeSceneId = null;
 // App-level Firebase listener unsubscribers (cleaned up on logout/room change)
 let _appUnsubs = [];
+
+// ── Background Music ──────────────────────────────────────────────────────────
+const musicPlayer = new MusicPlayer();
+let _musicPanelOpen = false;
+let _musicActiveCat = 'battle';
+let _musicPanelBuilt = false;
+
+function _buildMusicPanel() {
+    if (_musicPanelBuilt) return;
+    _musicPanelBuilt = true;
+
+    // Category tabs
+    const tabContainer = document.getElementById('music-cat-tabs');
+    if (!tabContainer) return;
+    MUSIC_CATEGORIES.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.dataset.cat = cat.id;
+        btn.textContent = cat.label;
+        btn.style.cssText = 'background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;border-radius:20px;padding:3px 10px;font-size:11px;cursor:pointer;transition:all .15s;';
+        btn.onclick = () => { _musicActiveCat = cat.id; _renderMusicTracks(); _highlightMusicCat(); };
+        tabContainer.appendChild(btn);
+    });
+    _renderMusicTracks();
+    _highlightMusicCat();
+    _updateMusicNowPlaying();
+
+    musicPlayer.onChange(() => {
+        _updateMusicNowPlaying();
+        _renderMusicTracks();
+    });
+    musicPlayer.onError(track => showToast(`⚠️ Track unavailable: ${track.title}`, 'warning'));
+}
+
+function _highlightMusicCat() {
+    document.querySelectorAll('#music-cat-tabs button').forEach(btn => {
+        const active = btn.dataset.cat === _musicActiveCat;
+        btn.style.background  = active ? 'rgba(155,89,182,0.35)' : 'rgba(255,255,255,0.07)';
+        btn.style.borderColor = active ? 'rgba(155,89,182,0.7)'  : 'rgba(255,255,255,0.15)';
+        btn.style.color       = active ? '#d7b8f3' : '#ccc';
+    });
+}
+
+function _renderMusicTracks() {
+    const list = document.getElementById('music-track-list');
+    if (!list) return;
+    const tracks = MUSIC_LIBRARY[_musicActiveCat] || [];
+    list.innerHTML = '';
+    tracks.forEach(track => {
+        const isPlaying = musicPlayer.currentId === track.id && musicPlayer.playing;
+        const row = document.createElement('div');
+        row.style.cssText = `display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;cursor:pointer;
+            background:${isPlaying ? 'rgba(155,89,182,0.25)' : 'rgba(255,255,255,0.04)'};
+            border:1px solid ${isPlaying ? 'rgba(155,89,182,0.5)' : 'rgba(255,255,255,0.08)'};
+            transition:background .15s;`;
+        row.innerHTML = `
+            <span style="font-size:18px;flex-shrink:0;">${isPlaying ? '▶' : '▷'}</span>
+            <div style="flex:1;min-width:0;">
+                <div style="color:${isPlaying ? '#d7b8f3' : 'white'};font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${track.title}</div>
+                <div style="color:rgba(255,255,255,0.4);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${track.artist}</div>
+            </div>`;
+        row.onclick = () => window._musicPlay(track.id);
+        list.appendChild(row);
+    });
+}
+
+function _updateMusicNowPlaying() {
+    const el = document.getElementById('music-now-playing');
+    const muteBtn = document.getElementById('music-mute-btn');
+    if (!el) return;
+    const track = TRACK_BY_ID[musicPlayer.currentId];
+    if (track && musicPlayer.playing) {
+        el.textContent = `▶ ${track.title}`;
+    } else if (musicPlayer.currentId && !musicPlayer.playing) {
+        el.textContent = `⏸ ${TRACK_BY_ID[musicPlayer.currentId]?.title || ''}`;
+    } else {
+        el.textContent = 'No track playing';
+    }
+    if (muteBtn) muteBtn.textContent = musicPlayer.localMuted ? '🔇' : '🔊';
+}
+
+window._toggleMusicPanel = () => {
+    _musicPanelOpen = !_musicPanelOpen;
+    const panel = document.getElementById('music-panel');
+    if (!panel) return;
+    panel.style.display = _musicPanelOpen ? 'block' : 'none';
+    if (_musicPanelOpen) _buildMusicPanel();
+    document.getElementById('btn-music')?.classList.toggle('active', _musicPanelOpen);
+};
+
+window._musicPlay = (trackId) => {
+    if (userRole !== 'dm') return;
+    const vol = parseInt(document.getElementById('music-volume')?.value ?? 50);
+    db.setMusic(db.getActiveRoom(), { trackId, playing: true, volume: vol / 100, ts: Date.now() });
+};
+
+window._musicStop = () => {
+    if (userRole !== 'dm') return;
+    db.setMusic(db.getActiveRoom(), { trackId: null, playing: false, volume: musicPlayer.volume, ts: Date.now() });
+};
+
+window._musicVolumeChange = (val) => {
+    musicPlayer.volume = val / 100;
+    if (userRole === 'dm') {
+        db.setMusic(db.getActiveRoom(), { trackId: musicPlayer.currentId, playing: musicPlayer.playing, volume: val / 100, ts: Date.now() });
+    }
+};
+
+window._musicLocalMute = () => {
+    musicPlayer.setLocalMute(!musicPlayer.localMuted);
+    _updateMusicNowPlaying();
+};
 
 function populateMonsterSelect() {
     const select = document.getElementById('npc-preset');
@@ -1137,6 +1249,14 @@ function setupDatabaseListeners() {
             db.listenToPlayerInitiative(cName, (exists) => {
                 if (btn) { btn.disabled = exists; btn.innerText = exists ? t('registered') : t('roll_init_btn'); btn.style.opacity = exists ? "0.5" : "1"; }
             });
+            // Auto-play battle music when combat starts (DM only, only if no music is already playing)
+            if (userRole === 'dm' && !musicPlayer.playing) {
+                const battleTracks = MUSIC_LIBRARY.battle || [];
+                if (battleTracks.length) {
+                    const pick = battleTracks[Math.floor(Math.random() * battleTracks.length)];
+                    db.setMusic(db.getActiveRoom(), { trackId: pick.id, playing: true, volume: musicPlayer.volume, ts: Date.now() });
+                }
+            }
         } else {
             if (btn) { btn.disabled = true; btn.innerText = t('waiting_combat'); btn.style.opacity = "0.3"; }
         }
@@ -1230,6 +1350,26 @@ function setupDatabaseListeners() {
             activeSceneId = null;
         }
     }));
+
+    // Background music — all clients mirror what the DM sets
+    _appUnsubs.push(db.listenMusic(db.getActiveRoom(), (state) => {
+        if (!state || !state.trackId) {
+            musicPlayer.stop();
+        } else {
+            // Sync volume (use DM's volume as base, preserve local mute)
+            musicPlayer.volume = state.volume ?? 0.5;
+            const volEl = document.getElementById('music-volume');
+            if (volEl) volEl.value = Math.round((state.volume ?? 0.5) * 100);
+            if (state.playing) {
+                musicPlayer.play(state.trackId);
+            } else {
+                musicPlayer.stop();
+            }
+        }
+        // Update panel UI if open
+        _updateMusicNowPlaying?.();
+        _renderMusicTracks?.();
+    }));
 }
 
 // ── Credits Modal ────────────────────────────────────────────────────────────
@@ -1245,6 +1385,8 @@ const _CREDITS = [
     { n: "Watabou's Dungeon", l: 'MIT / CC-BY', u: 'https://github.com/watabou/one-page-dungeon', d: 'Procedural dungeon layout generator', c: '#27AE60' },
     { n: 'Faker.js', l: 'MIT', u: 'https://fakerjs.dev/', d: 'NPC name and lore generation', c: '#885522' },
     { n: 'YouTube IFrame API', l: 'YouTube Terms of Service', u: 'https://developers.google.com/youtube/iframe_api_reference', d: 'Animated battle map video backgrounds via YouTube embed', c: '#FF0000' },
+    { n: 'Kevin MacLeod', l: 'CC BY 4.0 (Required)', u: 'https://incompetech.com/', d: 'Background music library — incompetech.com', c: '#1abc9c', req: true },
+    { n: 'FreePD.com', l: 'CC0 Public Domain', u: 'https://freepd.com/', d: 'Additional background music tracks', c: '#27AE60' },
 ];
 
 function _buildCreditCard(lib) {

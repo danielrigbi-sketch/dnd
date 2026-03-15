@@ -247,6 +247,14 @@ export function listenScenes(room, cb) {
 }
 export function getActiveRoom() { return activeRoom; }
 
+// ── Background Music ──────────────────────────────────────────────────────────
+export function setMusic(room, state) {
+    set(ref(db, `rooms/${room}/music`), state ?? null);
+}
+export function listenMusic(room, cb) {
+    return onValue(ref(db, `rooms/${room}/music`), s => cb(s.val()));
+}
+
 // ==========================================
 export async function saveSceneToVault(uid, sceneId, data) {
     await set(ref(db, `users/${uid}/scenes/${sceneId}`), data);
