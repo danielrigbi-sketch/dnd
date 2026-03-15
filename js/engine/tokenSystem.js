@@ -114,6 +114,7 @@ export class TokenSystem {
 
     if (isDM && m === 'obstacle') { eng.L.painting = true; this._paintObs(gx, gy); return; }
     if (isDM && m === 'trigger')  { this._placeTrigger(gx, gy); return; }
+    if (isDM && m === 'light')    { this._placeLight(gx, gy); return; }
     if (isDM && (m === 'fogReveal' || m === 'wizFog')) { eng.L.painting = true; eng._revealCell(gx, gy); return; }
     if (isDM && (m === 'fogHide'  || m === 'wizFogHide')) { eng.L.painting = true; eng._hideCell(gx, gy); return; }
 
@@ -289,6 +290,17 @@ export class TokenSystem {
     if (e.S.triggers[key]) { e.db.setTrigger(e.activeRoom, e.S.activeScene, key, null); return; }
     e.L.pendingTrigger = { gx, gy, key };
     this._showTriggerForm(gx, gy);
+  }
+
+  _placeLight(gx, gy) {
+    const { e } = this;
+    const key = `${Math.floor(gx)}_${Math.floor(gy)}`;
+    if (e.S.lights?.[key]) {
+      e.db?.removeLight(e.activeRoom, e.S.activeScene, key);
+    } else {
+      e.db?.setLight(e.activeRoom, e.S.activeScene, key,
+        { gx: Math.floor(gx), gy: Math.floor(gy), radius: 6, dimRadius: 9, type: 'torch' });
+    }
   }
 
   _showTriggerForm(gx, gy) {

@@ -232,6 +232,15 @@ export function setTrigger(room, scene, key, val) {
 export function fireTrigger(room, scene, key) {
     update(ref(db, `rooms/${room}/scenes/${scene}/triggers/${key}`), { fired: true });
 }
+export function listenLights(room, scene, cb) {
+    return onValue(ref(db, `rooms/${room}/scenes/${scene}/lights`), s => cb(s.val()));
+}
+export function setLight(room, scene, key, data) {
+    set(ref(db, `rooms/${room}/scenes/${scene}/lights/${key}`), data);
+}
+export function removeLight(room, scene, key) {
+    remove(ref(db, `rooms/${room}/scenes/${scene}/lights/${key}`));
+}
 export function listenActiveScene(room, cb) {
     return onValue(ref(db, `rooms/${room}/map/activeScene`), s => cb(s.val()));
 }

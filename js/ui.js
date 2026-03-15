@@ -338,6 +338,10 @@ window.toggleStatusPicker = (name) => {
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 };
 
+function _escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 export function addLogEntry(data, time, flavorText, isReplay = false) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -345,7 +349,16 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
     entry.className = 'log-entry';
     const userColor = data.color || '#8B0000';
     const nameStyle = `color:${userColor} !important; font-family:'Assistant',sans-serif !important; font-weight:900; font-size:1.1em; text-shadow:none;`;
-    if (data.type === "DAMAGE" || data.type === "HEAL") {
+    if (data.type === "CHAT") {
+        entry.innerHTML = `
+            <div style="margin-bottom:8px; padding:7px 9px; border-radius:7px; background:rgba(52,152,219,0.1); border-left:3px solid ${userColor};">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
+                    <span style="${nameStyle}">${_escapeHtml(data.cName || 'Player')}</span>
+                    <span style="color:#888; font-size:10px; flex-shrink:0;">${time}</span>
+                </div>
+                <div style="color:var(--ink); margin-top:3px; font-size:0.88em; word-break:break-word;">${_escapeHtml(data.msg || '')}</div>
+            </div>`;
+    } else if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
         entry.innerHTML = `
             <div style="margin-bottom:12px; padding:10px; border-radius:8px; background:rgba(0,0,0,0.05); border-left:4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">

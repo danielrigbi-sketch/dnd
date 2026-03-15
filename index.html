@@ -512,6 +512,9 @@
                         <button class="map-tb-btn" data-mode="fogHide"        onclick="window._mapToolBtn(this)" title="Hide Fog (H)">
                             <span class="map-tb-icon gi-tb" data-gi="toolbar-fog">🌑</span><span class="map-tb-label">Hide</span>
                         </button>
+                        <button class="map-tb-btn" data-mode="light"          onclick="window._mapToolBtn(this)" title="Place / Remove Light Source (L)">
+                            <span class="map-tb-icon gi-tb" data-gi="toolbar-light">🕯️</span><span class="map-tb-label">Light</span>
+                        </button>
                         <button class="map-tb-btn" data-mode="ruler"          onclick="window._mapToolBtn(this)" title="Measure Distance (R)">
                             <span class="map-tb-icon gi-tb" data-gi="toolbar-ruler">📏</span><span class="map-tb-label">Ruler</span>
                         </button>
@@ -582,6 +585,11 @@
                     <div id="log-container">
                         <div class="log-header" data-i18n="event_log"></div>
                         <div id="roll-log"></div>
+                        <div id="chat-input-row">
+                            <input type="text" id="chat-input" placeholder="Type a message…" maxlength="200" autocomplete="off"
+                                   onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();window._sendChatMsg();}">
+                            <button id="chat-send-btn" onclick="window._sendChatMsg()" title="Send message">➤</button>
+                        </div>
                     </div>
                     <div id="dice-box-canvas"></div>
                     <div id="center-stage">

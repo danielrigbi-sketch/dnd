@@ -81,6 +81,7 @@ export class MapEngine {
       fog:        {},
       obstacles:  {},
       triggers:   {},
+      lights:     {},
       players:    {},
       scenes:     {},
       activeScene: 'default',
@@ -238,6 +239,7 @@ export class MapEngine {
         this._dirty();
       }),
       db.listenTriggers(r, sc, trg => { this.S.triggers = trg || {}; this._dirty(); }),
+      db.listenLights(r, sc, lights => { this.S.lights = lights || {}; this._dirty(); }),
       db.listenActiveScene(r, sid => {
         if (sid && sid !== this.S.activeScene) this._switchScene(sid);
       }),
@@ -248,7 +250,7 @@ export class MapEngine {
     this._unsubs.forEach(u => u());
     this._unsubs = [];
     this.S.activeScene = sid;
-    this.S.fog = {}; this.S.obstacles = {}; this.S.triggers = {};
+    this.S.fog = {}; this.S.obstacles = {}; this.S.triggers = {}; this.S.lights = {};
     this.L.firedLocal.clear();
     if (this.db) this.setupFirebase(this.db);
     this.bus.emit('scene:switched', { sceneId: sid });
@@ -277,6 +279,7 @@ export class MapEngine {
     this._rGrid();
     this._rObstacles();
     if (this.userRole === 'dm') this._rTriggers();
+    this._rLights();
     if (!this._pixi?.isReady) this.tokens.render();
     this.movement.renderRange();
     if (this._pixi?.isReady) {
@@ -396,6 +399,33 @@ export class MapEngine {
       ctx.fillStyle = OBS_FILL; ctx.fillRect(px, py, pps, pps);
       ctx.font = `${pps * 0.45}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('🧱', px + pps / 2, py + pps / 2);
+    });
+  }
+
+  _rLights() {
+    if (Object.keys(this.S.lights).length === 0) return;
+    const { ctx } = this;
+    const { pps, ox, oy } = this.S.cfg;
+    const EMOJIS = { torch: '🔥', lantern: '🏮', candle: '🕯️', magic: '✨' };
+    Object.values(this.S.lights).forEach(({ gx, gy, type = 'torch' }) => {
+      const px = ox + gx * pps, py = oy + gy * pps;
+      const cx = px + pps / 2, cy = py + pps / 2;
+      ctx.save();
+      // Warm glow ring
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pps * 0.7);
+      grad.addColorStop(0,   'rgba(255,200,60,0.35)');
+      grad.addColorStop(0.6, 'rgba(255,160,20,0.18)');
+      grad.addColorStop(1,   'rgba(255,140,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(cx, cy, pps * 0.7, 0, Math.PI * 2); ctx.fill();
+      // Gold border ring
+      ctx.beginPath(); ctx.arc(cx, cy, pps * 0.44, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,180,40,0.70)'; ctx.lineWidth = 1.5 / this.vs; ctx.stroke();
+      // Emoji
+      ctx.font = `${Math.max(12, pps * 0.52)}px serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(EMOJIS[type] || '🔥', cx, cy);
+      ctx.restore();
     });
   }
 
@@ -547,7 +577,7 @@ export class MapEngine {
   _rModeHUD() {
     if (this.userRole !== 'dm') return;
     const { ctx, cv } = this; const m = this.L.mode; if (m === 'view') return;
-    const labels = { obstacle: '🧱 Painting Obstacles', trigger: '⚠️ Placing Triggers', fogReveal: '🌟 Revealing Fog', fogHide: '🌑 Hiding Fog', ruler: '📏 Measuring', aoe: '💥 AOE Template', calibrate: '🔲 Calibrating Grid' };
+    const labels = { obstacle: '🧱 Painting Obstacles', trigger: '⚠️ Placing Triggers', fogReveal: '🌟 Revealing Fog', fogHide: '🌑 Hiding Fog', ruler: '📏 Measuring', aoe: '💥 AOE Template', calibrate: '🔲 Calibrating Grid', light: '🕯️ Placing Lights' };
     const label = labels[m] || m;
     ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(cv.width / 2 - 120, 6, 240, 32);
     ctx.strokeStyle = 'rgba(241,196,15,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(cv.width / 2 - 120, 6, 240, 32);

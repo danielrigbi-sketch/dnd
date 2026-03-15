@@ -93,6 +93,32 @@ export class FowSystem {
       punchCell(gx, gy, 1.0);
     });
 
+    // Light sources — punch circular holes independent of player FOV
+    Object.values(e.S.lights || {}).forEach(({ gx: lgx, gy: lgy, radius = 6, dimRadius }) => {
+      const dr = dimRadius ?? Math.ceil(radius * 1.5);
+      const cx = ox + (lgx + 0.5) * pps, cy = oy + (lgy + 0.5) * pps;
+      const bPx = radius * pps, dPx = dr * pps;
+      // Dim outer ring (partial erasure → dim appearance)
+      if (dPx > bPx) {
+        const gd = fc.createRadialGradient(cx, cy, 0, cx, cy, dPx);
+        const split = radius / dr;
+        gd.addColorStop(0,           'rgba(255,255,255,0.55)');
+        gd.addColorStop(split - 0.01,'rgba(255,255,255,0.55)');
+        gd.addColorStop(split + 0.01,'rgba(255,255,255,0.45)');
+        gd.addColorStop(0.92,        'rgba(255,255,255,0.22)');
+        gd.addColorStop(1,           'rgba(255,255,255,0)');
+        fc.fillStyle = gd;
+        fc.beginPath(); fc.arc(cx, cy, dPx, 0, Math.PI * 2); fc.fill();
+      }
+      // Bright inner circle (full erasure → fully visible)
+      const gb = fc.createRadialGradient(cx, cy, 0, cx, cy, bPx);
+      gb.addColorStop(0,    'rgba(255,255,255,1.0)');
+      gb.addColorStop(0.75, 'rgba(255,255,255,1.0)');
+      gb.addColorStop(1,    'rgba(255,255,255,0)');
+      fc.fillStyle = gb;
+      fc.beginPath(); fc.arc(cx, cy, bPx, 0, Math.PI * 2); fc.fill();
+    });
+
     // Reveal flash queue (SD-2)
     const now = Date.now();
     const FLASH_DUR = 600;

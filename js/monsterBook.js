@@ -523,7 +523,7 @@ async function _loadPortraitPicker(slug, name, type) {
   // ── 2. Append Lexica AI results asynchronously ────────────────────────────
   try {
     const res  = await fetch(
-      `https://lexica.art/api/v1/search?q=${encodeURIComponent(name + ' DnD fantasy monster portrait')}`
+      `/api/lexica-proxy?q=${encodeURIComponent(name + ' DnD fantasy monster portrait')}`
     );
     if (!res.ok) throw new Error('Lexica API error');
     const data = await res.json();

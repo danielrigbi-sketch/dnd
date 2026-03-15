@@ -885,6 +885,15 @@ window.addNPCFromWizard = (name, color, portrait, init, stats) => {
 
 window.roll3DDice = roll3DDice;
 
+// ── Chat ──────────────────────────────────────────────────────────────────────
+window._sendChatMsg = () => {
+    const input = document.getElementById('chat-input');
+    const msg = (input?.value || '').trim();
+    if (!msg || !cName) return;
+    db.saveRollToDB({ type: "CHAT", cName, pName, msg, color: pColor, ts: Date.now() });
+    if (input) input.value = '';
+};
+
 function initMap() {
     if (mapEngine) return; // guard: only init once
 
@@ -1011,7 +1020,7 @@ function initMap() {
         if (!mapActive) return;
         // Skip if typing in an input
         if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
-        const keyMap = { v:'view', o:'obstacle', t:'trigger', f:'fogReveal', h:'fogHide', r:'ruler', a:'aoe', c:'calibrate' };
+        const keyMap = { v:'view', o:'obstacle', t:'trigger', f:'fogReveal', h:'fogHide', r:'ruler', a:'aoe', c:'calibrate', l:'light' };
         // Arrow keys for calibration nudge when in calibrate mode
         if (window._mapEng?.L?.mode === 'calibrate') {
             const arrowMap = {

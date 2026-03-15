@@ -164,15 +164,37 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 }
 
 /* Event Log */
-#log-container { 
-    position: absolute; top: 12px; left: 12px; 
+#log-container {
+    position: absolute; top: 12px; left: 12px;
     width: min(300px, calc(100% - 24px));
-    background-color: var(--parchment); 
-    background-image: url('https://www.transparenttextures.com/patterns/parchment.png'); 
-    color: var(--ink); padding: 12px; border-radius: 8px; text-align: right; 
-    box-shadow: 5px 10px 25px rgba(0,0,0,0.5); font-size: 12px; 
-    max-height: 40%; overflow-y: auto; z-index: 90; border: 2px solid #d4c38d; 
+    background-color: var(--parchment);
+    background-image: url('https://www.transparenttextures.com/patterns/parchment.png');
+    color: var(--ink); padding: 12px; border-radius: 8px; text-align: right;
+    box-shadow: 5px 10px 25px rgba(0,0,0,0.5); font-size: 12px;
+    max-height: 40%; overflow: hidden; z-index: 90; border: 2px solid #d4c38d;
+    display: flex; flex-direction: column;
 }
+#roll-log { flex: 1; overflow-y: auto; min-height: 0; }
+
+/* ── Chat input (inside log-container) ─── */
+#chat-input-row {
+    display: flex; gap: 5px; padding: 6px 0 0; flex-shrink: 0;
+    border-top: 1px solid rgba(0,0,0,0.15); margin-top: 6px;
+}
+#chat-input {
+    flex: 1; background: rgba(0,0,0,0.07);
+    border: 1px solid rgba(0,0,0,0.18); color: var(--ink);
+    border-radius: 6px; padding: 5px 8px; font-size: 12px; outline: none;
+    font-family: 'Assistant', sans-serif;
+}
+#chat-input::placeholder { color: #999; }
+#chat-input:focus { border-color: rgba(52,152,219,0.6); box-shadow: 0 0 0 2px rgba(52,152,219,0.15); }
+#chat-send-btn {
+    background: rgba(52,152,219,0.15); border: 1px solid rgba(52,152,219,0.35);
+    color: #2980b9; border-radius: 6px; padding: 5px 9px;
+    cursor: pointer; font-size: 13px; transition: 0.15s; flex-shrink: 0;
+}
+#chat-send-btn:hover { background: rgba(52,152,219,0.35); color: #3498db; }
 .log-header { font-weight: 900; font-size: 13px; margin-bottom: 8px; color: var(--ink); border-bottom: 1px solid rgba(0,0,0,0.2); padding-bottom: 6px; }
 
 /* Center stage (dice result) */

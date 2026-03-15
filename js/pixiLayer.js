@@ -370,16 +370,30 @@ export class PixiLayer {
     }
 
     // ── Portrait texture ──
-    // Load via plain <img> (CORS-first, fallback without) then push into PixiJS
-    // via ImageSource — WebGL accepts cross-origin images for display without CORS headers.
     const url = pl.portrait;
-    if (url && url !== obj.lastPortrait) {
+    // 2MT CDN has no CORS headers — uploading their images to WebGL throws a SecurityError.
+    // Canvas2D (tokenSystem.js isTmt branch) handles 2MT portrait rendering entirely.
+    // PixiJS provides only glow ring, HP bar, and name badge for these tokens.
+    const isTmt = !!(url && url.includes('tools.2minutetabletop.com'));
+    if (isTmt) {
+      portrait.alpha = 0;
+      if (url !== obj.lastPortrait) {
+        obj.lastPortrait = url;
+        obj._hasPortrait = false;
+      }
+    } else if (url && url !== obj.lastPortrait) {
+      portrait.alpha = 1;
       obj.lastPortrait = url;
       obj._hasPortrait = false;
       const _loadImg = (withCors) => {
         const img = new Image();
         if (withCors) img.crossOrigin = 'anonymous';
         img.onload = () => {
+          if (!withCors) {
+            // Image loaded without CORS — tainted for WebGL; keep letter fallback
+            obj._hasPortrait = false;
+            return;
+          }
           try {
             const source = new ImageSource({ resource: img });
             const tex = new Texture({ source });
@@ -401,23 +415,26 @@ export class PixiLayer {
       };
       _loadImg(true);
     } else if (!url) {
+      portrait.alpha = 1;
       portrait.texture = Texture.WHITE;
       portrait.width = size;
       portrait.height = size;
     }
 
     // Tint: dying = dark red overlay; no portrait = player color disc; normal = no tint
-    if (isDying) {
-      portrait.tint = DEAD_TINT;
-    } else if (!obj._hasPortrait) {
-      portrait.tint = _hexColor(pl.pColor || '#3498db');
-    } else {
-      portrait.tint = 0xffffff;
+    if (!isTmt) {
+      if (isDying) {
+        portrait.tint = DEAD_TINT;
+      } else if (!obj._hasPortrait) {
+        portrait.tint = _hexColor(pl.pColor || '#3498db');
+      } else {
+        portrait.tint = 0xffffff;
+      }
     }
 
-    // ── Initial letter (shown when no portrait) ──
+    // ── Initial letter (shown when no portrait and not a 2MT token) ──
     initialText.style.fontSize = Math.max(20, size * 0.42);
-    if (obj._hasPortrait) {
+    if (obj._hasPortrait || isTmt) {
       initialText.visible = false;
     } else {
       // First letter of the token name, uppercased
