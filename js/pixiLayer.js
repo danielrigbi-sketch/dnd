@@ -342,6 +342,9 @@ export class PixiLayer {
   _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying, stackCount = 0, labelOffset = { dx: 0, dy: 1 }) {
     const { container, shadow, glow, portrait, mask, initialText, hpBar, leaderLine, nameBadge, nameText, stackBadge, stackText } = obj;
 
+    // vs = current map zoom; UI elements divided by vs so they stay constant screen-size
+    const vs = Math.max(0.15, this._root.scale.x);
+
     container.x = px;
     container.y = py;
     container.alpha = isGhost ? GHOST_ALPHA : 1;
@@ -351,19 +354,19 @@ export class PixiLayer {
     shadow.circle(size / 2 + 3, size / 2 + 4, size * 0.44)
           .fill({ color: 0x000000, alpha: 0.45 });
 
-    // ── Glow ring ──
+    // ── Glow ring — stroke width is constant screen-pixels ──
     glow.clear();
     if (isActive) {
       const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
-      const r = size * 0.44 + 6;
+      const r = size * 0.44 + 6 / vs;
       glow.circle(size / 2, size / 2, r)
           .fill({ color: GLOW_COLOR, alpha: 0.25 + pulse * 0.15 });
       glow.circle(size / 2, size / 2, r)
-          .stroke({ color: GLOW_COLOR, alpha: 0.9, width: 3 });
+          .stroke({ color: GLOW_COLOR, alpha: 0.9, width: 3 / vs });
     } else {
       const col = _hexColor(pl.pColor || '#3498db');
       glow.circle(size / 2, size / 2, size * 0.44)
-          .stroke({ color: isDying ? 0xe74c3c : col, alpha: 1, width: 3 });
+          .stroke({ color: isDying ? 0xe74c3c : col, alpha: 1, width: 3 / vs });
     }
 
     // ── Portrait texture ──
@@ -424,51 +427,57 @@ export class PixiLayer {
       initialText.visible = true;
     }
 
-    // ── HP bar (just below disc, above name pill) ──
+    // ── HP bar — height and gap are constant screen-pixels ──
     hpBar.clear();
     if (pl.maxHp) {
       const pct = Math.max(0, (pl.hp || 0) / pl.maxHp);
-      const bw = size * 0.84, bh = 8, bx = (size - bw) / 2, by = size + 4;
-      hpBar.roundRect(bx, by, bw, bh, 4).fill({ color: 0x000000, alpha: 0.70 });
+      const bh = Math.max(1, 7 / vs);        // always ~7 screen-px tall
+      const bw = size * 0.84;
+      const bx = (size - bw) / 2;
+      const by = size + 3 / vs;              // 3px gap below disc
+      const r  = bh / 2;
+      hpBar.roundRect(bx, by, bw, bh, r).fill({ color: 0x000000, alpha: 0.70 });
       const barCol = pct > 0.5 ? 0x2ecc71 : pct > 0.25 ? 0xf39c12 : 0xe74c3c;
-      hpBar.roundRect(bx, by, Math.max(bh, bw * pct), bh, 4).fill(barCol);
-      // HP fraction text inside / next to bar
-      hpBar.roundRect(bx + bw - 1, by, 1, bh, 0).fill({ color: 0xffffff, alpha: 0 }); // spacer
+      hpBar.roundRect(bx, by, Math.max(bh, bw * pct), bh, r).fill(barCol);
     }
 
-    // ── Name badge (pill) — positioned away from nearby tokens ──
+    // ── Name badge — font size and pill are constant screen-pixels ──
     const label = cn.length > 12 ? cn.slice(0, 11) + '…' : cn;
     if (nameText.text !== label) nameText.text = label;
-    nameText.style.fontSize = Math.max(13, size * 0.22);
-    // Label offset: radius from token centre where pill is placed
-    const labelRadius = size * 0.55 + 24;
+    // Clamp to half-pixels to minimise PixiJS text re-cache
+    const nameFontSz = Math.round((13 / vs) * 2) / 2;
+    if (Math.abs(nameText.style.fontSize - nameFontSz) > 0.4) nameText.style.fontSize = nameFontSz;
+    // Label placement: disc-edge + constant screen gap
+    const labelRadius = size * 0.5 + 26 / vs;
+    const hpNudge     = pl.maxHp ? (10 / vs) : 0;
     const lx = size / 2 + labelOffset.dx * labelRadius;
-    const ly = size / 2 + labelOffset.dy * labelRadius + (pl.maxHp ? 6 : 0); // nudge past HP bar when present
+    const ly = size / 2 + labelOffset.dy * labelRadius + hpNudge;
     nameText.x = lx;
     nameText.y = ly;
-    // Draw pill behind text
+    // Pill behind text — padding in screen-px
     nameBadge.clear();
-    const tw = nameText.width + 10, th = nameText.height + 6;
-    nameBadge.roundRect(lx - tw / 2, ly - th / 2, tw, th, 6)
-             .fill({ color: 0x000000, alpha: 0.80 });
-    // Leader line: only when label is significantly offset from "directly below"
+    const tw = nameText.width + 10 / vs, th = nameText.height + 6 / vs;
+    nameBadge.roundRect(lx - tw / 2, ly - th / 2, tw, th, 5 / vs)
+             .fill({ color: 0x000000, alpha: 0.82 });
+    // Leader line — visible when label is pushed sideways
     leaderLine.clear();
     const isDefaultPos = Math.abs(labelOffset.dx) < 0.15 && labelOffset.dy > 0.7;
     if (!isDefaultPos) {
       leaderLine.moveTo(size / 2, size / 2)
                 .lineTo(lx, ly)
-                .stroke({ color: 0xffffff, alpha: 0.35, width: 1.5 });
+                .stroke({ color: 0xffffff, alpha: 0.35, width: 1.5 / vs });
     }
 
-    // ── Stacking badge ──
+    // ── Stacking badge — constant screen size ──
     stackBadge.clear();
     if (stackCount > 0) {
-      const label = `×${stackCount + 1}`;
-      stackText.text = label;
-      stackText.style.fontSize = Math.max(9, size * 0.18);
-      const sw = stackText.width + 6, sh = stackText.height + 4;
-      const sx = size - sw - 2, sy = 2;
-      stackBadge.roundRect(sx, sy, sw, sh, 3).fill({ color: 0xc0392b, alpha: 0.92 });
+      const slabel = `×${stackCount + 1}`;
+      stackText.text = slabel;
+      const stackFontSz = Math.round((10 / vs) * 2) / 2;
+      if (Math.abs(stackText.style.fontSize - stackFontSz) > 0.4) stackText.style.fontSize = stackFontSz;
+      const sw = stackText.width + 6 / vs, sh = stackText.height + 4 / vs;
+      const sx = size - sw - 2 / vs, sy = 2 / vs;
+      stackBadge.roundRect(sx, sy, sw, sh, 3 / vs).fill({ color: 0xc0392b, alpha: 0.92 });
       stackText.x = sx + sw / 2;
       stackText.y = sy + sh / 2;
       stackText.visible = true;

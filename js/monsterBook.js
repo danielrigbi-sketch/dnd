@@ -291,26 +291,53 @@ async function _showCustomizeForm(slug) {
         </div>
       </div>
 
-      <!-- Editable fields -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
-        <label style="${labelStyle}">${t('mb_name') || 'שם'}
+      <!-- Editable fields — core combat -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+        <label style="${labelStyle}">${t('mb_name') || 'Name'}
           <input id="mb-c-name" value="${m.name.replace(/"/g, '&quot;')}" style="${inputStyle}">
         </label>
-        <label style="${labelStyle}">${t('mb_hp') || 'HP'}
-          <input id="mb-c-hp" type="number" value="${stats.maxHp}" style="${inputStyle}">
+        <label style="${labelStyle}">HP (Max)
+          <input id="mb-c-hp" type="number" value="${stats.maxHp}" min="1" style="${inputStyle}">
         </label>
-        <label style="${labelStyle}">${t('mb_ac') || 'AC'}
-          <input id="mb-c-ac" type="number" value="${stats.ac}" style="${inputStyle}">
+        <label style="${labelStyle}">AC
+          <input id="mb-c-ac" type="number" value="${stats.ac}" min="1" style="${inputStyle}">
         </label>
-        <label style="${labelStyle}">${t('mb_speed') || 'מהירות'} (ft)
-          <input id="mb-c-speed" type="number" value="${stats.speed}" style="${inputStyle}">
+        <label style="${labelStyle}">Speed (ft)
+          <input id="mb-c-speed" type="number" value="${stats.speed}" min="0" style="${inputStyle}">
         </label>
-        <label style="${labelStyle}">${t('mb_melee') || 'ניגוף'} (+)
+        <label style="${labelStyle}">Melee Attack (+)
           <input id="mb-c-melee" type="number" value="${stats.melee}" style="${inputStyle}">
         </label>
-        <label style="${labelStyle}">${t('mb_melee_dmg') || 'נזק ניגוף'}
+        <label style="${labelStyle}">Melee Damage
           <input id="mb-c-meleeDmg" value="${stats.meleeDmg}" style="${inputStyle}">
         </label>
+        <label style="${labelStyle}">Ranged Attack (+)
+          <input id="mb-c-ranged" type="number" value="${stats.ranged}" style="${inputStyle}">
+        </label>
+        <label style="${labelStyle}">Ranged Damage
+          <input id="mb-c-rangedDmg" value="${stats.rangedDmg}" style="${inputStyle}">
+        </label>
+      </div>
+
+      <!-- Ability scores — 6-column micro-grid -->
+      <div style="font-size:10px; font-weight:700; color:#888; margin-bottom:4px; letter-spacing:0.5px;">
+        📊 ABILITY SCORES
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:5px; margin-bottom:8px;">
+        ${['STR','DEX','CON','INT','WIS','CHA'].map((ab, i) => {
+          const keys = ['_str','_dex','_con','_int','_wis','_cha'];
+          const val  = stats[keys[i]] ?? 10;
+          const mod  = Math.floor((val - 10) / 2);
+          const sign = mod >= 0 ? '+' : '';
+          return `<label style="text-align:center; font-size:10px; color:#aaa; display:block;">
+            <div style="font-weight:700; color:#ddd; font-size:10px;">${ab}</div>
+            <input id="mb-c-${keys[i]}" type="number" value="${val}" min="1" max="30"
+              style="width:100%; box-sizing:border-box; padding:3px 2px; border-radius:5px; text-align:center;
+                     background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2);
+                     color:white; font-size:12px; margin-top:2px; outline:none;">
+            <div style="font-size:9px; color:#888; margin-top:1px;">${sign}${mod}</div>
+          </label>`;
+        }).join('')}
       </div>
 
       <!-- Special abilities placeholder — filled by async translation -->
@@ -332,17 +359,43 @@ async function _showCustomizeForm(slug) {
 
   document.getElementById('mb-back-btn').onclick = () => _renderResults(_buildList());
 
+  // Live ability-modifier display update when any score is edited
+  ['_str','_dex','_con','_int','_wis','_cha'].forEach(key => {
+    const inp = document.getElementById(`mb-c-${key}`);
+    if (!inp) return;
+    inp.addEventListener('input', () => {
+      const v   = parseInt(inp.value) || 10;
+      const mod = Math.floor((v - 10) / 2);
+      const modEl = inp.nextElementSibling;
+      if (modEl) modEl.textContent = (mod >= 0 ? '+' : '') + mod;
+    });
+  });
+
   document.getElementById('mb-spawn-confirm').onclick = () => {
     const finalName = (document.getElementById('mb-c-name').value.trim()) || m.name;
+    const _n = id => +(document.getElementById(id)?.value ?? 0);
+    const _s = id => document.getElementById(id)?.value || '';
+    // Read ability scores — update init bonus from edited DEX
+    const newDex    = _n('mb-c-_dex') || 10;
+    const initBonus = Math.floor((newDex - 10) / 2);
     const overrides = {
-      maxHp:    +(document.getElementById('mb-c-hp').value)    || stats.maxHp,
-      hp:       +(document.getElementById('mb-c-hp').value)    || stats.hp,
-      ac:       +(document.getElementById('mb-c-ac').value)    || stats.ac,
-      speed:    +(document.getElementById('mb-c-speed').value) || stats.speed,
-      melee:    +(document.getElementById('mb-c-melee').value),
-      meleeDmg:  document.getElementById('mb-c-meleeDmg').value || stats.meleeDmg,
+      maxHp:    _n('mb-c-hp')       || stats.maxHp,
+      hp:       _n('mb-c-hp')       || stats.hp,
+      ac:       _n('mb-c-ac')       || stats.ac,
+      speed:    _n('mb-c-speed'),
+      melee:    _n('mb-c-melee'),
+      meleeDmg: _s('mb-c-meleeDmg')    || stats.meleeDmg,
+      ranged:   _n('mb-c-ranged'),
+      rangedDmg:_s('mb-c-rangedDmg')   || stats.rangedDmg,
+      _str:     _n('mb-c-_str')     || stats._str,
+      _dex:     newDex,
+      _con:     _n('mb-c-_con')     || stats._con,
+      _int:     _n('mb-c-_int')     || stats._int,
+      _wis:     _n('mb-c-_wis')     || stats._wis,
+      _cha:     _n('mb-c-_cha')     || stats._cha,
+      initBonus,
     };
-    _doSpawn(m, finalName, { ...stats, ...overrides }, col);
+    _doSpawn(m, finalName, { ...stats, ...overrides }, col, initBonus);
   };
 
   // Run translations + portrait load in parallel — all non-blocking
@@ -462,15 +515,16 @@ async function _loadPortraitPicker(slug, name) {
 
 // ── Spawn ─────────────────────────────────────────────────────────────────────
 
-function _doSpawn(m, finalName, stats, col) {
+function _doSpawn(m, finalName, stats, col, initBonus) {
   // Deduplicate name if already spawned
   let name = finalName;
   let idx  = 2;
   while (_spawned.has(name)) { name = `${finalName} ${idx++}`; }
   _spawned.add(name);
 
-  const initBonus = Math.floor(((m.dexterity || 10) - 10) / 2);
-  const init      = Math.floor(Math.random() * 20) + 1 + initBonus;
+  // initBonus from caller (may reflect edited DEX); fall back to raw monster DEX
+  if (initBonus == null) initBonus = Math.floor(((m.dexterity || 10) - 10) / 2);
+  const init = Math.floor(Math.random() * 20) + 1 + initBonus;
   const portrait  = _selectedPortrait ||
     `https://api.dicebear.com/8.x/adventurer/png?seed=${m.slug}`;
 
