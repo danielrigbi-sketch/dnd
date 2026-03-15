@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { typeColor } from '../monsters.js';
+import { getTileSize, getVisualScale, footprintsOverlap } from './sizeUtils.js';
 
 const STS_ICON = {
   Poisoned: '☠', Charmed: '♥', Unconscious: '💤', Frightened: '😱',
@@ -63,9 +64,12 @@ export class TokenSystem {
   }
 
   tokenAt(wx, wy) {
-    const { gx, gy } = this._wg(wx, wy);
-    return Object.entries(this.e.S.tokens)
-      .find(([, t]) => t.gx === gx && t.gy === gy)?.[0] || null;
+    const { gx: qx, gy: qy } = this._wg(wx, wy);
+    for (const [cn, t] of Object.entries(this.e.S.tokens)) {
+      const ts = getTileSize(this.e.S.players[cn]?.size);
+      if (qx >= t.gx && qx < t.gx + ts && qy >= t.gy && qy < t.gy + ts) return cn;
+    }
+    return null;
   }
 
   _isMyTurn(cn) {
@@ -345,15 +349,16 @@ export class TokenSystem {
       }
     }
 
-    // Placing cursor
+    // Placing cursor — show full footprint of the token being placed
     if (e.L.placing) {
       const { pps, ox, oy } = e.S.cfg;
       const { x: wx, y: wy } = e.L.mw;
       const { gx, gy } = this._wg(wx, wy);
       const pl = e.S.players[e.L.placing];
+      const ts = getTileSize(pl?.size);
       e.ctx.globalAlpha = 0.55;
       e.ctx.fillStyle = pl?.pColor || '#3498db';
-      e.ctx.fillRect(ox + gx * pps, oy + gy * pps, pps, pps);
+      e.ctx.fillRect(ox + gx * pps, oy + gy * pps, ts * pps, ts * pps);
       e.ctx.globalAlpha = 1;
     }
   }
@@ -367,9 +372,18 @@ export class TokenSystem {
                : (pl.pColor || '#3498db');
     const portrait = pl.portrait;
     const statuses = pl.statuses || [];
-    const isDying  = (pl.hp || 0) <= 0;
+    const isDying  = typeof pl.hp === 'number' && pl.maxHp > 0 && pl.hp <= 0;
     const isConc   = pl.concentrating;
-    const cx = px + size / 2, cy = py + size / 2, r = size * 0.42;
+
+    // Multi-tile sizing
+    const tileSize   = getTileSize(pl.size);
+    const visualScale = getVisualScale(pl.size);
+    const renderSize = Math.round(tileSize * size * visualScale);
+    // For tiny tokens, centre the smaller disc within the tile
+    const tinyOffset = tileSize === 1 ? (size - renderSize) / 2 : 0;
+    const rpx = px + tinyOffset, rpy = py + tinyOffset;
+
+    const cx = rpx + renderSize / 2, cy = rpy + renderSize / 2, r = renderSize * 0.42;
 
     if (isActive) {
       ctx.save();
@@ -385,20 +399,20 @@ export class TokenSystem {
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
     if (portrait && this.e.L.imgCache[portrait]) {
-      ctx.drawImage(this.e.L.imgCache[portrait], px, py, size, size);
+      ctx.drawImage(this.e.L.imgCache[portrait], rpx, rpy, renderSize, renderSize);
     } else {
-      ctx.fillStyle = col; ctx.fillRect(px, py, size, size);
+      ctx.fillStyle = col; ctx.fillRect(rpx, rpy, renderSize, renderSize);
       if (portrait && !this.e.L.imgCache['__L' + portrait]) {
         this.e.L.imgCache['__L' + portrait] = true;
-        const img = new Image(); img.crossOrigin = 'anonymous';
+        const img = new Image();
         img.onload  = () => { this.e.L.imgCache[portrait] = img; this.e._dirty(); };
         img.onerror = () => { this.e.L.imgCache[portrait] = false; };
         img.src = portrait;
       }
     }
     if (isDying) {
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(px, py, size, size);
-      ctx.font = `${size * 0.5}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(rpx, rpy, renderSize, renderSize);
+      ctx.font = `${renderSize * 0.5}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('💀', cx, cy);
     }
     ctx.restore();
@@ -407,31 +421,53 @@ export class TokenSystem {
     ctx.strokeStyle = isDying ? '#e74c3c' : isActive ? '#f1c40f' : col;
     ctx.lineWidth = (isActive ? 3 : 2) / this.e.vs; ctx.stroke();
 
-    const tagH = size * 0.22;
+    // Name tag at bottom of the full footprint
+    const tagH = renderSize * 0.22;
     ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(px, py + size - tagH, size, tagH);
+    ctx.fillRect(rpx, rpy + renderSize - tagH, renderSize, tagH);
     ctx.fillStyle = 'white';
-    ctx.font = `bold ${size * 0.14}px Arial`;
+    ctx.font = `bold ${Math.max(9, renderSize * 0.14)}px Arial`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     const label = cn.length > 9 ? cn.slice(0, 8) + '…' : cn;
-    ctx.fillText(label, cx, py + size - 1 / this.e.vs);
+    ctx.fillText(label, cx, rpy + renderSize - 1 / this.e.vs);
 
+    // HP bar below the footprint
     if (pl.maxHp) {
       const pct = Math.max(0, (pl.hp || 0) / pl.maxHp);
-      const bw = size * 0.84, bh = 4 / this.e.vs, bx = px + (size - bw) / 2, by = py + size + 3 / this.e.vs;
+      const bw = renderSize * 0.84, bh = 4 / this.e.vs;
+      const bx = rpx + (renderSize - bw) / 2, by = rpy + renderSize + 3 / this.e.vs;
       ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(bx, by, bw, bh);
       ctx.fillStyle = pct > 0.5 ? '#2ecc71' : pct > 0.25 ? '#f39c12' : '#e74c3c';
       ctx.fillRect(bx, by, bw * pct, bh);
     }
 
+    // Status icons in top-right corner of footprint
     const all = [...statuses]; if (isConc) all.push('Concentrating');
     all.slice(0, 6).forEach((s, i) => {
-      const sz = size * 0.21, col = Math.floor(i / 2), row = i % 2;
-      const ix = px + size - sz * (col + 1), iy = py + sz * row;
+      const sz = renderSize * 0.21, col2 = Math.floor(i / 2), row2 = i % 2;
+      const ix = rpx + renderSize - sz * (col2 + 1), iy = rpy + sz * row2;
       ctx.font = `${sz * 0.92}px serif`;
       ctx.textAlign = 'right'; ctx.textBaseline = 'top';
       ctx.fillText(STS_ICON[s] || '❓', ix + sz, iy);
     });
+
+    // Stacking badge — shown when another token shares the same anchor cell
+    const stackCount = Object.values(this.e.S.tokens).filter(
+      other => other !== tk && other.gx === tk.gx && other.gy === tk.gy
+    ).length;
+    if (stackCount > 0) {
+      const badgeText = `×${stackCount + 1}`;
+      const fs = Math.max(8, renderSize * 0.18);
+      ctx.font = `bold ${fs}px Arial`;
+      const bw2 = ctx.measureText(badgeText).width + 6 / this.e.vs;
+      const bh2 = fs + 4 / this.e.vs;
+      const bx2 = rpx + renderSize - bw2 - 2 / this.e.vs;
+      const by2 = rpy + 2 / this.e.vs;
+      ctx.fillStyle = 'rgba(200,30,30,0.9)';
+      ctx.fillRect(bx2, by2, bw2, bh2);
+      ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(badgeText, bx2 + bw2 / 2, by2 + bh2 / 2);
+    }
   }
 
   // ── DOM roster update ─────────────────────────────────────────────────

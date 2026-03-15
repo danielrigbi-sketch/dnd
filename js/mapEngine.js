@@ -21,6 +21,7 @@ import { TokenSystem }      from './engine/tokenSystem.js';
 import { MovementSystem }   from './engine/movementSystem.js';
 import { VisibilitySystem } from './engine/visibilitySystem.js';
 import { FowSystem }        from './engine/fowSystem.js';
+import { getTileSize, footprintsOverlap } from './engine/sizeUtils.js';
 
 // ── Constants ─────────────────────────────────────────────────────────
 const FT_PER_SQ     = 5;
@@ -74,7 +75,7 @@ export class MapEngine {
 
     // ── Shared state (Firebase-synced) ────────────────────────────────
     this.S = {
-      cfg:        { bgUrl: '', bgVideoUrl: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20, fowEnabled: false },
+      cfg:        { bgUrl: '', bgVideoUrl: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20, fowEnabled: false, collisionEnabled: false },
       atmosphere: { weather: 'none', ambientLight: 'bright', globalDarkvision: 0 },
       tokens:     {},
       fog:        {},
@@ -669,6 +670,19 @@ export class MapEngine {
 
   placeToken(cn, gx, gy) {
     if (!this.db) return;
+    // Optional collision guard — block placement if any footprint cell is occupied
+    if (this.S.cfg.collisionEnabled) {
+      const ts = getTileSize(this.S.players[cn]?.size);
+      const blocked = Object.entries(this.S.tokens).some(([name, t]) => {
+        if (name === cn) return false;
+        const ots = getTileSize(this.S.players[name]?.size);
+        return footprintsOverlap(gx, gy, ts, t.gx, t.gy, ots);
+      });
+      if (blocked) {
+        if (typeof window.showToast === 'function') window.showToast('Cell occupied — collision enforcement is on.', 'warning');
+        return;
+      }
+    }
     // Optimistic local update so the token renders immediately (before Firebase echoes back)
     this.S.tokens[cn] = { ...(this.S.tokens[cn] || {}), gx, gy, usedMv: 0 };
     this.db.moveMapToken(this.activeRoom, cn, gx, gy, 0);

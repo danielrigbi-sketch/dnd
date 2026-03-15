@@ -14,6 +14,7 @@ import {
   Text, TextStyle, Ticker, ParticleContainer,
   Texture, RenderTexture,
 } from 'pixi.js';
+import { getTileSize, getVisualScale, footprintsOverlap } from './engine/sizeUtils.js';
 
 // ── Constants ────────────────────────────────────────────────────────
 const GLOW_COLOR    = 0xf1c40f;
@@ -142,15 +143,34 @@ export class PixiLayer {
       const isGhost  = cn === draggingName;
       // Only "dying" when hp is explicitly a number set to 0 — avoids false positives on fresh tokens
       const isDying  = typeof pl.hp === 'number' && pl.maxHp > 0 && pl.hp <= 0;
-      const px = ox + tk.gx * pps;
-      const py = oy + tk.gy * pps;
+
+      // Multi-tile sizing
+      const tileSize   = getTileSize(pl.size);
+      const visualScale = getVisualScale(pl.size);
+      const renderSize  = Math.round(tileSize * pps * visualScale);
+      // Tiny: centre within the 1-tile cell
+      const tinyOff = tileSize === 1 ? Math.round((pps - renderSize) / 2) : 0;
+      const px = ox + tk.gx * pps + tinyOff;
+      const py = oy + tk.gy * pps + tinyOff;
+
+      // Stacking badge: count other tokens at same anchor cell
+      const stackCount = Object.values(tokens).filter(
+        other => other !== tk && other.gx === tk.gx && other.gy === tk.gy
+      ).length;
 
       if (!this._tokens.has(cn)) {
-        this._tokens.set(cn, this._createTokenSprite(cn, pl, pps));
+        this._tokens.set(cn, this._createTokenSprite(cn, pl, renderSize));
       }
 
       const obj = this._tokens.get(cn);
-      this._updateTokenSprite(obj, cn, pl, tk, px, py, pps, isActive, isGhost, isDying);
+      // Recreate sprite if renderSize changed (size category changed)
+      if (obj.size !== renderSize) {
+        this._root.removeChild(obj.container);
+        obj.container.destroy({ children: true });
+        this._tokens.set(cn, this._createTokenSprite(cn, pl, renderSize));
+      }
+
+      this._updateTokenSprite(this._tokens.get(cn), cn, pl, tk, px, py, renderSize, isActive, isGhost, isDying, stackCount);
     }
   }
 
@@ -251,12 +271,22 @@ export class PixiLayer {
     nameText.y = size + 20;
     container.addChild(nameText);
 
+    // Stacking badge (top-right corner)
+    const stackBadge = new Graphics();
+    container.addChild(stackBadge);
+    const stackText = new Text({ text: '', style: new TextStyle({
+      fontFamily: 'Arial', fontSize: Math.max(9, size * 0.18),
+      fontWeight: 'bold', fill: 0xffffff,
+    })});
+    stackText.anchor.set(0.5, 0.5);
+    container.addChild(stackText);
+
     this._root.addChild(container);
-    return { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText, size, lastPortrait: null };
+    return { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText, stackBadge, stackText, size, lastPortrait: null };
   }
 
-  _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying) {
-    const { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText } = obj;
+  _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying, stackCount = 0) {
+    const { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText, stackBadge, stackText } = obj;
 
     container.x = px;
     container.y = py;
@@ -334,6 +364,22 @@ export class PixiLayer {
     const tw = nameText.width + 10, th = nameText.height + 6;
     nameBadge.roundRect(size / 2 - tw / 2, size + 20 - th / 2, tw, th, 6)
              .fill({ color: 0x000000, alpha: 0.75 });
+
+    // ── Stacking badge ──
+    stackBadge.clear();
+    if (stackCount > 0) {
+      const label = `×${stackCount + 1}`;
+      stackText.text = label;
+      stackText.style.fontSize = Math.max(9, size * 0.18);
+      const sw = stackText.width + 6, sh = stackText.height + 4;
+      const sx = size - sw - 2, sy = 2;
+      stackBadge.roundRect(sx, sy, sw, sh, 3).fill({ color: 0xc0392b, alpha: 0.92 });
+      stackText.x = sx + sw / 2;
+      stackText.y = sy + sh / 2;
+      stackText.visible = true;
+    } else {
+      stackText.visible = false;
+    }
 
     // Request re-render if active (pulsing glow)
     if (isActive) this._dirty = true;

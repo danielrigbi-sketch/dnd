@@ -3,10 +3,25 @@
 // Owns: path state, movement budget tracking, visual overlays, drag commit.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { getTileSize, footprintsOverlap } from './sizeUtils.js';
+
 const FT_PER_SQ = 5;
 const MAP_W_DEFAULT = 30;
 
 function ck(gx, gy) { return `${Math.floor(gx)}_${Math.floor(gy)}`; }
+
+/** Returns true if (gx,gy) is blocked by any obstacle or (when collision on) by another token */
+function _isCellBlocked(e, gx, gy, movingCName) {
+  if (e.S.obstacles[ck(gx, gy)]) return true;
+  if (!e.S.cfg.collisionEnabled) return false;
+  const movingTs = getTileSize(e.S.players[movingCName]?.size);
+  for (const [name, t] of Object.entries(e.S.tokens)) {
+    if (name === movingCName) continue;
+    const ots = getTileSize(e.S.players[name]?.size);
+    if (footprintsOverlap(gx, gy, movingTs, t.gx, t.gy, ots)) return true;
+  }
+  return false;
+}
 
 export class MovementSystem {
   /** @param {import('./mapEngine.js').MapEngine} engine */
@@ -40,7 +55,7 @@ export class MovementSystem {
       const dx = Math.sign(ex - cx), dy = Math.sign(ey - cy);
       const opts = [[cx + dx, cy + dy], [cx + dx, cy], [cx, cy + dy]];
       const next = opts.find(([nx, ny]) =>
-        !e.S.obstacles[ck(nx, ny)] && (nx !== cx || ny !== cy)
+        !_isCellBlocked(e, nx, ny, cName) && (nx !== cx || ny !== cy)
       );
       if (!next) break;
       [cx, cy] = next;
@@ -128,7 +143,7 @@ export class MovementSystem {
           if (dx === 0 && dy === 0) continue;
           const nx = cx + dx, ny = cy + dy;
           const nk = `${nx},${ny}`;
-          if (!visited.has(nk) && !e.S.obstacles[nk]) {
+          if (!visited.has(nk) && !_isCellBlocked(e, nx, ny, dt.cName)) {
             queue.push([nx, ny, dist + 1]);
           }
         }
