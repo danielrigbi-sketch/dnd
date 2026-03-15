@@ -29,7 +29,7 @@ const MAP_H_DEFAULT = 20;
 const DEF_PPS       = 64;
 const MIN_PPS       = 16;
 const MAX_PPS       = 200;
-const GRID_NORMAL   = 'rgba(200,200,200,0.18)';
+const GRID_NORMAL   = 'rgba(200,200,200,0.45)';
 const GRID_LOCKED   = 'rgba(20,20,20,0.45)';
 const GRID_CALIB    = 'rgba(255,220,60,0.50)';
 const OBS_FILL      = 'rgba(160,0,0,0.55)';
@@ -317,7 +317,7 @@ export class MapEngine {
     }
     for (let gx = 0; gx < (mw || MAP_W_DEFAULT); gx++) {
       for (let gy = 0; gy < (mh || MAP_H_DEFAULT); gy++) {
-        ctx.fillStyle = (gx + gy) % 2 === 0 ? '#1a1a2e' : '#16213e';
+        ctx.fillStyle = (gx + gy) % 2 === 0 ? '#1e1b3a' : '#2a2550';
         ctx.fillRect(ox + gx * pps, oy + gy * pps, pps, pps);
       }
     }

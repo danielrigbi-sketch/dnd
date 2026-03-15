@@ -215,6 +215,10 @@ export class PixiLayer {
   _createTokenSprite(cn, pl, size) {
     const container = new Container();
 
+    // Drop shadow disc
+    const shadow = new Graphics();
+    container.addChild(shadow);
+
     // Glow ring (behind portrait)
     const glow = new Graphics();
     container.addChild(glow);
@@ -224,7 +228,7 @@ export class PixiLayer {
     portrait.width = size;
     portrait.height = size;
     const mask = new Graphics();
-    mask.circle(size / 2, size / 2, size * 0.42).fill(0xffffff);
+    mask.circle(size / 2, size / 2, size * 0.44).fill(0xffffff);
     portrait.mask = mask;
     container.addChild(mask);
     container.addChild(portrait);
@@ -233,41 +237,48 @@ export class PixiLayer {
     const hpBar = new Graphics();
     container.addChild(hpBar);
 
-    // Name label
+    // Name badge (pill background + text)
+    const nameBadge = new Graphics();
+    container.addChild(nameBadge);
     const nameText = new Text({ text: cn, style: new TextStyle({
-      fontFamily: 'Arial', fontSize: size * 0.13,
+      fontFamily: 'Arial', fontSize: size * 0.15,
       fontWeight: 'bold', fill: 0xffffff,
-      stroke: { color: 0x000000, width: 2 },
+      stroke: { color: 0x000000, width: 3 },
     })});
-    nameText.anchor.set(0.5, 1);
+    nameText.anchor.set(0.5, 0.5);
     nameText.x = size / 2;
-    nameText.y = size - 1;
+    nameText.y = size + 14;
     container.addChild(nameText);
 
     this._root.addChild(container);
-    return { container, glow, portrait, mask, hpBar, nameText, size, lastPortrait: null };
+    return { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText, size, lastPortrait: null };
   }
 
   _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying) {
-    const { container, glow, portrait, mask, hpBar, nameText } = obj;
+    const { container, shadow, glow, portrait, mask, hpBar, nameBadge, nameText } = obj;
 
     container.x = px;
     container.y = py;
     container.alpha = isGhost ? GHOST_ALPHA : 1;
 
+    // ── Drop shadow ──
+    shadow.clear();
+    shadow.circle(size / 2 + 3, size / 2 + 4, size * 0.44)
+          .fill({ color: 0x000000, alpha: 0.45 });
+
     // ── Glow ring ──
     glow.clear();
     if (isActive) {
       const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
-      const r = size * 0.42 + 5;
+      const r = size * 0.44 + 6;
       glow.circle(size / 2, size / 2, r)
           .fill({ color: GLOW_COLOR, alpha: 0.25 + pulse * 0.15 });
       glow.circle(size / 2, size / 2, r)
-          .stroke({ color: GLOW_COLOR, alpha: 0.9, width: 2.5 });
+          .stroke({ color: GLOW_COLOR, alpha: 0.9, width: 3 });
     } else {
       const col = _hexColor(pl.pColor || '#3498db');
-      glow.circle(size / 2, size / 2, size * 0.42)
-          .stroke({ color: isDying ? 0xe74c3c : col, alpha: 1, width: 2 });
+      glow.circle(size / 2, size / 2, size * 0.44)
+          .stroke({ color: isDying ? 0xe74c3c : col, alpha: 1, width: 3 });
     }
 
     // ── Portrait texture ──
@@ -279,7 +290,7 @@ export class PixiLayer {
         portrait.width = size;
         portrait.height = size;
         mask.clear();
-        mask.circle(size / 2, size / 2, size * 0.42).fill(0xffffff);
+        mask.circle(size / 2, size / 2, size * 0.44).fill(0xffffff);
       }).catch(() => {
         portrait.texture = Texture.WHITE;
         portrait.tint = _hexColor(pl.pColor || '#3498db');
@@ -298,18 +309,23 @@ export class PixiLayer {
     hpBar.clear();
     if (pl.maxHp) {
       const pct = Math.max(0, (pl.hp || 0) / pl.maxHp);
-      const bw = size * 0.84, bh = 4, bx = (size - bw) / 2, by = size + 3;
-      hpBar.rect(bx, by, bw, bh).fill({ color: 0x000000, alpha: 0.55 });
+      const bw = size * 0.84, bh = 7, bx = (size - bw) / 2, by = size + 3;
+      hpBar.roundRect(bx, by, bw, bh, 3).fill({ color: 0x000000, alpha: 0.65 });
       const barCol = pct > 0.5 ? 0x2ecc71 : pct > 0.25 ? 0xf39c12 : 0xe74c3c;
-      hpBar.rect(bx, by, bw * pct, bh).fill(barCol);
+      hpBar.roundRect(bx, by, bw * pct, bh, 3).fill(barCol);
     }
 
-    // ── Name tag ──
-    const label = cn.length > 9 ? cn.slice(0, 8) + '…' : cn;
+    // ── Name badge (pill) ──
+    const label = cn.length > 10 ? cn.slice(0, 9) + '…' : cn;
     if (nameText.text !== label) nameText.text = label;
-    nameText.style.fontSize = size * 0.13;
+    nameText.style.fontSize = size * 0.15;
     nameText.x = size / 2;
-    nameText.y = size - 1;
+    nameText.y = size + 14;
+    // Draw pill behind text
+    nameBadge.clear();
+    const tw = nameText.width + 8, th = nameText.height + 4;
+    nameBadge.roundRect(size / 2 - tw / 2, size + 14 - th / 2, tw, th, 5)
+             .fill({ color: 0x000000, alpha: 0.7 });
 
     // Request re-render if active (pulsing glow)
     if (isActive) this._dirty = true;
