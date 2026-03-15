@@ -298,67 +298,317 @@ export function tmt2mtPlayerUrl(charClass = '', race = '', gender = '') {
   return arr[0] || null;
 }
 
-// ── Monster lookup (from original tmt.js) ────────────────────────────────────
+// ── Monster lookup ────────────────────────────────────────────────────────────
+// SLUG_MAP: Open5e slug → [category, tokenName]
+// All names confirmed via HEAD requests against the 2MT CDN.
 
 const SLUG_MAP = {
-  goblin:                ['humanoid', 'goblin03'],
-  'goblin-boss':         ['humanoid', 'goblinpaladin1'],
-  hobgoblin:             ['humanoid', 'hobgoblin3'],
-  'hobgoblin-captain':   ['humanoid', 'hobgoblincleric1'],
-  'hobgoblin-iron-shadow':['humanoid','hobgoblinbarbarian1'],
-  bugbear:               ['humanoid', 'hobgoblinbarbarian1'],
-  'bugbear-chief':       ['humanoid', 'hobgoblinbarbarian2'],
-  orc:                   ['humanoid', 'orccleric'],
-  'orc-war-chief':       ['humanoid', 'halforcfighter1'],
-  kobold:                ['humanoid', 'koboldbarbarian1'],
-  gnoll:                 ['humanoid', 'goblinmale3'],
-  zombie:                ['undead',   'zombie'],
-  'ogre-zombie':         ['undead',   'ogrezombie'],
-  'beholder-zombie':     ['undead',   'zombie3'],
-  'plague-zombie':       ['undead',   'huskzombie'],
-  skeleton:              ['undead',   'skeletonfighter1'],
-  'minotaur-skeleton':   ['undead',   'skeletonfighter1'],
-  ghost:                 ['undead',   'ghost2'],
-  shadow:                ['undead',   'cryptwalker'],
-  specter:               ['undead',   'cryptwalker'],
-  wraith:                ['undead',   'cryptwalker'],
-  banshee:               ['undead',   'cryptwalker'],
-  'death-knight':        ['undead',   'deathknight'],
-  revenant:              ['undead',   'drownedassassin1'],
-  wight:                 ['undead',   'skeletonpaladin1'],
-  vampire:               ['undead',   'zombieelflord'],
-  'vampire-spawn':       ['undead',   'zombie4'],
-  lich:                  ['undead',   'skeletonsorcerer1'],
-  troll:                 ['giant',    'troll4'],
-  ogre:                  ['giant',    'ogre5'],
-  'hill-giant':          ['giant',    'ogre5'],
-  'stone-giant':         ['giant',    'ogre5'],
-  'frost-giant':         ['giant',    'ogre5'],
-  gargoyle:              ['construct','gargoyle4'],
-  hyena:                 ['beast',    'hyena1'],
-  'kuo-toa':             ['humanoid', 'kuotoa3'],
-  'kuo-toa-whip':        ['humanoid', 'kuotoawhip1'],
-  'kuo-toa-archpriest':  ['humanoid', 'kuotoapriest1'],
+  // ── Goblins & Goblinoids ──────────────────────────────────────────────────
+  goblin:                    ['humanoid','goblin03'],
+  'goblin-boss':             ['humanoid','goblinpaladin1'],
+  'goblin-cutpurse':         ['humanoid','goblin07'],
+  hobgoblin:                 ['humanoid','hobgoblin3'],
+  'hobgoblin-captain':       ['humanoid','hobgoblincleric1'],
+  'hobgoblin-devastator':    ['humanoid','hobgoblin3'],
+  'hobgoblin-iron-shadow':   ['humanoid','hobgoblinbarbarian1'],
+  bugbear:                   ['humanoid','hobgoblinbarbarian1'],
+  'bugbear-chief':           ['humanoid','hobgoblinbarbarian2'],
+
+  // ── Orcs ─────────────────────────────────────────────────────────────────
+  orc:                       ['humanoid','orccleric1'],
+  'orc-eye-of-gruumsh':      ['humanoid','orccleric2'],
+  'orc-war-chief':           ['humanoid','halforcfighter1'],
+  'orc-hand-of-yurtrus':     ['humanoid','orccleric'],
+
+  // ── Kobolds ──────────────────────────────────────────────────────────────
+  kobold:                    ['humanoid','kobold1'],
+  'kobold-dragonshield':     ['humanoid','kobold3'],
+  'kobold-inventor':         ['humanoid','kobold2'],
+  'kobold-scale-sorcerer':   ['humanoid','kobold4'],
+
+  // ── Gnolls ───────────────────────────────────────────────────────────────
+  gnoll:                     ['humanoid','gnoll1'],
+  'gnoll-fang-of-yeenoghu':  ['humanoid','gnoll3'],
+  'gnoll-hunter':            ['humanoid','gnollhunter'],
+  'gnoll-pack-lord':         ['humanoid','gnoll3'],
+
+  // ── Lizardfolk ───────────────────────────────────────────────────────────
+  lizardfolk:                ['humanoid','lizardfolk'],
+  'lizardfolk-shaman':       ['humanoid','lizardfolk'],
+  'lizardfolk-king':         ['humanoid','lizardfolk'],
+
+  // ── Troglodytes / Sahuagin / Kuo-toa ─────────────────────────────────────
+  troglodyte:                ['humanoid','troglodyte'],
+  sahuagin:                  ['humanoid','sahuagin1'],
+  'sahuagin-baron':          ['humanoid','sahuagin3'],
+  'sahuagin-blademaster':    ['humanoid','sahuagin2'],
+  'kuo-toa':                 ['humanoid','kuotoa3'],
+  'kuo-toa-whip':            ['humanoid','kuotoawhip1'],
+  'kuo-toa-archpriest':      ['humanoid','kuotoapriest1'],
+  'kuo-toa-monitor':         ['humanoid','kuotoamonitor1'],
+
+  // ── Yuan-ti ───────────────────────────────────────────────────────────────
+  'yuan-ti-pureblood':       ['humanoid','yuanti1'],
+  'yuan-ti-malison':         ['humanoid','yuanti1'],
+  'yuan-ti-abomination':     ['humanoid','yuanti1'],
+
+  // ── Humanoid NPCs ─────────────────────────────────────────────────────────
+  bandit:                    ['humanoid','bandit1'],
+  'bandit-captain':          ['humanoid','bandit4'],
+  guard:                     ['humanoid','guard'],
+  'veteran':                 ['humanoid','guard2'],
+  'knight':                  ['humanoid','bandit3'],
+  thief:                     ['humanoid','thief'],
+  cultist:                   ['humanoid','cultist2'],
+  'cult-fanatic':             ['humanoid','cultist3'],
+  'noble':                   ['humanoid','merchant2'],
+  werewolf:                  ['humanoid','werewolf'],
+  'werewolf-hybrid':         ['humanoid','werewolf2'],
+  werebear:                  ['humanoid','werebear'],
+  wererat:                   ['humanoid','thief'],
+
+  // ── Undead ────────────────────────────────────────────────────────────────
+  zombie:                    ['undead','zombie'],
+  'zombie-2':                ['undead','zombie2'],
+  'ogre-zombie':             ['undead','ogrezombie'],
+  'beholder-zombie':         ['undead','zombie3'],
+  'plague-zombie':           ['undead','huskzombie'],
+  skeleton:                  ['undead','skeletonfighter1'],
+  'skeleton-warrior':        ['undead','skeleton'],
+  'skeleton-2':              ['undead','skeleton2'],
+  'minotaur-skeleton':       ['undead','skeletonfighter1'],
+  ghost:                     ['undead','ghost2'],
+  shadow:                    ['undead','cryptwalker'],
+  specter:                   ['undead','cryptwalker'],
+  wraith:                    ['undead','cryptwalker'],
+  banshee:                   ['undead','banshee'],
+  'will-o-wisp':             ['undead','ghost2'],
+  ghoul:                     ['undead','ghoul'],
+  ghast:                     ['undead','ghoul'],
+  wight:                     ['undead','wight'],
+  mummy:                     ['undead','mummy'],
+  'mummy-lord':              ['undead','mummy1'],
+  revenant:                  ['undead','drownedassassin1'],
+  'death-knight':            ['undead','deathknight'],
+  vampire:                   ['undead','zombieelflord'],
+  'vampire-spawn':           ['undead','vampirespawn'],
+  lich:                      ['undead','lich'],
+  demilich:                  ['undead','skeletonsorcerer1'],
+  flameskull:                ['undead','flameskull'],
+  boneclaw:                  ['undead','boneclaw'],
+  'zombie-5':                ['undead','zombie5'],
+
+  // ── Giants ────────────────────────────────────────────────────────────────
+  troll:                     ['giant','troll4'],
+  ogre:                      ['giant','ogre'],
+  'hill-giant':              ['giant','hillgiant'],
+  'frost-giant':             ['giant','frostgiant'],
+  'fire-giant':              ['giant','firegiant'],
+  'cloud-giant':             ['giant','cloudgiant'],
+  'stone-giant':             ['giant','ogre5'],
+  'storm-giant':             ['giant','cloudgiant1'],
+  ettin:                     ['giant','ettin'],
+  cyclops:                   ['giant','cyclops'],
+  verbeeg:                   ['giant','verbeeg'],
+  'troll-2':                 ['giant','troll2'],
+  'troll-3':                 ['giant','troll3'],
+  'ogre-3':                  ['giant','ogre3'],
+
+  // ── Constructs ────────────────────────────────────────────────────────────
+  gargoyle:                  ['construct','gargoyle4'],
+  'animated-armor':          ['construct','animatedarmor'],
+  'flesh-golem':             ['construct','fleshgolem'],
+  'iron-golem':              ['construct','animatedarmor2'],
+  'stone-golem':             ['construct','animatedarmor2'],
+  'clay-golem':              ['construct','fleshgolem'],
+  scarecrow:                 ['construct','gargoyle2'],
+  modron:                    ['construct','modron1'],
+
+  // ── Beasts ────────────────────────────────────────────────────────────────
+  wolf:                      ['beast','wolf'],
+  'dire-wolf':               ['beast','direwolf'],
+  'wolf-2':                  ['beast','wolf2'],
+  'wolf-3':                  ['beast','wolf3'],
+  'wolf-4':                  ['beast','wolf4'],
+  'brown-bear':              ['beast','bear2'],
+  'polar-bear':              ['beast','bear3'],
+  'black-bear':              ['beast','bear2'],
+  'giant-spider':            ['beast','giantspider'],
+  spider:                    ['beast','spider1'],
+  'giant-rat':               ['beast','giantrat'],
+  rat:                       ['beast','rat1'],
+  boar:                      ['beast','boar'],
+  hyena:                     ['beast','hyena'],
+  'giant-hyena':             ['beast','hyena1'],
+  lion:                      ['beast','lion'],
+  tiger:                     ['beast','tiger'],
+  panther:                   ['beast','lion'],
+  ape:                       ['beast','ape'],
+  crocodile:                 ['beast','crocodile1'],
+  horse:                     ['beast','horse'],
+  warhorse:                  ['beast','warhorse'],
+  eagle:                     ['beast','eagle1'],
+  bat:                       ['beast','bat'],
+  'giant-bat':               ['beast','bat'],
+  frog:                      ['beast','frog'],
+  'giant-frog':              ['beast','frog'],
+  crab:                      ['beast','crab'],
+  'giant-crab':              ['beast','crab'],
+  'flying-snake':            ['beast','spider1'],
+
+  // ── Dragons ───────────────────────────────────────────────────────────────
+  pseudodragon:              ['dragon','pseudodragon'],
+  'ancient-red-dragon':      ['dragon','reddragon1'],
+  'adult-red-dragon':        ['dragon','reddragon1'],
+  'young-red-dragon':        ['dragon','dragon1'],
+  'red-dragon-wyrmling':     ['dragon','dragon3'],
+  'ancient-blue-dragon':     ['dragon','bluedragon'],
+  'adult-blue-dragon':       ['dragon','bluedragon1'],
+  'young-blue-dragon':       ['dragon','bluedragon1'],
+  'blue-dragon-wyrmling':    ['dragon','dragon3'],
+  'ancient-black-dragon':    ['dragon','blackdragon'],
+  'adult-black-dragon':      ['dragon','blackdragon1'],
+  'young-black-dragon':      ['dragon','blackdragon1'],
+  'ancient-green-dragon':    ['dragon','greendragon1'],
+  'adult-green-dragon':      ['dragon','younggreendragon'],
+  'young-green-dragon':      ['dragon','younggreendragon'],
+  'ancient-white-dragon':    ['dragon','whitedragon'],
+  'adult-white-dragon':      ['dragon','whitedragon1'],
+  'young-white-dragon':      ['dragon','whitedragon1'],
+  'bronze-dragon':           ['dragon','bronzedragon'],
+  'copper-dragon':           ['dragon','copperdragon'],
+  'dragon-turtle':           ['dragon','dragon2'],
+  lindwurm:                  ['dragon','lindwurm'],
+  'dragon-1':                ['dragon','dragon1'],
+  'dragon-2':                ['dragon','dragon2'],
+
+  // ── Monstrosities ─────────────────────────────────────────────────────────
+  owlbear:                   ['monstrosity','owlbear'],
+  'owlbear-2':               ['monstrosity','owlbear2'],
+  griffon:                   ['monstrosity','griffon'],
+  manticore:                 ['monstrosity','manticore'],
+  harpy:                     ['monstrosity','harpy'],
+  basilisk:                  ['monstrosity','basilisk'],
+  medusa:                    ['monstrosity','medusa'],
+  chimera:                   ['monstrosity','chimera1'],
+  hydra:                     ['monstrosity','hydra'],
+  ankheg:                    ['monstrosity','ankheg'],
+  bulette:                   ['monstrosity','bulette'],
+  cockatrice:                ['monstrosity','cockatrice'],
+  grick:                     ['monstrosity','grick'],
+  lamia:                     ['monstrosity','lamia'],
+  peryton:                   ['monstrosity','peryton'],
+  remorhaz:                  ['monstrosity','remorhaz'],
+  minotaur:                  ['monstrosity','chimera1'],
+  wyvern:                    ['monstrosity','harpy2'],
+  'displacer-beast':         ['monstrosity','manticore2'],
+  'spirit-naga':             ['monstrosity','medusa'],
+  'bone-naga':               ['monstrosity','medusa'],
+  'guardian-naga':           ['monstrosity','medusa'],
+
+  // ── Aberrations ───────────────────────────────────────────────────────────
+  beholder:                  ['aberration','beholder'],
+  'death-tyrant':            ['aberration','beholder'],
+  spectator:                 ['aberration','beholder'],
+  aboleth:                   ['aberration','aboleth1'],
+  'mind-flayer':             ['aberration','beholder'],
+  'mind-flayer-arcanist':    ['aberration','beholder'],
+  nothic:                    ['aberration','beholder'],
+  otyugh:                    ['aberration','aboleth1'],
+
+  // ── Elementals ────────────────────────────────────────────────────────────
+  'fire-elemental':          ['elemental','fireelemental'],
+  'water-elemental':         ['elemental','waterelemental'],
+  'earth-elemental':         ['elemental','earthelemental'],
+  'air-elemental':           ['elemental','airelemental'],
+  'fire-elemental-2':        ['elemental','fireelemental2'],
+  'air-elemental-1':         ['elemental','airelemental1'],
+  salamander:                ['elemental','salamander'],
+  efreeti:                   ['elemental','efreeti'],
+  marid:                     ['elemental','marid'],
+  djinni:                    ['elemental','airelemental'],
+  'dust-mephit':             ['elemental','dustdevil1'],
+  'ice-mephit':              ['elemental','iceelemental'],
+  'mud-mephit':              ['elemental','mephit1'],
+  'steam-mephit':            ['elemental','mephit3'],
+  'magma-mephit':            ['elemental','mephit3'],
+  mephit:                    ['elemental','mephit1'],
+  'storm-elemental':         ['elemental','stormelemental'],
+  'ice-elemental':           ['elemental','iceelemental'],
+
+  // ── Fiends ────────────────────────────────────────────────────────────────
+  imp:                       ['fiend','imp2'],
+  succubus:                  ['fiend','succubus'],
+  incubus:                   ['fiend','incubus'],
+  'succubus-incubus':        ['fiend','succubus1'],
+  balor:                     ['fiend','balor1'],
+  erinyes:                   ['fiend','succubus1'],
+  'horned-devil':            ['fiend','horneddevil'],
+  'pit-fiend':               ['fiend','balor1'],
+  cambion:                   ['fiend','succubus'],
+
+  // ── Fey ───────────────────────────────────────────────────────────────────
+  pixie:                     ['fey','pixie'],
+  'pixie-1':                 ['fey','pixie1'],
+  sprite:                    ['fey','sprite'],
+  dryad:                     ['fey','dryad'],
+  'dryad-1':                 ['fey','dryad1'],
+  'blink-dog':               ['fey','blinkdog'],
 };
 
+// ── SLUG_ALTS: extra tokens shown in the portrait picker alternatives ─────────
+// Maps slug → [[cat,name], ...] extras beyond the primary
+const SLUG_ALTS = {
+  goblin:         [['humanoid','goblin07'],['humanoid','goblinmale3'],['humanoid','goblinpaladin2']],
+  hobgoblin:      [['humanoid','hobgoblin4'],['humanoid','hobgoblincleric1'],['humanoid','hobgoblinbarbarian1']],
+  orc:            [['humanoid','orccleric'],['humanoid','orccleric2'],['humanoid','halforcfighter1']],
+  kobold:         [['humanoid','kobold2'],['humanoid','kobold3'],['humanoid','kobold4'],['humanoid','koboldbarbarian2']],
+  gnoll:          [['humanoid','gnollhunter'],['humanoid','gnoll3']],
+  zombie:         [['undead','zombie2'],['undead','zombie3'],['undead','zombie4'],['undead','zombie5']],
+  skeleton:       [['undead','skeleton'],['undead','skeleton2'],['undead','skeletonpaladin1'],['undead','skeletonsorcerer1']],
+  troll:          [['giant','troll'],['giant','troll2'],['giant','troll3']],
+  ogre:           [['giant','ogre3'],['giant','ogre4'],['giant','ogre5']],
+  wolf:           [['beast','wolf2'],['beast','wolf3'],['beast','wolf4']],
+  'dire-wolf':    [['beast','wolf'],['beast','wolf2']],
+  'brown-bear':   [['beast','bear3']],
+  beholder:       [['aberration','aboleth1']],
+  owlbear:        [['monstrosity','owlbear2']],
+  'young-red-dragon': [['dragon','dragon1'],['dragon','dragon2'],['dragon','dragon3']],
+};
+
+// ── TYPE_POOL: fallback when no slug match ────────────────────────────────────
 const TYPE_POOL = {
-  Humanoid:  [['humanoid','goblin03'],['humanoid','hobgoblin3'],['humanoid','orccleric'],['humanoid','kuotoa3'],['humanoid','goblinpaladin1'],['humanoid','goblin07']],
-  Undead:    [['undead','zombie'],['undead','zombie2'],['undead','skeletonfighter1'],['undead','ghost2'],['undead','zombie4'],['undead','cryptwalker']],
-  Giant:     [['giant','troll4'],['giant','ogre5']],
-  Construct: [['construct','gargoyle4']],
-  Beast:     [['beast','hyena1']],
+  Humanoid:    [['humanoid','goblin03'],['humanoid','hobgoblin3'],['humanoid','orccleric1'],['humanoid','kobold1'],['humanoid','gnoll1'],['humanoid','bandit1'],['humanoid','guard'],['humanoid','lizardfolk'],['humanoid','sahuagin1'],['humanoid','troglodyte']],
+  Undead:      [['undead','zombie'],['undead','zombie2'],['undead','skeletonfighter1'],['undead','ghost2'],['undead','cryptwalker'],['undead','wight'],['undead','ghoul'],['undead','mummy'],['undead','banshee'],['undead','flameskull']],
+  Giant:       [['giant','troll4'],['giant','ogre5'],['giant','hillgiant'],['giant','frostgiant'],['giant','firegiant'],['giant','cloudgiant'],['giant','ettin'],['giant','cyclops']],
+  Construct:   [['construct','gargoyle4'],['construct','animatedarmor'],['construct','fleshgolem'],['construct','gargoyle2'],['construct','modron1']],
+  Beast:       [['beast','wolf'],['beast','bear2'],['beast','lion'],['beast','spider1'],['beast','hyena'],['beast','giantspider'],['beast','direwolf'],['beast','boar'],['beast','tiger'],['beast','eagle1']],
+  Dragon:      [['dragon','dragon1'],['dragon','dragon2'],['dragon','dragon3'],['dragon','reddragon1'],['dragon','bluedragon'],['dragon','blackdragon'],['dragon','greendragon1'],['dragon','whitedragon']],
+  Monstrosity: [['monstrosity','owlbear'],['monstrosity','griffon'],['monstrosity','manticore'],['monstrosity','harpy'],['monstrosity','basilisk'],['monstrosity','chimera1'],['monstrosity','hydra'],['monstrosity','bulette'],['monstrosity','ankheg'],['monstrosity','medusa']],
+  Aberration:  [['aberration','beholder'],['aberration','aboleth1']],
+  Elemental:   [['elemental','fireelemental'],['elemental','waterelemental'],['elemental','earthelemental'],['elemental','airelemental'],['elemental','mephit1'],['elemental','salamander'],['elemental','iceelemental'],['elemental','stormelemental']],
+  Fiend:       [['fiend','succubus'],['fiend','incubus'],['fiend','imp2'],['fiend','balor1'],['fiend','horneddevil'],['fiend','succubus1']],
+  Fey:         [['fey','pixie'],['fey','sprite'],['fey','dryad'],['fey','blinkdog'],['fey','pixie1'],['fey','dryad1']],
+  Ooze:        [['undead','zombie5'],['aberration','aboleth1']],
+  Plant:       [['beast','frog'],['monstrosity','ankheg']],
+  Celestial:   [['humanoid','halfelfcleric'],['humanoid','humancleric1']],
+  Swarm:       [['beast','rat1'],['beast','bat'],['beast','spider1']],
 };
 
 export function tmt2mtUrl(slug = '', type = '') {
   const entry = SLUG_MAP[slug];
   if (entry) return url(entry[0], entry[1]);
+  // Fuzzy: slug starts with a known key OR key starts with slug's first word
   const lc = slug.toLowerCase();
+  const first = lc.split('-')[0];
   for (const [key, [cat, name]] of Object.entries(SLUG_MAP)) {
-    if (lc.startsWith(key) || key.startsWith(lc.split('-')[0])) return url(cat, name);
+    if (lc.startsWith(key) || key === first || key.startsWith(first)) return url(cat, name);
   }
+  // Type fallback — pick deterministically (not random) so same monster always shows same token
   const pool = TYPE_POOL[type];
   if (pool?.length) {
-    const [cat, name] = pool[Math.floor(Math.random() * pool.length)];
+    const idx = Math.abs(slug.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % pool.length;
+    const [cat, name] = pool[idx];
     return url(cat, name);
   }
   return null;
@@ -371,9 +621,10 @@ export function tmt2mtAlternatives(slug = '', type = '') {
     const u = url(cat, name);
     if (!seen.has(u)) { seen.add(u); out.push({ url: u, label }); }
   };
-  const entry = SLUG_MAP[slug];
-  if (entry) push(entry[0], entry[1], '★');
-  (TYPE_POOL[type] || []).forEach(([cat, name]) => push(cat, name, type));
+  const primary = SLUG_MAP[slug];
+  if (primary) push(primary[0], primary[1], '★');
+  (SLUG_ALTS[slug] || []).forEach(([c, n]) => push(c, n, ''));
+  (TYPE_POOL[type] || []).slice(0, 6).forEach(([c, n]) => push(c, n, type));
   return out;
 }
 
@@ -381,7 +632,7 @@ export function tmt2mtThumbHtml(slug = '', type = '') {
   const u = tmt2mtUrl(slug, type);
   if (!u) return '';
   return `<img src="${u}"
-    style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;"
+    style="width:38px;height:38px;object-fit:contain;flex-shrink:0;"
     onerror="this.style.display='none'" loading="lazy">`;
 }
 
