@@ -140,7 +140,8 @@ export class PixiLayer {
       const pl = players[cn] || {};
       const isActive = cn === activeName;
       const isGhost  = cn === draggingName;
-      const isDying  = (pl.hp || 0) <= 0 && pl.maxHp > 0;
+      // Only "dying" when hp is explicitly a number set to 0 — avoids false positives on fresh tokens
+      const isDying  = typeof pl.hp === 'number' && pl.maxHp > 0 && pl.hp <= 0;
       const px = ox + tk.gx * pps;
       const py = oy + tk.gy * pps;
 
@@ -241,13 +242,13 @@ export class PixiLayer {
     const nameBadge = new Graphics();
     container.addChild(nameBadge);
     const nameText = new Text({ text: cn, style: new TextStyle({
-      fontFamily: 'Arial', fontSize: size * 0.15,
+      fontFamily: 'Arial', fontSize: Math.max(13, size * 0.22),
       fontWeight: 'bold', fill: 0xffffff,
-      stroke: { color: 0x000000, width: 3 },
+      stroke: { color: 0x000000, width: 4 },
     })});
     nameText.anchor.set(0.5, 0.5);
     nameText.x = size / 2;
-    nameText.y = size + 14;
+    nameText.y = size + 20;
     container.addChild(nameText);
 
     this._root.addChild(container);
@@ -285,25 +286,32 @@ export class PixiLayer {
     const url = pl.portrait;
     if (url && url !== obj.lastPortrait) {
       obj.lastPortrait = url;
+      obj._hasPortrait = false; // loading in progress
       Assets.load(url).then(tex => {
         portrait.texture = tex;
         portrait.width = size;
         portrait.height = size;
         mask.clear();
         mask.circle(size / 2, size / 2, size * 0.44).fill(0xffffff);
+        obj._hasPortrait = true;
       }).catch(() => {
         portrait.texture = Texture.WHITE;
-        portrait.tint = _hexColor(pl.pColor || '#3498db');
+        obj._hasPortrait = false;
       });
     } else if (!url) {
       portrait.texture = Texture.WHITE;
-      portrait.tint = _hexColor(pl.pColor || '#3498db');
       portrait.width = size;
       portrait.height = size;
     }
 
-    // Death overlay tint
-    portrait.tint = isDying ? DEAD_TINT : 0xffffff;
+    // Tint: dying = dark red overlay; no portrait = player color disc; normal = no tint
+    if (isDying) {
+      portrait.tint = DEAD_TINT;
+    } else if (!obj._hasPortrait) {
+      portrait.tint = _hexColor(pl.pColor || '#3498db');
+    } else {
+      portrait.tint = 0xffffff;
+    }
 
     // ── HP bar ──
     hpBar.clear();
@@ -316,16 +324,16 @@ export class PixiLayer {
     }
 
     // ── Name badge (pill) ──
-    const label = cn.length > 10 ? cn.slice(0, 9) + '…' : cn;
+    const label = cn.length > 12 ? cn.slice(0, 11) + '…' : cn;
     if (nameText.text !== label) nameText.text = label;
-    nameText.style.fontSize = size * 0.15;
+    nameText.style.fontSize = Math.max(13, size * 0.22);
     nameText.x = size / 2;
-    nameText.y = size + 14;
+    nameText.y = size + 20;
     // Draw pill behind text
     nameBadge.clear();
-    const tw = nameText.width + 8, th = nameText.height + 4;
-    nameBadge.roundRect(size / 2 - tw / 2, size + 14 - th / 2, tw, th, 5)
-             .fill({ color: 0x000000, alpha: 0.7 });
+    const tw = nameText.width + 10, th = nameText.height + 6;
+    nameBadge.roundRect(size / 2 - tw / 2, size + 20 - th / 2, tw, th, 6)
+             .fill({ color: 0x000000, alpha: 0.75 });
 
     // Request re-render if active (pulsing glow)
     if (isActive) this._dirty = true;

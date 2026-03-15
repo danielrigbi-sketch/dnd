@@ -119,8 +119,11 @@ export class SceneWizard {
     this._boundKey = this._onKey.bind(this);
     window.addEventListener('keydown', this._boundKey);
     window.addEventListener('resize', this._bound.resize);
-    this._initEngine();
-    this._render();
+    // Wait one frame so the modal is painted before measuring canvas dimensions
+    requestAnimationFrame(() => {
+      this._initEngine();
+      this._render();
+    });
   }
 
   close() {
