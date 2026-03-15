@@ -4,6 +4,7 @@ import * as db from "./firebaseService.js";
 import { uploadPortrait } from "./firebaseService.js"; // S14: direct import
 import { startGame, setUid } from "./app.js";
 import { setLanguage, getLang, t, updateDOM } from "./i18n.js";
+import { initMiniPreview, updateMiniPreview } from "./miniPreview.js";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -97,16 +98,34 @@ if(inputUrl) {
     });
 }
 
-// ── 3D Mini preview description ────────────────────────────────────────────
+// ── 3D Mini preview ────────────────────────────────────────────────────────
+let _miniPreviewInited = false;
+
+function _ensureMiniPreview() {
+    if (_miniPreviewInited) return;
+    const wrap = document.getElementById('cb-mini-canvas-wrap');
+    if (!wrap) return;
+    _miniPreviewInited = true;
+    initMiniPreview(wrap);
+}
+
 function _updateMiniDesc() {
-    const desc = document.getElementById('cb-mini-desc');
-    if (!desc) return;
+    const desc   = document.getElementById('cb-mini-desc');
     const race   = document.getElementById('cb-race')?.value  || '';
     const cls    = document.getElementById('cb-class')?.value || '';
     const gender = document.getElementById('cb-gender')?.value || 'male';
-    if (!race && !cls) { desc.textContent = 'Select Race + Class + Gender above'; return; }
-    const gLabel = { male: 'Male', female: 'Female', nonbinary: 'Non-binary' }[gender] || gender;
-    desc.textContent = `${race || '?'} ${cls || '?'} · ${gLabel} — auto-generated on map`;
+
+    if (desc) {
+        if (!race && !cls) {
+            desc.textContent = 'Select Race + Class + Gender above';
+        } else {
+            const gLabel = { male: 'Male', female: 'Female', nonbinary: 'Non-binary' }[gender] || gender;
+            desc.textContent = `${race || '?'} ${cls || '?'} · ${gLabel}`;
+        }
+    }
+
+    _ensureMiniPreview();
+    updateMiniPreview({ race, class: cls, gender });
 }
 ['cb-race', 'cb-class', 'cb-gender'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', _updateMiniDesc);
