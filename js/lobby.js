@@ -4,7 +4,6 @@ import * as db from "./firebaseService.js";
 import { uploadPortrait } from "./firebaseService.js"; // S14: direct import
 import { startGame, setUid } from "./app.js";
 import { setLanguage, getLang, t, updateDOM } from "./i18n.js";
-import { initMiniPreview, updateMiniPreview } from "./miniPreview.js";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -98,38 +97,6 @@ if(inputUrl) {
     });
 }
 
-// ── 3D Mini preview ────────────────────────────────────────────────────────
-let _miniPreviewInited = false;
-
-function _ensureMiniPreview() {
-    if (_miniPreviewInited) return;
-    const wrap = document.getElementById('cb-mini-canvas-wrap');
-    if (!wrap) return;
-    _miniPreviewInited = true;
-    initMiniPreview(wrap);
-}
-
-function _updateMiniDesc() {
-    const desc   = document.getElementById('cb-mini-desc');
-    const race   = document.getElementById('cb-race')?.value  || '';
-    const cls    = document.getElementById('cb-class')?.value || '';
-    const gender = document.getElementById('cb-gender')?.value || 'male';
-
-    if (desc) {
-        if (!race && !cls) {
-            desc.textContent = 'Select Race + Class + Gender above';
-        } else {
-            const gLabel = { male: 'Male', female: 'Female', nonbinary: 'Non-binary' }[gender] || gender;
-            desc.textContent = `${race || '?'} ${cls || '?'} · ${gLabel}`;
-        }
-    }
-
-    _ensureMiniPreview();
-    updateMiniPreview({ race, class: cls, gender });
-}
-['cb-race', 'cb-class', 'cb-gender'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', _updateMiniDesc);
-});
 
 if(inputFile) {
     inputFile.addEventListener('change', async (e) => {
@@ -292,7 +259,7 @@ function openBuilderForEdit(charId) {
         switchPortraitTab(tabPreset, areaPreset);
         document.querySelectorAll('.builder-portrait-btn').forEach(btn => { btn.classList.remove('active'); if (btn.src === selectedPortrait) btn.classList.add('active'); });
     }
-    _updateMiniDesc();
+
     if (attacksList) attacksList.innerHTML = '';
     // Sprint 6: load spell slots
     for (let lv = 1; lv <= 9; lv++) {
@@ -330,7 +297,7 @@ if(newCharBtn) {
         document.querySelectorAll('.builder-portrait-btn').forEach(b => b.classList.remove('active'));
         document.querySelector('.builder-portrait-btn').classList.add('active');
         if (attacksList) attacksList.innerHTML = '';
-        _updateMiniDesc();
+    
     };
 }
 
