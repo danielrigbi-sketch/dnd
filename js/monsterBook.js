@@ -9,6 +9,7 @@
 import { fetchMonsters, open5eToNPC, normaliseType } from './open5e.js';
 import { t } from './i18n.js';
 import { translateIfHe, translateAllIfHe } from './translator.js';
+import { tmt2mtUrl, tmt2mtAlternatives, tmt2mtThumbHtml } from './tmt.js';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let _search     = '';
@@ -211,10 +212,12 @@ function _buildList() {
     const hp         = m.hit_points ?? '?';
     const wasSpawned = _spawned.has(m.slug);
 
+    const thumb = tmt2mtThumbHtml(m.slug, type);
     return `
       <div style="display:flex; align-items:center; gap:10px; padding:8px 10px;
                   background:rgba(255,255,255,0.04); border-radius:8px; margin-bottom:5px;
                   border-left:3px solid ${col};">
+        ${thumb}
         <div style="flex:1; min-width:0;">
           <div style="font-weight:700; font-size:13px; color:white;
                       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${m.name}</div>
@@ -244,7 +247,8 @@ async function _showCustomizeForm(slug) {
   const col   = TYPE_COLOR[type] || '#c0392b';
   const stats = open5eToNPC(m);
 
-  _selectedPortrait = `https://api.dicebear.com/8.x/adventurer/png?seed=${slug}`;
+  _selectedPortrait = tmt2mtUrl(slug, type)
+    || `https://api.dicebear.com/8.x/adventurer/png?seed=${slug}`;
 
   const inputStyle = `
     width:100%; box-sizing:border-box; padding:5px 8px; border-radius:5px;
@@ -407,7 +411,7 @@ async function _showCustomizeForm(slug) {
   };
 
   // Run translations + portrait load in parallel — all non-blocking
-  _loadPortraitPicker(slug, m.name);
+  _loadPortraitPicker(slug, m.name, type);
   _loadLoreSection(m, col);
   _loadAbilitiesSection(m, col);
 }
@@ -483,42 +487,64 @@ async function _loadAbilitiesSection(m, col) {
   }
 }
 
-async function _loadPortraitPicker(slug, name) {
+async function _loadPortraitPicker(slug, name, type) {
   const grid = document.getElementById('mb-portrait-grid');
   if (!grid) return;
+
+  // ── 1. Show 2MT tokens immediately (no network wait) ─────────────────────
+  const tmtOptions = tmt2mtAlternatives(slug, type);
+  const tmtHtml = tmtOptions.length
+    ? tmtOptions.map(({ url }) =>
+        `<img src="${url}" data-src="${url}"
+          class="mb-portrait-opt"
+          style="width:54px;height:54px;border-radius:50%;object-fit:cover;cursor:pointer;
+                 border:2px solid ${url === _selectedPortrait ? '#f1c40f' : 'transparent'};
+                 transition:border-color 0.15s;"
+          onerror="this.parentElement && (this.style.display='none')" loading="lazy">`
+      ).join('')
+    : '';
+
+  grid.innerHTML = tmtHtml
+    || `<span style="color:#666;font-size:11px;">${t('loading') || 'טוען...'}</span>`;
+
+  _wirePortraitClicks(grid);
+
+  // ── 2. Append Lexica AI results asynchronously ────────────────────────────
   try {
     const res  = await fetch(
       `https://lexica.art/api/v1/search?q=${encodeURIComponent(name + ' DnD fantasy monster portrait')}`
     );
     if (!res.ok) throw new Error('Lexica API error');
     const data = await res.json();
-    const imgs = (data.images || []).slice(0, 8);
+    const imgs = (data.images || []).slice(0, 6);
+    if (!imgs.length || !document.getElementById('mb-portrait-grid')) return;
 
-    if (!imgs.length) {
-      grid.innerHTML = `<span style="color:#666; font-size:11px;">${t('mb_no_portraits') || 'No portraits found'}</span>`;
-      return;
-    }
-
-    grid.innerHTML = imgs.map(img =>
+    // Add separator + Lexica images after 2MT ones
+    const sep = tmtOptions.length
+      ? `<div style="width:100%;font-size:10px;color:#555;margin:4px 0 2px;letter-spacing:0.5px;">AI Art</div>`
+      : '';
+    grid.insertAdjacentHTML('beforeend', sep + imgs.map(img =>
       `<img src="${img.src}" data-src="${img.src}"
         class="mb-portrait-opt"
-        style="width:54px; height:54px; border-radius:8px; object-fit:cover; cursor:pointer;
-               border:2px solid transparent; transition:border-color 0.15s;"
+        style="width:54px;height:54px;border-radius:8px;object-fit:cover;cursor:pointer;
+               border:2px solid transparent;transition:border-color 0.15s;"
         onerror="this.style.display='none'">`
-    ).join('');
+    ).join(''));
 
-    grid.querySelectorAll('.mb-portrait-opt').forEach(el => {
-      el.addEventListener('click', () => {
-        grid.querySelectorAll('.mb-portrait-opt').forEach(i => i.style.border = '2px solid transparent');
-        el.style.border = '2px solid #e74c3c';
-        _selectedPortrait = el.dataset.src;
-        const prev = document.getElementById('mb-portrait-preview');
-        if (prev) prev.src = _selectedPortrait;
-      });
-    });
-  } catch {
-    if (grid) grid.innerHTML = `<span style="color:#555; font-size:11px; font-style:italic;">${t('mb_no_portraits') || 'Could not load portraits'}</span>`;
-  }
+    _wirePortraitClicks(grid);
+  } catch { /* Lexica unavailable — 2MT tokens are enough */ }
+}
+
+function _wirePortraitClicks(grid) {
+  grid.querySelectorAll('.mb-portrait-opt').forEach(el => {
+    el.onclick = () => {
+      grid.querySelectorAll('.mb-portrait-opt').forEach(i => i.style.border = '2px solid transparent');
+      el.style.border = '2px solid #f1c40f';
+      _selectedPortrait = el.dataset.src;
+      const prev = document.getElementById('mb-portrait-preview');
+      if (prev) prev.src = _selectedPortrait;
+    };
+  });
 }
 
 // ── Spawn ─────────────────────────────────────────────────────────────────────
