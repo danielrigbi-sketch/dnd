@@ -75,7 +75,7 @@ export class MapEngine {
 
     // ── Shared state (Firebase-synced) ────────────────────────────────
     this.S = {
-      cfg:        { bgUrl: '', bgVideoUrl: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20, fowEnabled: false, collisionEnabled: false },
+      cfg:        { bgUrl: '', bgVideoUrl: '', bgBase64: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20, fowEnabled: false, collisionEnabled: false },
       atmosphere: { weather: 'none', ambientLight: 'bright', globalDarkvision: 0 },
       tokens:     {},
       fog:        {},
@@ -204,15 +204,21 @@ export class MapEngine {
         if (!cfg) return;
         const wasUrl      = this.S.cfg.bgUrl;
         const wasVideoUrl = this.S.cfg.bgVideoUrl;
+        const wasBase64   = this.S.cfg.bgBase64;
         this.S.cfg = { ...this.S.cfg, ...cfg };
-        // Handle static background changes
-        if (cfg.bgUrl && cfg.bgUrl !== wasUrl) this._loadBg(cfg.bgUrl);
+        // Handle static background changes (base64 upload takes priority over URL)
+        if (cfg.bgBase64 && cfg.bgBase64 !== wasBase64) {
+          this._loadBg(cfg.bgBase64);
+        } else if (cfg.bgUrl && cfg.bgUrl !== wasUrl) {
+          this._loadBg(cfg.bgUrl);
+        }
         // Handle video background changes
         if (cfg.bgVideoUrl && cfg.bgVideoUrl !== wasVideoUrl) {
           this._video?.load(cfg.bgVideoUrl);
         } else if (!cfg.bgVideoUrl && wasVideoUrl) {
           this._video?.unload();
-          if (this.S.cfg.bgUrl) this._loadBg(this.S.cfg.bgUrl);
+          if (this.S.cfg.bgBase64) this._loadBg(this.S.cfg.bgBase64);
+          else if (this.S.cfg.bgUrl) this._loadBg(this.S.cfg.bgUrl);
         }
         this._dirty();
       }),
