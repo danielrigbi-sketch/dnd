@@ -282,7 +282,7 @@ export class MapEngine {
     this._rObstacles();
     if (this.userRole === 'dm') this._rTriggers();
     this._rLights();
-    if (!this._pixi?.isReady) this.tokens.render();
+    this.tokens.render(!!this._pixi?.isReady);
     this.movement.renderRange();
     if (this._pixi?.isReady) {
       const activeName = this.L.sc?.[this.L.ati]?.name;

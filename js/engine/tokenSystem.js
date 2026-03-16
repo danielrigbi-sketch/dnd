@@ -698,14 +698,14 @@ export class TokenSystem {
   }
 
   // ── Token rendering ───────────────────────────────────────────────────
-  render() {
+  render(pixiActive = false) {
     const { e } = this;
     const activeName = e.L.sc[e.L.ati]?.name;
     Object.entries(e.S.tokens).forEach(([cn, tk]) => {
       if (!tk || tk.gx == null) return;
       if (e.L.drag?.cName === cn) return; // drawn separately as ghost
       const { pps, ox, oy } = e.S.cfg;
-      this._renderToken(cn, tk, ox + tk.gx * pps, oy + tk.gy * pps, pps, cn === activeName, false);
+      this._renderToken(cn, tk, ox + tk.gx * pps, oy + tk.gy * pps, pps, cn === activeName, false, pixiActive);
     });
 
     // Ghost while dragging
@@ -715,7 +715,7 @@ export class TokenSystem {
       if (tk) {
         const { pps, ox, oy } = e.S.cfg;
         e.ctx.globalAlpha = 0.70;
-        this._renderToken(dt.cName, tk, ox + dt.curGX * pps, oy + dt.curGY * pps, pps, false, true);
+        this._renderToken(dt.cName, tk, ox + dt.curGX * pps, oy + dt.curGY * pps, pps, false, true, pixiActive);
         e.ctx.globalAlpha = 1;
       }
     }
@@ -734,7 +734,7 @@ export class TokenSystem {
     }
   }
 
-  _renderToken(cn, tk, px, py, size, isActive, isGhost) {
+  _renderToken(cn, tk, px, py, size, isActive, isGhost, pixiActive = false) {
     const { ctx } = this.e;
     const pl = this.e.S.players[cn] || {};
     const isNPC = pl.userRole === 'npc';
@@ -748,6 +748,10 @@ export class TokenSystem {
 
     // 2MT tokens are pre-made circular PNGs — render full tile, no clip/ring
     const isTmt = typeof portrait === 'string' && portrait.includes('tools.2minutetabletop.com');
+
+    // When Pixi is active it handles non-2MT tokens (ring, HP bar, name badge, portrait).
+    // Canvas2D only needs to paint the 2MT portrait image (no CORS → can't go to WebGL).
+    if (pixiActive && !isTmt) return;
 
     // Multi-tile sizing
     const tileSize    = getTileSize(pl.size);

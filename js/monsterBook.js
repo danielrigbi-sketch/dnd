@@ -288,7 +288,7 @@ async function _showCustomizeForm(slug) {
       <!-- Portrait picker -->
       <div style="margin-bottom:10px;">
         <div style="font-size:11px; color:#aaa; margin-bottom:5px;">
-          🖼️ ${t('mb_choose_portrait') || 'בחר דיוקן'} <span style="color:#555; font-size:10px;">(Lexica.art AI)</span>
+          🖼️ ${t('mb_choose_portrait') || 'בחר דיוקן'}
         </div>
         <div id="mb-portrait-grid" style="display:flex; flex-wrap:wrap; gap:5px;">
           <div style="color:#666; font-size:11px; font-style:italic;">${t('loading') || 'טוען...'}</div>
@@ -520,30 +520,6 @@ async function _loadPortraitPicker(slug, name, type) {
 
   _wirePortraitClicks(grid);
 
-  // ── 2. Append Lexica AI results asynchronously ────────────────────────────
-  try {
-    const res  = await fetch(
-      `/api/lexica-proxy?q=${encodeURIComponent(name + ' DnD fantasy monster portrait')}`
-    );
-    if (!res.ok) throw new Error('Lexica API error');
-    const data = await res.json();
-    const imgs = (data.images || []).slice(0, 6);
-    if (!imgs.length || !document.getElementById('mb-portrait-grid')) return;
-
-    // Add separator + Lexica images after 2MT ones
-    const sep = tmtOptions.length
-      ? `<div style="width:100%;font-size:10px;color:#555;margin:4px 0 2px;letter-spacing:0.5px;">AI Art</div>`
-      : '';
-    grid.insertAdjacentHTML('beforeend', sep + imgs.map(img =>
-      `<img src="${img.src}" data-src="${img.src}"
-        class="mb-portrait-opt"
-        style="width:54px;height:54px;border-radius:8px;object-fit:cover;cursor:pointer;
-               border:2px solid transparent;transition:border-color 0.15s;"
-        onerror="this.style.display='none'">`
-    ).join(''));
-
-    _wirePortraitClicks(grid);
-  } catch { /* Lexica unavailable — 2MT tokens are enough */ }
 }
 
 function _wirePortraitClicks(grid) {
