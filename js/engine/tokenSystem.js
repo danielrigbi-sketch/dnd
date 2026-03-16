@@ -38,6 +38,20 @@ function _checkConcentration(eng, targetCName, target, damage) {
   });
 }
 
+// ── Auto-unconscious on 0 HP (4C) ─────────────────────────────────────────────
+/** Apply Unconscious status + log when a target drops to 0 HP. */
+function _applyUnconscious(eng, targetCName, target, newHp) {
+  if (newHp > 0) return;
+  const statuses = target.statuses || [];
+  if (statuses.includes('Unconscious')) return;
+  eng.db?.patchPlayerInDB(targetCName, { statuses: [...statuses, 'Unconscious'] });
+  eng.db?.saveRollToDB({
+    type: 'FALL', cName: targetCName,
+    pName: target.pName || targetCName,
+    color: target.pColor || '#e74c3c', ts: Date.now(),
+  });
+}
+
 // ── Monster action helpers ────────────────────────────────────────────────────
 /** Build damage dice string from Open5e action (handles split damage_dice + damage_bonus) */
 function _normActionDmg(action) {
@@ -679,6 +693,7 @@ export class TokenSystem {
       const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
       eng.db?.updatePlayerHPInDB(targetCName, newHp);
       _checkConcentration(eng, targetCName, target, damage);
+      _applyUnconscious(eng, targetCName, target, newHp);
     }
 
     eng.db?.saveRollToDB({
@@ -742,6 +757,7 @@ export class TokenSystem {
       const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
       eng.db?.updatePlayerHPInDB(targetCName, newHp);
       _checkConcentration(eng, targetCName, target, damage);
+      _applyUnconscious(eng, targetCName, target, newHp);
     }
 
     eng.db?.saveRollToDB({
@@ -798,6 +814,7 @@ export class TokenSystem {
       const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
       eng.db?.updatePlayerHPInDB(targetCName, newHp);
       _checkConcentration(eng, targetCName, target, damage);
+      _applyUnconscious(eng, targetCName, target, newHp);
     }
 
     eng.db?.saveRollToDB({
@@ -873,6 +890,7 @@ export class TokenSystem {
         const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
         eng.db?.updatePlayerHPInDB(targetCName, newHp);
         _checkConcentration(eng, targetCName, target, damage);
+        _applyUnconscious(eng, targetCName, target, newHp);
       }
     } else if (spell.dc_type && dmgDice) {
       // Saving throw — target rolls d20 + save proficiency vs spellSaveDC (2D)
@@ -888,6 +906,7 @@ export class TokenSystem {
         const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
         eng.db?.updatePlayerHPInDB(targetCName, newHp);
         _checkConcentration(eng, targetCName, target, damage);
+        _applyUnconscious(eng, targetCName, target, newHp);
       }
       hit = true; // always "fires"
     } else {

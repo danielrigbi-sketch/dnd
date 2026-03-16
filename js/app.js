@@ -963,6 +963,20 @@ window.rollDamageMacro = async (targetCName, attackName, diceString, bonus) => {
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
+window.rollAbilityCheck = async (targetCName, ability, score) => {
+    if (isCooldown || !isDiceBoxReady) return;
+    const mod = Math.floor((score - 10) / 2);
+    isCooldown = true; setDiceCooldown(true); playStartRollSound(isMuted);
+    const p = await db.getPlayerData(targetCName);
+    const color = p?.pColor || '#3498db';
+    await updateDiceColor(color);
+    let finalRes;
+    try { finalRes = (await roll3DDice('1d20'))[0].value; }
+    catch { isCooldown = false; setDiceCooldown(false); return; }
+    db.saveRollToDB({ pName: p?.pName || targetCName, cName: targetCName, type: 'ABILITY_CHECK', ability, score, mod, res: finalRes, total: finalRes + mod, color, ts: Date.now() });
+    setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
+};
+
 window.changeHP = async (targetCName, isPlus) => {
     const inputField = document.getElementById(`hp-input-${targetCName}`);
     const amount = parseInt(inputField?.value) || 1;
@@ -974,6 +988,11 @@ window.changeHP = async (targetCName, isPlus) => {
     if (!isPlus && p.concentrating) {
         db.updateConcentrationInDB(targetCName, false);
         db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `🔮 ${targetCName} lost concentration! (took damage)`, ts: Date.now() });
+    }
+    // Auto-apply Unconscious on 0 HP (4C)
+    if (newHp <= 0 && !(p.statuses || []).includes('Unconscious')) {
+        db.patchPlayerInDB(targetCName, { statuses: [...(p.statuses || []), 'Unconscious'] });
+        db.saveRollToDB({ type: 'FALL', cName: targetCName, pName: p.pName || targetCName, color: p.pColor || '#e74c3c', ts: Date.now() });
     }
     db.saveRollToDB({ cName: targetCName, type: isPlus ? "HEAL" : "DAMAGE", res: amount, newHp, color: isPlus ? "#2ecc71" : "#e74c3c", flavor: (isPlus ? t('log_heals') : t('log_takes_dmg')) + ` (${amount} ${t('log_points')})`, ts: Date.now() });
     if (inputField) inputField.value = 1;

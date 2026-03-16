@@ -247,6 +247,18 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             <div class="stat-box" style="color:#e74c3c;"><span>${t('card_melee')}</span>⚔️ ${i.melee >= 0 ? '+'+(i.melee||0) : i.melee}</div>
                             <div class="stat-box" style="color:#3498db;"><span>${t('card_ranged')}</span>🏹 ${i.ranged >= 0 ? '+'+(i.ranged||0) : i.ranged}</div>
                         </div>
+                        ${[['STR',i._str],['DEX',i._dex],['CON',i._con],['INT',i._int],['WIS',i._wis],['CHA',i._cha]].some(([,v])=>v) ? `
+                        <div class="ability-row">
+                            ${[['STR',i._str],['DEX',i._dex],['CON',i._con],['INT',i._int],['WIS',i._wis],['CHA',i._cha]].map(([name,score]) => {
+                                if (!score) return '';
+                                const mod = Math.floor((score - 10) / 2);
+                                return `<button class="ability-btn" onclick="window.rollAbilityCheck('${_esc(i.name)}','${name}',${score})" title="${name} check">
+                                    <span class="ab-name">${name}</span>
+                                    <span class="ab-score">${score}</span>
+                                    <span class="ab-mod">${mod >= 0 ? '+'+mod : mod}</span>
+                                </button>`;
+                            }).join('')}
+                        </div>` : ''}
                         <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1);">
                             <div style="font-size:10px; color:#aaa; margin-bottom:5px;">${t('card_macros_title')}</div>
                             <div style="display:flex; flex-direction:column; gap:5px;">
@@ -505,6 +517,32 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
                 </div>
                 <div style="color:var(--ink); margin-top:4px; font-size:0.88em;">${hResultLine}</div>
                 <div style="color:#6dcf99; font-style:italic; font-size:0.80em; margin-top:3px;">${hFlavorLine}</div>
+            </div>`;
+    } else if (data.type === 'FALL') {
+        entry.innerHTML = `
+            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:rgba(231,76,60,0.1); border-left:4px solid #c0392b;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
+                    <span style="${nameStyle}">💀 Unconscious</span>
+                    <span style="color:#666; font-size:10px;">${time}</span>
+                </div>
+                <div style="color:var(--ink); margin-top:3px; font-size:0.88em;"><strong>${_escapeHtml(data.cName)}</strong> falls unconscious!</div>
+            </div>`;
+    } else if (data.type === 'ABILITY_CHECK') {
+        const total = data.total ?? (data.res + (data.mod || 0));
+        const modStr = (data.mod || 0) >= 0 ? `+${data.mod||0}` : `${data.mod}`;
+        const nat20 = data.res === 20, nat1 = data.res === 1;
+        const resColor = nat20 ? '#f1c40f' : nat1 ? '#e74c3c' : 'var(--ink)';
+        entry.innerHTML = `
+            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:rgba(52,152,219,0.07); border-left:4px solid #3498db;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
+                    <span style="${nameStyle}">🎲 ${_escapeHtml(data.ability)} Check</span>
+                    <span style="color:#666; font-size:10px;">${time}</span>
+                </div>
+                <div style="color:var(--ink); margin-top:3px; font-size:0.88em;">
+                    <strong>${_escapeHtml(data.cName)}</strong> rolled
+                    <span style="color:${resColor}; font-weight:900; font-size:1.2em;">${total}</span>
+                    <small style="opacity:0.7;"> (🎲${data.res}${modStr})</small>
+                </div>
             </div>`;
     } else if (data.type === "STATUS") {
         entry.innerHTML = `
