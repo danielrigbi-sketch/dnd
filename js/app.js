@@ -392,7 +392,7 @@ function _showLairActionPrompt(npcName, lairActions) {
     if (!container) return;
     const esc = s => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const el = document.createElement('div');
-    el.className = 'cr-toast info';
+    el.className = 'cr-toast lair-prompt';
     el.style.cssText = 'cursor:default; min-width:220px; max-width:280px; padding:10px 12px;';
     const shown = lairActions.slice(0, 4);
     el.innerHTML = `
@@ -434,7 +434,7 @@ function _showOAPrompt(attackerName, targetName, onAttack) {
     if (!container) return;
     const esc = s => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const el = document.createElement('div');
-    el.className = 'cr-toast warning';
+    el.className = 'cr-toast oa-prompt';
     el.style.cssText = 'cursor:default; min-width:210px; padding:10px 12px;';
     el.innerHTML = `
         <div style="font-weight:700; margin-bottom:5px;">🗡️ Opportunity Attack!</div>

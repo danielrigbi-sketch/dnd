@@ -584,15 +584,23 @@ export class TokenSystem {
         if (actions.length) actions.push({ label: '── 🔮 Spells ──', cls: 'disabled', fn: null });
         castableSpells.forEach(sp => {
           const lvlTag = sp.level === 0 ? 'Cantrip' : `Lv${sp.level}`;
-          actions.push({ label: `🔮 ${sp.name} (${lvlTag})`, cls: 'attack',
+          // Show slot count for leveled spells
+          let slotInfo = '';
+          if (sp.level > 0) {
+            const remaining = (maxSlots[sp.level] || 0) - (usedSlots[sp.level] || 0);
+            const maxSl = maxSlots[sp.level] || 0;
+            if (maxSl > 0) slotInfo = ` (${remaining}/${maxSl})`;
+          }
+          actions.push({ label: `🔮 ${sp.name} (${lvlTag})${slotInfo}`, cls: 'attack',
             fn: () => this._doCastSpell(myCName, targetCName, sp, sp.level) });
           // Upcast buttons — for leveled spells with higher_level text
           if (sp.level > 0 && sp.higher_level) {
             let shown = 0;
             for (let lv = sp.level + 1; lv <= 9 && shown < 2; lv++) {
-              if ((maxSlots[lv] || 0) - (usedSlots[lv] || 0) > 0) {
+              const rem = (maxSlots[lv] || 0) - (usedSlots[lv] || 0);
+              if (rem > 0) {
                 const castLv = lv;
-                actions.push({ label: `  ↑ ${sp.name} Lv${castLv}`, cls: 'attack',
+                actions.push({ label: `  ↑ ${sp.name} Lv${castLv} (${rem}/${maxSlots[castLv]||0})`, cls: 'attack',
                   fn: () => this._doCastSpell(myCName, targetCName, sp, castLv) });
                 shown++;
               }
@@ -638,9 +646,47 @@ export class TokenSystem {
 
     if (!actions.length) return;
 
-    body.innerHTML = actions.map((a, i) =>
-      `<button class="action-btn ${a.cls}" ${a.fn ? `data-idx="${i}"` : 'disabled'}>${a.label}</button>`
-    ).join('');
+    // Group actions into sections for collapsible display
+    const SECTION_KEYS = ['──────────────', '── ⚡ Bonus', '── 👑 Legendary', '── 🔮 Spells ──', '── ✨ Traits ──', '── ⚔ Class ──', '── 🤝 Ally ──'];
+    const isSectionHeader = a => SECTION_KEYS.some(k => a.label.startsWith(k));
+
+    // Split actions into groups
+    const groups = [];
+    let current = { header: null, items: [] };
+    actions.forEach((a, i) => {
+      if (isSectionHeader(a)) {
+        if (current.items.length || current.header) groups.push(current);
+        current = { header: { ...a, idx: i }, items: [] };
+      } else {
+        current.items.push({ ...a, idx: i });
+      }
+    });
+    if (current.items.length || current.header) groups.push(current);
+
+    let html = '';
+    groups.forEach(grp => {
+      if (!grp.header) {
+        // Top-level actions (no section header) — always visible
+        grp.items.forEach(a => {
+          html += `<button class="action-btn ${a.cls}" ${a.fn ? `data-idx="${a.idx}"` : 'disabled'}>${a.label}</button>`;
+        });
+      } else {
+        // Section with header — use <details> for collapsible
+        const isSpells = grp.header.label.includes('🔮 Spells');
+        const isBonus  = grp.header.label.includes('⚡ Bonus');
+        const isLeg    = grp.header.label.includes('👑 Legendary');
+        const isOpen   = isSpells || isBonus || isLeg; // open these by default
+        html += `<details${isOpen ? ' open' : ''} class="action-section">
+          <summary class="action-section-header">${grp.header.label}</summary>
+          <div class="action-section-body">`;
+        grp.items.forEach(a => {
+          html += `<button class="action-btn ${a.cls}" ${a.fn ? `data-idx="${a.idx}"` : 'disabled'}>${a.label}</button>`;
+        });
+        html += `</div></details>`;
+      }
+    });
+
+    body.innerHTML = html;
     body.querySelectorAll('.action-btn[data-idx]').forEach(btn => {
       btn.addEventListener('click', () => {
         actions[parseInt(btn.dataset.idx)].fn?.();

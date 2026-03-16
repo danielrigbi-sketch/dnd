@@ -26,13 +26,23 @@ export function updateModeUI(activeMode) {
     const advBtn = document.getElementById('adv-btn');
     const disBtn = document.getElementById('dis-btn');
     if (!advBtn || !disBtn) return;
+    // Reset both
     [advBtn, disBtn].forEach(btn => {
-        btn.style.filter = "grayscale(100%)";
-        btn.style.opacity = "0.4";
-        btn.style.border = "1px solid rgba(255,255,255,0.2)";
+        btn.classList.remove('active');
+        btn.style.filter = '';
+        btn.style.opacity = '';
+        btn.style.border = '';
+        btn.style.boxShadow = '';
     });
-    if (activeMode === 'adv') { advBtn.style.filter = "grayscale(0%)"; advBtn.style.opacity = "1"; advBtn.style.border = "2px solid white"; }
-    else if (activeMode === 'dis') { disBtn.style.filter = "grayscale(0%)"; disBtn.style.opacity = "1"; disBtn.style.border = "2px solid white"; }
+    advBtn.textContent = '▲ Adv';
+    disBtn.textContent = '▼ Dis';
+    if (activeMode === 'adv') {
+        advBtn.classList.add('active');
+        advBtn.textContent = '▲ ADV ✓';
+    } else if (activeMode === 'dis') {
+        disBtn.classList.add('active');
+        disBtn.textContent = '▼ DIS ✓';
+    }
 }
 
 // activeTurnIndex: index in sortedCombatants that is currently active
@@ -207,11 +217,12 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                     ${(i.statuses || []).map(s => {
                         const _SC={Poisoned:'#27ae60',Charmed:'#e91e8c',Unconscious:'#636e72',Frightened:'#e67e22',Paralyzed:'#f39c12',Restrained:'#8e44ad',Blinded:'#7f8c8d',Prone:'#c0392b',Stunned:'#d35400',Incapacitated:'#2c3e50',Invisible:'#3498db',Exhausted:'#95a5a6',Deafened:'#7f8c8d',Grappled:'#e74c3c',Raging:'#c0392b',Hasted:'#2ecc71',Blessed:'#f1c40f',Concentrating:'#9b59b6'};
                         const _SI={Poisoned:'🤢',Charmed:'💕',Unconscious:'💀',Frightened:'😨',Paralyzed:'⚡',Restrained:'🕸️',Blinded:'👁️',Prone:'🔻',Stunned:'💫',Incapacitated:'💤',Invisible:'👻',Exhausted:'😵',Deafened:'👂',Grappled:'🤼',Raging:'😤',Hasted:'🏃',Blessed:'✨',Concentrating:'🔮'};
+                        const _SD={Poisoned:'Disadvantage on attacks & ability checks',Charmed:'Cannot attack the charmer',Unconscious:'Incapacitated; auto-crit on melee ≤5ft',Frightened:'Disadvantage on attacks while source visible',Paralyzed:'Incapacitated; auto-crit on melee ≤5ft; fail STR/DEX saves',Restrained:'Speed 0; attackers have advantage vs you',Blinded:'Attackers have advantage; you have disadvantage',Prone:'Melee vs you: advantage; ranged vs you: disadvantage',Stunned:'Incapacitated; fail STR/DEX saves',Incapacitated:'Cannot take actions or reactions',Invisible:'Your attacks have advantage; others have disadvantage vs you',Exhausted:'Cumulative penalty (see Exhaustion rules)',Deafened:'Auto-fail hearing-based checks',Grappled:'Speed becomes 0',Raging:'Bonus damage; resistance to physical damage',Hasted:'Extra action; double speed; +2 AC',Blessed:'+1d4 to attack rolls and saving throws',Concentrating:'Maintaining a concentration spell'};
                         const col=_SC[s]||'#636e72', ico=_SI[s]||'';
-                        // E5-B: use SVG icon if available, fall back to emoji
                         const svgIcon = iconHTML(s, col, '13px');
                         const displayIcon = svgIcon || ico;
-                        return `<span class="status-badge" style="background:${col}22;border-color:${col}66;color:${col};display:inline-flex;align-items:center;gap:3px;">${displayIcon} ${s}</span>`;
+                        const tip = _SD[s] ? _SD[s] : s;
+                        return `<span class="status-badge" title="${tip}" style="background:${col}22;border-color:${col}66;color:${col};display:inline-flex;align-items:center;gap:3px;">${displayIcon} ${s}</span>`;
                     }).join('')}
                     ${isDM ? `
                         <button onclick="toggleStatusPicker('${_esc(i.name)}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>
@@ -249,6 +260,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             <div class="stat-box" style="color:#3498db;"><span>${t('card_ranged')}</span>🏹 ${i.ranged >= 0 ? '+'+(i.ranged||0) : i.ranged}</div>
                         </div>
                         ${[['STR',i._str],['DEX',i._dex],['CON',i._con],['INT',i._int],['WIS',i._wis],['CHA',i._cha]].some(([,v])=>v) ? `
+                        <div class="card-section-label">Abilities</div>
                         <div class="ability-row">
                             ${[['STR',i._str],['DEX',i._dex],['CON',i._con],['INT',i._int],['WIS',i._wis],['CHA',i._cha]].map(([name,score]) => {
                                 if (!score) return '';
@@ -260,8 +272,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                 </button>`;
                             }).join('')}
                         </div>
-                        <div style="margin-top:7px;">
-                            <div style="font-size:9px; color:#888; font-weight:600; letter-spacing:0.5px; margin-bottom:4px; text-transform:uppercase;">🎲 Skills</div>
+                        <div style="margin-top:4px;">
+                            <div class="card-section-label">Skills</div>
                             <div class="skills-grid">
                                 ${Object.entries(SKILL_ABILITIES).sort().map(([skill, abil]) => {
                                     const mod = skillMod(skill, i);
@@ -295,7 +307,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                         </div>
                         ${i.spellSlots && Object.keys(i.spellSlots.max || {}).length > 0 ? `
                         <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1);">
-                            <div style="font-size:10px; color:#9b59b6; font-weight:bold; margin-bottom:6px;">🔮 ${t('spell_slots')}</div>
+                            <div class="card-section-label" style="color:#9b59b6;">🔮 ${t('spell_slots')}</div>
                             <div class="spell-slots-grid">
                                 ${Object.entries(i.spellSlots.max).sort(([a],[b]) => a-b).map(([lv, max]) => {
                                     const used = (i.spellSlots.used || {})[lv] || 0;
@@ -445,28 +457,26 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
     const log = document.getElementById('roll-log');
     if (!log) return;
     const entry = document.createElement('div');
-    entry.className = 'log-entry';
     const userColor = data.color || '#8B0000';
-    const nameStyle = `color:${userColor} !important; font-family:'Assistant',sans-serif !important; font-weight:900; font-size:1.1em; text-shadow:none;`;
+    const nameStyle = `color:${userColor};font-weight:900;`;
+
+    const _hdr = (icon, label) =>
+        `<div class="log-item-header"><span class="log-item-title" style="${nameStyle}">${icon} ${label}</span><span class="log-item-time">${time}</span></div>`;
+
     if (data.type === "CHAT") {
-        entry.innerHTML = `
-            <div style="margin-bottom:8px; padding:7px 9px; border-radius:7px; background:rgba(52,152,219,0.1); border-left:3px solid ${userColor};">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
-                    <span style="${nameStyle}">${_escapeHtml(data.cName || 'Player')}</span>
-                    <span style="color:#888; font-size:10px; flex-shrink:0;">${time}</span>
-                </div>
-                <div style="color:var(--ink); margin-top:3px; font-size:0.88em; word-break:break-word;">${_escapeHtml(data.msg || '')}</div>
-            </div>`;
+        entry.className = 'log-item log-chat';
+        entry.style.borderLeftColor = userColor;
+        entry.innerHTML = `${_hdr('', _escapeHtml(data.cName || 'Player'))}
+            <div class="log-item-body">${_escapeHtml(data.msg || '')}</div>`;
+
     } else if (data.type === 'ATTACK') {
-        const borderColor = data.hit ? (data.crit ? '#f1c40f' : '#e67e22') : '#e74c3c';
-        const bg = data.hit ? 'rgba(241,196,15,0.07)' : 'rgba(231,76,60,0.07)';
-        let resultLine;
         const atkIcon = data.attackType === 'ranged' ? '🏹' : '⚔️';
         const advDisNote = data.advantage ? ' <span style="color:#27ae60;font-size:0.85em;">⬆ adv</span>' : data.disadvantage ? ' <span style="color:#e67e22;font-size:0.85em;">⬇ dis</span>' : '';
         const condNote = data.condNote ? `<span style="color:#aaa;font-size:0.82em;">${_escapeHtml(data.condNote)}</span>` : '';
+        let resultLine;
         if (data.crit) {
             const critModNote = data.dmgNote ? ` <span style="color:#aaa;font-size:0.85em;">(${_escapeHtml(data.dmgNote)})</span>` : '';
-            resultLine = `<span style="color:#f1c40f;font-weight:900;">CRITICAL HIT!</span> ${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> strikes <strong>${_escapeHtml(data.target)}</strong> (🎲${data.rawRoll}+${data.total - data.rawRoll} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${critModNote}`;
+            resultLine = `<span class="log-nat20">CRITICAL HIT!</span> ${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> strikes <strong>${_escapeHtml(data.target)}</strong> (🎲${data.rawRoll}+${data.total - data.rawRoll} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${critModNote}`;
         } else if (data.miss) {
             resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong> fumbles against <strong>${_escapeHtml(data.target)}</strong> — automatic miss!`;
         } else if (data.hit) {
@@ -475,19 +485,12 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
         } else {
             resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong> misses <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${advDisNote} ${condNote}`;
         }
-        const atkFlavorLine = data.flavor || attackFlavor(data);
-        entry.innerHTML = `
-            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:${bg}; border-left:4px solid ${borderColor};">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
-                    <span style="${nameStyle}">${atkIcon} ${data.actionName ? _escapeHtml(data.actionName) : 'Combat'}</span>
-                    <span style="color:#888; font-size:10px; flex-shrink:0;">${time}</span>
-                </div>
-                <div style="color:var(--ink); margin-top:4px; font-size:0.88em;">${resultLine}</div>
-                <div style="color:#888; font-style:italic; font-size:0.80em; margin-top:3px;">${atkFlavorLine}</div>
-            </div>`;
+        entry.className = `log-item ${data.crit ? 'log-atk-crit' : data.hit ? 'log-atk-hit' : 'log-atk-miss'}`;
+        entry.innerHTML = `${_hdr(atkIcon, data.actionName ? _escapeHtml(data.actionName) : 'Combat')}
+            <div class="log-item-body">${resultLine}</div>
+            <div class="log-item-flavor">${data.flavor || attackFlavor(data)}</div>`;
+
     } else if (data.type === 'SPELL') {
-        const borderColor = data.crit ? '#f1c40f' : data.hit ? '#9b59b6' : '#e74c3c';
-        const bg = 'rgba(155,89,182,0.07)';
         const lvlTag = data.spellLevel === 0 ? 'Cantrip'
             : data.upcast ? `Level ${data.spellLevel} ↑${data.castLevel}`
             : `Level ${data.spellLevel}`;
@@ -496,118 +499,89 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
             const saved = data.savedHalf;
             resultLine = `🔮 <strong>${_escapeHtml(data.cName)}</strong> casts <em>${_escapeHtml(data.spellName)}</em> on <strong>${_escapeHtml(data.target)}</strong> — ${_escapeHtml(data.target)} ${saved ? `saves (🎲${data.saveRoll} ≥ DC ${data.spellSaveDC}), takes <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> (half)` : `fails (🎲${data.saveRoll} &lt; DC ${data.spellSaveDC}), takes <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`}`;
         } else if (data.dmgDice) {
-            if (data.crit) resultLine = `<span style="color:#f1c40f;font-weight:900;">CRITICAL!</span> 🔮 <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> with <em>${_escapeHtml(data.spellName)}</em> for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
+            if (data.crit) resultLine = `<span class="log-nat20">CRITICAL!</span> 🔮 <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> with <em>${_escapeHtml(data.spellName)}</em> for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
             else if (!data.hit) resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong>'s <em>${_escapeHtml(data.spellName)}</em> misses <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})`;
             else resultLine = `🔮 <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> with <em>${_escapeHtml(data.spellName)}</em> (rolled ${data.total} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
         } else {
             resultLine = `🔮 <strong>${_escapeHtml(data.cName)}</strong> casts <em>${_escapeHtml(data.spellName)}</em> on <strong>${_escapeHtml(data.target)}</strong>`;
         }
-        const spFlavorLine = data.flavor || spellFlavor(data);
-        entry.innerHTML = `
-            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:${bg}; border-left:4px solid ${borderColor};">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
-                    <span style="${nameStyle}">🔮 ${lvlTag}</span>
-                    <span style="color:#888; font-size:10px; flex-shrink:0;">${time}</span>
-                </div>
-                <div style="color:var(--ink); margin-top:4px; font-size:0.88em;">${resultLine}</div>
-                <div style="color:#a88cd0; font-style:italic; font-size:0.80em; margin-top:3px;">${spFlavorLine}</div>
-            </div>`;
+        entry.className = `log-item log-spell${data.crit ? ' crit' : !data.hit && data.dmgDice ? ' miss' : ''}`;
+        entry.innerHTML = `${_hdr('🔮', lvlTag)}
+            <div class="log-item-body">${resultLine}</div>
+            <div class="log-item-flavor spell">${data.flavor || spellFlavor(data)}</div>`;
+
     } else if (data.type === 'CONCENTRATION') {
-        const savedColor = data.saved ? '#2ecc71' : '#e74c3c';
-        const savedText  = data.saved
+        const savedText = data.saved
           ? `🔮 held! (🎲${data.conRoll}+${data.conMod}=${data.conTotal} ≥ DC ${data.dc})`
           : `💔 broken! (🎲${data.conRoll}+${data.conMod}=${data.conTotal} &lt; DC ${data.dc})`;
-        entry.innerHTML = `
-            <div style="margin-bottom:8px; padding:7px 10px; border-radius:7px; background:rgba(155,89,182,0.07); border-left:4px solid ${savedColor};">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
-                    <span style="${nameStyle}">🔮 Concentration</span>
-                    <span style="color:#888; font-size:10px; flex-shrink:0;">${time}</span>
-                </div>
-                <div style="color:var(--ink); margin-top:3px; font-size:0.88em;"><strong>${_escapeHtml(data.cName)}</strong> CON save — ${savedText}</div>
-            </div>`;
+        entry.className = 'log-item log-conc';
+        entry.style.borderLeftColor = data.saved ? '#2ecc71' : '#e74c3c';
+        entry.innerHTML = `${_hdr('🔮', 'Concentration')}
+            <div class="log-item-body"><strong>${_escapeHtml(data.cName)}</strong> CON save — ${savedText}</div>`;
+
     } else if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
         const hFlavorLine = data.flavor || (isHeal ? healFlavor(data.cName) : flavorText);
         const hResultLine = data.res != null
             ? `${isHeal ? '💚' : '💔'} <strong>${_escapeHtml(data.cName)}</strong> ${isHeal ? 'healed' : 'took'} <span style="color:${isHeal?'#2ecc71':'#e74c3c'};font-weight:900;">${data.res}</span> HP${data.newHp != null ? ` → ${data.newHp}/${data.maxHp ?? '?'}` : ''}`
             : `${isHeal ? '💚' : '💔'} <strong>${_escapeHtml(data.cName)}</strong>`;
-        entry.innerHTML = `
-            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:${isHeal ? 'rgba(46,204,113,0.07)' : 'rgba(231,76,60,0.07)'}; border-left:4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
-                    <span style="${nameStyle}">${isHeal ? '💚 Heal' : '💔 Damage'}</span>
-                    <span style="color:#666; font-size:10px;">${time}</span>
-                </div>
-                <div style="color:var(--ink); margin-top:4px; font-size:0.88em;">${hResultLine}</div>
-                <div style="color:#6dcf99; font-style:italic; font-size:0.80em; margin-top:3px;">${hFlavorLine}</div>
-            </div>`;
+        entry.className = `log-item ${isHeal ? 'log-heal' : 'log-damage'}`;
+        entry.innerHTML = `${_hdr('', isHeal ? '💚 Heal' : '💔 Damage')}
+            <div class="log-item-body">${hResultLine}</div>
+            <div class="log-item-flavor ${isHeal ? 'heal' : ''}">${hFlavorLine}</div>`;
+
     } else if (data.type === 'FALL') {
-        entry.innerHTML = `
-            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:rgba(231,76,60,0.1); border-left:4px solid #c0392b;">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
-                    <span style="${nameStyle}">💀 Unconscious</span>
-                    <span style="color:#666; font-size:10px;">${time}</span>
-                </div>
-                <div style="color:var(--ink); margin-top:3px; font-size:0.88em;"><strong>${_escapeHtml(data.cName)}</strong> falls unconscious!</div>
-            </div>`;
+        entry.className = 'log-item log-fall';
+        entry.innerHTML = `${_hdr('💀', 'Unconscious')}
+            <div class="log-item-body"><strong>${_escapeHtml(data.cName)}</strong> falls unconscious!</div>`;
+
     } else if (data.type === 'ABILITY_CHECK') {
         const total = data.total ?? (data.res + (data.mod || 0));
         const modStr = (data.mod || 0) >= 0 ? `+${data.mod||0}` : `${data.mod}`;
         const nat20 = data.res === 20, nat1 = data.res === 1;
-        const resColor = nat20 ? '#f1c40f' : nat1 ? '#e74c3c' : 'var(--ink)';
-        entry.innerHTML = `
-            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:rgba(52,152,219,0.07); border-left:4px solid #3498db;">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
-                    <span style="${nameStyle}">🎲 ${_escapeHtml(data.ability)} Check</span>
-                    <span style="color:#666; font-size:10px;">${time}</span>
-                </div>
-                <div style="color:var(--ink); margin-top:3px; font-size:0.88em;">
-                    <strong>${_escapeHtml(data.cName)}</strong> rolled
-                    <span style="color:${resColor}; font-weight:900; font-size:1.2em;">${total}</span>
-                    <small style="opacity:0.7;"> (🎲${data.res}${modStr})</small>
-                </div>
+        entry.className = 'log-item log-ability';
+        entry.innerHTML = `${_hdr('🎲', `${_escapeHtml(data.ability)} Check`)}
+            <div class="log-item-body">
+                <strong>${_escapeHtml(data.cName)}</strong> rolled
+                <span class="${nat20?'log-nat20':nat1?'log-nat1':''}" style="font-size:1.2em;font-weight:900;">${total}</span>
+                <small style="opacity:0.7;"> (🎲${data.res}${modStr})</small>
             </div>`;
+
     } else if (data.type === 'SKILL') {
         const total = data.total ?? (data.res + (data.mod || 0));
         const modStr = (data.mod || 0) >= 0 ? `+${data.mod||0}` : `${data.mod}`;
         const nat20 = data.res === 20, nat1 = data.res === 1;
-        const resColor = nat20 ? '#f1c40f' : nat1 ? '#e74c3c' : 'var(--ink)';
         const skillDisp = (data.skillName || '').replace(/(^|\s)\w/g, s => s.toUpperCase());
-        entry.innerHTML = `
-            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:rgba(39,174,96,0.07); border-left:4px solid #27ae60;">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
-                    <span style="${nameStyle}">🎲 ${_escapeHtml(skillDisp)}</span>
-                    <span style="color:#666; font-size:10px;">${time}</span>
-                </div>
-                <div style="color:var(--ink); margin-top:3px; font-size:0.88em;">
-                    <strong>${_escapeHtml(data.cName)}</strong> rolled
-                    <span style="color:${resColor}; font-weight:900; font-size:1.2em;">${total}</span>
-                    <small style="opacity:0.7;"> (🎲${data.res}${modStr})</small>
-                </div>
+        entry.className = 'log-item log-skill';
+        entry.innerHTML = `${_hdr('🎲', _escapeHtml(skillDisp))}
+            <div class="log-item-body">
+                <strong>${_escapeHtml(data.cName)}</strong> rolled
+                <span class="${nat20?'log-nat20':nat1?'log-nat1':''}" style="font-size:1.2em;font-weight:900;">${total}</span>
+                <small style="opacity:0.7;"> (🎲${data.res}${modStr})</small>
             </div>`;
+
     } else if (data.type === "STATUS") {
-        entry.innerHTML = `
-            <div style="margin-bottom:8px; padding:7px 10px; border-radius:8px; background:rgba(108,92,231,0.1); border:1px dashed #6c5ce7;">
-                <div style="font-size:0.88em; color:var(--ink); font-weight:600;">${data.status}</div>
-            </div>`;
+        entry.className = 'log-item log-status';
+        entry.innerHTML = `<div class="log-item-body" style="font-weight:600;">${data.status}</div>`;
+
     } else {
         const modeLabel = data.mode === 'adv'
-            ? `<span style="color:#27ae60; font-weight:bold;">(${t('adv')})</span>`
-            : (data.mode === 'dis' ? `<span style="color:#c0392b; font-weight:bold;">(${t('dis')})</span>` : '');
+            ? `<span style="color:#27ae60;font-weight:bold;">(${t('adv')})</span>`
+            : (data.mode === 'dis' ? `<span style="color:#c0392b;font-weight:bold;">(${t('dis')})</span>` : '');
+        entry.className = 'log-item log-generic';
         entry.innerHTML = `
-            <div style="margin-bottom:15px; padding:12px; border-bottom:1px solid rgba(0,0,0,0.1); background:rgba(255,255,255,0.4); border-radius:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                    <span style="${nameStyle}">${data.cName || 'Player'} <small style="font-weight:600; color:#555;">(${data.pName || 'User'})</small></span>
-                    <span style="color:#666; font-size:11px;">[${time}]</span>
-                </div>
-                <div style="color:var(--ink); margin-top:4px; line-height:1.4; font-weight:600;">
-                    ${t('log_rolled')} <strong>${data.type.toUpperCase()}</strong> ${modeLabel} ${t('log_and_got')}
-                    <span style="color:${data.res === 20 ? '#b8860b' : (data.res === 1 ? '#c0392b' : 'var(--ink)')}; font-weight:900; font-size:1.3em;">
-                        ${data.res + (data.mod || 0)}
-                    </span>
-                    <small style="opacity:0.8; font-weight:normal;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
-                </div>
-                ${flavorText ? `<div style="color:#444; font-style:italic; font-size:12px; margin-top:6px;">"${flavorText}"</div>` : ""}
-            </div>`;
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="${nameStyle}">${data.cName || 'Player'} <small style="font-weight:600;color:#555;">(${data.pName || 'User'})</small></span>
+                <span style="color:#666;font-size:11px;">[${time}]</span>
+            </div>
+            <div style="color:var(--ink);margin-top:4px;line-height:1.4;font-weight:600;">
+                ${t('log_rolled')} <strong>${data.type.toUpperCase()}</strong> ${modeLabel} ${t('log_and_got')}
+                <span class="${data.res===20?'log-nat20':data.res===1?'log-nat1':''}" style="font-size:1.3em;">
+                    ${data.res + (data.mod || 0)}
+                </span>
+                <small style="opacity:0.8;font-weight:normal;"> (${data.res}${data.mod >= 0 ? '+' : ''}${data.mod})</small>
+            </div>
+            ${flavorText ? `<div style="color:#444;font-style:italic;font-size:12px;margin-top:6px;">"${flavorText}"</div>` : ""}`;
     }
     isReplay ? log.appendChild(entry) : log.prepend(entry);
     if (log.children.length > 30) log.removeChild(log.lastChild);

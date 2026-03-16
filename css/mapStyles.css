@@ -82,7 +82,7 @@
     font-family: 'Assistant', sans-serif; text-align: right; transition: 0.15s; line-height: 1.3;
 }
 .action-btn:hover { background: rgba(241,196,15,0.15); border-color: rgba(241,196,15,0.5); color: #fff; }
-.action-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.action-btn.disabled { opacity: 0.55; cursor: default; pointer-events: none; color: #888; font-size: 11px; padding: 4px 10px; }
 .action-btn.info { opacity: 0.75; cursor: default; pointer-events: none; font-style: italic; border-color: rgba(155,89,182,0.3); color: #b8a0d0; font-size: 11px; padding: 4px 10px; }
 .action-btn.attack { border-color: rgba(231,76,60,0.45); }
 .action-btn.attack:hover { background: rgba(231,76,60,0.18); border-color: #e74c3c; color: #ff8a80; }
@@ -94,6 +94,21 @@
 .action-btn.bonus:hover { background: rgba(52,152,219,0.18); border-color: #3498db; color: #7ec8e3; }
 .action-btn.legendary { border-color: rgba(241,196,15,0.6); color: #f1c40f; }
 .action-btn.legendary:hover { background: rgba(241,196,15,0.18); border-color: #f1c40f; color: #ffe566; }
+/* Collapsible action sections */
+.action-section { border: none; margin: 0; padding: 0; }
+.action-section-header {
+    list-style: none; cursor: pointer; user-select: none;
+    font-size: 11px; color: #aaa; padding: 4px 6px; margin: 2px 0;
+    background: rgba(255,255,255,0.04); border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex; justify-content: space-between; align-items: center;
+    transition: 0.15s;
+}
+.action-section-header::-webkit-details-marker { display: none; }
+.action-section-header::after { content: '▾'; font-size: 10px; opacity: 0.6; }
+details.action-section[open] > .action-section-header::after { content: '▴'; }
+.action-section-header:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.action-section-body { display: flex; flex-direction: column; gap: 4px; padding: 3px 0 2px; }
 .action-popup-close {
     position: absolute; top: 6px; right: 8px; background: none; border: none;
     color: #888; cursor: pointer; font-size: 14px; padding: 2px 5px; border-radius: 4px;
