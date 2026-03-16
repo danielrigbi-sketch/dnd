@@ -23,15 +23,56 @@ function _isCellBlocked(e, gx, gy, movingCName) {
   return false;
 }
 
+/**
+ * Synchronous BFS pathfinding — explores the grid until target is reached.
+ * Guaranteed to route around obstacles. Returns [[x,y], ...] or a straight
+ * two-point fallback if no path exists (unreachable cell).
+ */
+function _bfsPath(e, sx, sy, ex, ey, cName, cols, rows) {
+  if (sx === ex && sy === ey) return [[sx, sy]];
+  const parent = new Map();
+  const start  = ck(sx, sy);
+  parent.set(start, null);
+  const queue = [[sx, sy]];
+
+  outer: while (queue.length) {
+    const [cx, cy] = queue.shift();
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = cx + dx, ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+        const nk = ck(nx, ny);
+        if (parent.has(nk)) continue;
+        if (_isCellBlocked(e, nx, ny, cName)) continue;
+        parent.set(nk, [cx, cy]);
+        if (nx === ex && ny === ey) break outer;
+        queue.push([nx, ny]);
+      }
+    }
+  }
+
+  if (!parent.has(ck(ex, ey))) return [[sx, sy], [ex, ey]]; // unreachable
+
+  // Reconstruct path from goal back to start
+  const path = [];
+  let cur = [ex, ey];
+  while (cur) {
+    path.unshift(cur);
+    cur = parent.get(ck(cur[0], cur[1]));
+  }
+  return path;
+}
+
 export class MovementSystem {
   /** @param {import('./mapEngine.js').MapEngine} engine */
   constructor(engine) {
     this.e = engine;
   }
 
-  // ── A* + greedy fallback pathfinding ──────────────────────────────────
-  // Returns an immediate greedy path for visual feedback while EasyStar
-  // resolves async and updates L.drag.path in the background.
+  // ── A* pathfinding with BFS obstacle-aware fallback ──────────────────
+  // Immediately returns a BFS path (respects obstacles, goes around walls).
+  // EasyStar A* resolves async and replaces it with the optimal path.
   buildPath(sx, sy, ex, ey, cName) {
     const { e } = this;
     const { cols = 40, rows = 30 } = e.S.cfg;
@@ -40,7 +81,7 @@ export class MovementSystem {
       e._pf.setGrid(e.S.obstacles, cols, rows);
     }
 
-    // Async A* — update path when ready
+    // Async A* — replaces fallback when ready
     e._pf.find(sx, sy, ex, ey).then(path => {
       if (path && e.L.drag && e.L.drag.cName === cName) {
         e.L.drag.path = path;
@@ -48,20 +89,8 @@ export class MovementSystem {
       }
     });
 
-    // Synchronous greedy Chebyshev fallback (immediate frame)
-    const cells = [[sx, sy]];
-    let cx = sx, cy = sy;
-    while ((cx !== ex || cy !== ey) && cells.length < 120) {
-      const dx = Math.sign(ex - cx), dy = Math.sign(ey - cy);
-      const opts = [[cx + dx, cy + dy], [cx + dx, cy], [cx, cy + dy]];
-      const next = opts.find(([nx, ny]) =>
-        !_isCellBlocked(e, nx, ny, cName) && (nx !== cx || ny !== cy)
-      );
-      if (!next) break;
-      [cx, cy] = next;
-      cells.push([cx, cy]);
-    }
-    return cells;
+    // Synchronous BFS fallback — always routes around obstacles
+    return _bfsPath(e, sx, sy, ex, ey, cName, cols, rows);
   }
 
   // ── Commit drag — write to Firebase + trigger vision reveal ──────────

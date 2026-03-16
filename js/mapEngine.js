@@ -21,6 +21,7 @@ import { TokenSystem }      from './engine/tokenSystem.js';
 import { MovementSystem }   from './engine/movementSystem.js';
 import { VisibilitySystem } from './engine/visibilitySystem.js';
 import { FowSystem }        from './engine/fowSystem.js';
+import { AnimationSystem }  from './engine/animationSystem.js';
 import { getTileSize, footprintsOverlap } from './engine/sizeUtils.js';
 
 // ── Constants ─────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ export class MapEngine {
     this.movement   = new MovementSystem(this);
     this.visibility = new VisibilitySystem(this);
     this.fow        = new FowSystem(this);
+    this.anim       = new AnimationSystem(this);
 
     // Wire bus events that mapEngine needs to handle
     this._busUnsubs = [
@@ -290,6 +292,7 @@ export class MapEngine {
       this._pixi.renderFrame(); // PixiJS ticker is stopped; force render each frame
     }
     this.movement.renderPath();
+    this.anim.tick(ctx);
     this._rRuler();
     this._rAoe();
     this.fow.renderPhantomGrid();

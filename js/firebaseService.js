@@ -181,6 +181,16 @@ export function restoreAllSpellSlotsInDB(cName, maxSlots) {
     // Restore used slots back to 0 (long rest)
     update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { 'spellSlots/used': {} });
 }
+export function addSpellToBook(cName, spell) {
+    const k = sanitizeCName(cName);
+    const slug = (spell.slug || spell.name || '').replace(/[.#$[\]]/g, '_');
+    update(ref(db, `rooms/${activeRoom}/players/${k}/spellbook`), { [slug]: spell });
+}
+export function removeSpellFromBook(cName, slug) {
+    const k = sanitizeCName(cName);
+    const safeSlug = slug.replace(/[.#$[\]]/g, '_');
+    remove(ref(db, `rooms/${activeRoom}/players/${k}/spellbook/${safeSlug}`));
+}
 
 // ==========================================
 export function listenMapCfg(room, cb) {
@@ -232,6 +242,10 @@ export function setTrigger(room, scene, key, val) {
 export function fireTrigger(room, scene, key) {
     update(ref(db, `rooms/${room}/scenes/${scene}/triggers/${key}`), { fired: true });
 }
+// ── DM Broadcast Display ──────────────────────────────────────────────────────
+export function setDisplay(room, data) { set(ref(db, `rooms/${room}/display`), data ?? null); }
+export function listenDisplay(room, cb) { return onValue(ref(db, `rooms/${room}/display`), s => cb(s.val())); }
+
 export function listenLights(room, scene, cb) {
     return onValue(ref(db, `rooms/${room}/scenes/${scene}/lights`), s => cb(s.val()));
 }
@@ -306,6 +320,16 @@ export async function pruneOrphanTokens(room, activeNames) {
 /** S11: Patch a single field on any player record (used by wizard NPC spawner). */
 export function updatePlayerField(cName, field, value) {
     update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { [field]: value });
+}
+
+/** Patch individual fields under classResources/ for a character. */
+export function patchClassResources(cName, patch) {
+    const k = sanitizeCName(cName);
+    const flatPatch = {};
+    for (const [key, val] of Object.entries(patch)) {
+        flatPatch[`classResources/${key}`] = val;
+    }
+    update(ref(db, `rooms/${activeRoom}/players/${k}`), flatPatch);
 }
 
 // ── S14: Portrait Upload ──────────────────────────────────────────────────────

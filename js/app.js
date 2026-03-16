@@ -18,6 +18,8 @@ import { generateNPC } from "./faker.js";
 import { printHandout, openWatabou, captureMapCanvas } from "./handout.js"; // E7
 import { iconHTML } from "./icons.js";
 import { initMonsterBook } from "./monsterBook.js";
+import { initClassResources, onShortRest, onLongRest, WILD_SHAPES } from "./engine/classAbilities.js";
+import { statusFlavor, healFlavor } from "./combatFlavor.js";
 import { MusicPlayer, MUSIC_LIBRARY, MUSIC_CATEGORIES, TRACK_BY_ID } from "./musicPlayer.js";
 
 // Expose Wave 2 panels globally
@@ -116,6 +118,214 @@ window.restoreSpellSlot = async (targetCName, level) => {
     db.updateSpellSlotsInDB(targetCName, { max, used: newUsed });
 };
 
+window.onSpellAdd = (spell) => {
+    const target = cName || (userRole === 'dm' && activeRoller?.cName);
+    if (!target) return;
+    db.addSpellToBook(target, {
+        slug:         spell.slug || spell.name,
+        name:         spell.name,
+        level:        spell.level_int ?? 0,
+        school:       spell.school?.name || spell.school || '',
+        range:        spell.range || '30 feet',
+        casting_time: spell.casting_time || '1 action',
+        damage_dice:  spell.damage?.damage_dice || '',
+        attack_type:  spell.attack_type || '',
+        dc_type:      spell.dc?.dc_type?.name || '',
+        concentration: spell.concentration || false,
+    });
+    db.saveRollToDB({ cName: target, type: 'STATUS', status: statusFlavor('spellLearned', target, null, spell.name), ts: Date.now() });
+};
+
+window.removeSpellFromBook = (targetCName, slug) => {
+    db.removeSpellFromBook(targetCName, slug);
+};
+
+// ── Class Resources ────────────────────────────────────────────────────────────
+window.patchClassResources = (targetCName, patch) => {
+    db.patchClassResources(targetCName, patch);
+};
+
+// ── Class Ability Dispatcher ───────────────────────────────────────────────────
+window.useClassAbility = async (targetCName, slug, extraCName = null) => {
+    const p = await db.getPlayerData(targetCName);
+    if (!p) return;
+    const cr  = p.classResources || {};
+    const lvl = p.level || 1;
+
+    switch (slug) {
+        // ── Barbarian ──
+        case 'rage': {
+            if ((cr.rageUses ?? 0) <= 0) return;
+            db.patchClassResources(targetCName, { raging: true, rageUses: (cr.rageUses ?? 1) - 1 });
+            window.toggleStatus?.(targetCName, 'Raging');
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: statusFlavor('rage', targetCName), ts: Date.now() });
+            break;
+        }
+        case 'endRage': {
+            db.patchClassResources(targetCName, { raging: false });
+            // Remove Raging status if present
+            const fresh = await db.getPlayerData(targetCName);
+            if (Array.isArray(fresh?.statuses) && fresh.statuses.includes('Raging')) {
+                window.toggleStatus?.(targetCName, 'Raging');
+            }
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: statusFlavor('endRage', targetCName), ts: Date.now() });
+            break;
+        }
+
+        // ── Fighter ──
+        case 'secondWind': {
+            if ((cr.secondWind ?? 0) <= 0) return;
+            const roll = Math.floor(Math.random() * 10) + 1 + lvl;
+            const newHp = Math.min(p.maxHp || 999, (p.hp || 0) + roll);
+            await db.updatePlayerHPInDB(targetCName, newHp);
+            db.patchClassResources(targetCName, { secondWind: 0 });
+            db.saveRollToDB({ cName: targetCName, type: 'HEAL', res: roll, newHp, maxHp: p.maxHp || newHp,
+                color: '#2ecc71', flavor: statusFlavor('secondWind', targetCName), ts: Date.now() });
+            showToast(`Second Wind: +${roll} HP → ${newHp}`, 'success');
+            break;
+        }
+        case 'actionSurge': {
+            if ((cr.actionSurge ?? 0) <= 0) return;
+            db.patchClassResources(targetCName, { actionSurge: 0 });
+            window.toggleStatus?.(targetCName, 'Hasted');
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: statusFlavor('actionSurge', targetCName), ts: Date.now() });
+            break;
+        }
+
+        // ── Rogue ──
+        case 'hide': {
+            window.toggleStatus?.(targetCName, 'Invisible');
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: statusFlavor('hide', targetCName), ts: Date.now() });
+            break;
+        }
+
+        // ── Ranger ──
+        case 'huntersMark': {
+            const prevMark = cr.huntersMark;
+            if (prevMark && prevMark !== extraCName) {
+                db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: statusFlavor('moveHuntersMark', targetCName, extraCName), ts: Date.now() });
+            } else if (!prevMark) {
+                window.toggleStatus?.(targetCName, 'Concentrating');
+                db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: statusFlavor('huntersMark', targetCName, extraCName), ts: Date.now() });
+            }
+            db.patchClassResources(targetCName, { huntersMark: extraCName, huntingConc: true });
+            break;
+        }
+
+        // ── Warlock ──
+        case 'hex': {
+            const prevHex = cr.hexTarget;
+            if (prevHex && prevHex !== extraCName) {
+                db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: statusFlavor('moveHex', targetCName, extraCName), ts: Date.now() });
+            } else if (!prevHex) {
+                window.toggleStatus?.(targetCName, 'Concentrating');
+                db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: statusFlavor('hex', targetCName, extraCName), ts: Date.now() });
+            }
+            db.patchClassResources(targetCName, { hexTarget: extraCName, hexConc: true });
+            break;
+        }
+
+        // ── Druid — Wild Shape ──
+        case 'wildShape': {
+            if ((cr.wildShapeUses ?? 0) <= 0) return;
+            _openWildShapeModal(targetCName, false);
+            break;
+        }
+        case 'endWildShape': {
+            if (!cr.wildShapeOrig) return;
+            const orig = cr.wildShapeOrig;
+            db.updatePlayerHPInDB(targetCName, orig.hp);
+            db.updatePlayerField(targetCName, 'maxHp',   orig.maxHp);
+            db.updatePlayerField(targetCName, 'ac',      orig.ac);
+            db.updatePlayerField(targetCName, 'melee',   orig.melee);
+            db.updatePlayerField(targetCName, 'meleeDmg', orig.meleeDmg);
+            db.updatePlayerField(targetCName, 'speed',   orig.speed);
+            db.updatePlayerField(targetCName, 'portrait', orig.portrait);
+            db.patchClassResources(targetCName, {
+                wildShapeActive: false, wildShapeOrig: null,
+                wildShapeUses: Math.max(0, (cr.wildShapeUses ?? 0) - 1),
+            });
+            // Remove Concentrating status used as shape indicator
+            const freshD = await db.getPlayerData(targetCName);
+            if (Array.isArray(freshD?.statuses) && freshD.statuses.includes('Concentrating')) {
+                window.toggleStatus?.(targetCName, 'Concentrating');
+            }
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: statusFlavor('endWildShape', targetCName), ts: Date.now() });
+            break;
+        }
+
+        // ── Druid — Summon Animal (DM only) ──
+        case 'summonAnimal': {
+            if (userRole !== 'dm' && targetCName !== cName) return;
+            _openWildShapeModal(targetCName, true);
+            break;
+        }
+
+        default: break;
+    }
+};
+
+// ── Wild Shape modal helper ────────────────────────────────────────────────────
+function _openWildShapeModal(forCName, summonMode) {
+    const modal = document.getElementById('wild-shape-modal');
+    if (!modal) return;
+    document.getElementById('ws-modal-title').textContent = summonMode ? 'Summon Animal' : 'Choose Wild Shape';
+    const list = document.getElementById('ws-beast-list');
+    list.innerHTML = WILD_SHAPES.map(b => `
+      <div class="ws-beast-card" data-id="${b.id}" style="background:#2a1a3e;border:1px solid #8e44ad;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
+        <div style="font-size:1.4rem;">${_beastEmoji(b.id)}</div>
+        <div style="font-weight:700;color:#e8d5ff;">${b.name}</div>
+        <div style="font-size:0.78rem;color:#aaa;">HP ${b.hp} · AC ${b.ac} · +${b.melee} (${b.meleeDmg})</div>
+        <div style="font-size:0.72rem;color:#888;">CR ${b.cr} · Speed ${b.speed}ft</div>
+      </div>
+    `).join('');
+    modal.style.display = 'flex';
+    list.querySelectorAll('.ws-beast-card').forEach(card => {
+        card.addEventListener('click', async () => {
+            modal.style.display = 'none';
+            const beast = WILD_SHAPES.find(b => b.id === card.dataset.id);
+            if (!beast) return;
+            if (summonMode) {
+                // Spawn as NPC token
+                window._spawnNPCToken?.({
+                    name: beast.name, hp: beast.hp, maxHp: beast.maxHp,
+                    ac: beast.ac, melee: beast.melee, meleeDmg: beast.meleeDmg,
+                    speed: beast.speed, portrait: `https://api.dicebear.com/7.x/adventurer/svg?seed=${beast.portrait}`,
+                    size: 'Medium', isHidden: false,
+                });
+                db.saveRollToDB({ cName: forCName, type: 'STATUS',
+                    status: statusFlavor('summonAnimal', forCName, null, beast.name), ts: Date.now() });
+            } else {
+                // Transform player
+                const p = await db.getPlayerData(forCName);
+                if (!p) return;
+                const orig = {
+                    hp: p.hp, maxHp: p.maxHp, ac: p.ac,
+                    melee: p.melee, meleeDmg: p.meleeDmg,
+                    speed: p.speed, portrait: p.portrait,
+                };
+                db.updatePlayerHPInDB(forCName, beast.hp);
+                db.updatePlayerField(forCName, 'maxHp',    beast.maxHp);
+                db.updatePlayerField(forCName, 'ac',       beast.ac);
+                db.updatePlayerField(forCName, 'melee',    beast.melee);
+                db.updatePlayerField(forCName, 'meleeDmg', beast.meleeDmg);
+                db.updatePlayerField(forCName, 'speed',    beast.speed);
+                db.updatePlayerField(forCName, 'portrait', `https://api.dicebear.com/7.x/adventurer/svg?seed=${beast.portrait}`);
+                db.patchClassResources(forCName, { wildShapeActive: true, wildShapeOrig: orig });
+                window.toggleStatus?.(forCName, 'Concentrating');
+                db.saveRollToDB({ cName: forCName, type: 'STATUS',
+                    status: statusFlavor('wildShape', forCName, null, beast.name), ts: Date.now() });
+            }
+        });
+    });
+    // Close on backdrop click
+    modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; }, { once: true });
+}
+
+function _beastEmoji(id) {
+    return { wolf: '🐺', brown_bear: '🐻', panther: '🐆', eagle: '🦅' }[id] || '🐾';
+}
+
 window.longRest = async (targetCName) => {
     const p = await db.getPlayerData(targetCName);
     if (!p) return;
@@ -125,7 +335,10 @@ window.longRest = async (targetCName) => {
     if (p.spellSlots) db.updateSpellSlotsInDB(targetCName, { max: p.spellSlots.max, used: {} });
     // Remove dying state
     db.updateDeathSavesInDB(targetCName, { successes:[false,false,false], failures:[false,false,false], stable:false, dead:false });
-    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `🌙 ${targetCName} took a Long Rest — fully restored!`, ts: Date.now() });
+    // Reset class resources
+    const lrPatch = onLongRest(p);
+    if (Object.keys(lrPatch).length) db.patchClassResources(targetCName, lrPatch);
+    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: statusFlavor('longRest', targetCName), ts: Date.now() });
 };
 
 window.rerollAllInitiatives = async () => {
@@ -498,6 +711,10 @@ window.openShortRest = async function() {
 
         await db.updatePlayerHPInDB(cName, newHp);
 
+        // Reset class resources that recharge on short rest
+        const srPatch = onShortRest(playerData);
+        if (Object.keys(srPatch).length) db.patchClassResources(cName, srPatch);
+
         showToast(`Rested for +${gained} HP (${dice}d${hdType}${conMod>=0?'+':''}${conMod*dice}). HP: ${newHp}/${maxHp}`, 'success', 5000);
         modal.remove();
     };
@@ -522,6 +739,10 @@ export async function startGame(role, charData, roomCode) {
         localStorage.setItem('critroll_initBonus', charData.initBonus || 0);
         localStorage.setItem('critroll_cName', cName);
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, charData);
+        // Initialize classResources if not already set
+        if (!charData.classResources && charData.class) {
+            db.patchClassResources(cName, initClassResources(charData.class, charData.level));
+        }
     } else {
         pName        = document.getElementById('user-display-name')?.innerText || "DM";
         cName        = "DM_" + pName;
@@ -1216,6 +1437,51 @@ window.deactivateScene = () => {
     document.querySelectorAll('.scene-gallery-card').forEach(c => c.classList.remove('active'));
 };
 
+// ── DM Broadcast Display ──────────────────────────────────────────────────────
+function _applyDisplay(data) {
+    const overlay = document.getElementById('present-overlay');
+    if (!overlay) return;
+    if (!data || data.mode !== 'present') {
+        overlay.className = 'present-hidden';
+        overlay.innerHTML = '';
+        return;
+    }
+    const closeBtn = userRole === 'dm'
+        ? `<button id="present-close-btn" onclick="window._closePresentMode()" title="Stop presenting">✕</button>`
+        : '';
+    let media = '';
+    if (data.mediaType === 'video') {
+        // Extract video ID from any YouTube URL format
+        const ytMatch = data.url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_\-]{11})/);
+        const vid = ytMatch ? ytMatch[1] : null;
+        if (vid) {
+            const src = `https://www.youtube.com/embed/${vid}?autoplay=1&mute=1&loop=1&playlist=${vid}&controls=1&modestbranding=1&vq=hd1080&hd=1`;
+            media = `<iframe src="${src}" allowfullscreen allow="autoplay"></iframe>`;
+        }
+    } else {
+        media = `<img src="${data.url}" alt="DM presentation">`;
+    }
+    overlay.innerHTML = closeBtn + media;
+    overlay.className = 'present-active';
+}
+
+function _syncBcBar(mode) {
+    ['default','scene','present'].forEach(m => {
+        document.getElementById(`bc-${m}`)?.classList.toggle('bc-active', m === mode);
+    });
+}
+
+window._broadcastDefault  = () => { db.setDisplay(db.getActiveRoom(), { mode: 'default' }); _syncBcBar('default'); };
+window._broadcastScene    = () => { db.setDisplay(db.getActiveRoom(), { mode: 'scene'   }); _syncBcBar('scene'); };
+window._broadcastPresent  = () => {
+    const url = window.prompt('Paste an image URL or a YouTube URL to present to all players:');
+    if (!url || !url.trim()) return;
+    const isYt = /youtu/i.test(url);
+    db.setDisplay(db.getActiveRoom(), { mode: 'present', url: url.trim(), mediaType: isYt ? 'video' : 'image' });
+    _syncBcBar('present');
+};
+window._closePresentMode  = () => window._broadcastDefault();
+
 window.toggleScenePanel = () => {
     const panel = document.getElementById('scene-panel');
     const chev  = document.getElementById('scene-mgr-chevron');
@@ -1379,6 +1645,9 @@ function setupDatabaseListeners() {
         }
         addLogEntry(data, time, data.flavor || getFlavorText(data.type, data.res, (data.res + data.mod), 20));
     }));
+
+    // DM Broadcast display — all clients mirror present-overlay state
+    _appUnsubs.push(db.listenDisplay(db.getActiveRoom(), (data) => _applyDisplay(data)));
 
     // Listen for active scene — shows map canvas for players (and DM on page refresh)
     _appUnsubs.push(db.listenActiveScene(db.getActiveRoom(), (sceneId) => {

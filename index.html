@@ -260,6 +260,7 @@
                 <div class="flex-row">
                     <input type="number" id="cb-ac" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_ac">
                     <input type="number" id="cb-speed" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_speed">
+                    <input type="number" id="cb-level" class="builder-input" style="flex:0.7;" placeholder="Level" min="1" max="20" value="1">
                     <input type="number" id="cb-pp" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_pp">
                     <input type="number" id="cb-init" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_init">
                     <input type="number" id="cb-darkvision" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_darkvision" min="0" step="30">
@@ -408,6 +409,12 @@
 
             <!-- ── Scene Manager (DM only) ── -->
             <div id="scene-manager-section" style="display:none;">
+                <!-- Broadcast bar: DM controls what all players see -->
+                <div id="broadcast-bar">
+                    <button onclick="window._broadcastDefault()" id="bc-default" class="bc-btn bc-active" title="Show default table view">🪵 Table</button>
+                    <button onclick="window._broadcastScene()"   id="bc-scene"   class="bc-btn"           title="Show active scene map">🗺️ Scene</button>
+                    <button onclick="window._broadcastPresent()" id="bc-present" class="bc-btn"           title="Present image or video to players">🖼️ Present…</button>
+                </div>
                 <div class="scene-mgr-header" onclick="window.toggleScenePanel()">
                     <span data-i18n="my_scenes">🗺️ Scene Vault</span>
                     <span id="scene-mgr-chevron">▼</span>
@@ -488,6 +495,9 @@
             <div id="game-layout">
                 <div id="dice-arena">
 
+                    <!-- DM Broadcast Overlay: full-screen image or video pushed to all players -->
+                    <div id="present-overlay" class="present-hidden"></div>
+
                     <!-- Map canvas: absolute, behind everything, hidden until scene activates -->
                     <div id="map-canvas-container" class="map-bg-hidden">
                         <!-- YouTube animated background layer (z-index:0, below #map-canvas) -->
@@ -547,6 +557,13 @@
                             <span class="map-tb-icon">✕</span><span class="map-tb-label">Close</span>
                         </button>
                     </div>
+                    <!-- On-map combat action popup (all users) -->
+                    <div id="action-popup" style="display:none;">
+                        <div id="action-popup-header"></div>
+                        <div id="action-popup-body"></div>
+                        <button class="action-popup-close" onclick="document.getElementById('action-popup').style.display='none'">✕</button>
+                    </div>
+
                     <!-- Token roster popup (DM) — outside container to escape stacking context -->
                     <div id="map-token-roster-popup" style="display:none;">
                         <div class="map-popup-title">📍 Place Tokens</div>
@@ -888,6 +905,18 @@
         } catch(e) {}
       });
     </script>
+
+<!-- ── Wild Shape / Summon Animal Modal ──────────────────────────────────── -->
+<div id="wild-shape-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:2000; display:none; align-items:center; justify-content:center;">
+  <div style="background:#1a1a2e; border:2px solid #8e44ad; border-radius:12px; padding:24px; max-width:480px; width:92%; color:#eee;">
+    <div style="font-size:1.2rem; font-weight:bold; margin-bottom:16px; text-align:center;">🐾 <span id="ws-modal-title">Choose Wild Shape</span></div>
+    <div id="ws-beast-list" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"></div>
+    <button onclick="document.getElementById('wild-shape-modal').style.display='none'"
+      style="margin-top:18px; width:100%; padding:8px; background:#444; border:none; border-radius:6px; color:#eee; cursor:pointer;">
+      Cancel
+    </button>
+  </div>
+</div>
 
 </body>
 </html>

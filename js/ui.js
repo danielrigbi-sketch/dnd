@@ -1,6 +1,7 @@
 // ui.js v119 + W1/E5-B: SVG condition icons via Game-Icons.net
 import { t } from "./i18n.js";
 import { iconHTML } from "./icons.js";
+import { attackFlavor, spellFlavor, healFlavor } from "./combatFlavor.js";
 
 let expandedCardId = null;
 let _lastPlayersData = null;
@@ -290,6 +291,22 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             ${isDM ? `<button onclick="window.longRest('${i.name}')" class="long-rest-btn">🌙 ${t('long_rest')}</button>` : ''}
                         </div>
                         ` : ''}
+                        ${canViewStats && i.spellbook && Object.keys(i.spellbook).length > 0 ? `
+                        <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(155,89,182,0.3);">
+                            <div style="font-size:10px; color:#9b59b6; font-weight:bold; margin-bottom:6px;">📖 Spellbook (${Object.keys(i.spellbook).length})</div>
+                            <div style="display:flex; flex-direction:column; gap:3px;">
+                                ${Object.values(i.spellbook).sort((a,b) => (a.level||0)-(b.level||0)).map(sp => `
+                                    <div style="display:flex; align-items:center; gap:5px; padding:3px 5px; background:rgba(155,89,182,0.08); border-radius:5px; border:1px solid rgba(155,89,182,0.2);">
+                                        <span style="font-size:10px; color:#9b59b6; font-weight:bold; min-width:14px;">${sp.level === 0 ? 'C' : sp.level}</span>
+                                        <span style="font-size:11px; color:white; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${sp.name}">${sp.name}</span>
+                                        <span style="font-size:9px; color:#888;">${sp.range || ''}</span>
+                                        ${(isDM || isOwner) ? `<button onclick="window.removeSpellFromBook('${i.name}','${sp.slug}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:11px;padding:0 2px;" title="Remove">✕</button>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                        ${canViewStats && isOwner ? _renderClassAbilities(i) : ''}
                     ` : `
                         <div style="text-align:center; padding:10px 0; color:#888; font-style:italic; font-size:11px;">${t('hidden_data')}</div>
                     `}
@@ -342,6 +359,53 @@ function _escapeHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── Class Abilities section for character card ────────────────────────────────
+function _renderClassAbilities(player) {
+    const cls = (player.class || '').toLowerCase();
+    const cr  = player.classResources || {};
+    const lvl = player.level || 1;
+    const cn  = player.name;
+
+    // Build buttons based on class
+    const btns = [];
+
+    switch (cls) {
+        case 'barbarian':
+            if (cr.raging) {
+                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${cn}','endRage')">🔥 End Rage</button>`);
+            } else {
+                btns.push(`<button class="class-ability-btn${(cr.rageUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${cn}','rage')" ${(cr.rageUses ?? 0) <= 0 ? 'disabled' : ''}>🔥 Rage (${cr.rageUses ?? 0})</button>`);
+            }
+            break;
+        case 'fighter':
+            btns.push(`<button class="class-ability-btn${(cr.secondWind ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${cn}','secondWind')" ${(cr.secondWind ?? 0) <= 0 ? 'disabled' : ''}>💨 Second Wind (${cr.secondWind ?? 0})</button>`);
+            if (lvl >= 2) btns.push(`<button class="class-ability-btn${(cr.actionSurge ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${cn}','actionSurge')" ${(cr.actionSurge ?? 0) <= 0 ? 'disabled' : ''}>⚡ Action Surge (${cr.actionSurge ?? 0})</button>`);
+            break;
+        case 'rogue':
+            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${cn}','hide')">🤫 Hide</button>`);
+            break;
+        case 'druid':
+            if (cr.wildShapeActive) {
+                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${cn}','endWildShape')">🐾 End Wild Shape</button>`);
+            } else {
+                btns.push(`<button class="class-ability-btn${(cr.wildShapeUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${cn}','wildShape')" ${(cr.wildShapeUses ?? 0) <= 0 ? 'disabled' : ''}>🐾 Wild Shape (${cr.wildShapeUses ?? 0})</button>`);
+            }
+            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${cn}','summonAnimal')">🐺 Summon Animal</button>`);
+            break;
+        default:
+            return ''; // no self-ability section for other classes
+    }
+
+    if (!btns.length) return '';
+
+    return `
+        <div class="class-ability-section">
+            <div style="font-size:10px; color:#c9aa71; font-weight:bold; margin-bottom:6px; letter-spacing:0.5px;">⚔ CLASS ABILITIES</div>
+            <div style="display:flex; flex-wrap:wrap; gap:5px;">${btns.join('')}</div>
+        </div>
+    `;
+}
+
 export function addLogEntry(data, time, flavorText, isReplay = false) {
     const log = document.getElementById('roll-log');
     if (!log) return;
@@ -358,20 +422,75 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
                 </div>
                 <div style="color:var(--ink); margin-top:3px; font-size:0.88em; word-break:break-word;">${_escapeHtml(data.msg || '')}</div>
             </div>`;
+    } else if (data.type === 'ATTACK') {
+        const borderColor = data.hit ? (data.crit ? '#f1c40f' : '#e67e22') : '#e74c3c';
+        const bg = data.hit ? 'rgba(241,196,15,0.07)' : 'rgba(231,76,60,0.07)';
+        let resultLine;
+        const atkIcon = data.attackType === 'ranged' ? '🏹' : '⚔️';
+        const disadvNote = data.disadvantage ? ' <span style="color:#e67e22;font-size:0.85em;">(point-blank disadv)</span>' : '';
+        if (data.crit) {
+            resultLine = `<span style="color:#f1c40f;font-weight:900;">CRITICAL HIT!</span> ${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> strikes <strong>${_escapeHtml(data.target)}</strong> (🎲${data.rawRoll}+${data.total - data.rawRoll} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
+        } else if (data.miss) {
+            resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong> fumbles against <strong>${_escapeHtml(data.target)}</strong> — automatic miss!`;
+        } else if (data.hit) {
+            resultLine = `${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${disadvNote} for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
+        } else {
+            resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong> misses <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${disadvNote}`;
+        }
+        const atkFlavorLine = data.flavor || attackFlavor(data);
+        entry.innerHTML = `
+            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:${bg}; border-left:4px solid ${borderColor};">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
+                    <span style="${nameStyle}">⚔️ Combat</span>
+                    <span style="color:#888; font-size:10px; flex-shrink:0;">${time}</span>
+                </div>
+                <div style="color:var(--ink); margin-top:4px; font-size:0.88em;">${resultLine}</div>
+                <div style="color:#888; font-style:italic; font-size:0.80em; margin-top:3px;">${atkFlavorLine}</div>
+            </div>`;
+    } else if (data.type === 'SPELL') {
+        const borderColor = data.crit ? '#f1c40f' : data.hit ? '#9b59b6' : '#e74c3c';
+        const bg = 'rgba(155,89,182,0.07)';
+        const lvlTag = data.spellLevel === 0 ? 'Cantrip' : `Level ${data.spellLevel}`;
+        let resultLine;
+        if (data.savingThrow) {
+            const saved = data.savedHalf;
+            resultLine = `🔮 <strong>${_escapeHtml(data.cName)}</strong> casts <em>${_escapeHtml(data.spellName)}</em> on <strong>${_escapeHtml(data.target)}</strong> — ${_escapeHtml(data.target)} ${saved ? `saves (🎲${data.saveRoll} ≥ DC ${data.spellSaveDC}), takes <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> (half)` : `fails (🎲${data.saveRoll} &lt; DC ${data.spellSaveDC}), takes <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`}`;
+        } else if (data.dmgDice) {
+            if (data.crit) resultLine = `<span style="color:#f1c40f;font-weight:900;">CRITICAL!</span> 🔮 <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> with <em>${_escapeHtml(data.spellName)}</em> for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
+            else if (!data.hit) resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong>'s <em>${_escapeHtml(data.spellName)}</em> misses <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})`;
+            else resultLine = `🔮 <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> with <em>${_escapeHtml(data.spellName)}</em> (rolled ${data.total} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
+        } else {
+            resultLine = `🔮 <strong>${_escapeHtml(data.cName)}</strong> casts <em>${_escapeHtml(data.spellName)}</em> on <strong>${_escapeHtml(data.target)}</strong>`;
+        }
+        const spFlavorLine = data.flavor || spellFlavor(data);
+        entry.innerHTML = `
+            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:${bg}; border-left:4px solid ${borderColor};">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
+                    <span style="${nameStyle}">🔮 ${lvlTag}</span>
+                    <span style="color:#888; font-size:10px; flex-shrink:0;">${time}</span>
+                </div>
+                <div style="color:var(--ink); margin-top:4px; font-size:0.88em;">${resultLine}</div>
+                <div style="color:#a88cd0; font-style:italic; font-size:0.80em; margin-top:3px;">${spFlavorLine}</div>
+            </div>`;
     } else if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
+        const hFlavorLine = data.flavor || (isHeal ? healFlavor(data.cName) : flavorText);
+        const hResultLine = data.res != null
+            ? `${isHeal ? '💚' : '💔'} <strong>${_escapeHtml(data.cName)}</strong> ${isHeal ? 'healed' : 'took'} <span style="color:${isHeal?'#2ecc71':'#e74c3c'};font-weight:900;">${data.res}</span> HP${data.newHp != null ? ` → ${data.newHp}/${data.maxHp ?? '?'}` : ''}`
+            : `${isHeal ? '💚' : '💔'} <strong>${_escapeHtml(data.cName)}</strong>`;
         entry.innerHTML = `
-            <div style="margin-bottom:12px; padding:10px; border-radius:8px; background:rgba(0,0,0,0.05); border-left:4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="${nameStyle}">${data.cName}</span>
+            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:${isHeal ? 'rgba(46,204,113,0.07)' : 'rgba(231,76,60,0.07)'}; border-left:4px solid ${isHeal ? '#2ecc71' : '#e74c3c'};">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
+                    <span style="${nameStyle}">${isHeal ? '💚 Heal' : '💔 Damage'}</span>
                     <span style="color:#666; font-size:10px;">${time}</span>
                 </div>
-                <div style="color:var(--ink); margin-top:5px; font-size:0.9em; font-style:italic; font-weight:600;">"${flavorText}"</div>
+                <div style="color:var(--ink); margin-top:4px; font-size:0.88em;">${hResultLine}</div>
+                <div style="color:#6dcf99; font-style:italic; font-size:0.80em; margin-top:3px;">${hFlavorLine}</div>
             </div>`;
     } else if (data.type === "STATUS") {
         entry.innerHTML = `
-            <div style="margin-bottom:12px; padding:8px; border-radius:8px; background:rgba(108,92,231,0.1); border:1px dashed #6c5ce7; text-align:center;">
-                <span style="font-size:0.9em; color:var(--ink);"><strong>${data.cName}</strong>: <span style="color:#6c5ce7; font-weight:bold;">${data.status}</span></span>
+            <div style="margin-bottom:8px; padding:7px 10px; border-radius:8px; background:rgba(108,92,231,0.1); border:1px dashed #6c5ce7;">
+                <div style="font-size:0.88em; color:var(--ink); font-weight:600;">${data.status}</div>
             </div>`;
     } else {
         const modeLabel = data.mode === 'adv'

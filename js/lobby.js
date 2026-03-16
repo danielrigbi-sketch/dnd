@@ -295,6 +295,7 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-size').value   = c.size   || 'Medium';
     document.getElementById('cb-ac').value = c.ac || "";
     document.getElementById('cb-speed').value = c.speed || "";
+    document.getElementById('cb-level').value = c.level || "1";
     document.getElementById('cb-darkvision').value = c.darkvision || "0";
     document.getElementById('cb-pp').value = c.pp || "";
     document.getElementById('cb-init').value = c.initBonus || "";
@@ -433,8 +434,10 @@ if(saveCharBtn) {
             });
             if (!isValid || !selectedPortrait) return;
 
+            const charLevel = Math.max(1, Math.min(20, parseInt(document.getElementById('cb-level')?.value) || 1));
             const charData = {
                 name, race: charRace, class: charClass, gender: charGender, size: charSize,
+                level: charLevel,
                 ac: parseInt(ac), speed: parseInt(speed), pp: parseInt(pp), darkvision: parseInt(darkvision)||0,
                 initBonus: parseInt(init), maxHp: parseInt(hp), hp: parseInt(hp),
                 melee: parseInt(melee), meleeDmg: meleeDmg,

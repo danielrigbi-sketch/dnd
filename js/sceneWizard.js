@@ -10,6 +10,7 @@
 //   — 450+ SRD monsters, skeleton loading, CR slider, type chips, search debounce
 // =====================================================================
 import { MapEngine } from './mapEngine.js';
+import { TMT_MAPS, TMT_MAP_TAGS } from './tmtMaps.js';
 import { VideoLayer } from './videoLayer.js';
 import { t, getLang } from './i18n.js';
 import { npcDatabase, parseCR, typeColor } from './monsters.js';
@@ -248,12 +249,15 @@ export class SceneWizard {
         return `
         <!-- Background type toggle -->
         <div class="wiz-section">${t('wiz_l0_image')}</div>
-        <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#ccc;padding:5px 9px;border-radius:8px;border:1px solid ${!isVideo?'rgba(241,196,15,0.55)':'rgba(255,255,255,0.12)'};background:${!isVideo?'rgba(241,196,15,0.08)':'transparent'};">
             <input type="radio" name="wiz-bg-type" value="static" ${!isVideo?'checked':''} style="accent-color:#f1c40f;"> 🖼 Static Image
           </label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#ccc;padding:5px 9px;border-radius:8px;border:1px solid ${isVideo?'rgba(241,196,15,0.55)':'rgba(255,255,255,0.12)'};background:${isVideo?'rgba(241,196,15,0.08)':'transparent'};">
             <input type="radio" name="wiz-bg-type" value="video" ${isVideo?'checked':''} style="accent-color:#f1c40f;"> 🎬 Animated (YouTube)
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:#ccc;padding:5px 9px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:transparent;" id="wiz-tmt-label">
+            <input type="radio" name="wiz-bg-type" value="tmt" style="accent-color:#f1c40f;"> 🗺️ 2MT Maps
           </label>
         </div>
 
@@ -289,6 +293,25 @@ export class SceneWizard {
               onerror="this.style.display='none'" alt="Video thumbnail">
           ` : ''}
           <div class="wiz-tip" style="margin-top:10px;">Video autoplays muted &amp; loops for all players in real time. Works best with ambient animated battle map loops from YouTube.</div>
+        </div>
+
+        <!-- 2MT Battle Map Gallery panel -->
+        <div id="wiz-tmt-maps-panel" style="display:none;">
+          <div style="color:#aaa;font-size:11px;margin-bottom:8px;">Browse free CC0 battle maps by <a href="https://2minutetabletop.com" target="_blank" style="color:#f1c40f;text-decoration:none;">2-Minute Tabletop</a>. Click a map to use it as your scene background.</div>
+          <div id="wiz-tmt-tag-row" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;">
+            ${TMT_MAP_TAGS.map(tag => `<button class="wiz-type-chip ${tag==='all'?'active':''}" data-tmt-tag="${tag}" style="${tag==='all'?'background:rgba(241,196,15,0.15);border-color:#f1c40f;color:#f1c40f;':''}">${tag}</button>`).join('')}
+          </div>
+          <div id="wiz-tmt-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:320px;overflow-y:auto;padding-right:2px;">
+            ${TMT_MAPS.map(m => `
+              <div class="wiz-tmt-card" data-slug="${m.slug}" data-full="${m.full}" data-tags="${m.tags.join(',')}"
+                title="${m.name} (${m.w}×${m.h} tiles)"
+                style="cursor:pointer;border-radius:7px;overflow:hidden;border:2px solid transparent;position:relative;transition:border-color 0.15s;">
+                <img src="${m.thumb}" loading="lazy" alt="${m.name}"
+                  style="width:100%;aspect-ratio:1;object-fit:cover;display:block;"
+                  onerror="this.closest('.wiz-tmt-card').style.display='none'">
+                <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.75));padding:4px 5px;font-size:9px;color:#eee;line-height:1.2;">${m.name}</div>
+              </div>`).join('')}
+          </div>
         </div>
 
         <!-- Quick dungeon generator (available for both bg types) -->
@@ -649,14 +672,18 @@ export class SceneWizard {
       this._generateQuickDungeon();
     });
 
-    // Background type radio toggle
+    // Background type radio toggle (static / video / tmt)
     document.querySelectorAll('input[name="wiz-bg-type"]').forEach(radio => {
       radio.addEventListener('change', e => {
-        const isVideo = e.target.value === 'video';
+        const val     = e.target.value;
+        const isVideo = val === 'video';
+        const isTmt   = val === 'tmt';
         const staticP = document.getElementById('wiz-static-bg-panel');
         const videoP  = document.getElementById('wiz-video-bg-panel');
-        if (staticP) staticP.style.display = isVideo ? 'none' : 'block';
+        const tmtP    = document.getElementById('wiz-tmt-maps-panel');
+        if (staticP) staticP.style.display = (!isVideo && !isTmt) ? 'block' : 'none';
         if (videoP)  videoP.style.display  = isVideo ? 'block' : 'none';
+        if (tmtP)    tmtP.style.display    = isTmt   ? 'block' : 'none';
         // Update label highlight styles
         document.querySelectorAll('input[name="wiz-bg-type"]').forEach(r => {
           const lbl = r.closest('label');
@@ -731,6 +758,44 @@ export class SceneWizard {
         this._wireStep();
       };
       reader.readAsDataURL(file);
+    });
+
+    // ── 2MT Map Gallery ──────────────────────────────────────────────────
+    // Tag filter chips
+    document.getElementById('wiz-tmt-tag-row')?.addEventListener('click', e => {
+      const btn = e.target.closest('[data-tmt-tag]');
+      if (!btn) return;
+      const tag = btn.dataset.tmtTag;
+      // Update chip styles
+      document.querySelectorAll('[data-tmt-tag]').forEach(b => {
+        const active = b.dataset.tmtTag === tag;
+        b.classList.toggle('active', active);
+        b.style.background   = active ? 'rgba(241,196,15,0.15)' : '';
+        b.style.borderColor  = active ? '#f1c40f' : '';
+        b.style.color        = active ? '#f1c40f' : '';
+      });
+      // Filter map cards
+      document.querySelectorAll('.wiz-tmt-card').forEach(card => {
+        const cardTags = (card.dataset.tags || '').split(',');
+        card.style.display = (tag === 'all' || cardTags.includes(tag)) ? '' : 'none';
+      });
+    });
+    // Map card click → load as background
+    document.getElementById('wiz-tmt-grid')?.addEventListener('click', e => {
+      const card = e.target.closest('.wiz-tmt-card');
+      if (!card) return;
+      const url = card.dataset.full;
+      if (!url) return;
+      // Deselect all, select this
+      document.querySelectorAll('.wiz-tmt-card').forEach(c => { c.style.borderColor = 'transparent'; });
+      card.style.borderColor = '#f1c40f';
+      // Set background
+      this._data.bgUrl      = url;
+      this._data.bgVideoUrl = '';
+      this._data.bgBase64   = '';
+      this._data._bgBlob    = null;
+      eng?._video?.unload();
+      eng?._loadBg(url);
     });
 
     // ── Step 1: Phantom grid ──────────────────────────────────────────────

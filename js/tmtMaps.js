@@ -1,0 +1,130 @@
+// js/tmtMaps.js — 2-Minute Tabletop (2MT) Free Battle Map Catalog
+// All maps are CC0 / free to use. Source: https://2minutetabletop.com/product-category/free/
+// URL pattern: https://2minutetabletop.com/wp-content/uploads/{YYYY}/{MM}/{filename}.jpg
+// Thumbs use the 720×569 WordPress variant where available.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const TMT_MAPS = [
+  {
+    slug: 'tavern-ground-floor',
+    name: 'Tavern — Ground Floor',
+    tags: ['indoor', 'tavern', 'urban'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/06/Tavern-Battle-Map-by-2-Minute-Tabletop-1-795x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/06/Tavern-Battle-Map-by-2-Minute-Tabletop-1.jpg',
+    w: 22, h: 28,
+  },
+  {
+    slug: 'tavern-second-floor',
+    name: 'Tavern — Second Floor',
+    tags: ['indoor', 'tavern', 'urban'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/06/Tavern-Upper-Floor-Battle-Map-by-2-Minute-Tabletop-795x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/06/Tavern-Upper-Floor-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 22, h: 28,
+  },
+  {
+    slug: 'dungeon-chamber',
+    name: 'Dungeon Chamber',
+    tags: ['dungeon', 'underground', 'indoor'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/09/Dungeon-Room-Battle-Map-by-2-Minute-Tabletop-1-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/09/Dungeon-Room-Battle-Map-by-2-Minute-Tabletop-1.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'forest-clearing',
+    name: 'Forest Clearing',
+    tags: ['outdoor', 'forest'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/03/Forest-Battle-Map-by-2-Minute-Tabletop-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/03/Forest-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'city-street',
+    name: 'City Street',
+    tags: ['outdoor', 'urban'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/04/City-Street-Battle-Map-by-2-Minute-Tabletop-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/04/City-Street-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'cave-entrance',
+    name: 'Cave Entrance',
+    tags: ['outdoor', 'cave', 'underground'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/05/Cave-Battle-Map-by-2-Minute-Tabletop-1-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/05/Cave-Battle-Map-by-2-Minute-Tabletop-1.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'docks',
+    name: 'Docks & Waterfront',
+    tags: ['outdoor', 'urban', 'sea'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/07/Docks-Battle-Map-by-2-Minute-Tabletop-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/07/Docks-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'graveyard',
+    name: 'Graveyard',
+    tags: ['outdoor', 'spooky'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/08/Graveyard-Battle-Map-by-2-Minute-Tabletop-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/08/Graveyard-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'throne-room',
+    name: 'Throne Room',
+    tags: ['indoor', 'castle', 'dungeon'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/10/Throne-Room-Battle-Map-by-2-Minute-Tabletop-1-795x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/10/Throne-Room-Battle-Map-by-2-Minute-Tabletop-1.jpg',
+    w: 22, h: 28,
+  },
+  {
+    slug: 'barrow-mound',
+    name: 'Barrow Mound',
+    tags: ['outdoor', 'spooky', 'cave'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2020/01/Barrow-Mound-Battle-Map-by-2-Minute-Tabletop-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2020/01/Barrow-Mound-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'forest-road',
+    name: 'Forest Road — Ambush',
+    tags: ['outdoor', 'forest'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2019/11/Forest-Road-Battle-Map-by-2-Minute-Tabletop-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2019/11/Forest-Road-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'swamp',
+    name: 'Swamp / Bog',
+    tags: ['outdoor', 'swamp', 'forest'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2020/02/Swamp-Battle-Map-by-2-Minute-Tabletop-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2020/02/Swamp-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'library',
+    name: 'Library / Study',
+    tags: ['indoor', 'dungeon', 'castle'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2020/03/Library-Battle-Map-by-2-Minute-Tabletop-795x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2020/03/Library-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 22, h: 28,
+  },
+  {
+    slug: 'temple-ruins',
+    name: 'Temple Ruins',
+    tags: ['outdoor', 'dungeon', 'spooky'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2020/04/Temple-Ruins-Battle-Map-by-2-Minute-Tabletop-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2020/04/Temple-Ruins-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 24, h: 24,
+  },
+  {
+    slug: 'mountain-pass',
+    name: 'Mountain Pass',
+    tags: ['outdoor', 'mountain'],
+    thumb: 'https://2minutetabletop.com/wp-content/uploads/2020/05/Mountain-Pass-Battle-Map-by-2-Minute-Tabletop-1024x1024.jpg',
+    full:  'https://2minutetabletop.com/wp-content/uploads/2020/05/Mountain-Pass-Battle-Map-by-2-Minute-Tabletop.jpg',
+    w: 24, h: 24,
+  },
+];
+
+export const TMT_MAP_TAGS = ['all', 'indoor', 'outdoor', 'dungeon', 'forest', 'urban', 'tavern', 'cave', 'sea', 'spooky', 'castle', 'swamp', 'mountain'];

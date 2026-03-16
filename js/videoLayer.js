@@ -137,6 +137,8 @@ export class VideoLayer {
       '&playsinline=1',        // prevents iOS full-screen takeover
       '&rel=0',
       '&iv_load_policy=3',     // hide video annotations
+      '&vq=hd1080',            // request 1080p quality
+      '&hd=1',                 // prefer HD
     ].join('');
 
     const iframe = document.createElement('iframe');

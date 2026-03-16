@@ -7,6 +7,8 @@
 
 import { typeColor } from '../monsters.js';
 import { getTileSize, getVisualScale, footprintsOverlap } from './sizeUtils.js';
+import { tileDistance, rollDice, parseSpellRangeFt } from './combatUtils.js';
+import { getCombatActions, getAllyActions, getSelfActions, applyMeleeModifier } from './classAbilities.js';
 
 const STS_ICON = {
   Poisoned: '☠', Charmed: '♥', Unconscious: '💤', Frightened: '😱',
@@ -31,7 +33,7 @@ export class TokenSystem {
       mousemove:   this._mm.bind(this),
       mouseup:     this._mu.bind(this),
       wheel:       this._mw.bind(this),
-      contextmenu: e => e.preventDefault(),
+      contextmenu: e => { e.preventDefault(); this._rightClick(e); },
       touchstart:  this._ts.bind(this),
       touchmove:   this._tm.bind(this),
       touchend:    this._te.bind(this),
@@ -260,6 +262,354 @@ export class TokenSystem {
   _ts(e) { e.preventDefault(); this._md({ ...e, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, button: 0 }); }
   _tm(e) { e.preventDefault(); this._mm({ ...e, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }); }
   _te(e) { e.preventDefault(); this._mu(e); }
+
+  // ── Right-click context action menu ───────────────────────────────────
+  _rightClick(e) {
+    const { sx, sy } = this._cp(e);
+    const { x: wx, y: wy } = this._sw(sx, sy);
+    const eng = this.e;
+    const targetCName = this.tokenAt(wx, wy);
+    if (!targetCName) return;
+
+    const isDM = eng.userRole === 'dm';
+    const myCName = eng.cName;
+
+    // Self right-click — show self abilities popup
+    if (!isDM && targetCName === myCName) {
+      const selfPlayer = eng.S.players[myCName] || {};
+      const selfActions = getSelfActions(selfPlayer);
+      if (!selfActions.length) return;
+
+      const popup = document.getElementById('action-popup');
+      if (!popup) return;
+      document.getElementById('action-popup-header').innerHTML = `<span>🧙 ${myCName} — Self</span>`;
+      const body = document.getElementById('action-popup-body');
+      body.innerHTML = selfActions.map((a, i) =>
+        `<button class="action-btn ${a.cls}" ${a.available && a.fn ? `data-idx="${i}"` : 'disabled'}>${a.label}</button>`
+      ).join('');
+      body.querySelectorAll('.action-btn[data-idx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selfActions[parseInt(btn.dataset.idx)].fn?.(myCName, eng);
+          popup.style.display = 'none';
+        });
+      });
+      const cc = document.getElementById('map-canvas-container');
+      const rect = cc ? cc.getBoundingClientRect() : { left: 0, top: 0 };
+      popup.style.left = Math.min(e.clientX - rect.left + 10, (cc?.clientWidth || 600) - 180) + 'px';
+      popup.style.top  = Math.max(0, e.clientY - rect.top - 20) + 'px';
+      popup.style.display = 'block';
+      const closeOnOutside = ev => {
+        if (!popup.contains(ev.target)) { popup.style.display = 'none'; document.removeEventListener('click', closeOnOutside); }
+      };
+      setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
+      return;
+    }
+
+    const attTk  = myCName ? eng.S.tokens[myCName] : null;
+    const tarTk  = eng.S.tokens[targetCName];
+    if (!tarTk) return;
+
+    const dist   = attTk ? tileDistance(attTk, tarTk) : Infinity;
+    const distFt = dist * 5;
+    const attacker = eng.S.players[myCName] || {};
+    const target   = eng.S.players[targetCName] || {};
+
+    const popup = document.getElementById('action-popup');
+    if (!popup) return;
+    const header = document.getElementById('action-popup-header');
+    const body   = document.getElementById('action-popup-body');
+
+    const fromLabel = myCName || 'DM';
+    header.innerHTML = `<span>⚔️ ${fromLabel} → ${targetCName}</span><span class="action-dist-badge">${distFt === Infinity ? '?' : distFt} ft</span>`;
+
+    const actions = [];
+    const rangedRangeFt = attacker.rangedRange || 80; // ft, default shortbow
+
+    if (!isDM || attTk) {
+      // Melee (≤ 5ft)
+      if (dist <= 1) {
+        actions.push({ label: '⚔️ Melee Attack', cls: 'attack',
+          fn: () => this._doMeleeAttack(myCName, targetCName) });
+      } else {
+        actions.push({ label: `⚔️ Out of melee reach (${distFt} ft)`, cls: 'disabled', fn: null });
+      }
+
+      // Ranged
+      const hasRanged = !!(attacker.rangedDmg && attacker.rangedDmg !== '0');
+      if (hasRanged) {
+        if (distFt <= rangedRangeFt) {
+          const pointBlank = dist <= 1;
+          actions.push({
+            label: pointBlank ? `🏹 Ranged Attack ⚠️ Disadv` : `🏹 Ranged Attack`,
+            cls: 'attack',
+            fn: () => this._doRangedAttack(myCName, targetCName, pointBlank),
+          });
+        } else {
+          actions.push({ label: `🏹 Out of range (${distFt}/${rangedRangeFt} ft)`, cls: 'disabled', fn: null });
+        }
+      }
+    }
+
+    // Spell actions from spellbook
+    const spellbook = attacker.spellbook ? Object.values(attacker.spellbook) : [];
+    if (spellbook.length && attTk) {
+      const slots = attacker.spellSlots || {};
+      const usedSlots = slots.used || {};
+      const maxSlots  = slots.max  || {};
+
+      const castableSpells = spellbook
+        .filter(sp => {
+          const rangeFt = parseSpellRangeFt(sp.range);
+          if (rangeFt !== 9999 && rangeFt !== 0 && distFt > rangeFt) return false;
+          if (sp.level === 0) return true; // cantrips always available
+          const remaining = (maxSlots[sp.level] || 0) - (usedSlots[sp.level] || 0);
+          return remaining > 0;
+        })
+        .sort((a, b) => (a.level || 0) - (b.level || 0))
+        .slice(0, 4); // max 4 spells shown
+
+      if (castableSpells.length) {
+        if (actions.length) actions.push({ label: '── 🔮 Spells ──', cls: 'disabled', fn: null });
+        castableSpells.forEach(sp => {
+          const lvlTag = sp.level === 0 ? 'Cantrip' : `Lv${sp.level}`;
+          actions.push({ label: `🔮 ${sp.name} (${lvlTag})`, cls: 'attack',
+            fn: () => this._doCastSpell(myCName, targetCName, sp) });
+        });
+      }
+    }
+
+    // ── Class-specific combat actions (vs enemy) ──────────────────────────
+    if (myCName && !isDM) {
+      const isAlly = !!eng.S.players[targetCName] && target.role !== 'npc';
+      if (isAlly) {
+        // Ally targeting: Bardic Inspiration etc.
+        const allyExtras = getAllyActions(attacker, target);
+        if (allyExtras.length) {
+          if (actions.length) actions.push({ label: '── 🤝 Ally ──', cls: 'disabled', fn: null });
+          allyExtras.forEach(a => actions.push({
+            label: a.label, cls: a.available ? a.cls : 'disabled', fn: a.available ? () => a.fn(myCName, targetCName, eng) : null,
+          }));
+        }
+      } else {
+        // Enemy targeting: class combat abilities
+        const combatExtras = getCombatActions(attacker, target, distFt, myCName);
+        if (combatExtras.length) {
+          if (actions.length) actions.push({ label: '── ⚔ Class ──', cls: 'disabled', fn: null });
+          combatExtras.forEach(a => actions.push({
+            label: a.label, cls: a.available ? a.cls : 'disabled', fn: a.available ? () => a.fn(myCName, targetCName, eng) : null,
+          }));
+        }
+      }
+    }
+
+    if (isDM) {
+      actions.push({ label: '🩹 Heal (1d4)', cls: 'heal', fn: () => {
+        const roll = Math.floor(Math.random() * 4) + 1;
+        const newHp = Math.min(target.maxHp || 999, (target.hp || 0) + roll);
+        eng.db?.updatePlayerHPInDB(targetCName, newHp);
+        eng.db?.saveRollToDB({ cName: targetCName, type: 'HEAL', res: roll, newHp,
+          color: '#2ecc71', flavor: `DM heals ${targetCName} for ${roll} HP`, ts: Date.now() });
+      }});
+    }
+
+    if (!actions.length) return;
+
+    body.innerHTML = actions.map((a, i) =>
+      `<button class="action-btn ${a.cls}" ${a.fn ? `data-idx="${i}"` : 'disabled'}>${a.label}</button>`
+    ).join('');
+    body.querySelectorAll('.action-btn[data-idx]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        actions[parseInt(btn.dataset.idx)].fn?.();
+        popup.style.display = 'none';
+      });
+    });
+
+    const cc = document.getElementById('map-canvas-container');
+    const rect = cc ? cc.getBoundingClientRect() : { left: 0, top: 0 };
+    const px = e.clientX - rect.left + 10;
+    const py = e.clientY - rect.top  - 20;
+    popup.style.left = Math.min(px, (cc?.clientWidth || 600) - 180) + 'px';
+    popup.style.top  = Math.max(0, py) + 'px';
+    popup.style.display = 'block';
+
+    // Close on next outside click
+    const closeOnOutside = ev => {
+      if (!popup.contains(ev.target)) { popup.style.display = 'none'; document.removeEventListener('click', closeOnOutside); }
+    };
+    setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
+  }
+
+  _doMeleeAttack(attackerCName, targetCName) {
+    const eng = this.e;
+    const attacker = eng.S.players[attackerCName] || {};
+    const target   = eng.S.players[targetCName]   || {};
+    const bonus    = attacker.melee ?? 0;
+    const ac       = target.ac ?? 10;
+    const rawRoll  = Math.floor(Math.random() * 20) + 1;
+    const total    = rawRoll + bonus;
+    const crit     = rawRoll === 20;
+    const miss     = rawRoll === 1;
+    const hit      = crit || (!miss && total >= ac);
+
+    // Bardic Inspiration: +1d6 to attack roll
+    let bardicBonus = 0;
+    if ((attacker.classResources?.bardicInspoBonus) && hit) {
+      bardicBonus = rollDice('1d6').total;
+      // Clear the flag
+      window.patchClassResources?.(attackerCName, { bardicInspoBonus: false });
+    }
+
+    const dmgDice  = attacker.meleeDmg || '1d6';
+    let damage = 0;
+    let bonusDmgNote = '';
+    if (hit) {
+      const { total: dmgTotal } = rollDice(dmgDice, crit);
+      let baseDmg = Math.max(1, dmgTotal);
+      // Class passive modifier (Rage +2 etc.)
+      baseDmg = applyMeleeModifier(attacker, baseDmg);
+
+      // Hunter's Mark bonus
+      const cr = attacker.classResources || {};
+      if (cr.huntersMark === targetCName) {
+        const { total: markDmg } = rollDice('1d6', crit);
+        baseDmg += markDmg;
+        bonusDmgNote = ` +${markDmg} mark`;
+      }
+      // Hex bonus
+      if (cr.hexTarget === targetCName) {
+        const { total: hexDmg } = rollDice('1d6', crit);
+        baseDmg += hexDmg;
+        bonusDmgNote += ` +${hexDmg} necrotic`;
+      }
+
+      damage = baseDmg;
+      const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
+      eng.db?.updatePlayerHPInDB(targetCName, newHp);
+    }
+
+    eng.db?.saveRollToDB({
+      type: 'ATTACK', cName: attackerCName, pName: attacker.pName || attackerCName,
+      target: targetCName, rawRoll, total: total + bardicBonus, ac, hit, crit, miss,
+      damage: hit ? damage : 0, dmgDice: dmgDice + bonusDmgNote,
+      color: attacker.pColor || '#e74c3c', ts: Date.now(),
+    });
+
+    // Visual animation
+    const atkTk = eng.S.tokens[attackerCName], tarTk = eng.S.tokens[targetCName];
+    if (tarTk) eng.anim?.trigger(crit ? 'MELEE_CRIT' : hit ? 'MELEE_HIT' : 'MELEE_MISS', atkTk, tarTk);
+  }
+
+  _doRangedAttack(attackerCName, targetCName, disadvantage = false) {
+    const eng = this.e;
+    const attacker = eng.S.players[attackerCName] || {};
+    const target   = eng.S.players[targetCName]   || {};
+    const bonus    = attacker.ranged ?? 0;
+    const ac       = target.ac ?? 10;
+
+    // Disadvantage = roll 2d20, take lower
+    const r1 = Math.floor(Math.random() * 20) + 1;
+    const r2 = disadvantage ? Math.floor(Math.random() * 20) + 1 : r1;
+    const rawRoll = disadvantage ? Math.min(r1, r2) : r1;
+    const total   = rawRoll + bonus;
+    const crit    = rawRoll === 20;
+    const miss    = rawRoll === 1;
+    const hit     = crit || (!miss && total >= ac);
+
+    const dmgDice = attacker.rangedDmg || '1d6';
+    let damage = 0;
+    let rBonusDmgNote = '';
+    if (hit) {
+      const { total: dmgTotal } = rollDice(dmgDice, crit);
+      let baseDmg = Math.max(1, dmgTotal);
+
+      // Hunter's Mark / Hex bonus on ranged attacks
+      const rcr = attacker.classResources || {};
+      if (rcr.huntersMark === targetCName) {
+        const { total: markDmg } = rollDice('1d6', crit);
+        baseDmg += markDmg;
+        rBonusDmgNote = ` +${markDmg} mark`;
+      }
+      if (rcr.hexTarget === targetCName) {
+        const { total: hexDmg } = rollDice('1d6', crit);
+        baseDmg += hexDmg;
+        rBonusDmgNote += ` +${hexDmg} necrotic`;
+      }
+      damage = baseDmg;
+      const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
+      eng.db?.updatePlayerHPInDB(targetCName, newHp);
+    }
+
+    eng.db?.saveRollToDB({
+      type: 'ATTACK', attackType: 'ranged',
+      cName: attackerCName, pName: attacker.pName || attackerCName,
+      target: targetCName, rawRoll, total, ac, hit, crit, miss, disadvantage,
+      damage: hit ? damage : 0, dmgDice: dmgDice + rBonusDmgNote, color: attacker.pColor || '#3498db', ts: Date.now(),
+    });
+
+    // Visual animation
+    const atkTk2 = eng.S.tokens[attackerCName], tarTk2 = eng.S.tokens[targetCName];
+    if (tarTk2) eng.anim?.trigger(hit ? 'RANGED_HIT' : 'RANGED_MISS', atkTk2, tarTk2);
+  }
+
+  _doCastSpell(attackerCName, targetCName, spell) {
+    const eng = this.e;
+    const attacker = eng.S.players[attackerCName] || {};
+    const target   = eng.S.players[targetCName]   || {};
+    const spellAttackBonus = attacker.spellAttackBonus ?? 0;
+    const spellSaveDC      = attacker.spellSaveDC ?? 8;
+    const ac = target.ac ?? 10;
+    const dmgDice = spell.damage_dice || '';
+    const isCantrip = (spell.level || 0) === 0;
+
+    let hit = false, crit = false, miss = false, savedHalf = false;
+    let rawRoll = 0, total = 0, damage = 0;
+    let savingThrow = false, saveRoll = 0;
+
+    if (spell.attack_type && dmgDice) {
+      // Spell attack roll
+      rawRoll = Math.floor(Math.random() * 20) + 1;
+      total   = rawRoll + spellAttackBonus;
+      crit    = rawRoll === 20;
+      miss    = rawRoll === 1;
+      hit     = crit || (!miss && total >= ac);
+      if (hit) {
+        const { total: dmgTotal } = rollDice(dmgDice, crit);
+        damage = Math.max(1, dmgTotal);
+        const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
+        eng.db?.updatePlayerHPInDB(targetCName, newHp);
+      }
+    } else if (spell.dc_type && dmgDice) {
+      // Saving throw — target rolls flat d20 vs spellSaveDC
+      savingThrow = true;
+      saveRoll = Math.floor(Math.random() * 20) + 1;
+      savedHalf = saveRoll >= spellSaveDC;
+      const { total: dmgTotal } = rollDice(dmgDice, false);
+      damage = savedHalf ? Math.floor(dmgTotal / 2) : dmgTotal;
+      if (damage > 0) {
+        const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
+        eng.db?.updatePlayerHPInDB(targetCName, newHp);
+      }
+      hit = true; // always "fires"
+    } else {
+      // Utility / no-damage spell
+      hit = true;
+    }
+
+    // Consume slot
+    if (!isCantrip) window.useSpellSlot?.(attackerCName, spell.level);
+
+    eng.db?.saveRollToDB({
+      type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
+      target: targetCName, spellName: spell.name, spellLevel: spell.level || 0,
+      rawRoll, total, ac, hit, crit, miss,
+      savingThrow, saveRoll, savedHalf, spellSaveDC,
+      damage, dmgDice, color: attacker.pColor || '#9b59b6', ts: Date.now(),
+    });
+
+    // Visual animation
+    const atkTk3 = eng.S.tokens[attackerCName], tarTk3 = eng.S.tokens[targetCName];
+    if (tarTk3) eng.anim?.trigger(savedHalf ? 'SPELL_SAVE' : 'SPELL_HIT', atkTk3, tarTk3);
+  }
 
   // ── DM tools ──────────────────────────────────────────────────────────
   _paintObs(gx, gy) {
