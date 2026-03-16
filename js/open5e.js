@@ -141,6 +141,108 @@ export async function fetchSpellBySlug(slug) {
   return json;
 }
 
+// ── Spellcasting parsing (3A) ──────────────────────────────────────────────────
+
+function _spellNameToSlug(name) {
+  return name.toLowerCase()
+    .replace(/['']/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+/**
+ * Parse "Spellcasting" or "Innate Spellcasting" from a special_abilities array.
+ * Returns { found, spellsByLevel: {0: [...cantrips], 1: [...], ...}, saveDC, attackBonus }
+ */
+export function parseSpellcastingDesc(specialAbilities) {
+  const sa = (specialAbilities || []).find(a =>
+    /^(innate )?spellcasting$/i.test((a.name || '').trim())
+  );
+  if (!sa) return { found: false, spellsByLevel: {} };
+
+  const desc = sa.desc || '';
+  const dcMatch  = desc.match(/spell save DC (\d+)/i);
+  const atkMatch = desc.match(/([+-]?\d+) to hit with spell attacks/i);
+  const spellsByLevel = {};
+
+  // Cantrips (at will): spell1, spell2
+  const cantripM = desc.match(/cantrips?\s*\(at will\)\s*:\s*([^\n]+)/i);
+  if (cantripM) {
+    spellsByLevel[0] = cantripM[1].split(/,\s*/).map(s => s.trim()).filter(Boolean);
+  }
+
+  // Nth level (N slots): spell1, spell2
+  const levelRe = /(\d+)(?:st|nd|rd|th)\s+level\s*\([^)]+\)\s*:\s*([^\n]+)/gi;
+  let m;
+  while ((m = levelRe.exec(desc)) !== null) {
+    spellsByLevel[parseInt(m[1])] = m[2].split(/,\s*/).map(s => s.trim()).filter(Boolean);
+  }
+
+  // Innate spellcasting fallback: "At will: …" / "3/day each: …"
+  if (Object.keys(spellsByLevel).length === 0) {
+    const aw = desc.match(/at will\s*:\s*([^\n]+)/i);
+    if (aw) spellsByLevel[0] = aw[1].split(/,\s*/).map(s => s.trim()).filter(Boolean);
+    const dayRe = /(\d+)\/day(?:\s+each)?\s*:\s*([^\n]+)/gi;
+    while ((m = dayRe.exec(desc)) !== null) {
+      spellsByLevel[0] = [...(spellsByLevel[0] || []),
+        ...m[2].split(/,\s*/).map(s => s.trim()).filter(Boolean)];
+    }
+  }
+
+  return {
+    found:       Object.keys(spellsByLevel).length > 0,
+    spellsByLevel,
+    saveDC:      dcMatch  ? parseInt(dcMatch[1])  : null,
+    attackBonus: atkMatch ? parseInt(atkMatch[1]) : null,
+  };
+}
+
+/**
+ * Fetch all spells from a monster's Spellcasting ability.
+ * Returns a spellbook object { [slug]: entry } in CritRoll format.
+ */
+export async function fetchSpellcastingSpellbook(specialAbilities) {
+  const parsed = parseSpellcastingDesc(specialAbilities);
+  if (!parsed.found) return {};
+
+  const allSpells = Object.entries(parsed.spellsByLevel).flatMap(
+    ([lvl, names]) => names.map(name => ({ name, level: isNaN(lvl) ? 0 : parseInt(lvl) }))
+  );
+
+  const spellbook = {};
+  await Promise.allSettled(allSpells.map(async ({ name, level }) => {
+    try {
+      const slug = _spellNameToSlug(name);
+      let spell;
+      try {
+        spell = await fetchSpellBySlug(slug);
+      } catch {
+        // Slug guess failed — fall back to search by name
+        const res = await fetchSpells({ search: name, page_size: 5 });
+        const match = (res.results || []).find(
+          s => s.name.toLowerCase() === name.toLowerCase()
+        );
+        if (!match) return;
+        spell = await fetchSpellBySlug(match.slug);
+      }
+      spellbook[spell.slug] = {
+        slug:         spell.slug,
+        name:         spell.name,
+        level:        spell.level_int ?? level,
+        school:       spell.school?.name || spell.school || '',
+        range:        spell.range || '30 feet',
+        casting_time: spell.casting_time || '1 action',
+        damage_dice:  spell.damage?.damage_dice || '',
+        attack_type:  spell.attack_type || '',
+        dc_type:      spell.dc?.dc_type?.name?.toLowerCase() || '',
+        concentration: spell.concentration || false,
+      };
+    } catch { /* skip unavailable */ }
+  }));
+
+  return spellbook;
+}
+
 /**
  * Map Open5e monster data → CritRoll player record shape
  * (used when spawning from Open5e picker)
@@ -268,6 +370,15 @@ export function open5eToNPC(m) {
 
     // ── Player card quick-roll macros (named per-attack buttons) ─────────────
     customAttacks,
+
+    // ── Spellcasting (DC / attack bonus parsed from special abilities) ────────
+    ...(() => {
+      const sc = parseSpellcastingDesc(m.special_abilities);
+      return sc.found ? {
+        spellSaveDC:      sc.saveDC      ?? (8 + Math.floor(((m.intelligence || 10) - 10) / 2)),
+        spellAttackBonus: sc.attackBonus ?? Math.floor(((m.intelligence || 10) - 10) / 2),
+      } : {};
+    })(),
 
     // ── Meta ──────────────────────────────────────────────────────────────────
     _open5eSlug: m.slug,

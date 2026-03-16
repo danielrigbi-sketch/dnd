@@ -6,7 +6,7 @@
 // Architecture: filters UI is rendered ONCE on open; only #mb-results is
 // replaced on each fetch so the search input never loses focus or listeners.
 
-import { fetchMonsters, open5eToNPC, normaliseType } from './open5e.js';
+import { fetchMonsters, open5eToNPC, normaliseType, fetchSpellcastingSpellbook, parseSpellcastingDesc } from './open5e.js';
 import { t } from './i18n.js';
 import { translateIfHe, translateAllIfHe } from './translator.js';
 import { tmt2mtUrl, tmt2mtAlternatives, tmt2mtThumbHtml } from './tmt.js';
@@ -374,6 +374,9 @@ async function _showCustomizeForm(slug) {
       <!-- Actions placeholder -->
       <div id="mb-actions-section" style="margin-bottom:10px;"></div>
 
+      <!-- Spellbook placeholder — filled async if monster is a spellcaster -->
+      <div id="mb-spellbook-section"></div>
+
       <button id="mb-spawn-confirm"
         style="width:100%; padding:10px; border-radius:8px; font-size:13px; font-weight:700;
                cursor:pointer; border:1px solid ${col};
@@ -430,6 +433,7 @@ async function _showCustomizeForm(slug) {
   _loadPortraitPicker(slug, m.name, type);
   _loadLoreSection(m, col);
   _loadAbilitiesSection(m, col);
+  _loadSpellbookSection(m, stats, col);
 }
 
 // ── Async lore & abilities loaders ────────────────────────────────────────────
@@ -501,6 +505,50 @@ async function _loadAbilitiesSection(m, col) {
       `).join('')}
     `;
   }
+}
+
+async function _loadSpellbookSection(m, stats, col) {
+  const el = document.getElementById('mb-spellbook-section');
+  if (!el) return;
+
+  // Quick check — does this monster even have a spellcasting ability?
+  const parsed = parseSpellcastingDesc(m.special_abilities);
+  if (!parsed.found) return;
+
+  const spellCount = Object.values(parsed.spellsByLevel).reduce((n, arr) => n + arr.length, 0);
+  el.innerHTML = `<div style="font-size:11px; color:#9b59b6; padding:6px 0; font-style:italic;">🔮 Loading ${spellCount} spells…</div>`;
+
+  const spellbook = await fetchSpellcastingSpellbook(m.special_abilities);
+  if (!document.getElementById('mb-spellbook-section')) return; // user navigated away
+
+  const count = Object.keys(spellbook).length;
+  // Mutate stats in place — the spawn button's closure captures the same object
+  stats.spellbook = spellbook;
+
+  if (count === 0) { el.innerHTML = ''; return; }
+
+  const SCHOOL_COLOR = { Evocation:'#e74c3c', Necromancy:'#8e44ad', Illusion:'#2980b9',
+    Conjuration:'#27ae60', Transmutation:'#e67e22', Divination:'#f39c12',
+    Enchantment:'#e91e8c', Abjuration:'#1abc9c' };
+
+  el.innerHTML = `
+    <div style="margin-bottom:10px; padding:8px; background:rgba(155,89,182,0.08);
+                border-radius:6px; border:1px solid rgba(155,89,182,0.25);">
+      <div style="font-size:10px; font-weight:700; color:#9b59b6; margin-bottom:6px; letter-spacing:0.5px;">
+        🔮 Spellbook (${count} spells loaded)
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:3px;">
+        ${Object.values(spellbook).sort((a,b)=>(a.level||0)-(b.level||0)).map(sp => {
+          const sc = SCHOOL_COLOR[sp.school] || '#888';
+          return `<span style="font-size:10px; padding:1px 6px; border-radius:10px;
+            background:${sc}22; border:1px solid ${sc}55; color:#ddd;"
+            title="Lv${sp.level} ${sp.school}">
+            ${sp.level === 0 ? 'C' : sp.level} ${sp.name}
+          </span>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
 }
 
 async function _loadPortraitPicker(slug, name, type) {
