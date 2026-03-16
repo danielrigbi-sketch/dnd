@@ -441,7 +441,7 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
         entry.innerHTML = `
             <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:${bg}; border-left:4px solid ${borderColor};">
                 <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
-                    <span style="${nameStyle}">⚔️ Combat</span>
+                    <span style="${nameStyle}">${atkIcon} ${data.actionName ? _escapeHtml(data.actionName) : 'Combat'}</span>
                     <span style="color:#888; font-size:10px; flex-shrink:0;">${time}</span>
                 </div>
                 <div style="color:var(--ink); margin-top:4px; font-size:0.88em;">${resultLine}</div>

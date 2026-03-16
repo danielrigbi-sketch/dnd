@@ -162,6 +162,16 @@ export function open5eToNPC(m) {
     return parseFloat(cr) || 0;
   };
 
+  // Combine damage_dice + damage_bonus into a single dice string (e.g. "2d6" + 3 → "2d6+3")
+  const normDmg = (a) => {
+    if (!a) return null;
+    const dice = a.damage_dice;
+    if (!dice) return null;
+    const bonus = a.damage_bonus;
+    if (!bonus || /[+\-]/.test(dice)) return dice;
+    return bonus >= 0 ? `${dice}+${bonus}` : `${dice}${bonus}`;
+  };
+
   // Primary melee action (first action with attack_bonus, non-ranged)
   const meleeAction  = (m.actions || []).find(a =>
     a.attack_bonus != null &&
@@ -184,9 +194,9 @@ export function open5eToNPC(m) {
     pp:          10 + Math.floor(((m.wisdom || 10) - 10) / 2),
     isHidden:    false,
     melee:       meleeAction?.attack_bonus  ?? 0,
-    meleeDmg:    meleeAction?.damage_dice   || '1d6',
+    meleeDmg:    normDmg(meleeAction)       || '1d6',
     ranged:      rangedAction?.attack_bonus ?? 0,
-    rangedDmg:   rangedAction?.damage_dice  || '1d6',
+    rangedDmg:   normDmg(rangedAction)      || '1d6',
 
     // ── Identity ─────────────────────────────────────────────────────────────
     monsterType: m.type        || 'Humanoid',

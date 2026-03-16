@@ -83,6 +83,7 @@
 }
 .action-btn:hover { background: rgba(241,196,15,0.15); border-color: rgba(241,196,15,0.5); color: #fff; }
 .action-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.action-btn.info { opacity: 0.75; cursor: default; pointer-events: none; font-style: italic; border-color: rgba(155,89,182,0.3); color: #b8a0d0; font-size: 11px; padding: 4px 10px; }
 .action-btn.attack { border-color: rgba(231,76,60,0.45); }
 .action-btn.attack:hover { background: rgba(231,76,60,0.18); border-color: #e74c3c; color: #ff8a80; }
 .action-btn.heal { border-color: rgba(46,204,113,0.45); }

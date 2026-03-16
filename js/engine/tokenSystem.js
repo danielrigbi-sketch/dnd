@@ -19,6 +19,39 @@ const STS_ICON = {
 function ck(gx, gy) { return `${Math.floor(gx)}_${Math.floor(gy)}`; }
 function cheb(ax, ay, bx, by) { return Math.max(Math.abs(ax - bx), Math.abs(ay - by)); }
 
+// ── Monster action helpers ────────────────────────────────────────────────────
+/** Build damage dice string from Open5e action (handles split damage_dice + damage_bonus) */
+function _normActionDmg(action) {
+  const dice = action?.damage_dice;
+  if (!dice) return null;
+  const bonus = action.damage_bonus;
+  if (!bonus || /[+\-]/.test(dice)) return dice;
+  return bonus >= 0 ? `${dice}+${bonus}` : `${dice}${bonus}`;
+}
+function _isRangedAction(action) {
+  return action.attack_type === 'ranged' ||
+    (action.desc || '').toLowerCase().includes('ranged weapon') ||
+    (action.desc || '').toLowerCase().includes('ranged attack');
+}
+/** Extract short range (ft) from action description; melee default = 5 */
+function _actionRangeFt(action) {
+  if (!_isRangedAction(action)) return 5;
+  const m = (action.desc || '').match(/range\s+(\d+)/i);
+  return m ? parseInt(m[1]) : 60;
+}
+function _actionEmoji(action) {
+  const name = (action.name || '').toLowerCase();
+  if (name.includes('bite')) return '🦷';
+  if (name.includes('claw') || name.includes('talon')) return '🐾';
+  if (name.includes('breath')) return '💨';
+  if (name.includes('sting')) return '🦂';
+  if (name.includes('tentacle')) return '🐙';
+  if (name.includes('tail')) return '🦴';
+  if (name.includes('slam') || name.includes('smash')) return '👊';
+  if (_isRangedAction(action)) return '🏹';
+  return '⚔️';
+}
+
 export class TokenSystem {
   /** @param {import('./mapEngine.js').MapEngine} engine */
   constructor(engine) {
@@ -326,26 +359,66 @@ export class TokenSystem {
     const rangedRangeFt = attacker.rangedRange || 80; // ft, default shortbow
 
     if (!isDM || attTk) {
-      // Melee (≤ 5ft)
-      if (dist <= 1) {
-        actions.push({ label: '⚔️ Melee Attack', cls: 'attack',
-          fn: () => this._doMeleeAttack(myCName, targetCName) });
-      } else {
-        actions.push({ label: `⚔️ Out of melee reach (${distFt} ft)`, cls: 'disabled', fn: null });
-      }
+      // ── NPC/Monster: per-action buttons from Open5e data ─────────────────
+      const npcActions = (attacker.actions || []).filter(a =>
+        a.attack_bonus != null || _normActionDmg(a)
+      );
 
-      // Ranged
-      const hasRanged = !!(attacker.rangedDmg && attacker.rangedDmg !== '0');
-      if (hasRanged) {
-        if (distFt <= rangedRangeFt) {
-          const pointBlank = dist <= 1;
-          actions.push({
-            label: pointBlank ? `🏹 Ranged Attack ⚠️ Disadv` : `🏹 Ranged Attack`,
-            cls: 'attack',
-            fn: () => this._doRangedAttack(myCName, targetCName, pointBlank),
+      if (npcActions.length > 0) {
+        npcActions.forEach(action => {
+          const isRanged  = _isRangedAction(action);
+          const rangeFt   = _actionRangeFt(action);
+          const dmg       = _normActionDmg(action);
+          const emoji     = _actionEmoji(action);
+          const inRange   = distFt <= rangeFt;
+          const pointBlank = isRanged && dist <= 1;
+          const dmgLabel  = dmg ? ` (${dmg})` : '';
+          const label     = `${emoji} ${action.name}${dmgLabel}`;
+
+          if (action.attack_bonus != null && !inRange) {
+            const limitLabel = isRanged
+              ? `${emoji} ${action.name} — out of range (${distFt}/${rangeFt}ft)`
+              : `${emoji} ${action.name} — out of reach (${distFt}ft)`;
+            actions.push({ label: limitLabel, cls: 'disabled', fn: null });
+          } else {
+            actions.push({
+              label: pointBlank ? label + ' ⚠️ Disadv' : label,
+              cls: 'attack',
+              fn: () => this._doMonsterAction(myCName, targetCName, action, pointBlank),
+            });
+          }
+        });
+
+        // Special abilities — info only
+        const specials = attacker.specialAbilities || [];
+        if (specials.length) {
+          actions.push({ label: '── ✨ Traits ──', cls: 'disabled', fn: null });
+          specials.slice(0, 4).forEach(sa => {
+            actions.push({ label: `✨ ${sa.name}`, cls: 'ability info', fn: null });
           });
+        }
+
+      } else {
+        // ── Player character fallback: generic melee / ranged ───────────────
+        if (dist <= 1) {
+          actions.push({ label: '⚔️ Melee Attack', cls: 'attack',
+            fn: () => this._doMeleeAttack(myCName, targetCName) });
         } else {
-          actions.push({ label: `🏹 Out of range (${distFt}/${rangedRangeFt} ft)`, cls: 'disabled', fn: null });
+          actions.push({ label: `⚔️ Out of melee reach (${distFt} ft)`, cls: 'disabled', fn: null });
+        }
+
+        const hasRanged = !!(attacker.rangedDmg && attacker.rangedDmg !== '0');
+        if (hasRanged) {
+          if (distFt <= rangedRangeFt) {
+            const pointBlank = dist <= 1;
+            actions.push({
+              label: pointBlank ? `🏹 Ranged Attack ⚠️ Disadv` : `🏹 Ranged Attack`,
+              cls: 'attack',
+              fn: () => this._doRangedAttack(myCName, targetCName, pointBlank),
+            });
+          } else {
+            actions.push({ label: `🏹 Out of range (${distFt}/${rangedRangeFt} ft)`, cls: 'disabled', fn: null });
+          }
         }
       }
     }
@@ -549,6 +622,54 @@ export class TokenSystem {
     // Visual animation
     const atkTk2 = eng.S.tokens[attackerCName], tarTk2 = eng.S.tokens[targetCName];
     if (tarTk2) eng.anim?.trigger(hit ? 'RANGED_HIT' : 'RANGED_MISS', atkTk2, tarTk2);
+  }
+
+  /** Execute a named monster action (from Open5e actions array) */
+  _doMonsterAction(attackerCName, targetCName, action, disadvantage = false) {
+    const eng      = this.e;
+    const attacker = eng.S.players[attackerCName] || {};
+    const target   = eng.S.players[targetCName]   || {};
+    const ac       = target.ac ?? 10;
+    const isRanged = _isRangedAction(action);
+    const dmgDice  = _normActionDmg(action) || '1d6';
+    const hasAttackRoll = action.attack_bonus != null;
+
+    let hit = true, crit = false, miss = false, rawRoll = 20, total = 20;
+    if (hasAttackRoll) {
+      const bonus = action.attack_bonus ?? 0;
+      const r1 = Math.floor(Math.random() * 20) + 1;
+      const r2 = disadvantage ? Math.floor(Math.random() * 20) + 1 : r1;
+      rawRoll = disadvantage ? Math.min(r1, r2) : r1;
+      total   = rawRoll + bonus;
+      crit    = rawRoll === 20;
+      miss    = rawRoll === 1;
+      hit     = crit || (!miss && total >= ac);
+    }
+
+    let damage = 0;
+    if (hit) {
+      const { total: dmgTotal } = rollDice(dmgDice, crit);
+      damage = Math.max(1, dmgTotal);
+      const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
+      eng.db?.updatePlayerHPInDB(targetCName, newHp);
+    }
+
+    eng.db?.saveRollToDB({
+      type: 'ATTACK', attackType: isRanged ? 'ranged' : 'melee',
+      actionName: action.name,
+      cName: attackerCName, pName: attacker.pName || attackerCName,
+      target: targetCName, rawRoll, total, ac, hit, crit, miss, disadvantage,
+      damage: hit ? damage : 0, dmgDice,
+      color: attacker.pColor || '#e74c3c', ts: Date.now(),
+    });
+
+    const atkTk = eng.S.tokens[attackerCName], tarTk = eng.S.tokens[targetCName];
+    if (tarTk) {
+      const animType = isRanged
+        ? (hit ? 'RANGED_HIT' : 'RANGED_MISS')
+        : (crit ? 'MELEE_CRIT' : hit ? 'MELEE_HIT' : 'MELEE_MISS');
+      eng.anim?.trigger(animType, atkTk, tarTk);
+    }
   }
 
   _doCastSpell(attackerCName, targetCName, spell) {
