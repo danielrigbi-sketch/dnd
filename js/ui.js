@@ -111,7 +111,10 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${_esc(i.name)}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">🗑️</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${_esc(i.name)}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${_esc(i.name)}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
-            const offlineDot = isOffline ? `<span class="offline-dot" title="לא מחובר"></span>` : `<span class="online-dot" title="מחובר"></span>`;
+            // Only show status dot in campaign mode (when online field exists)
+            const offlineDot = i.online === false ? `<span class="offline-dot" title="לא מחובר"></span>`
+                             : i.online === true  ? `<span class="online-dot"  title="מחובר"></span>`
+                             : '';
 
             const raceStr = i.race || "";
             const classStr = i.class || "";

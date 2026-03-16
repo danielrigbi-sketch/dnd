@@ -1154,10 +1154,8 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     border-radius: 50%;
     background: #27ae60;
     border: 2px solid #1a1a2e;
-    display: none; /* only show online dot in campaign mode */
+    display: block;
 }
-/* show online dot when character has online field (= campaign mode) */
-.tracker-item:not(.offline) .online-dot { display: block; }
 
 /* ====================================================
    CAMPAIGN — In-game Accordion Panel
