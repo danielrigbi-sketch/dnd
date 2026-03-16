@@ -5,6 +5,7 @@ import { uploadPortrait } from "./firebaseService.js"; // S14: direct import
 import { startGame, setUid } from "./app.js";
 import { setLanguage, getLang, t, updateDOM } from "./i18n.js";
 import { tmt2mtPlayerTokens } from "./tmt.js";
+import { initCampaigns } from "./campaign.js";
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -199,6 +200,21 @@ let currentVaultCharacters = {};
 
 updateDOM();
 
+// ── Lobby tab switching ───────────────────────────────────────────────────────
+function _initLobbyTabs() {
+    document.querySelectorAll('.lobby-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.dataset.tab;
+            document.querySelectorAll('.lobby-tab').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.lobby-tab-content').forEach(c => { c.classList.remove('active'); c.style.display = 'none'; });
+            btn.classList.add('active');
+            const panel = document.getElementById(`lobby-tab-${target}`);
+            if (panel) { panel.classList.add('active'); panel.style.display = target === 'quick-room' ? 'flex' : 'block'; }
+        });
+    });
+}
+_initLobbyTabs();
+
 db.listenToAuthState((user) => {
     if (user) {
         currentUserUid = user.uid;
@@ -209,6 +225,15 @@ db.listenToAuthState((user) => {
         if(userEmail) userEmail.innerText = user.email || "";
         if (user.photoURL && userAvatar) userAvatar.src = user.photoURL;
         db.listenToUserCharacters(user.uid, renderVault);
+
+        // Init campaign tab
+        initCampaigns(user.uid, user.displayName || 'Player', (role, charData, campaignId, isCampaign) => {
+            langToggleBtn.style.display = 'none';
+            if (lobbyScreen) lobbyScreen.style.display = 'none';
+            showSpinner('Joining campaign…');
+            startGame(role, charData, campaignId, isCampaign);
+            if (role === 'dm' && currentUserUid) db.setDmUid(campaignId, currentUserUid);
+        });
     } else {
         currentUserUid = null;
         if(lobbyScreen) lobbyScreen.style.display = 'none';

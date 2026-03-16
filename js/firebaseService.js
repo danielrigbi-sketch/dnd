@@ -70,26 +70,149 @@ export function listenToUserCharacters(uid, cb){ onValue(ref(db, `users/${uid}/c
 // ==========================================
 // Game Room
 // ==========================================
-export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats) {
+export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, stats, isCampaign = false) {
     cName = sanitizeCName(cName);
     const playerRef = ref(db, `rooms/${activeRoom}/players/${cName}`);
     const existing  = await get(playerRef);
-    let preservedHp = null, preservedStatuses = null;
-    if (existing.exists()) {
-        preservedHp       = existing.val().hp      ?? null;
-        preservedStatuses = existing.val().statuses ?? null;
-    }
     const authUid = auth.currentUser?.uid || null;
-    const data = { pName, pColor, userRole, portrait: charPortrait, score: 0, authUid, ...stats };
-    if (preservedHp       !== null) data.hp       = preservedHp;
-    if (preservedStatuses !== null) data.statuses = preservedStatuses;
-    set(playerRef, data);
+
+    if (isCampaign && existing.exists()) {
+        // Campaign mode: preserve ALL existing state, only refresh connection fields
+        await update(playerRef, { online: true, pName, pColor, portrait: charPortrait, authUid });
+    } else {
+        // Quick room: write fresh, but preserve hp/statuses if character is rejoining
+        let preservedHp = null, preservedStatuses = null;
+        if (existing.exists()) {
+            preservedHp       = existing.val().hp      ?? null;
+            preservedStatuses = existing.val().statuses ?? null;
+        }
+        const data = { pName, pColor, userRole, portrait: charPortrait, score: 0, authUid, ...stats };
+        if (preservedHp       !== null) data.hp       = preservedHp;
+        if (preservedStatuses !== null) data.statuses = preservedStatuses;
+        if (isCampaign) data.online = true;
+        set(playerRef, data);
+    }
+
     if (userRole !== 'npc') {
-        onDisconnect(playerRef).remove();
+        if (isCampaign) {
+            // Campaign: mark offline on disconnect but keep all data
+            onDisconnect(playerRef).update({ online: false });
+        } else {
+            onDisconnect(playerRef).remove();
+        }
         const onlineRef = ref(db, `rooms/${activeRoom}/online/${pName}_${cName}`);
         set(onlineRef, { role: userRole });
         onDisconnect(onlineRef).remove();
     }
+}
+
+// ==========================================
+// Campaign CRUD
+// ==========================================
+
+export async function createCampaign(campaignId, meta) {
+    await set(ref(db, `campaigns/${campaignId}/meta`), { ...meta, created: Date.now(), lastSession: Date.now() });
+}
+
+export async function getCampaignMeta(campaignId) {
+    const snap = await get(ref(db, `campaigns/${campaignId}/meta`));
+    return snap.val();
+}
+
+export function listenToCampaignMeta(campaignId, cb) {
+    return onValue(ref(db, `campaigns/${campaignId}/meta`), s => cb(s.val()));
+}
+
+export async function isCampaignPlayer(campaignId, uid) {
+    if (!uid) return false;
+    const snap = await get(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`));
+    return snap.exists() && snap.val().approved === true;
+}
+
+export async function requestCampaignAccess(campaignId, uid, playerName, charName) {
+    await set(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`), {
+        playerName, charName, requestedAt: Date.now()
+    });
+}
+
+export async function hasPendingRequest(campaignId, uid) {
+    const snap = await get(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`));
+    return snap.exists();
+}
+
+export async function approveCampaignPlayer(campaignId, uid) {
+    const snap = await get(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`));
+    const req = snap.val();
+    if (!req) return;
+    await set(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`), {
+        playerName: req.playerName, charName: req.charName, approved: true
+    });
+    await remove(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`));
+}
+
+export async function denyCampaignRequest(campaignId, uid) {
+    await remove(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`));
+}
+
+export async function kickCampaignPlayer(campaignId, uid) {
+    await remove(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`));
+}
+
+export function listenToPendingRequests(campaignId, cb) {
+    return onValue(ref(db, `campaigns/${campaignId}/pendingRequests`), s => cb(s.val()));
+}
+
+export function listenToCampaignAllowedPlayers(campaignId, cb) {
+    return onValue(ref(db, `campaigns/${campaignId}/allowedPlayers`), s => cb(s.val()));
+}
+
+export function listenToCampaignsByDM(dmUid, cb) {
+    return onValue(ref(db, `campaigns`), snap => {
+        const all = snap.val() || {};
+        const mine = {};
+        Object.entries(all).forEach(([id, c]) => {
+            if (c.meta?.dmUid === dmUid) mine[id] = c;
+        });
+        cb(mine);
+    });
+}
+
+export function listenToCampaignsByPlayer(uid, cb) {
+    return onValue(ref(db, `campaigns`), snap => {
+        const all = snap.val() || {};
+        const mine = {};
+        Object.entries(all).forEach(([id, c]) => {
+            if (c.allowedPlayers?.[uid]?.approved) mine[id] = c;
+        });
+        cb(mine);
+    });
+}
+
+export async function updateCampaignMeta(campaignId, patch) {
+    await update(ref(db, `campaigns/${campaignId}/meta`), patch);
+}
+
+export async function updateCampaignLastSession(campaignId) {
+    await update(ref(db, `campaigns/${campaignId}/meta`), { lastSession: Date.now() });
+}
+
+export async function longRestCampaign(campaignId) {
+    // Restore all player HP and spell slots in the room
+    const snap = await get(ref(db, `rooms/${campaignId}/players`));
+    if (!snap.exists()) return;
+    const players = snap.val();
+    const patches = Object.entries(players).map(([k, p]) => {
+        const patch = {};
+        if (p.maxHp)       patch.hp = p.maxHp;
+        if (p.spellSlots)  patch['spellSlots/used'] = {};
+        if (p.classResources) {
+            Object.keys(p.classResources).forEach(res => {
+                if (res.endsWith('_used')) patch[`classResources/${res}`] = 0;
+            });
+        }
+        return update(ref(db, `rooms/${campaignId}/players/${k}`), patch);
+    });
+    await Promise.all(patches);
 }
 
 export function saveRollToDB(rollData)              { push(ref(db, `rooms/${activeRoom}/rolls`), rollData); }

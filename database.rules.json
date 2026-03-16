@@ -72,6 +72,28 @@
         ".read":  "auth != null && $uid === auth.uid",
         ".write": "auth != null && $uid === auth.uid"
       }
+    },
+
+    "campaigns": {
+      "$cId": {
+        "meta": {
+          ".read": "auth != null",
+          ".write": "auth != null && (newData.child('dmUid').val() === auth.uid || root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid)"
+        },
+        "allowedPlayers": {
+          ".read": "auth != null",
+          "$uid": {
+            ".write": "auth != null && root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid"
+          }
+        },
+        "pendingRequests": {
+          ".read": "auth != null && root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        }
+      }
     }
   }
 }

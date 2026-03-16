@@ -1040,3 +1040,156 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     border-color: #c77dff !important;
     background: #3a1a5e !important;
 }
+
+/* ====================================================
+   CAMPAIGN — Lobby Tabs
+   ==================================================== */
+.lobby-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 20px;
+    background: #1a232d;
+    border-bottom: 2px solid #333;
+}
+.lobby-tab {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #888;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-bottom: -2px;
+    font-family: 'Assistant', sans-serif;
+}
+.lobby-tab:hover  { color: #ccc; }
+.lobby-tab.active { color: #f1c40f; border-bottom-color: #f1c40f; }
+
+/* ====================================================
+   CAMPAIGN — Campaign Cards & Sections
+   ==================================================== */
+.campaign-section { margin-bottom: 20px; }
+.campaign-section-header {
+    color: #f1c40f;
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 6px;
+}
+.campaign-new-btn {
+    background: #2c3e50;
+    color: #ccc;
+    border: 1px dashed #444;
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: 0.2s;
+}
+.campaign-new-btn:hover { border-color: #f1c40f; color: #f1c40f; }
+.campaign-new-form {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+.campaign-card {
+    background: rgba(44, 62, 80, 0.5);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    transition: 0.2s;
+}
+.campaign-card:hover { background: rgba(44, 62, 80, 0.75); border-color: rgba(241,196,15,0.3); }
+.campaign-card-title  { color: white; font-weight: bold; font-size: 15px; margin-bottom: 4px; }
+.campaign-card-meta   { color: #888; font-size: 12px; margin-bottom: 8px; }
+.campaign-card-actions { display: flex; gap: 8px; }
+.campaign-resume-btn  { background: #27ae60; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
+.campaign-resume-btn:hover { background: #2ecc71; }
+.campaign-manage-btn  { background: #555; color: #ccc; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.campaign-manage-btn:hover { background: #666; }
+.campaign-rejoin-btn  { background: #3498db; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
+.campaign-rejoin-btn:hover { background: #2980b9; }
+
+/* ====================================================
+   CAMPAIGN — Offline Player Indicator
+   ==================================================== */
+.tracker-item.offline {
+    opacity: 0.68;
+    filter: grayscale(35%);
+}
+.portrait-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+}
+.portrait-wrap .char-portrait {
+    width: 100%;
+    height: 100%;
+}
+.offline-dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #666;
+    border: 2px solid #1a1a2e;
+    display: block;
+}
+.online-dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #27ae60;
+    border: 2px solid #1a1a2e;
+    display: none; /* only show online dot in campaign mode */
+}
+/* show online dot when character has online field (= campaign mode) */
+.tracker-item:not(.offline) .online-dot { display: block; }
+
+/* ====================================================
+   CAMPAIGN — In-game Accordion Panel
+   ==================================================== */
+.campaign-accordion {
+    background: rgba(155,89,182,0.08);
+    border: 1px solid rgba(155,89,182,0.25);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.campaign-accordion summary.accordion-header {
+    color: #c39bd3;
+    font-weight: bold;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 8px 12px;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.campaign-accordion summary.accordion-header::before {
+    content: '▶';
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+.campaign-accordion[open] summary.accordion-header::before {
+    transform: rotate(90deg);
+}
+.campaign-accordion .accordion-body {
+    padding: 10px 12px 12px;
+    border-top: 1px solid rgba(155,89,182,0.2);
+}

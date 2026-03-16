@@ -76,11 +76,13 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
         const isDying  = (i.hp || 0) <= 0;
         const isStable = _saves.stable || false;
         const isDead   = _saves.dead   || false;
+        const isOffline = (i.online === false) && (i.userRole === 'player'); // campaign mode
         let extraClasses = '';
         if (isThisCharDM) extraClasses = 'dm-item';
         if (activeRoller && activeRoller.cName === i.name) extraClasses += ' active-control';
         if (isActiveTurn) extraClasses += ' active-turn';
         if (isDying && !isStable && !isDead) extraClasses += ' dying';
+        if (isOffline) extraClasses += ' offline';
 
         div.className = `tracker-item ${extraClasses}`;
         div.setAttribute('data-combatant', i.name);
@@ -109,6 +111,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${_esc(i.name)}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">🗑️</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${_esc(i.name)}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${_esc(i.name)}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
+            const offlineDot = isOffline ? `<span class="offline-dot" title="לא מחובר"></span>` : `<span class="online-dot" title="מחובר"></span>`;
 
             const raceStr = i.race || "";
             const classStr = i.class || "";
@@ -194,11 +197,14 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
 
             div.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center; ${isDead?'opacity:0.55;':''}">
-                    <img src="${i.portrait || 'https://placehold.co/50x50/555/fff?text=?'}" class="char-portrait" style="${portraitStyle}">
+                    <div class="portrait-wrap">
+                        <img src="${i.portrait || 'https://placehold.co/50x50/555/fff?text=?'}" class="char-portrait" style="${portraitStyle}">
+                        ${offlineDot}
+                    </div>
                     <div style="flex:1; min-width:0;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
                             <span style="font-weight:900; color:white; font-size:1.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}
+                                ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}${isOffline ? ' <span style="color:#777;font-size:10px;font-weight:normal;">(לא מחובר)</span>' : ''}
                             </span>
                             <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
                                 ${activeBadge}${concBadge}
