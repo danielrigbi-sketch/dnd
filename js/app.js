@@ -385,6 +385,31 @@ export function showToast(msg, type='info', durationMs=3000) {
 }
 window.showToast = showToast;
 
+/** Opportunity attack prompt — shown to DM when a hostile token leaves threat range. */
+function _showOAPrompt(attackerName, targetName, onAttack) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const esc = s => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const el = document.createElement('div');
+    el.className = 'cr-toast warning';
+    el.style.cssText = 'cursor:default; min-width:210px; padding:10px 12px;';
+    el.innerHTML = `
+        <div style="font-weight:700; margin-bottom:5px;">🗡️ Opportunity Attack!</div>
+        <div style="font-size:12px; margin-bottom:8px; opacity:0.9;">
+            <strong>${esc(attackerName)}</strong> → <strong>${esc(targetName)}</strong> is leaving!
+        </div>
+        <div style="display:flex; gap:6px;">
+            <button class="oa-yes-btn" style="flex:1; padding:5px; background:#e74c3c; border:none; color:white; border-radius:5px; cursor:pointer; font-weight:700; font-size:12px;">⚔️ Attack!</button>
+            <button class="oa-no-btn"  style="flex:1; padding:5px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:white; border-radius:5px; cursor:pointer; font-size:12px;">✗ Skip</button>
+        </div>
+    `;
+    container.appendChild(el);
+    const remove = () => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); };
+    const timer = setTimeout(remove, 8000);
+    el.querySelector('.oa-yes-btn').onclick = () => { clearTimeout(timer); remove(); onAttack(); };
+    el.querySelector('.oa-no-btn').onclick  = () => { clearTimeout(timer); remove(); };
+}
+
 // Show/hide the loading spinner overlay
 export function showSpinner(label='Loading…') {
     const el = document.getElementById('cr-spinner-overlay');
@@ -1206,6 +1231,37 @@ function initMap() {
     window._mapEng = mapEngine;
     // Forward ui:toast bus events to showToast
     mapEngine.bus.on('ui:toast', ({ msg, type }) => showToast(msg, type || 'info'));
+
+    // ── Opportunity Attack detection (3B) ──────────────────────────────
+    mapEngine.bus.on('token:moved', ({ cName: moverCName, gx, gy, prevGx, prevGy }) => {
+      if (userRole !== 'dm') return;
+      const players = mapEngine.S.players;
+      const tokens  = mapEngine.S.tokens;
+      const mover   = players[moverCName];
+      if (!mover) return;
+      Object.entries(tokens).forEach(([cName, tok]) => {
+        if (cName === moverCName) return;
+        const p = players[cName];
+        if (!p) return;
+        // Hostile check: one is NPC (dm) and the other is player
+        const moverIsNPC = mover.userRole === 'dm';
+        const cNameIsNPC = p.userRole    === 'dm';
+        if (moverIsNPC === cNameIsNPC) return;
+        // Threatening creature must not be incapacitated
+        const sts = p.statuses || [];
+        if (sts.some(s => ['Unconscious','Paralyzed','Stunned','Incapacitated'].includes(s))) return;
+        // Was adjacent before, not adjacent now
+        const cheb = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+        const wasAdj = cheb(prevGx, prevGy, tok.gx, tok.gy) <= 1;
+        const isAdj  = cheb(gx,     gy,     tok.gx, tok.gy) <= 1;
+        if (wasAdj && !isAdj) {
+          _showOAPrompt(cName, moverCName, () => {
+            mapEngine.tokens._doMeleeAttack(cName, moverCName);
+          });
+        }
+      });
+    });
+
     // Initialise the YouTube video background layer
     mapEngine.initVideo(container);
     resize();
