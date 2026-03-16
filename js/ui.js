@@ -468,7 +468,9 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
     } else if (data.type === 'SPELL') {
         const borderColor = data.crit ? '#f1c40f' : data.hit ? '#9b59b6' : '#e74c3c';
         const bg = 'rgba(155,89,182,0.07)';
-        const lvlTag = data.spellLevel === 0 ? 'Cantrip' : `Level ${data.spellLevel}`;
+        const lvlTag = data.spellLevel === 0 ? 'Cantrip'
+            : data.upcast ? `Level ${data.spellLevel} ↑${data.castLevel}`
+            : `Level ${data.spellLevel}`;
         let resultLine;
         if (data.savingThrow) {
             const saved = data.savedHalf;

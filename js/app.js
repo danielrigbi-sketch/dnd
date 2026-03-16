@@ -130,10 +130,11 @@ window.onSpellAdd = (spell) => {
         school:       spell.school?.name || spell.school || '',
         range:        spell.range || '30 feet',
         casting_time: spell.casting_time || '1 action',
-        damage_dice:  spell.damage?.damage_dice || '',
-        attack_type:  spell.attack_type || '',
-        dc_type:      spell.dc?.dc_type?.name || '',
+        damage_dice:   spell.damage?.damage_dice || '',
+        attack_type:   spell.attack_type || '',
+        dc_type:       spell.dc?.dc_type?.name || '',
         concentration: spell.concentration || false,
+        higher_level:  spell.higher_level || '',
     });
     db.saveRollToDB({ cName: target, type: 'STATUS', status: statusFlavor('spellLearned', target, null, spell.name), ts: Date.now() });
 };

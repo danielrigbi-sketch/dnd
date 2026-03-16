@@ -236,6 +236,7 @@ export async function fetchSpellcastingSpellbook(specialAbilities) {
         attack_type:  spell.attack_type || '',
         dc_type:      spell.dc?.dc_type?.name?.toLowerCase() || '',
         concentration: spell.concentration || false,
+        higher_level: spell.higher_level || '',
       };
     } catch { /* skip unavailable */ }
   }));

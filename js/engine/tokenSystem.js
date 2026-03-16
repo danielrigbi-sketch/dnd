@@ -38,6 +38,22 @@ function _checkConcentration(eng, targetCName, target, damage) {
   });
 }
 
+// ── Spell upcast extra dice (4D) ──────────────────────────────────────────────
+/**
+ * Parse extra damage dice from a higher_level text for a given cast level.
+ * e.g. "damage increases by 1d6 for each slot level above 1st" at castLevel=5, baseLevel=3
+ *   → levelsAbove=2 → "2d6"
+ * Returns "" if unparseable or no bonus.
+ */
+function _upcastExtraDice(higherLevelText, baseLevel, castLevel) {
+  if (!higherLevelText || castLevel <= baseLevel) return '';
+  const levelsAbove = castLevel - baseLevel;
+  const m = higherLevelText.match(/(\d+d\d+)\s+for\s+each\s+(?:slot\s+)?level\s+above/i);
+  if (!m) return '';
+  const [count, sides] = m[1].split('d').map(Number);
+  return `${count * levelsAbove}d${sides}`;
+}
+
 // ── Auto-unconscious on 0 HP (4C) ─────────────────────────────────────────────
 /** Apply Unconscious status + log when a target drops to 0 HP. */
 function _applyUnconscious(eng, targetCName, target, newHp) {
@@ -555,18 +571,33 @@ export class TokenSystem {
           const rangeFt = parseSpellRangeFt(sp.range);
           if (rangeFt !== 9999 && rangeFt !== 0 && distFt > rangeFt) return false;
           if (sp.level === 0) return true; // cantrips always available
-          const remaining = (maxSlots[sp.level] || 0) - (usedSlots[sp.level] || 0);
-          return remaining > 0;
+          // Show if ANY slot at or above the spell's level has charges
+          for (let lv = sp.level; lv <= 9; lv++) {
+            if ((maxSlots[lv] || 0) - (usedSlots[lv] || 0) > 0) return true;
+          }
+          return false;
         })
         .sort((a, b) => (a.level || 0) - (b.level || 0))
-        .slice(0, 4); // max 4 spells shown
+        .slice(0, 5);
 
       if (castableSpells.length) {
         if (actions.length) actions.push({ label: '── 🔮 Spells ──', cls: 'disabled', fn: null });
         castableSpells.forEach(sp => {
           const lvlTag = sp.level === 0 ? 'Cantrip' : `Lv${sp.level}`;
           actions.push({ label: `🔮 ${sp.name} (${lvlTag})`, cls: 'attack',
-            fn: () => this._doCastSpell(myCName, targetCName, sp) });
+            fn: () => this._doCastSpell(myCName, targetCName, sp, sp.level) });
+          // Upcast buttons — for leveled spells with higher_level text
+          if (sp.level > 0 && sp.higher_level) {
+            let shown = 0;
+            for (let lv = sp.level + 1; lv <= 9 && shown < 2; lv++) {
+              if ((maxSlots[lv] || 0) - (usedSlots[lv] || 0) > 0) {
+                const castLv = lv;
+                actions.push({ label: `  ↑ ${sp.name} Lv${castLv}`, cls: 'attack',
+                  fn: () => this._doCastSpell(myCName, targetCName, sp, castLv) });
+                shown++;
+              }
+            }
+          }
         });
       }
     }
@@ -863,15 +894,18 @@ export class TokenSystem {
     }
   }
 
-  _doCastSpell(attackerCName, targetCName, spell) {
+  _doCastSpell(attackerCName, targetCName, spell, castLevel) {
     const eng = this.e;
     const attacker = eng.S.players[attackerCName] || {};
     const target   = eng.S.players[targetCName]   || {};
     const spellAttackBonus = attacker.spellAttackBonus ?? 0;
     const spellSaveDC      = attacker.spellSaveDC ?? 8;
     const ac = target.ac ?? 10;
-    const dmgDice = spell.damage_dice || '';
-    const isCantrip = (spell.level || 0) === 0;
+    const baseLevel = spell.level || 0;
+    const slotLevel = (castLevel != null && castLevel >= baseLevel) ? castLevel : baseLevel;
+    const isCantrip = baseLevel === 0;
+    const extraDice = _upcastExtraDice(spell.higher_level, baseLevel, slotLevel);
+    const dmgDice   = spell.damage_dice || '';
 
     let hit = false, crit = false, miss = false, savedHalf = false;
     let rawRoll = 0, total = 0, damage = 0;
@@ -885,8 +919,9 @@ export class TokenSystem {
       miss    = rawRoll === 1;
       hit     = crit || (!miss && total >= ac);
       if (hit) {
-        const { total: dmgTotal } = rollDice(dmgDice, crit);
-        damage = Math.max(1, dmgTotal);
+        const { total: base }  = rollDice(dmgDice, crit);
+        const { total: extra } = extraDice ? rollDice(extraDice, false) : { total: 0 };
+        damage = Math.max(1, base + extra);
         const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
         eng.db?.updatePlayerHPInDB(targetCName, newHp);
         _checkConcentration(eng, targetCName, target, damage);
@@ -900,8 +935,10 @@ export class TokenSystem {
       const saveBonus = target.savingThrows?.[saveType] ?? Math.floor((saveScore - 10) / 2);
       saveRoll = Math.floor(Math.random() * 20) + 1 + saveBonus;
       savedHalf = saveRoll >= spellSaveDC;
-      const { total: dmgTotal } = rollDice(dmgDice, false);
-      damage = savedHalf ? Math.floor(dmgTotal / 2) : dmgTotal;
+      const { total: base }  = rollDice(dmgDice, false);
+      const { total: extra } = extraDice ? rollDice(extraDice, false) : { total: 0 };
+      const rawDmg = base + extra;
+      damage = savedHalf ? Math.floor(rawDmg / 2) : rawDmg;
       if (damage > 0) {
         const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
         eng.db?.updatePlayerHPInDB(targetCName, newHp);
@@ -914,15 +951,17 @@ export class TokenSystem {
       hit = true;
     }
 
-    // Consume slot
-    if (!isCantrip) window.useSpellSlot?.(attackerCName, spell.level);
+    // Consume slot at the cast level (upcast uses higher slot)
+    if (!isCantrip) window.useSpellSlot?.(attackerCName, slotLevel);
 
     eng.db?.saveRollToDB({
       type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
-      target: targetCName, spellName: spell.name, spellLevel: spell.level || 0,
+      target: targetCName, spellName: spell.name,
+      spellLevel: baseLevel, castLevel: slotLevel,
+      upcast: slotLevel > baseLevel,
       rawRoll, total, ac, hit, crit, miss,
       savingThrow, saveRoll, savedHalf, spellSaveDC,
-      damage, dmgDice, color: attacker.pColor || '#9b59b6', ts: Date.now(),
+      damage, dmgDice, extraDice, color: attacker.pColor || '#9b59b6', ts: Date.now(),
     });
 
     // Visual animation
