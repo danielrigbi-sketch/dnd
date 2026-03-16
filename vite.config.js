@@ -31,11 +31,6 @@ function copyStaticAssets() {
       if (existsSync('public/icons')) {
         copyDir('public/icons', 'dist/icons');
       }
-      // Bug #7: copy @3d-dice/dice-box dist assets for local self-hosting
-      const diceBoxDist = join('node_modules', '@3d-dice', 'dice-box', 'dist');
-      if (existsSync(diceBoxDist)) {
-        copyDir(diceBoxDist, join('dist', 'dice-box'));
-      }
     }
   };
 }
@@ -49,7 +44,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
-      // No external https:// imports needed now that dice-box is self-hosted
+      external: (id) => id.startsWith('https://'),
     },
   },
 });
