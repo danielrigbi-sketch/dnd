@@ -2,6 +2,7 @@
 import { t } from "./i18n.js";
 import { iconHTML } from "./icons.js";
 import { attackFlavor, spellFlavor, healFlavor } from "./combatFlavor.js";
+import { SKILL_ABILITIES, skillMod } from "./engine/combatUtils.js";
 
 let expandedCardId = null;
 let _lastPlayersData = null;
@@ -258,6 +259,25 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                     <span class="ab-mod">${mod >= 0 ? '+'+mod : mod}</span>
                                 </button>`;
                             }).join('')}
+                        </div>
+                        <div style="margin-top:7px;">
+                            <div style="font-size:9px; color:#888; font-weight:600; letter-spacing:0.5px; margin-bottom:4px; text-transform:uppercase;">🎲 Skills</div>
+                            <div class="skills-grid">
+                                ${Object.entries(SKILL_ABILITIES).sort().map(([skill, abil]) => {
+                                    const mod = skillMod(skill, i);
+                                    const modStr = mod >= 0 ? '+'+mod : String(mod);
+                                    const keyU = skill.replace(/\s+/g, '_');
+                                    const skillVal = i.skills?.[skill] ?? i.skills?.[keyU];
+                                    const isProf = typeof skillVal === 'number' || !!skillVal;
+                                    const dispName = skill.replace(/(^|\s)\w/g, s => s.toUpperCase());
+                                    return `<button class="skill-btn${isProf ? ' prof' : ''}"
+                                        onclick="window.rollSkillCheck('${_esc(i.name)}','${skill}')"
+                                        title="${dispName} (${abil.toUpperCase()})">
+                                        <span class="sk-name">${dispName}</span>
+                                        <span class="sk-mod">${modStr}</span>
+                                    </button>`;
+                                }).join('')}
+                            </div>
                         </div>` : ''}
                         <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1);">
                             <div style="font-size:10px; color:#aaa; margin-bottom:5px;">${t('card_macros_title')}</div>
@@ -538,6 +558,24 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
             <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:rgba(52,152,219,0.07); border-left:4px solid #3498db;">
                 <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
                     <span style="${nameStyle}">🎲 ${_escapeHtml(data.ability)} Check</span>
+                    <span style="color:#666; font-size:10px;">${time}</span>
+                </div>
+                <div style="color:var(--ink); margin-top:3px; font-size:0.88em;">
+                    <strong>${_escapeHtml(data.cName)}</strong> rolled
+                    <span style="color:${resColor}; font-weight:900; font-size:1.2em;">${total}</span>
+                    <small style="opacity:0.7;"> (🎲${data.res}${modStr})</small>
+                </div>
+            </div>`;
+    } else if (data.type === 'SKILL') {
+        const total = data.total ?? (data.res + (data.mod || 0));
+        const modStr = (data.mod || 0) >= 0 ? `+${data.mod||0}` : `${data.mod}`;
+        const nat20 = data.res === 20, nat1 = data.res === 1;
+        const resColor = nat20 ? '#f1c40f' : nat1 ? '#e74c3c' : 'var(--ink)';
+        const skillDisp = (data.skillName || '').replace(/(^|\s)\w/g, s => s.toUpperCase());
+        entry.innerHTML = `
+            <div style="margin-bottom:8px; padding:8px 10px; border-radius:7px; background:rgba(39,174,96,0.07); border-left:4px solid #27ae60;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
+                    <span style="${nameStyle}">🎲 ${_escapeHtml(skillDisp)}</span>
                     <span style="color:#666; font-size:10px;">${time}</span>
                 </div>
                 <div style="color:var(--ink); margin-top:3px; font-size:0.88em;">

@@ -116,6 +116,49 @@ export function profBonus(level) {
   return Math.ceil(level / 4) + 1;
 }
 
+/** D&D 5e skill → governing ability (lowercase 3-letter key). */
+export const SKILL_ABILITIES = {
+  acrobatics:        'dex',
+  'animal handling': 'wis',
+  arcana:            'int',
+  athletics:         'str',
+  deception:         'cha',
+  history:           'int',
+  insight:           'wis',
+  intimidation:      'cha',
+  investigation:     'int',
+  medicine:          'wis',
+  nature:            'int',
+  perception:        'wis',
+  performance:       'cha',
+  persuasion:        'cha',
+  religion:          'int',
+  'sleight of hand': 'dex',
+  stealth:           'dex',
+  survival:          'wis',
+};
+
+/**
+ * Compute skill modifier for a character.
+ * Uses pre-computed bonus from player.skills if present (Open5e NPCs),
+ * otherwise adds proficiency bonus if the skill is flagged, else raw ability mod.
+ * @param {string} skillName - lowercase skill name e.g. "perception"
+ * @param {Object} player
+ * @returns {number}
+ */
+export function skillMod(skillName, player) {
+  const ability  = SKILL_ABILITIES[skillName] || 'str';
+  const score    = player[`_${ability}`] ?? player[ability] ?? 10;
+  const abilityM = Math.floor((score - 10) / 2);
+  if (!player.skills) return abilityM;
+  // Open5e stores "animal handling" or "animal_handling" — try both
+  const keyU = skillName.replace(/\s+/g, '_');
+  const val  = player.skills[skillName] ?? player.skills[keyU];
+  if (typeof val === 'number') return val;          // pre-computed (NPC)
+  if (val) return abilityM + profBonus(player.level || 1); // proficient (PC)
+  return abilityM;
+}
+
 /**
  * Parse an Open5e spell range string to feet.
  * e.g. "30 feet" → 30, "Touch" → 5, "Self" → 0, "Sight" → 9999

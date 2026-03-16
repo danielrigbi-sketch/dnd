@@ -22,6 +22,7 @@ import { fetchMonsterBySlug, open5eToNPC } from "./open5e.js";
 import { VideoLayer } from "./videoLayer.js";
 import { initClassResources, onShortRest, onLongRest, WILD_SHAPES } from "./engine/classAbilities.js";
 import { statusFlavor, healFlavor } from "./combatFlavor.js";
+import { skillMod, SKILL_ABILITIES } from "./engine/combatUtils.js";
 import { MusicPlayer, MUSIC_LIBRARY, MUSIC_CATEGORIES, TRACK_BY_ID } from "./musicPlayer.js";
 
 // Expose Wave 2 panels globally
@@ -1048,6 +1049,20 @@ window.rollAbilityCheck = async (targetCName, ability, score) => {
     try { finalRes = (await roll3DDice('1d20'))[0].value; }
     catch { isCooldown = false; setDiceCooldown(false); return; }
     db.saveRollToDB({ pName: p?.pName || targetCName, cName: targetCName, type: 'ABILITY_CHECK', ability, score, mod, res: finalRes, total: finalRes + mod, color, ts: Date.now() });
+    setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
+};
+
+window.rollSkillCheck = async (targetCName, skillName) => {
+    if (isCooldown || !isDiceBoxReady) return;
+    isCooldown = true; setDiceCooldown(true); playStartRollSound(isMuted);
+    const p = await db.getPlayerData(targetCName);
+    const mod = skillMod(skillName, p || {});
+    const color = p?.pColor || '#27ae60';
+    await updateDiceColor(color);
+    let finalRes;
+    try { finalRes = (await roll3DDice('1d20'))[0].value; }
+    catch { isCooldown = false; setDiceCooldown(false); return; }
+    db.saveRollToDB({ pName: p?.pName || targetCName, cName: targetCName, type: 'SKILL', skillName, mod, res: finalRes, total: finalRes + mod, color, ts: Date.now() });
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 

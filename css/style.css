@@ -314,6 +314,14 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .ability-btn .ab-score { font-size: 13px; font-weight: 900; color: #f3e5ab; line-height: 1; }
 .ability-btn .ab-mod { font-size: 10px; color: #7fb3d3; font-weight: 600; }
 
+.skills-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 4px; }
+.skill-btn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; color: #ccc; padding: 3px 5px; cursor: pointer; text-align: left; transition: 0.15s; display: flex; justify-content: space-between; align-items: center; font-size: 9px; gap: 3px; }
+.skill-btn:hover { background: rgba(46,204,113,0.18); border-color: #2ecc71; color: white; }
+.skill-btn.prof { border-color: rgba(46,204,113,0.35); color: #a8e6b8; }
+.skill-btn.prof .sk-mod { color: #2ecc71; }
+.skill-btn .sk-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skill-btn .sk-mod { font-weight: 700; min-width: 20px; text-align: right; color: #7fb3d3; }
+
 /* ====================================================
    VFX ANIMATIONS
    ==================================================== */
