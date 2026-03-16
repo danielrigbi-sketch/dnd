@@ -790,6 +790,18 @@ export async function startGame(role, charData, roomCode) {
 // =====================================================================
 window.nextTurn = () => {
     if (userRole !== 'dm' || sortedCombatants.length === 0) return;
+
+    // Reset per-turn resources for the combatant whose turn is ending
+    const endingName = currentActiveTurn !== null ? sortedCombatants[currentActiveTurn]?.name : null;
+    if (endingName && mapEngine) {
+        const p = mapEngine.S.players[endingName] || {};
+        const patch = {};
+        if (p.bonusActionUsed)  patch.bonusActionUsed  = false;
+        // Legendary resets at start of that creature's OWN next turn
+        if (p.legendaryMax > 0) patch.legendaryUsed = 0;
+        if (Object.keys(patch).length) db.patchPlayerInDB?.(endingName, patch);
+    }
+
     let next = (currentActiveTurn === null ? 0 : currentActiveTurn + 1);
     let round = currentRoundNumber;
     if (next >= sortedCombatants.length) {

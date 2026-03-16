@@ -2,6 +2,38 @@
 // Used by tokenSystem.js for on-map attack interactions.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Damage type matching ──────────────────────────────────────────────────────
+function _matchType(types, dt) {
+  // Check if damage type starts any immunity/resistance/vulnerability entry
+  // (handles "bludgeoning from nonmagical attacks" matching "bludgeoning")
+  return types.some(t => t === dt || t.startsWith(dt + ' '));
+}
+
+/**
+ * Apply damage immunity / resistance / vulnerability from D&D 5e rules.
+ * @param {number} damage
+ * @param {string|null} damageType - e.g. "fire", "slashing", null = skip
+ * @param {Object} target - player/NPC state with damageImmunities/Resistances/Vulnerabilities strings
+ * @returns {{ damage: number, modifier: 'immune'|'resistant'|'vulnerable'|'normal', note: string }}
+ */
+export function applyDamageModifiers(damage, damageType, target) {
+  if (!damageType || !target) return { damage, modifier: 'normal', note: '' };
+  const dt = damageType.toLowerCase().trim();
+  const parse = str => (str || '').toLowerCase().replace(/\s+and\s+/g, ', ').split(/[,;]/).map(s => s.trim()).filter(Boolean);
+
+  const immunities      = parse(target.damageImmunities);
+  const resistances     = parse(target.damageResistances);
+  const vulnerabilities = parse(target.damageVulnerabilities);
+
+  if (_matchType(immunities, dt))
+    return { damage: 0, modifier: 'immune', note: `🛡️ immune to ${damageType}` };
+  if (_matchType(vulnerabilities, dt))
+    return { damage: damage * 2, modifier: 'vulnerable', note: `💥 vulnerable (×2)` };
+  if (_matchType(resistances, dt))
+    return { damage: Math.floor(damage / 2), modifier: 'resistant', note: `🔰 resistant (½)` };
+  return { damage, modifier: 'normal', note: '' };
+}
+
 /** Chebyshev tile distance between two tokens (diagonal counts as 1). */
 export function tileDistance(tok1, tok2) {
   return Math.max(Math.abs((tok1.gx ?? 0) - (tok2.gx ?? 0)), Math.abs((tok1.gy ?? 0) - (tok2.gy ?? 0)));

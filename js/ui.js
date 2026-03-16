@@ -429,11 +429,13 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
         const atkIcon = data.attackType === 'ranged' ? '🏹' : '⚔️';
         const disadvNote = data.disadvantage ? ' <span style="color:#e67e22;font-size:0.85em;">(point-blank disadv)</span>' : '';
         if (data.crit) {
-            resultLine = `<span style="color:#f1c40f;font-weight:900;">CRITICAL HIT!</span> ${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> strikes <strong>${_escapeHtml(data.target)}</strong> (🎲${data.rawRoll}+${data.total - data.rawRoll} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
+            const critModNote = data.dmgNote ? ` <span style="color:#aaa;font-size:0.85em;">(${_escapeHtml(data.dmgNote)})</span>` : '';
+            resultLine = `<span style="color:#f1c40f;font-weight:900;">CRITICAL HIT!</span> ${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> strikes <strong>${_escapeHtml(data.target)}</strong> (🎲${data.rawRoll}+${data.total - data.rawRoll} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${critModNote}`;
         } else if (data.miss) {
             resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong> fumbles against <strong>${_escapeHtml(data.target)}</strong> — automatic miss!`;
         } else if (data.hit) {
-            resultLine = `${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${disadvNote} for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
+            const modNote = data.dmgNote ? ` <span style="color:#aaa;font-size:0.85em;">(${_escapeHtml(data.dmgNote)})</span>` : '';
+            resultLine = `${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${disadvNote} for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${modNote}`;
         } else {
             resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong> misses <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${disadvNote}`;
         }

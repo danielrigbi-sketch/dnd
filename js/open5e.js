@@ -185,6 +185,14 @@ export function open5eToNPC(m) {
     (a.desc || '').toLowerCase().includes('ranged attack')
   );
 
+  // Parse legendaryMax from legendary_desc (e.g. "can take 3 legendary actions")
+  const legendaryMax = (() => {
+    const desc = m.legendary_desc || '';
+    const match = desc.match(/can take\s+(\d+)\s+legendary/i) || desc.match(/(\d+)\s+legendary action/i);
+    if (match) return parseInt(match[1]);
+    return (m.legendary_actions?.length > 0) ? 3 : 0;
+  })();
+
   return {
     // ── Core combat ──────────────────────────────────────────────────────────
     maxHp:       m.hit_points || 10,
@@ -236,6 +244,10 @@ export function open5eToNPC(m) {
     bonusActions:     m.bonus_actions     || [],
     reactions:        m.reactions         || [],
     legendaryActions: m.legendary_actions || [],
+    legendaryMax:     legendaryMax,
+    legendaryUsed:    0,
+    bonusActions:     m.bonus_actions      || [],
+    bonusActionUsed:  false,
     specialAbilities: m.special_abilities || [],
 
     // ── Meta ──────────────────────────────────────────────────────────────────

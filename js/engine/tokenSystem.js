@@ -7,7 +7,7 @@
 
 import { typeColor } from '../monsters.js';
 import { getTileSize, getVisualScale, footprintsOverlap } from './sizeUtils.js';
-import { tileDistance, rollDice, parseSpellRangeFt } from './combatUtils.js';
+import { tileDistance, rollDice, parseSpellRangeFt, applyDamageModifiers } from './combatUtils.js';
 import { getCombatActions, getAllyActions, getSelfActions, applyMeleeModifier } from './classAbilities.js';
 
 const STS_ICON = {
@@ -50,6 +50,37 @@ function _actionEmoji(action) {
   if (name.includes('slam') || name.includes('smash')) return '👊';
   if (_isRangedAction(action)) return '🏹';
   return '⚔️';
+}
+
+/** Parse multiattack desc → ordered list of action objects to execute */
+function _parseMultiattack(desc, allActions) {
+  const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, a: 1, an: 1 };
+  const results = [];
+  const regex = /(one|two|three|four|five|a|an)\s+(?:with(?:\s+its)?\s+)?(\w+)/gi;
+  let m;
+  while ((m = regex.exec(desc)) !== null) {
+    const count = WORDS[m[1].toLowerCase()] || 1;
+    const keyword = m[2].toLowerCase();
+    const matched = allActions.find(a =>
+      a.name?.toLowerCase() !== 'multiattack' &&
+      a.attack_bonus != null &&
+      a.name?.toLowerCase().includes(keyword)
+    );
+    if (matched) for (let i = 0; i < count; i++) results.push(matched);
+  }
+  // Fallback: all non-multiattack attack actions
+  if (!results.length) {
+    allActions
+      .filter(a => a.name?.toLowerCase() !== 'multiattack' && a.attack_bonus != null)
+      .forEach(a => results.push(a));
+  }
+  return results.slice(0, 6);
+}
+
+/** Extract legendary action cost from name, e.g. "Wing Attack (Costs 2 Actions)" → 2 */
+function _legendaryCost(la) {
+  const m = (la.name || '').match(/costs?\s+(\d+)\s+action/i);
+  return m ? parseInt(m[1]) : 1;
 }
 
 export class TokenSystem {
@@ -365,6 +396,20 @@ export class TokenSystem {
       );
 
       if (npcActions.length > 0) {
+        // ── Multiattack button (if present) ────────────────────────────────
+        const multiattackAction = (attacker.actions || []).find(a => a.name?.toLowerCase() === 'multiattack');
+        if (multiattackAction) {
+          const seq = _parseMultiattack(multiattackAction.desc || '', attacker.actions || []);
+          if (seq.length > 1) {
+            actions.push({
+              label: `⚔️⚔️ Multiattack (${seq.length}x)`,
+              cls: 'attack multiattack',
+              fn: () => this._doMultiattack(myCName, targetCName, seq),
+            });
+            if (actions.length === 1) actions.push({ label: '──────────────', cls: 'disabled', fn: null });
+          }
+        }
+
         npcActions.forEach(action => {
           const isRanged  = _isRangedAction(action);
           const rangeFt   = _actionRangeFt(action);
@@ -388,6 +433,48 @@ export class TokenSystem {
             });
           }
         });
+
+        // ── Bonus Actions ──────────────────────────────────────────────────
+        const bonusActions = (attacker.bonusActions || []).filter(a => a.attack_bonus != null || _normActionDmg(a));
+        if (bonusActions.length) {
+          const bonusUsed = attacker.bonusActionUsed || false;
+          actions.push({ label: `── ⚡ Bonus${bonusUsed ? ' (used)' : ''} ──`, cls: 'disabled', fn: null });
+          bonusActions.forEach(ba => {
+            const rangeFt   = _actionRangeFt(ba);
+            const inRange   = distFt <= rangeFt;
+            const dmg       = _normActionDmg(ba);
+            const dmgLabel  = dmg ? ` (${dmg})` : '';
+            const unavail   = bonusUsed || !inRange;
+            actions.push({
+              label: `⚡ ${ba.name}${dmgLabel}${!inRange ? ' (out of range)' : ''}`,
+              cls: unavail ? 'disabled' : 'attack bonus',
+              fn: unavail ? null : () => {
+                this._doMonsterAction(myCName, targetCName, ba, false);
+                eng.db?.patchPlayerInDB(myCName, { bonusActionUsed: true });
+              },
+            });
+          });
+        }
+
+        // ── Legendary Actions (DM only) ────────────────────────────────────
+        const legMax = attacker.legendaryMax || 0;
+        const legActions = attacker.legendaryActions || [];
+        if (isDM && legMax > 0 && legActions.length) {
+          const legUsed = attacker.legendaryUsed || 0;
+          const legLeft = legMax - legUsed;
+          actions.push({ label: `── 👑 Legendary (${legLeft}/${legMax}) ──`, cls: 'disabled', fn: null });
+          legActions.forEach(la => {
+            const cost    = _legendaryCost(la);
+            const canUse  = legLeft >= cost;
+            const dmg     = _normActionDmg(la);
+            const dmgLabel = dmg ? ` (${dmg})` : '';
+            actions.push({
+              label: `👑 ${la.name}${dmgLabel}${cost > 1 ? ` ×${cost}` : ''}`,
+              cls: canUse ? 'attack legendary' : 'disabled',
+              fn: canUse ? () => this._doLegendaryAction(myCName, targetCName, la) : null,
+            });
+          });
+        }
 
         // Special abilities — info only
         const specials = attacker.specialAbilities || [];
@@ -632,6 +719,7 @@ export class TokenSystem {
     const ac       = target.ac ?? 10;
     const isRanged = _isRangedAction(action);
     const dmgDice  = _normActionDmg(action) || '1d6';
+    const dmgType  = (action.damage_type || '').toLowerCase() || null;
     const hasAttackRoll = action.attack_bonus != null;
 
     let hit = true, crit = false, miss = false, rawRoll = 20, total = 20;
@@ -646,17 +734,20 @@ export class TokenSystem {
       hit     = crit || (!miss && total >= ac);
     }
 
-    let damage = 0;
+    let damage = 0, dmgNote = '';
     if (hit) {
       const { total: dmgTotal } = rollDice(dmgDice, crit);
-      damage = Math.max(1, dmgTotal);
+      const base = Math.max(1, dmgTotal);
+      const { damage: finalDmg, note } = applyDamageModifiers(base, dmgType, target);
+      damage = finalDmg;
+      dmgNote = note;
       const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
       eng.db?.updatePlayerHPInDB(targetCName, newHp);
     }
 
     eng.db?.saveRollToDB({
       type: 'ATTACK', attackType: isRanged ? 'ranged' : 'melee',
-      actionName: action.name,
+      actionName: action.name, dmgNote,
       cName: attackerCName, pName: attacker.pName || attackerCName,
       target: targetCName, rawRoll, total, ac, hit, crit, miss, disadvantage,
       damage: hit ? damage : 0, dmgDice,
@@ -669,6 +760,33 @@ export class TokenSystem {
         ? (hit ? 'RANGED_HIT' : 'RANGED_MISS')
         : (crit ? 'MELEE_CRIT' : hit ? 'MELEE_HIT' : 'MELEE_MISS');
       eng.anim?.trigger(animType, atkTk, tarTk);
+    }
+  }
+
+  /** Execute multiattack — runs each sub-attack sequentially with 400ms gaps */
+  _doMultiattack(attackerCName, targetCName, attackSequence) {
+    attackSequence.forEach((action, i) => {
+      setTimeout(() => this._doMonsterAction(attackerCName, targetCName, action, false), i * 400);
+    });
+  }
+
+  /** Execute a legendary action — tracks usage cost */
+  _doLegendaryAction(attackerCName, targetCName, la) {
+    const eng      = this.e;
+    const attacker = eng.S.players[attackerCName] || {};
+    const cost     = _legendaryCost(la);
+    const newUsed  = (attacker.legendaryUsed || 0) + cost;
+    eng.db?.patchPlayerInDB(attackerCName, { legendaryUsed: newUsed });
+
+    if (la.attack_bonus != null || _normActionDmg(la)) {
+      this._doMonsterAction(attackerCName, targetCName, la, false);
+    } else {
+      // Non-attack legendary action — just log it
+      eng.db?.saveRollToDB({
+        type: 'STATUS', cName: attackerCName,
+        status: `👑 ${attacker.pName || attackerCName} uses legendary action: ${la.name}`,
+        ts: Date.now(),
+      });
     }
   }
 

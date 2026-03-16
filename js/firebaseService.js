@@ -95,6 +95,7 @@ export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrai
 export function saveRollToDB(rollData)              { push(ref(db, `rooms/${activeRoom}/rolls`), rollData); }
 export async function getPlayerData(cName)          { return (await get(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`))).val(); }
 export function updatePlayerHPInDB(cName, hp)       { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { hp }); }
+export function patchPlayerInDB(cName, fields)      { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), fields); }
 export function updatePlayerStatusesInDB(cName, st) { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { statuses: st }); }
 export function updatePlayerVisibilityInDB(cName,v) { update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { isHidden: v }); }
 export function removePlayerFromDB(cName)           { const k=sanitizeCName(cName); remove(ref(db, `rooms/${activeRoom}/players/${k}`)); remove(ref(db, `rooms/${activeRoom}/initiative/${k}`)); }

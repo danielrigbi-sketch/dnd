@@ -88,6 +88,12 @@
 .action-btn.attack:hover { background: rgba(231,76,60,0.18); border-color: #e74c3c; color: #ff8a80; }
 .action-btn.heal { border-color: rgba(46,204,113,0.45); }
 .action-btn.heal:hover { background: rgba(46,204,113,0.18); border-color: #2ecc71; color: #a8ffcb; }
+.action-btn.multiattack { border-color: rgba(231,76,60,0.7); font-weight: bold; }
+.action-btn.multiattack:hover { background: rgba(231,76,60,0.25); border-color: #e74c3c; color: #ff8a80; }
+.action-btn.bonus { border-color: rgba(52,152,219,0.5); }
+.action-btn.bonus:hover { background: rgba(52,152,219,0.18); border-color: #3498db; color: #7ec8e3; }
+.action-btn.legendary { border-color: rgba(241,196,15,0.6); color: #f1c40f; }
+.action-btn.legendary:hover { background: rgba(241,196,15,0.18); border-color: #f1c40f; color: #ffe566; }
 .action-popup-close {
     position: absolute; top: 6px; right: 8px; background: none; border: none;
     color: #888; cursor: pointer; font-size: 14px; padding: 2px 5px; border-radius: 4px;
