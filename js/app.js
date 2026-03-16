@@ -1033,7 +1033,8 @@ window.resetRoller = () => {
     updateDiceColor(pColor);
 };
 
-window.setMode   = (mode) => { activeMode = activeMode === mode ? 'normal' : mode; updateModeUI(activeMode); };
+window.setMode      = (mode) => { activeMode = activeMode === mode ? 'normal' : mode; updateModeUI(activeMode); };
+window.getCombatMode = () => activeMode;
 window.toggleMute = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? t('unmute_sound') : t('mute_sound'); };
 
 window.toggleCombat = async () => {

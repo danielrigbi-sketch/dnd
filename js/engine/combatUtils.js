@@ -34,6 +34,49 @@ export function applyDamageModifiers(damage, damageType, target) {
   return { damage, modifier: 'normal', note: '' };
 }
 
+/**
+ * Get D&D 5e condition-based roll modifiers for an attack.
+ * @param {Object} attacker - has .statuses array
+ * @param {Object} target   - has .statuses array
+ * @param {boolean} isMelee - true for melee, false for ranged
+ * @param {number}  distFt  - distance in feet (for Paralyzed auto-crit)
+ * @returns {{ advantage: bool, disadvantage: bool, autoCrit: bool, reasons: string[] }}
+ */
+export function getConditionModifiers(attacker, target, isMelee = true, distFt = 5) {
+  const aSts = attacker.statuses || [];
+  const tSts = target.statuses   || [];
+  let advantage = false, disadvantage = false, autoCrit = false;
+  const reasons = [];
+
+  // Attacker conditions → disadvantage
+  if (aSts.includes('Poisoned'))   { disadvantage = true; reasons.push('poisoned');   }
+  if (aSts.includes('Frightened')) { disadvantage = true; reasons.push('frightened'); }
+  if (aSts.includes('Blinded'))    { disadvantage = true; reasons.push('blinded');    }
+  if (aSts.includes('Restrained')) { disadvantage = true; reasons.push('restrained'); }
+
+  // Prone attacker: disadvantage on all attacks
+  if (aSts.includes('Prone'))      { disadvantage = true; reasons.push('prone');      }
+
+  // Target conditions
+  if (tSts.includes('Prone')) {
+    if (isMelee) { advantage    = true; reasons.push('target prone');         }
+    else         { disadvantage = true; reasons.push('target prone (ranged)'); }
+  }
+  if (tSts.includes('Blinded'))    { advantage = true; reasons.push('target blinded');    }
+  if (tSts.includes('Restrained')) { advantage = true; reasons.push('target restrained'); }
+  if (tSts.includes('Paralyzed') && isMelee && distFt <= 5) {
+    autoCrit = true; advantage = true; reasons.push('target paralyzed');
+  }
+
+  // Invisible attacker → advantage
+  if (aSts.includes('Invisible'))  { advantage = true; reasons.push('invisible'); }
+
+  // D&D 5e rule: advantage and disadvantage cancel each other
+  if (advantage && disadvantage) { advantage = false; disadvantage = false; }
+
+  return { advantage, disadvantage, autoCrit, reasons };
+}
+
 /** Chebyshev tile distance between two tokens (diagonal counts as 1). */
 export function tileDistance(tok1, tok2) {
   return Math.max(Math.abs((tok1.gx ?? 0) - (tok2.gx ?? 0)), Math.abs((tok1.gy ?? 0) - (tok2.gy ?? 0)));

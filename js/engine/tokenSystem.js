@@ -7,7 +7,7 @@
 
 import { typeColor } from '../monsters.js';
 import { getTileSize, getVisualScale, footprintsOverlap } from './sizeUtils.js';
-import { tileDistance, rollDice, parseSpellRangeFt, applyDamageModifiers } from './combatUtils.js';
+import { tileDistance, rollDice, parseSpellRangeFt, applyDamageModifiers, getConditionModifiers } from './combatUtils.js';
 import { getCombatActions, getAllyActions, getSelfActions, applyMeleeModifier } from './classAbilities.js';
 
 const STS_ICON = {
@@ -18,6 +18,25 @@ const STS_ICON = {
 
 function ck(gx, gy) { return `${Math.floor(gx)}_${Math.floor(gy)}`; }
 function cheb(ax, ay, bx, by) { return Math.max(Math.abs(ax - bx), Math.abs(ay - by)); }
+
+// ── Concentration check (2B) ──────────────────────────────────────────────────
+/** Roll CON save when a concentrating target takes damage. DC = max(10, floor(dmg/2)). */
+function _checkConcentration(eng, targetCName, target, damage) {
+  if (!target.concentrating || damage <= 0) return;
+  const dc = Math.max(10, Math.floor(damage / 2));
+  const conScore = target._con ?? target.constitution ?? 10;
+  const conMod   = target.savingThrows?.constitution ?? Math.floor((conScore - 10) / 2);
+  const roll     = Math.floor(Math.random() * 20) + 1;
+  const total    = roll + conMod;
+  const saved    = total >= dc;
+  if (!saved) window.toggleConcentration?.(targetCName, false);
+  eng.db?.saveRollToDB({
+    type: 'CONCENTRATION', cName: targetCName,
+    pName: target.pName || targetCName,
+    conRoll: roll, conMod, conTotal: total, dc, saved,
+    color: target.pColor || '#9b59b6', ts: Date.now(),
+  });
+}
 
 // ── Monster action helpers ────────────────────────────────────────────────────
 /** Build damage dice string from Open5e action (handles split damage_dice + damage_bonus) */
@@ -605,11 +624,25 @@ export class TokenSystem {
     const target   = eng.S.players[targetCName]   || {};
     const bonus    = attacker.melee ?? 0;
     const ac       = target.ac ?? 10;
-    const rawRoll  = Math.floor(Math.random() * 20) + 1;
+
+    // Condition modifiers + global adv/dis mode
+    const atkTok = eng.S.tokens[attackerCName], tarTok = eng.S.tokens[targetCName];
+    const distFt = tileDistance(atkTok || {}, tarTok || {}) * 5;
+    const conds = getConditionModifiers(attacker, target, true, distFt);
+    const globalMode = window.getCombatMode?.() || 'normal';
+    const useAdv = conds.advantage  || globalMode === 'adv';
+    const useDis = conds.disadvantage || globalMode === 'dis';
+    const finalAdv = useAdv && !useDis, finalDis = useDis && !useAdv;
+    window.setMode?.('normal');
+
+    const r1 = Math.floor(Math.random() * 20) + 1;
+    const r2 = (finalAdv || finalDis) ? Math.floor(Math.random() * 20) + 1 : r1;
+    const rawRoll = conds.autoCrit ? 20 : (finalAdv ? Math.max(r1, r2) : finalDis ? Math.min(r1, r2) : r1);
     const total    = rawRoll + bonus;
-    const crit     = rawRoll === 20;
-    const miss     = rawRoll === 1;
+    const crit     = rawRoll === 20 || conds.autoCrit;
+    const miss     = rawRoll === 1 && !conds.autoCrit;
     const hit      = crit || (!miss && total >= ac);
+    const condNote = conds.reasons.length ? ` (${conds.reasons.join(', ')})` : '';
 
     // Bardic Inspiration: +1d6 to attack roll
     let bardicBonus = 0;
@@ -645,35 +678,46 @@ export class TokenSystem {
       damage = baseDmg;
       const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
       eng.db?.updatePlayerHPInDB(targetCName, newHp);
+      _checkConcentration(eng, targetCName, target, damage);
     }
 
     eng.db?.saveRollToDB({
       type: 'ATTACK', cName: attackerCName, pName: attacker.pName || attackerCName,
       target: targetCName, rawRoll, total: total + bardicBonus, ac, hit, crit, miss,
+      advantage: finalAdv, disadvantage: finalDis, condNote,
       damage: hit ? damage : 0, dmgDice: dmgDice + bonusDmgNote,
       color: attacker.pColor || '#e74c3c', ts: Date.now(),
     });
 
     // Visual animation
-    const atkTk = eng.S.tokens[attackerCName], tarTk = eng.S.tokens[targetCName];
-    if (tarTk) eng.anim?.trigger(crit ? 'MELEE_CRIT' : hit ? 'MELEE_HIT' : 'MELEE_MISS', atkTk, tarTk);
+    if (tarTok) eng.anim?.trigger(crit ? 'MELEE_CRIT' : hit ? 'MELEE_HIT' : 'MELEE_MISS', atkTok, tarTok);
   }
 
-  _doRangedAttack(attackerCName, targetCName, disadvantage = false) {
+  _doRangedAttack(attackerCName, targetCName, pointBlankDis = false) {
     const eng = this.e;
     const attacker = eng.S.players[attackerCName] || {};
     const target   = eng.S.players[targetCName]   || {};
     const bonus    = attacker.ranged ?? 0;
     const ac       = target.ac ?? 10;
 
-    // Disadvantage = roll 2d20, take lower
+    // Condition modifiers + global adv/dis + point-blank disadvantage
+    const atkTok2 = eng.S.tokens[attackerCName], tarTok2 = eng.S.tokens[targetCName];
+    const distFt2 = tileDistance(atkTok2 || {}, tarTok2 || {}) * 5;
+    const conds2 = getConditionModifiers(attacker, target, false, distFt2);
+    const globalMode2 = window.getCombatMode?.() || 'normal';
+    const useAdv2 = conds2.advantage  || globalMode2 === 'adv';
+    const useDis2 = conds2.disadvantage || globalMode2 === 'dis' || pointBlankDis;
+    const finalAdv2 = useAdv2 && !useDis2, finalDis2 = useDis2 && !useAdv2;
+    window.setMode?.('normal');
+
     const r1 = Math.floor(Math.random() * 20) + 1;
-    const r2 = disadvantage ? Math.floor(Math.random() * 20) + 1 : r1;
-    const rawRoll = disadvantage ? Math.min(r1, r2) : r1;
+    const r2 = (finalAdv2 || finalDis2) ? Math.floor(Math.random() * 20) + 1 : r1;
+    const rawRoll = finalAdv2 ? Math.max(r1, r2) : finalDis2 ? Math.min(r1, r2) : r1;
     const total   = rawRoll + bonus;
     const crit    = rawRoll === 20;
     const miss    = rawRoll === 1;
     const hit     = crit || (!miss && total >= ac);
+    const condNote2 = conds2.reasons.length ? ` (${conds2.reasons.join(', ')})` : '';
 
     const dmgDice = attacker.rangedDmg || '1d6';
     let damage = 0;
@@ -697,22 +741,22 @@ export class TokenSystem {
       damage = baseDmg;
       const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
       eng.db?.updatePlayerHPInDB(targetCName, newHp);
+      _checkConcentration(eng, targetCName, target, damage);
     }
 
     eng.db?.saveRollToDB({
       type: 'ATTACK', attackType: 'ranged',
       cName: attackerCName, pName: attacker.pName || attackerCName,
-      target: targetCName, rawRoll, total, ac, hit, crit, miss, disadvantage,
+      target: targetCName, rawRoll, total, ac, hit, crit, miss,
+      advantage: finalAdv2, disadvantage: finalDis2, condNote: condNote2,
       damage: hit ? damage : 0, dmgDice: dmgDice + rBonusDmgNote, color: attacker.pColor || '#3498db', ts: Date.now(),
     });
 
-    // Visual animation
-    const atkTk2 = eng.S.tokens[attackerCName], tarTk2 = eng.S.tokens[targetCName];
-    if (tarTk2) eng.anim?.trigger(hit ? 'RANGED_HIT' : 'RANGED_MISS', atkTk2, tarTk2);
+    if (tarTok2) eng.anim?.trigger(hit ? 'RANGED_HIT' : 'RANGED_MISS', atkTok2, tarTok2);
   }
 
   /** Execute a named monster action (from Open5e actions array) */
-  _doMonsterAction(attackerCName, targetCName, action, disadvantage = false) {
+  _doMonsterAction(attackerCName, targetCName, action, pointBlankDis = false) {
     const eng      = this.e;
     const attacker = eng.S.players[attackerCName] || {};
     const target   = eng.S.players[targetCName]   || {};
@@ -722,15 +766,25 @@ export class TokenSystem {
     const dmgType  = (action.damage_type || '').toLowerCase() || null;
     const hasAttackRoll = action.attack_bonus != null;
 
+    // Condition modifiers + global mode
+    const atkTkM = eng.S.tokens[attackerCName], tarTkM = eng.S.tokens[targetCName];
+    const distFtM = tileDistance(atkTkM || {}, tarTkM || {}) * 5;
+    const condsM = getConditionModifiers(attacker, target, !isRanged, distFtM);
+    const globalModeM = window.getCombatMode?.() || 'normal';
+    const useAdvM = condsM.advantage  || globalModeM === 'adv';
+    const useDisM = condsM.disadvantage || globalModeM === 'dis' || pointBlankDis;
+    const finalAdvM = useAdvM && !useDisM, finalDisM = useDisM && !useAdvM;
+    window.setMode?.('normal');
+
     let hit = true, crit = false, miss = false, rawRoll = 20, total = 20;
     if (hasAttackRoll) {
       const bonus = action.attack_bonus ?? 0;
       const r1 = Math.floor(Math.random() * 20) + 1;
-      const r2 = disadvantage ? Math.floor(Math.random() * 20) + 1 : r1;
-      rawRoll = disadvantage ? Math.min(r1, r2) : r1;
+      const r2 = (finalAdvM || finalDisM) ? Math.floor(Math.random() * 20) + 1 : r1;
+      rawRoll = condsM.autoCrit ? 20 : (finalAdvM ? Math.max(r1, r2) : finalDisM ? Math.min(r1, r2) : r1);
       total   = rawRoll + bonus;
-      crit    = rawRoll === 20;
-      miss    = rawRoll === 1;
+      crit    = rawRoll === 20 || condsM.autoCrit;
+      miss    = rawRoll === 1 && !condsM.autoCrit;
       hit     = crit || (!miss && total >= ac);
     }
 
@@ -743,23 +797,25 @@ export class TokenSystem {
       dmgNote = note;
       const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
       eng.db?.updatePlayerHPInDB(targetCName, newHp);
+      _checkConcentration(eng, targetCName, target, damage);
     }
 
     eng.db?.saveRollToDB({
       type: 'ATTACK', attackType: isRanged ? 'ranged' : 'melee',
       actionName: action.name, dmgNote,
       cName: attackerCName, pName: attacker.pName || attackerCName,
-      target: targetCName, rawRoll, total, ac, hit, crit, miss, disadvantage,
+      target: targetCName, rawRoll, total, ac, hit, crit, miss,
+      advantage: finalAdvM, disadvantage: finalDisM,
+      condNote: condsM.reasons.length ? ` (${condsM.reasons.join(', ')})` : '',
       damage: hit ? damage : 0, dmgDice,
       color: attacker.pColor || '#e74c3c', ts: Date.now(),
     });
 
-    const atkTk = eng.S.tokens[attackerCName], tarTk = eng.S.tokens[targetCName];
-    if (tarTk) {
+    if (tarTkM) {
       const animType = isRanged
         ? (hit ? 'RANGED_HIT' : 'RANGED_MISS')
         : (crit ? 'MELEE_CRIT' : hit ? 'MELEE_HIT' : 'MELEE_MISS');
-      eng.anim?.trigger(animType, atkTk, tarTk);
+      eng.anim?.trigger(animType, atkTkM, tarTkM);
     }
   }
 
@@ -816,17 +872,22 @@ export class TokenSystem {
         damage = Math.max(1, dmgTotal);
         const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
         eng.db?.updatePlayerHPInDB(targetCName, newHp);
+        _checkConcentration(eng, targetCName, target, damage);
       }
     } else if (spell.dc_type && dmgDice) {
-      // Saving throw — target rolls flat d20 vs spellSaveDC
+      // Saving throw — target rolls d20 + save proficiency vs spellSaveDC (2D)
       savingThrow = true;
-      saveRoll = Math.floor(Math.random() * 20) + 1;
+      const saveType  = spell.dc_type.toLowerCase();
+      const saveScore = target[`_${saveType}`] ?? target[saveType] ?? 10;
+      const saveBonus = target.savingThrows?.[saveType] ?? Math.floor((saveScore - 10) / 2);
+      saveRoll = Math.floor(Math.random() * 20) + 1 + saveBonus;
       savedHalf = saveRoll >= spellSaveDC;
       const { total: dmgTotal } = rollDice(dmgDice, false);
       damage = savedHalf ? Math.floor(dmgTotal / 2) : dmgTotal;
       if (damage > 0) {
         const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - damage);
         eng.db?.updatePlayerHPInDB(targetCName, newHp);
+        _checkConcentration(eng, targetCName, target, damage);
       }
       hit = true; // always "fires"
     } else {

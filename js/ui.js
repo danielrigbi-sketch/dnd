@@ -430,7 +430,8 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
         const bg = data.hit ? 'rgba(241,196,15,0.07)' : 'rgba(231,76,60,0.07)';
         let resultLine;
         const atkIcon = data.attackType === 'ranged' ? '🏹' : '⚔️';
-        const disadvNote = data.disadvantage ? ' <span style="color:#e67e22;font-size:0.85em;">(point-blank disadv)</span>' : '';
+        const advDisNote = data.advantage ? ' <span style="color:#27ae60;font-size:0.85em;">⬆ adv</span>' : data.disadvantage ? ' <span style="color:#e67e22;font-size:0.85em;">⬇ dis</span>' : '';
+        const condNote = data.condNote ? `<span style="color:#aaa;font-size:0.82em;">${_escapeHtml(data.condNote)}</span>` : '';
         if (data.crit) {
             const critModNote = data.dmgNote ? ` <span style="color:#aaa;font-size:0.85em;">(${_escapeHtml(data.dmgNote)})</span>` : '';
             resultLine = `<span style="color:#f1c40f;font-weight:900;">CRITICAL HIT!</span> ${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> strikes <strong>${_escapeHtml(data.target)}</strong> (🎲${data.rawRoll}+${data.total - data.rawRoll} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${critModNote}`;
@@ -438,9 +439,9 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
             resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong> fumbles against <strong>${_escapeHtml(data.target)}</strong> — automatic miss!`;
         } else if (data.hit) {
             const modNote = data.dmgNote ? ` <span style="color:#aaa;font-size:0.85em;">(${_escapeHtml(data.dmgNote)})</span>` : '';
-            resultLine = `${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${disadvNote} for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${modNote}`;
+            resultLine = `${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${advDisNote} for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${modNote} ${condNote}`;
         } else {
-            resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong> misses <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${disadvNote}`;
+            resultLine = `💨 <strong>${_escapeHtml(data.cName)}</strong> misses <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${advDisNote} ${condNote}`;
         }
         const atkFlavorLine = data.flavor || attackFlavor(data);
         entry.innerHTML = `
@@ -476,6 +477,19 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
                 </div>
                 <div style="color:var(--ink); margin-top:4px; font-size:0.88em;">${resultLine}</div>
                 <div style="color:#a88cd0; font-style:italic; font-size:0.80em; margin-top:3px;">${spFlavorLine}</div>
+            </div>`;
+    } else if (data.type === 'CONCENTRATION') {
+        const savedColor = data.saved ? '#2ecc71' : '#e74c3c';
+        const savedText  = data.saved
+          ? `🔮 held! (🎲${data.conRoll}+${data.conMod}=${data.conTotal} ≥ DC ${data.dc})`
+          : `💔 broken! (🎲${data.conRoll}+${data.conMod}=${data.conTotal} &lt; DC ${data.dc})`;
+        entry.innerHTML = `
+            <div style="margin-bottom:8px; padding:7px 10px; border-radius:7px; background:rgba(155,89,182,0.07); border-left:4px solid ${savedColor};">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px;">
+                    <span style="${nameStyle}">🔮 Concentration</span>
+                    <span style="color:#888; font-size:10px; flex-shrink:0;">${time}</span>
+                </div>
+                <div style="color:var(--ink); margin-top:3px; font-size:0.88em;"><strong>${_escapeHtml(data.cName)}</strong> CON save — ${savedText}</div>
             </div>`;
     } else if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
