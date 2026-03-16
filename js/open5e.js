@@ -369,6 +369,18 @@ export function open5eToNPC(m) {
     bonusActionUsed:  false,
     specialAbilities: m.special_abilities || [],
 
+    // ── Lair actions (3C) ────────────────────────────────────────────────────
+    lairActions: (() => {
+      if (Array.isArray(m.lair_actions) && m.lair_actions.length) return m.lair_actions;
+      // Fallback: special ability with "Lair Actions" in the name
+      const la = (m.special_abilities || []).find(a => /lair\s+actions?/i.test(a.name || ''));
+      if (la?.desc) {
+        const items = la.desc.split(/\n/).map(s => s.trim()).filter(s => s && !/^on initiative/i.test(s));
+        return items.map((d, i) => ({ name: `Lair Action ${i + 1}`, desc: d }));
+      }
+      return [];
+    })(),
+
     // ── Player card quick-roll macros (named per-attack buttons) ─────────────
     customAttacks,
 

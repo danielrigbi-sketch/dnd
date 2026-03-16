@@ -385,6 +385,48 @@ export function showToast(msg, type='info', durationMs=3000) {
 }
 window.showToast = showToast;
 
+/** Lair action prompt — shown to DM at the top of each round for lair-capable monsters. */
+function _showLairActionPrompt(npcName, lairActions) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const esc = s => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const el = document.createElement('div');
+    el.className = 'cr-toast info';
+    el.style.cssText = 'cursor:default; min-width:220px; max-width:280px; padding:10px 12px;';
+    const shown = lairActions.slice(0, 4);
+    el.innerHTML = `
+        <div style="font-weight:700; margin-bottom:5px;">🏰 Lair Actions — ${esc(npcName)}</div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+            ${shown.map((a, i) => `
+                <button class="lair-action-btn" data-idx="${i}"
+                    style="text-align:left; padding:5px 8px; background:rgba(52,152,219,0.15);
+                           border:1px solid rgba(52,152,219,0.4); color:white; border-radius:5px;
+                           cursor:pointer; font-size:11px; line-height:1.3;"
+                    title="${esc(a.desc || '')}">
+                    ${esc(a.name)}
+                </button>`).join('')}
+            <button class="lair-skip-btn"
+                style="padding:4px; background:transparent; border:1px solid rgba(255,255,255,0.15);
+                       color:#888; border-radius:5px; cursor:pointer; font-size:11px;">
+                ✗ Skip
+            </button>
+        </div>
+    `;
+    container.appendChild(el);
+    const remove = () => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); };
+    const timer = setTimeout(remove, 12000);
+    el.querySelectorAll('.lair-action-btn').forEach(btn => {
+        btn.onclick = () => {
+            const action = shown[parseInt(btn.dataset.idx)];
+            db.saveRollToDB({ cName: npcName, type: 'STATUS',
+                status: `🏰 Lair Action: ${action.name}${action.desc ? ' — ' + action.desc.slice(0, 80) + (action.desc.length > 80 ? '…' : '') : ''}`,
+                ts: Date.now() });
+            clearTimeout(timer); remove();
+        };
+    });
+    el.querySelector('.lair-skip-btn').onclick = () => { clearTimeout(timer); remove(); };
+}
+
 /** Opportunity attack prompt — shown to DM when a hostile token leaves threat range. */
 function _showOAPrompt(attackerName, targetName, onAttack) {
     const container = document.getElementById('toast-container');
@@ -836,6 +878,12 @@ window.nextTurn = () => {
         next = 0;
         round++;
         db.saveRollToDB({ cName: "DM", type: "STATUS", status: `⚔️ Round ${round}!`, ts: Date.now() });
+        // Lair Actions fire at initiative count 20 — top of each round (3C)
+        if (mapEngine) {
+            Object.entries(mapEngine.S.players).forEach(([name, p]) => {
+                if ((p.lairActions || []).length > 0) _showLairActionPrompt(name, p.lairActions);
+            });
+        }
     }
     currentActiveTurn  = next;
     currentRoundNumber = round;
