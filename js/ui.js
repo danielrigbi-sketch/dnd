@@ -6,6 +6,9 @@ import { attackFlavor, spellFlavor, healFlavor } from "./combatFlavor.js";
 let expandedCardId = null;
 let _lastPlayersData = null;
 
+/** Escape a value for safe interpolation inside a single-quoted JS onclick argument */
+const _esc = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
 window.toggleCardExpand = (name) => {
     expandedCardId = expandedCardId === name ? null : name;
     document.querySelectorAll('.card-details').forEach(el => el.classList.remove('open'));
@@ -92,9 +95,9 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             const isNPC = i.userRole === 'npc';
             const isOpen = expandedCardId === i.name;
             const saves = _saves; // already computed above
-            const deleteBtn = isDM ? `<button onclick="window.removeNPC('${i.name}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">🗑️</button>` : '';
-            const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${i.name}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
-            const impersonateBtn = isDM ? `<button onclick="window.impersonate('${i.name}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
+            const deleteBtn = isDM ? `<button onclick="window.removeNPC('${_esc(i.name)}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">🗑️</button>` : '';
+            const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${_esc(i.name)}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? '🙈' : '👁️'}</button>` : '';
+            const impersonateBtn = isDM ? `<button onclick="window.impersonate('${_esc(i.name)}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">🎭</button>` : '';
 
             const raceStr = i.race || "";
             const classStr = i.class || "";
@@ -108,8 +111,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             if (i.customAttacks && i.customAttacks.length > 0) {
                 customAttacksHTML = i.customAttacks.map(atk => `
                     <div style="display:flex; gap:5px; margin-top:6px;">
-                        <button class="macro-btn melee" onclick="window.rollMacro('${i.name}', '${atk.name}', ${atk.bonus})">⚔️ ${atk.name}</button>
-                        ${atk.dmg ? `<button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${atk.name}', '${atk.dmg}', ${atk.bonus})">🩸 ${atk.dmg}</button>` : ''}
+                        <button class="macro-btn melee" onclick="window.rollMacro('${_esc(i.name)}', '${_esc(atk.name)}', ${atk.bonus})">⚔️ ${atk.name}</button>
+                        ${atk.dmg ? `<button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${_esc(i.name)}', '${_esc(atk.name)}', '${_esc(atk.dmg)}', ${atk.bonus})">🩸 ${atk.dmg}</button>` : ''}
                     </div>
                 `).join('');
             }
@@ -130,29 +133,29 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                 <div class="death-saves-block" style="margin-top:8px;">
                     ${isStable ? `
                         <div class="ds-stable-badge">💚 STABLE</div>
-                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${i.name}')" class="ds-reset-btn">↺ Reset</button>` : ''}
+                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${_esc(i.name)}')" class="ds-reset-btn">↺ Reset</button>` : ''}
                     ` : isDead ? `
                         <div class="ds-dead-badge">💀 DEAD</div>
-                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${i.name}')" class="ds-reset-btn">↺ Reset</button>` : ''}
+                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${_esc(i.name)}')" class="ds-reset-btn">↺ Reset</button>` : ''}
                     ` : `
                         <div style="font-size:10px; color:#ff7675; font-weight:bold; margin-bottom:5px;">💀 Death Saves</div>
                         <div style="display:flex; gap:8px; align-items:center; justify-content:space-between;">
                             <div style="display:flex; align-items:center; gap:3px;">
                                 <span style="font-size:9px; color:#2ecc71; margin-left:2px;">✔</span>
                                 ${saves.successes.map((s,idx) => `
-                                    <button class="ds-btn ds-success ${s?'active':''}" onclick="window.toggleDeathSave('${i.name}','successes',${idx})" ${isDM||isOwner?'':' disabled'}></button>
+                                    <button class="ds-btn ds-success ${s?'active':''}" onclick="window.toggleDeathSave('${_esc(i.name)}','successes',${idx})" ${isDM||isOwner?'':' disabled'}></button>
                                 `).join('')}
                             </div>
                             <div style="display:flex; align-items:center; gap:3px;">
                                 <span style="font-size:9px; color:#e74c3c; margin-left:2px;">✖</span>
                                 ${saves.failures.map((f,idx) => `
-                                    <button class="ds-btn ds-fail ${f?'active':''}" onclick="window.toggleDeathSave('${i.name}','failures',${idx})" ${isDM||isOwner?'':' disabled'}></button>
+                                    <button class="ds-btn ds-fail ${f?'active':''}" onclick="window.toggleDeathSave('${_esc(i.name)}','failures',${idx})" ${isDM||isOwner?'':' disabled'}></button>
                                 `).join('')}
                             </div>
                             ${(isDM||isOwner) ? `
                                 <div class="hp-controls">
                                     <input type="number" id="hp-input-${i.name}" class="hp-amount-input" value="1" min="1">
-                                    <button class="hp-edit-btn plus" onclick="window.changeHP('${i.name}', true)" title="Heal">+</button>
+                                    <button class="hp-edit-btn plus" onclick="window.changeHP('${_esc(i.name)}', true)" title="Heal">+</button>
                                 </div>
                             ` : ''}
                         </div>
@@ -167,8 +170,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                         ${(isDM||isOwner) ? `
                             <div class="hp-controls">
                                 <input type="number" id="hp-input-${i.name}" class="hp-amount-input" value="1" min="1">
-                                <button class="hp-edit-btn minus" onclick="window.changeHP('${i.name}', false)">-</button>
-                                <button class="hp-edit-btn plus"  onclick="window.changeHP('${i.name}', true)">+</button>
+                                <button class="hp-edit-btn minus" onclick="window.changeHP('${_esc(i.name)}', false)">-</button>
+                                <button class="hp-edit-btn plus"  onclick="window.changeHP('${_esc(i.name)}', true)">+</button>
                             </div>
                         ` : ''}
                     </div>
@@ -189,7 +192,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
                                 ${activeBadge}${concBadge}
                                 <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
-                                <button id="expand-btn-${i.name}" class="expand-btn ${isOpen ? 'open' : ''}" onclick="window.toggleCardExpand('${i.name}')">▼</button>
+                                <button id="expand-btn-${i.name}" class="expand-btn ${isOpen ? 'open' : ''}" onclick="window.toggleCardExpand('${_esc(i.name)}')">▼</button>
                             </div>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
@@ -210,8 +213,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                         return `<span class="status-badge" style="background:${col}22;border-color:${col}66;color:${col};display:inline-flex;align-items:center;gap:3px;">${displayIcon} ${s}</span>`;
                     }).join('')}
                     ${isDM ? `
-                        <button onclick="toggleStatusPicker('${i.name}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>
-                        <button onclick="window.toggleConcentration('${i.name}')" title="Toggle Concentration" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; opacity:${i.concentrating?1:0.4};">🔮</button>
+                        <button onclick="toggleStatusPicker('${_esc(i.name)}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">✨+</button>
+                        <button onclick="window.toggleConcentration('${_esc(i.name)}')" title="Toggle Concentration" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; opacity:${i.concentrating?1:0.4};">🔮</button>
                     ` : ''}
                 </div>
                 <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
@@ -228,7 +231,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             {n:'Blessed',icon:'✨',c:'#f1c40f'},{n:'Concentrating',icon:'🔮',c:'#9b59b6'}
                         ].map(c => {
                             const active = (i.statuses||[]).includes(c.n);
-                            return `<button onclick="window.toggleStatus('${i.name}', '${c.n}'); document.getElementById('status-picker-${i.name}').style.display='none';"
+                            return `<button onclick="window.toggleStatus('${_esc(i.name)}', '${c.n}'); document.getElementById('status-picker-${i.name}').style.display='none';"
                               title="${c.n}" style="font-size:11px; padding:4px 6px; background:${active ? c.c : 'rgba(255,255,255,0.06)'}; color:white; border:1px solid ${active ? c.c : 'rgba(255,255,255,0.1)'}; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:3px; transition:all 0.15s;">
                               <span>${c.icon}</span><span style="font-size:9px;font-weight:${active?'700':'400'}">${c.n}</span></button>`;
                         }).join('')}
@@ -248,12 +251,12 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             <div style="font-size:10px; color:#aaa; margin-bottom:5px;">${t('card_macros_title')}</div>
                             <div style="display:flex; flex-direction:column; gap:5px;">
                                 <div style="display:flex; gap:5px;">
-                                    <button class="macro-btn melee" onclick="window.rollMacro('${i.name}', '${t('card_melee')}', ${i.melee || 0})">⚔️ ${t('macro_attack')}</button>
-                                    <button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_melee')}', '${i.meleeDmg || '1d6'}', ${i.melee || 0})">🩸 ${t('macro_dmg')} (${i.meleeDmg || '1d6'})</button>
+                                    <button class="macro-btn melee" onclick="window.rollMacro('${_esc(i.name)}', '${t('card_melee')}', ${i.melee || 0})">⚔️ ${t('macro_attack')}</button>
+                                    <button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${_esc(i.name)}', '${t('card_melee')}', '${_esc(i.meleeDmg || '1d6')}', ${i.melee || 0})">🩸 ${t('macro_dmg')} (${i.meleeDmg || '1d6'})</button>
                                 </div>
                                 <div style="display:flex; gap:5px;">
-                                    <button class="macro-btn" onclick="window.rollMacro('${i.name}', '${t('card_ranged')}', ${i.ranged || 0})">🏹 ${t('macro_attack')}</button>
-                                    <button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${i.name}', '${t('card_ranged')}', '${i.rangedDmg || '1d6'}', ${i.ranged || 0})">🩸 ${t('macro_dmg')} (${i.rangedDmg || '1d6'})</button>
+                                    <button class="macro-btn" onclick="window.rollMacro('${_esc(i.name)}', '${t('card_ranged')}', ${i.ranged || 0})">🏹 ${t('macro_attack')}</button>
+                                    <button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${_esc(i.name)}', '${t('card_ranged')}', '${_esc(i.rangedDmg || '1d6')}', ${i.ranged || 0})">🩸 ${t('macro_dmg')} (${i.rangedDmg || '1d6'})</button>
                                 </div>
                                 ${customAttacksHTML}
                             </div>
@@ -275,20 +278,20 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                             <div class="slot-pips">${pips}</div>
                                             <span class="slot-count">${remaining}/${max}</span>
                                             ${canViewStats ? `
-                                                <button class="slot-btn use" onclick="window.useSpellSlot('${i.name}',${lv})" ${remaining<=0?'disabled':''} title="Use slot">–</button>
-                                                <button class="slot-btn restore" onclick="window.restoreSpellSlot('${i.name}',${lv})" ${used<=0?'disabled':''} title="Restore slot">+</button>
+                                                <button class="slot-btn use" onclick="window.useSpellSlot('${_esc(i.name)}',${lv})" ${remaining<=0?'disabled':''} title="Use slot">–</button>
+                                                <button class="slot-btn restore" onclick="window.restoreSpellSlot('${_esc(i.name)}',${lv})" ${used<=0?'disabled':''} title="Restore slot">+</button>
                                             ` : ''}
                                         </div>
                                     `;
                                 }).join('')}
                             </div>
                             ${canViewStats ? `
-                                <button onclick="window.longRest('${i.name}')" class="long-rest-btn">🌙 ${t('long_rest')}</button>
+                                <button onclick="window.longRest('${_esc(i.name)}')" class="long-rest-btn">🌙 ${t('long_rest')}</button>
                             ` : ''}
                         </div>
                         ` : canViewStats ? `
                         <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1);">
-                            ${isDM ? `<button onclick="window.longRest('${i.name}')" class="long-rest-btn">🌙 ${t('long_rest')}</button>` : ''}
+                            ${isDM ? `<button onclick="window.longRest('${_esc(i.name)}')" class="long-rest-btn">🌙 ${t('long_rest')}</button>` : ''}
                         </div>
                         ` : ''}
                         ${canViewStats && i.spellbook && Object.keys(i.spellbook).length > 0 ? `
@@ -300,7 +303,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                         <span style="font-size:10px; color:#9b59b6; font-weight:bold; min-width:14px;">${sp.level === 0 ? 'C' : sp.level}</span>
                                         <span style="font-size:11px; color:white; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${sp.name}">${sp.name}</span>
                                         <span style="font-size:9px; color:#888;">${sp.range || ''}</span>
-                                        ${(isDM || isOwner) ? `<button onclick="window.removeSpellFromBook('${i.name}','${sp.slug}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:11px;padding:0 2px;" title="Remove">✕</button>` : ''}
+                                        ${(isDM || isOwner) ? `<button onclick="window.removeSpellFromBook('${_esc(i.name)}','${_esc(sp.slug)}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:11px;padding:0 2px;" title="Remove">✕</button>` : ''}
                                     </div>
                                 `).join('')}
                             </div>
@@ -372,25 +375,25 @@ function _renderClassAbilities(player) {
     switch (cls) {
         case 'barbarian':
             if (cr.raging) {
-                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${cn}','endRage')">🔥 End Rage</button>`);
+                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${_esc(cn)}','endRage')">🔥 End Rage</button>`);
             } else {
-                btns.push(`<button class="class-ability-btn${(cr.rageUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${cn}','rage')" ${(cr.rageUses ?? 0) <= 0 ? 'disabled' : ''}>🔥 Rage (${cr.rageUses ?? 0})</button>`);
+                btns.push(`<button class="class-ability-btn${(cr.rageUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','rage')" ${(cr.rageUses ?? 0) <= 0 ? 'disabled' : ''}>🔥 Rage (${cr.rageUses ?? 0})</button>`);
             }
             break;
         case 'fighter':
-            btns.push(`<button class="class-ability-btn${(cr.secondWind ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${cn}','secondWind')" ${(cr.secondWind ?? 0) <= 0 ? 'disabled' : ''}>💨 Second Wind (${cr.secondWind ?? 0})</button>`);
-            if (lvl >= 2) btns.push(`<button class="class-ability-btn${(cr.actionSurge ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${cn}','actionSurge')" ${(cr.actionSurge ?? 0) <= 0 ? 'disabled' : ''}>⚡ Action Surge (${cr.actionSurge ?? 0})</button>`);
+            btns.push(`<button class="class-ability-btn${(cr.secondWind ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','secondWind')" ${(cr.secondWind ?? 0) <= 0 ? 'disabled' : ''}>💨 Second Wind (${cr.secondWind ?? 0})</button>`);
+            if (lvl >= 2) btns.push(`<button class="class-ability-btn${(cr.actionSurge ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','actionSurge')" ${(cr.actionSurge ?? 0) <= 0 ? 'disabled' : ''}>⚡ Action Surge (${cr.actionSurge ?? 0})</button>`);
             break;
         case 'rogue':
-            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${cn}','hide')">🤫 Hide</button>`);
+            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${_esc(cn)}','hide')">🤫 Hide</button>`);
             break;
         case 'druid':
             if (cr.wildShapeActive) {
-                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${cn}','endWildShape')">🐾 End Wild Shape</button>`);
+                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${_esc(cn)}','endWildShape')">🐾 End Wild Shape</button>`);
             } else {
-                btns.push(`<button class="class-ability-btn${(cr.wildShapeUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${cn}','wildShape')" ${(cr.wildShapeUses ?? 0) <= 0 ? 'disabled' : ''}>🐾 Wild Shape (${cr.wildShapeUses ?? 0})</button>`);
+                btns.push(`<button class="class-ability-btn${(cr.wildShapeUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','wildShape')" ${(cr.wildShapeUses ?? 0) <= 0 ? 'disabled' : ''}>🐾 Wild Shape (${cr.wildShapeUses ?? 0})</button>`);
             }
-            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${cn}','summonAnimal')">🐺 Summon Animal</button>`);
+            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${_esc(cn)}','summonAnimal')">🐺 Summon Animal</button>`);
             break;
         default:
             return ''; // no self-ability section for other classes

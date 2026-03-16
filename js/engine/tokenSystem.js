@@ -1007,19 +1007,23 @@ export class TokenSystem {
 
     if (isTmt) {
       // ── 2MT token: full-tile PNG, transparent bg, no clip mask ─────────────
-      // Active glow / player-color halo drawn BEHIND the image
-      if (isActive) {
-        ctx.save();
-        ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = size * 0.9;
-        ctx.beginPath(); ctx.arc(cx, cy, r + 4 / this.e.vs, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(241,196,15,0.22)'; ctx.fill();
-        ctx.restore();
-      } else {
-        ctx.save();
-        ctx.globalAlpha = 0.20;
-        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fillStyle = col; ctx.fill();
-        ctx.restore();
+      // When Pixi is active it draws ring, HP bar, name badge, stack badge for 2MT tokens.
+      // Canvas2D only draws: portrait image + death skull (Pixi can't do those).
+      if (!pixiActive) {
+        // Active glow / player-color halo drawn BEHIND the image
+        if (isActive) {
+          ctx.save();
+          ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = size * 0.9;
+          ctx.beginPath(); ctx.arc(cx, cy, r + 4 / this.e.vs, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(241,196,15,0.22)'; ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.globalAlpha = 0.20;
+          ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.fillStyle = col; ctx.fill();
+          ctx.restore();
+        }
       }
 
       if (portrait && this.e.L.imgCache[portrait]) {
@@ -1043,11 +1047,25 @@ export class TokenSystem {
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('💀', cx, cy);
       }
-      // Active: thin yellow ring on top of the image
-      if (isActive) {
+      // Active ring on top (skip if Pixi draws it)
+      if (!pixiActive && isActive) {
         ctx.beginPath(); ctx.arc(cx, cy, r + 2 / this.e.vs, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(241,196,15,0.92)';
         ctx.lineWidth = 2.5 / this.e.vs; ctx.stroke();
+      }
+
+      // Pixi handles name, HP bar, stack badge — skip Canvas2D versions
+      if (pixiActive) {
+        // Status icons only — Pixi doesn't render these
+        const all2 = [...statuses]; if (isConc) all2.push('Concentrating');
+        all2.slice(0, 6).forEach((s, i) => {
+          const sz = renderSize * 0.21, col2 = Math.floor(i / 2), row2 = i % 2;
+          const ix = rpx + renderSize - sz * (col2 + 1), iy = rpy + sz * row2;
+          ctx.font = `${sz * 0.92}px serif`;
+          ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+          ctx.fillText(STS_ICON[s] || '❓', ix + sz, iy);
+        });
+        return;
       }
     } else {
       // ── Standard circular token (DiceBear / custom URL) ────────────────────

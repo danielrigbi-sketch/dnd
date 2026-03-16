@@ -172,18 +172,35 @@ export function open5eToNPC(m) {
     return bonus >= 0 ? `${dice}+${bonus}` : `${dice}${bonus}`;
   };
 
-  // Primary melee action (first action with attack_bonus, non-ranged)
+  // Open5e actions have no attack_type field — detect via desc text.
+  // Ranged: desc contains "Ranged Weapon Attack" or "Ranged Spell Attack".
+  // Melee: has attack_bonus and is NOT ranged and NOT Multiattack.
+  const _isRangedDesc = d => {
+    const dl = (d || '').toLowerCase();
+    return dl.includes('ranged weapon attack') || dl.includes('ranged spell attack') || dl.includes('ranged attack:');
+  };
+  const _isMeleeDesc = d => {
+    const dl = (d || '').toLowerCase();
+    return dl.includes('melee weapon attack') || dl.includes('melee spell attack') || dl.includes('melee attack:');
+  };
+
+  // Primary melee action (first action with attack_bonus whose desc marks it as melee)
   const meleeAction  = (m.actions || []).find(a =>
     a.attack_bonus != null &&
-    a.attack_type !== 'ranged' &&
-    !(a.desc || '').toLowerCase().includes('ranged weapon')
+    !_isRangedDesc(a.desc) &&
+    (a.name?.toLowerCase() !== 'multiattack')
   );
   // Primary ranged action
   const rangedAction = (m.actions || []).find(a =>
-    a.attack_type === 'ranged' ||
-    (a.desc || '').toLowerCase().includes('ranged weapon') ||
-    (a.desc || '').toLowerCase().includes('ranged attack')
+    a.attack_bonus != null &&
+    _isRangedDesc(a.desc)
   );
+
+  // Build customAttacks for the initiative-tracker card macro buttons
+  // (one entry per attack action so players see named buttons like "Bite", "Claw")
+  const customAttacks = (m.actions || [])
+    .filter(a => a.attack_bonus != null && (a.name || '').toLowerCase() !== 'multiattack')
+    .map(a => ({ name: a.name, bonus: a.attack_bonus, dmg: normDmg(a) || '' }));
 
   // Parse legendaryMax from legendary_desc (e.g. "can take 3 legendary actions")
   const legendaryMax = (() => {
@@ -246,9 +263,11 @@ export function open5eToNPC(m) {
     legendaryActions: m.legendary_actions || [],
     legendaryMax:     legendaryMax,
     legendaryUsed:    0,
-    bonusActions:     m.bonus_actions      || [],
     bonusActionUsed:  false,
     specialAbilities: m.special_abilities || [],
+
+    // ── Player card quick-roll macros (named per-attack buttons) ─────────────
+    customAttacks,
 
     // ── Meta ──────────────────────────────────────────────────────────────────
     _open5eSlug: m.slug,

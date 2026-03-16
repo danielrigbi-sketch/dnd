@@ -215,8 +215,10 @@ function _renderSpellCard(s) {
 }
 
 let _lastResults = [];
+let _panelOpen   = false; // guard: skip fetch/render when panel is closed
 
 async function _fetchAndRender() {
+  if (!_panelOpen) return;
   const list   = document.getElementById('spell-list');
   const footer = document.getElementById('spell-list-footer');
   if (!list) return;
@@ -285,6 +287,7 @@ window._spAddCurrent = function() {
 
 export function openSpellPanel() {
   ensurePanel();
+  _panelOpen = true;
   const dialog = document.getElementById('spell-panel-dialog');
   const back   = document.getElementById('spell-panel-backdrop');
   dialog.classList.add('open');
@@ -298,6 +301,7 @@ export function openSpellPanel() {
 }
 
 export function closeSpellPanel() {
+  _panelOpen = false;
   const dialog = document.getElementById('spell-panel-dialog');
   const back   = document.getElementById('spell-panel-backdrop');
   if (!dialog) return;

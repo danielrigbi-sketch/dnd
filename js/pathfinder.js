@@ -26,7 +26,7 @@ export class Pathfinder {
     // EasyStar config
     this._es.setAcceptableTiles([PASSABLE]);
     this._es.enableDiagonals();
-    this._es.enableCornerCutting();   // optional: false = strict corners
+    // Corner-cutting disabled: D&D 5e doesn't allow moving through diagonal wall corners
   }
 
   /**

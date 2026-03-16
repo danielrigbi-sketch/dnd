@@ -1,6 +1,7 @@
 // diceEngine.js - מנוע הקוביות התלת-ממדיות
 
-import DiceBox from "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/dice-box.es.min.js";
+// Bundled via npm — dist assets copied to /dice-box/ at build time (vite.config.js)
+import DiceBox from "@3d-dice/dice-box";
 
 let diceBox;
 
@@ -8,7 +9,7 @@ let diceBox;
 export async function initDiceEngine() {
     diceBox = new DiceBox({
         container: "#dice-box-canvas", // מצביע לקונטיינר שיהיה בתוך הזירה
-        origin: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/",
+        origin: "/dice-box/",
         assetPath: "assets/",
         theme: "default",
         scale: 8, // הגדלה משמעותית כדי שיראו מצוין בנייד ובלפטופ

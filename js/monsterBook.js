@@ -19,6 +19,7 @@ let _debounce   = null;
 let _results    = [];
 let _spawned    = new Set();
 let _fetchId    = 0;   // cancel stale fetches
+let _isOpen     = false; // guard: skip fetch/render when modal is closed
 
 // CR filter bands
 const CR_BANDS = {
@@ -49,6 +50,7 @@ function openMonsterBook() {
   const modal = document.getElementById('monster-book-modal');
   if (!modal) return;
   modal.style.display = 'flex';
+  _isOpen     = true;
   _search     = '';
   _crFilter   = 'all';
   _typeFilter = '';
@@ -59,6 +61,8 @@ function openMonsterBook() {
 }
 
 function closeMonsterBook() {
+  _isOpen = false;
+  clearTimeout(_debounce);
   const modal = document.getElementById('monster-book-modal');
   if (modal) modal.style.display = 'none';
 }
@@ -158,6 +162,7 @@ function _updateTypePills() {
 // ── Fetch (only updates #mb-results) ─────────────────────────────────────────
 
 async function _fetchAndRender() {
+  if (!_isOpen) return;
   const myId = ++_fetchId;
 
   _renderResults('<div id="mb-skeleton">' +

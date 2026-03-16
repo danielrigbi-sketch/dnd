@@ -478,11 +478,11 @@ let _appUnsubs = [];
 // ── Background Music ──────────────────────────────────────────────────────────
 const musicPlayer = new MusicPlayer();
 musicPlayer.onBlocked(() => showToast('🎵 Click anywhere to start music', 'info'));
-// Unlock pending autoplay on the first user gesture
+// Unlock pending autoplay on the first user gesture — self-removing via { once: true }
 const _unlockMusic = () => musicPlayer.unlock();
-document.addEventListener('click',     _unlockMusic);
-document.addEventListener('keydown',   _unlockMusic);
-document.addEventListener('touchstart', _unlockMusic, { passive: true });
+document.addEventListener('click',      _unlockMusic, { once: true });
+document.addEventListener('keydown',    _unlockMusic, { once: true });
+document.addEventListener('touchstart', _unlockMusic, { once: true, passive: true });
 let _musicPanelOpen = false;
 let _musicActiveCat = 'battle';
 let _musicPanelBuilt = false;
