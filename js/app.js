@@ -18,6 +18,7 @@ import { generateNPC } from "./faker.js";
 import { printHandout, openWatabou, captureMapCanvas } from "./handout.js"; // E7
 import { iconHTML } from "./icons.js";
 import { initMonsterBook } from "./monsterBook.js";
+import { fetchMonsterBySlug, open5eToNPC } from "./open5e.js";
 import { initClassResources, onShortRest, onLongRest, WILD_SHAPES } from "./engine/classAbilities.js";
 import { statusFlavor, healFlavor } from "./combatFlavor.js";
 import { MusicPlayer, MUSIC_LIBRARY, MUSIC_CATEGORIES, TRACK_BY_ID } from "./musicPlayer.js";
@@ -1117,6 +1118,43 @@ window.addNPCFromWizard = (name, color, portrait, init, stats) => {
 };
 
 window.roll3DDice = roll3DDice;
+
+// ── Refresh all Open5e NPCs in current room ───────────────────────────────────
+// Re-fetches each NPC with _open5eSlug from Open5e API (bypasses LS cache),
+// patches their stat data in Firebase while preserving hp/statuses/initiative.
+window.refreshNPCsFromOpen5e = async () => {
+    if (userRole !== 'dm') return;
+    const players = mapEngine?.S?.players || {};
+    const npcs = Object.entries(players).filter(([, p]) => p._open5eSlug);
+    if (!npcs.length) { showToast('No Open5e monsters found in this session.', 'warning'); return; }
+
+    const btn = document.getElementById('refresh-npcs-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Refreshing…'; }
+
+    // Fields to preserve (combat state)
+    const KEEP = new Set(['hp', 'maxHp', 'statuses', 'score', 'pName', 'pColor', 'role',
+                          'isHidden', 'portrait', 'spellSlots', 'classResources',
+                          'legendaryUsed', 'bonusActionUsed']);
+
+    let done = 0, failed = 0;
+    for (const [name, p] of npcs) {
+        try {
+            // Bust localStorage cache so we get latest Open5e data
+            localStorage.removeItem(`o5e:monster:${p._open5eSlug}`);
+            const fresh = await fetchMonsterBySlug(p._open5eSlug);
+            const newStats = open5eToNPC(fresh);
+            // Strip combat-state fields — keep existing values
+            for (const k of KEEP) delete newStats[k];
+            db.patchPlayerInDB(name, newStats);
+            done++;
+        } catch {
+            failed++;
+        }
+    }
+
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh NPCs'; }
+    showToast(`✅ Refreshed ${done} NPC${done !== 1 ? 's' : ''}${failed ? ` (${failed} failed)` : ''}`, done > 0 ? 'success' : 'error');
+};
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 window._sendChatMsg = () => {
