@@ -19,6 +19,7 @@ import { printHandout, openWatabou, captureMapCanvas } from "./handout.js"; // E
 import { iconHTML } from "./icons.js";
 import { initMonsterBook } from "./monsterBook.js";
 import { fetchMonsterBySlug, open5eToNPC } from "./open5e.js";
+import { VideoLayer } from "./videoLayer.js";
 import { initClassResources, onShortRest, onLongRest, WILD_SHAPES } from "./engine/classAbilities.js";
 import { statusFlavor, healFlavor } from "./combatFlavor.js";
 import { MusicPlayer, MUSIC_LIBRARY, MUSIC_CATEGORIES, TRACK_BY_ID } from "./musicPlayer.js";
@@ -1253,29 +1254,121 @@ function initMap() {
         if (btn) btn.click();
     };
 
-    // Video background toolbar button — toggle play/pause or prompt for a new URL
+    // Video background toolbar button — show clip dialog or stop video
     window._videoToggleBtn = () => {
         const eng = window._mapEng;
         if (!eng) return;
-        const isActive = eng._video?.isActive();
-        if (isActive) {
-            // Prompt DM to change video or stop it
-            const choice = confirm('🎬 Video Background is active.\n\nClick OK to stop the video and return to a static background.\nClick Cancel to keep it playing.');
-            if (choice) {
-                eng.loadBgVideo(''); // unload
-                eng._video?.unload();
-                eng.S.cfg.bgVideoUrl = '';
-                if (eng.db) eng.db.setMapCfg(eng.activeRoom, { ...eng.S.cfg, bgVideoUrl: '', bgUrl: eng.S.cfg.bgUrl });
-                document.getElementById('btn-video-bg').style.display = 'none';
-            }
-        } else {
-            const url = window.prompt('🎬 Enter a YouTube URL for the animated battle map background:');
-            if (url && url.trim()) {
-                eng.loadBgVideo(url.trim());
-                document.getElementById('btn-video-bg').style.display = '';
-            }
-        }
+        _showVideoClipDialog(eng);
     };
+
+    // ── Video clip dialog (replaces bare prompt) ─────────────────────────────
+    function _showVideoClipDialog(eng) {
+        const existing = document.getElementById('video-clip-dialog');
+        if (existing) existing.remove();
+
+        const isActive = eng._video?.isActive();
+        const currentUrl = eng.S.cfg.bgVideoUrl || '';
+
+        const dlg = document.createElement('div');
+        dlg.id = 'video-clip-dialog';
+        dlg.style.cssText = [
+            'position:fixed', 'top:50%', 'left:50%',
+            'transform:translate(-50%,-50%)',
+            'background:rgba(13,10,30,0.98)',
+            'border:1.5px solid rgba(241,196,15,0.5)',
+            'border-radius:12px', 'padding:18px 20px', 'z-index:9999',
+            'min-width:320px', 'max-width:380px',
+            'box-shadow:0 12px 48px rgba(0,0,0,0.85)',
+            'font-family:Assistant,sans-serif', 'color:#eee',
+        ].join(';');
+
+        dlg.innerHTML = `
+            <div style="font-weight:bold;font-size:14px;color:#f1c40f;margin-bottom:12px;">🎬 Animated Map Background</div>
+            <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">YouTube URL</label>
+            <input id="vcd-url" type="text" placeholder="https://youtu.be/…" value="${currentUrl.split('?')[0]}"
+                style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);
+                color:#fff;border-radius:6px;padding:6px 8px;font-size:12px;outline:none;margin-bottom:10px;">
+            <div style="display:flex;gap:10px;margin-bottom:12px;">
+                <div style="flex:1;">
+                    <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">Start (seconds)</label>
+                    <input id="vcd-start" type="number" min="0" value="30" placeholder="30"
+                        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);
+                        color:#fff;border-radius:6px;padding:6px 8px;font-size:12px;outline:none;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">Duration (seconds)</label>
+                    <input id="vcd-dur" type="number" min="5" max="300" value="30" placeholder="30"
+                        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);
+                        color:#fff;border-radius:6px;padding:6px 8px;font-size:12px;outline:none;">
+                </div>
+            </div>
+            <div style="font-size:10px;color:#666;margin-bottom:12px;">
+                Tip: short clips (30s) loop cleanly and stay HD. Start = seconds into the video for the best scene.
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button id="vcd-play" style="flex:2;background:rgba(241,196,15,0.2);border:1px solid rgba(241,196,15,0.5);
+                    color:#f1c40f;border-radius:7px;padding:8px;font-size:12px;font-weight:bold;cursor:pointer;">▶ Play Clip</button>
+                ${isActive ? `<button id="vcd-stop" style="flex:1;background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);
+                    color:#e74c3c;border-radius:7px;padding:8px;font-size:12px;cursor:pointer;">⏹ Stop</button>` : ''}
+                <button id="vcd-cancel" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
+                    color:#aaa;border-radius:7px;padding:8px;font-size:12px;cursor:pointer;">✕</button>
+            </div>
+        `;
+        document.body.appendChild(dlg);
+
+        // Auto-detect t= timestamp from pasted URL and update start field
+        const urlInput = dlg.querySelector('#vcd-url');
+        urlInput.addEventListener('input', () => {
+            const { start } = VideoLayer.parseClipParams(urlInput.value);
+            if (start > 0) dlg.querySelector('#vcd-start').value = start;
+        });
+        urlInput.addEventListener('paste', (e) => {
+            setTimeout(() => {
+                const { start } = VideoLayer.parseClipParams(urlInput.value);
+                if (start > 0) dlg.querySelector('#vcd-start').value = start;
+            }, 0);
+        });
+
+        dlg.querySelector('#vcd-play').addEventListener('click', () => {
+            const rawUrl = dlg.querySelector('#vcd-url').value.trim();
+            const start  = Math.max(0, parseInt(dlg.querySelector('#vcd-start').value) || 0);
+            const dur    = Math.max(5, parseInt(dlg.querySelector('#vcd-dur').value)   || 30);
+            const end    = start + dur;
+            if (!rawUrl) return;
+
+            // Build a URL with embedded clip params
+            const id = VideoLayer.parseVideoId(rawUrl);
+            if (!id) { showToast('Invalid YouTube URL', 'warning'); return; }
+            const clipUrl = `https://youtu.be/${id}?start=${start}&end=${end}`;
+            eng.loadBgVideo(clipUrl);
+            document.getElementById('btn-video-bg').style.display = '';
+            dlg.remove();
+        });
+
+        dlg.querySelector('#vcd-stop')?.addEventListener('click', () => {
+            eng.loadBgVideo('');
+            eng._video?.unload();
+            eng.S.cfg.bgVideoUrl = '';
+            if (eng.db) eng.db.setMapCfg(eng.activeRoom, { ...eng.S.cfg, bgVideoUrl: '', bgUrl: eng.S.cfg.bgUrl });
+            document.getElementById('btn-video-bg').style.display = 'none';
+            dlg.remove();
+        });
+
+        dlg.querySelector('#vcd-cancel').addEventListener('click', () => dlg.remove());
+
+        // Pre-fill start/end from existing clip URL
+        if (currentUrl) {
+            const { start, end } = VideoLayer.parseClipParams(currentUrl);
+            if (start > 0) dlg.querySelector('#vcd-start').value = start;
+            if (end > 0)   dlg.querySelector('#vcd-dur').value   = end - start;
+        }
+
+        // Close on outside click
+        setTimeout(() => {
+            const outside = e => { if (!dlg.contains(e.target)) { dlg.remove(); document.removeEventListener('click', outside); } };
+            document.addEventListener('click', outside);
+        }, 0);
+    }
 
     // Show/hide the video toolbar button based on whether a video is active
     // Exposed so scene activation can call it after loading a scene with bgVideoUrl

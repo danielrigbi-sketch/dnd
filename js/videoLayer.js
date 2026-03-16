@@ -61,6 +61,37 @@ export class VideoLayer {
     return null;
   }
 
+  /**
+   * Parse clip start/end and the YouTube `t=` share timestamp from a URL string.
+   * Supports:
+   *   ?start=30&end=60   — custom clip params (stored by CritRoll)
+   *   ?t=30  or  ?t=1m30s — YouTube native share timestamp (used as start)
+   * @returns {{ start: number, end: number|null }}
+   */
+  static parseClipParams(urlOrId) {
+    if (!urlOrId || typeof urlOrId !== 'string') return { start: 0, end: null };
+    try {
+      const url = new URL(urlOrId.trim());
+      const p = url.searchParams;
+
+      // Explicit start/end stored by CritRoll
+      const start = p.has('start') ? parseInt(p.get('start')) || 0 : null;
+      const end   = p.has('end')   ? parseInt(p.get('end'))   || null : null;
+      if (start !== null) return { start, end };
+
+      // YouTube share timestamp  t=90  or  t=1m30s
+      const t = p.get('t') || '';
+      if (t) {
+        const mMatch = t.match(/(?:(\d+)m)?(?:(\d+)s?)?/);
+        const mins = parseInt(mMatch?.[1] || '0');
+        const secs = parseInt(mMatch?.[2] || t);
+        const ts = mins * 60 + (isNaN(secs) ? 0 : secs);
+        if (ts > 0) return { start: ts, end: null };
+      }
+    } catch (_) { /* not a parseable URL */ }
+    return { start: 0, end: null };
+  }
+
   // ── init(containerEl): call once after DOM is ready ──────────────────────
   init(containerEl) {
     this._el    = containerEl.querySelector('#video-bg-layer') || document.getElementById('video-bg-layer');
@@ -80,11 +111,16 @@ export class VideoLayer {
       return;
     }
 
-    // Same video already playing — nothing to do
-    if (id === this._videoId && this._active) return;
+    const { start, end } = VideoLayer.parseClipParams(urlOrId);
 
-    this._videoId = id;
-    this._createIframe(id);
+    // Same video + same clip already playing — nothing to do
+    if (id === this._videoId && this._active &&
+        start === this._clipStart && end === this._clipEnd) return;
+
+    this._videoId   = id;
+    this._clipStart = start;
+    this._clipEnd   = end;
+    this._createIframe(id, start, end);
   }
 
   // ── unload(): remove the iframe and hide the layer ───────────────────────
@@ -122,12 +158,11 @@ export class VideoLayer {
   }
 
   // ── Private: create and inject the <iframe> ───────────────────────────────
-  _createIframe(videoId) {
+  _createIframe(videoId, start = 0, end = null) {
     if (!this._inner) return;
 
     // Build embed URL — no enablejsapi, no origin param → no postMessage traffic
-    const src = [
-      `https://www.youtube.com/embed/${videoId}`,
+    const params = [
       '?autoplay=1',
       '&mute=1',
       '&loop=1',
@@ -139,7 +174,12 @@ export class VideoLayer {
       '&iv_load_policy=3',     // hide video annotations
       '&vq=hd1080',            // request 1080p quality
       '&hd=1',                 // prefer HD
-    ].join('');
+    ];
+    // Clip parameters — start/end keep the loop short and buffer-friendly
+    if (start > 0)  params.push(`&start=${start}`);
+    if (end   > 0)  params.push(`&end=${end}`);
+
+    const src = `https://www.youtube.com/embed/${videoId}` + params.join('');
 
     const iframe = document.createElement('iframe');
     iframe.src   = src;
