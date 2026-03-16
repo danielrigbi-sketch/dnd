@@ -111,7 +111,12 @@ export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrai
 // ==========================================
 
 export async function createCampaign(campaignId, meta) {
-    await set(ref(db, `campaigns/${campaignId}/meta`), { ...meta, created: Date.now(), lastSession: Date.now() });
+    const fullMeta = { ...meta, created: Date.now(), lastSession: Date.now() };
+    await set(ref(db, `campaigns/${campaignId}/meta`), fullMeta);
+    // Store reference under DM's own user record so we can list without collection-level read
+    await set(ref(db, `users/${meta.dmUid}/dmCampaigns/${campaignId}`), {
+        name: meta.name, dmName: meta.dmName, lastSession: fullMeta.lastSession
+    });
 }
 
 export async function getCampaignMeta(campaignId) {
@@ -141,13 +146,22 @@ export async function hasPendingRequest(campaignId, uid) {
 }
 
 export async function approveCampaignPlayer(campaignId, uid) {
-    const snap = await get(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`));
-    const req = snap.val();
+    const [reqSnap, metaSnap] = await Promise.all([
+        get(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`)),
+        get(ref(db, `campaigns/${campaignId}/meta`))
+    ]);
+    const req  = reqSnap.val();
+    const meta = metaSnap.val();
     if (!req) return;
     await set(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`), {
         playerName: req.playerName, charName: req.charName, approved: true
     });
     await remove(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`));
+    // Store reference under player's own user record
+    await set(ref(db, `users/${uid}/playerCampaigns/${campaignId}`), {
+        name: meta?.name || campaignId, dmName: meta?.dmName || '?',
+        charName: req.charName, lastSession: meta?.lastSession || Date.now()
+    });
 }
 
 export async function denyCampaignRequest(campaignId, uid) {
@@ -156,6 +170,7 @@ export async function denyCampaignRequest(campaignId, uid) {
 
 export async function kickCampaignPlayer(campaignId, uid) {
     await remove(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`));
+    await remove(ref(db, `users/${uid}/playerCampaigns/${campaignId}`));
 }
 
 export function listenToPendingRequests(campaignId, cb) {
@@ -167,24 +182,39 @@ export function listenToCampaignAllowedPlayers(campaignId, cb) {
 }
 
 export function listenToCampaignsByDM(dmUid, cb) {
-    return onValue(ref(db, `campaigns`), snap => {
-        const all = snap.val() || {};
-        const mine = {};
-        Object.entries(all).forEach(([id, c]) => {
-            if (c.meta?.dmUid === dmUid) mine[id] = c;
-        });
-        cb(mine);
+    // Read from user's own dmCampaigns index — no collection-level read needed
+    return onValue(ref(db, `users/${dmUid}/dmCampaigns`), async snap => {
+        const index = snap.val() || {};
+        if (!Object.keys(index).length) { cb({}); return; }
+        const results = {};
+        await Promise.all(Object.keys(index).map(async id => {
+            const metaSnap = await get(ref(db, `campaigns/${id}/meta`));
+            const apSnap   = await get(ref(db, `campaigns/${id}/allowedPlayers`));
+            if (metaSnap.exists()) {
+                results[id] = { meta: metaSnap.val(), allowedPlayers: apSnap.val() || {} };
+            }
+        }));
+        cb(results);
     });
 }
 
 export function listenToCampaignsByPlayer(uid, cb) {
-    return onValue(ref(db, `campaigns`), snap => {
-        const all = snap.val() || {};
-        const mine = {};
-        Object.entries(all).forEach(([id, c]) => {
-            if (c.allowedPlayers?.[uid]?.approved) mine[id] = c;
-        });
-        cb(mine);
+    // Read from user's own playerCampaigns index — no collection-level read needed
+    return onValue(ref(db, `users/${uid}/playerCampaigns`), async snap => {
+        const index = snap.val() || {};
+        if (!Object.keys(index).length) { cb({}); return; }
+        const results = {};
+        await Promise.all(Object.keys(index).map(async id => {
+            const metaSnap = await get(ref(db, `campaigns/${id}/meta`));
+            const apSnap   = await get(ref(db, `campaigns/${id}/allowedPlayers/${uid}`));
+            if (metaSnap.exists()) {
+                results[id] = {
+                    meta: metaSnap.val(),
+                    allowedPlayers: { [uid]: apSnap.val() || {} }
+                };
+            }
+        }));
+        cb(results);
     });
 }
 
@@ -193,7 +223,12 @@ export async function updateCampaignMeta(campaignId, patch) {
 }
 
 export async function updateCampaignLastSession(campaignId) {
-    await update(ref(db, `campaigns/${campaignId}/meta`), { lastSession: Date.now() });
+    const ts = Date.now();
+    await update(ref(db, `campaigns/${campaignId}/meta`), { lastSession: ts });
+    // Propagate to DM index — look up dmUid first
+    const metaSnap = await get(ref(db, `campaigns/${campaignId}/meta/dmUid`));
+    const dmUid = metaSnap.val();
+    if (dmUid) update(ref(db, `users/${dmUid}/dmCampaigns/${campaignId}`), { lastSession: ts });
 }
 
 export async function longRestCampaign(campaignId) {
