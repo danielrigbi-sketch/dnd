@@ -376,36 +376,15 @@
 
             <div id="init-list"></div>
 
-            <!-- ── DM NPC Panel (accordion) ── -->
-            <div id="dm-npc-section" style="display:none; margin-bottom:8px;">
-                <div class="scene-mgr-header" onclick="window.toggleNPCPanel()">
-                    <span data-i18n="dm_panel_title">🧌 מאגר מפלצות ודמויות (DM)</span>
-                    <span id="npc-panel-chevron">▼</span>
-                </div>
-                <div id="dm-npc-controls" style="display:none; flex-direction:column; gap:8px; padding:12px; background:rgba(0,0,0,0.4); border-radius:0 0 8px 8px; border:1px dashed rgba(241, 196, 15, 0.5); border-top:none;">
-                    <select id="npc-preset" class="input-small w-100" onchange="window.handlePresetChange(this.value)"></select>
-                    <div class="flex-row">
-                        <input type="text" id="npc-name" class="input-small" style="flex:1;" data-i18n-placeholder="ph_specific_name">
-                        <input type="text" id="npc-class" class="input-small" style="flex:1;" data-i18n-placeholder="ph_class_opt">
-                    </div>
-                    <div class="flex-row">
-                        <input type="number" id="npc-hp" class="input-small" style="flex:1;" data-i18n-placeholder="ph_hp">
-                        <input type="number" id="npc-init" class="input-small" style="flex:1;" data-i18n-placeholder="ph_init">
-                        <input type="number" id="npc-count" class="input-small" style="flex:1;" data-i18n-placeholder="ph_count" value="1">
-                    </div>
-                    <div class="flex-row">
-                        <input type="number" id="npc-melee" class="input-small" style="flex:1;" data-i18n-placeholder="ph_melee">
-                        <input type="text" id="npc-melee-dmg" class="input-small" style="flex:1;" data-i18n-placeholder="ph_melee_dmg">
-                        <input type="number" id="npc-ranged" class="input-small" style="flex:1;" data-i18n-placeholder="ph_ranged">
-                        <input type="text" id="npc-ranged-dmg" class="input-small" style="flex:1;" data-i18n-placeholder="ph_ranged_dmg">
-                    </div>
-                    <div class="flex-center" style="gap:5px; margin-top:4px;">
-                        <input type="checkbox" id="npc-hidden" checked style="width:auto; margin:0; cursor:pointer;">
-                        <label for="npc-hidden" data-i18n="hide_from_players" style="color:#eee; font-size:12px; cursor:pointer;"></label>
-                    </div>
-                    <button id="add-npc-btn" class="side-btn hover-btn" data-i18n="add_npc_roll" style="background:#27ae60; padding:6px; font-size: 12px; margin-top:4px;" onclick="window.addNPC()"></button>
-                    <button id="refresh-npcs-btn" class="side-btn hover-btn" style="background:rgba(52,152,219,0.25); border:1px solid rgba(52,152,219,0.5); color:#7ec8e3; padding:6px; font-size:12px; margin-top:4px;" onclick="window.refreshNPCsFromOpen5e()">🔄 Refresh NPCs</button>
-                </div>
+            <!-- ── Hidden NPC form elements (used by addNPC() legacy path) ── -->
+            <div id="dm-npc-section" style="display:none;">
+                <select id="npc-preset" onchange="window.handlePresetChange(this.value)"></select>
+                <input type="text" id="npc-name"><input type="text" id="npc-class">
+                <input type="number" id="npc-hp"><input type="number" id="npc-init">
+                <input type="number" id="npc-count" value="1">
+                <input type="number" id="npc-melee"><input type="text" id="npc-melee-dmg">
+                <input type="number" id="npc-ranged"><input type="text" id="npc-ranged-dmg">
+                <input type="checkbox" id="npc-hidden" checked>
             </div>
 
             <!-- ── Scene Manager (DM only) ── -->
@@ -476,6 +455,10 @@
                             style="flex:1; background:rgba(231,76,60,0.2); border:1px solid #e74c3c;
                                    color:#f1948a; font-size:12px; padding:7px; font-weight:700; display:none;"
                             title="Monster Book"></button>
+                        <button id="refresh-npcs-btn" onclick="window.refreshNPCsFromOpen5e?.()" class="side-btn hover-btn"
+                            style="display:none; background:rgba(52,152,219,0.2); border:1px solid rgba(52,152,219,0.5);
+                                   color:#7ec8e3; font-size:12px; padding:7px; font-weight:700;"
+                            title="Re-fetch all NPCs from Open5e to update stats">🔄</button>
                     </div>
 
                     <!-- DM music button — always visible for DM -->

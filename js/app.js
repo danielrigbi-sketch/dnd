@@ -751,11 +751,11 @@ export async function startGame(role, charData, roomCode) {
         pColor       = "#c0392b";
         charPortrait = document.getElementById('user-avatar')?.src || "assets/logo.png";
         document.getElementById('master-combat-btn').style.display    = 'block';
-        document.getElementById('dm-npc-section').style.display       = 'block';
         document.getElementById('dm-turn-controls').style.display     = 'none';
         document.getElementById('reroll-initiatives-btn').style.display = 'block';
         document.getElementById('npc-gen-btn').style.display          = 'block';
         document.getElementById('monster-book-btn').style.display     = 'block';
+        document.getElementById('refresh-npcs-btn').style.display     = 'block';
         document.getElementById('dm-music-btn').style.display         = 'block';
         document.getElementById('short-rest-btn').style.display       = 'none';
         localStorage.setItem('critroll_cName', 'DM');

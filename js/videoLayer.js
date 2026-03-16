@@ -155,6 +155,24 @@ export class VideoLayer {
       'z-index:0',
       'display:block',
     ].join(';');
+
+    // Scale the 1920×1080 iframe to cover the tile area.
+    // YouTube serves HD quality based on the iframe's native DOM size (1920×1080).
+    // We scale it down via CSS transform so it covers the map tile, preserving HD.
+    if (this._inner) {
+      const scaleX = w / 1920;
+      const scaleY = h / 1080;
+      const s = Math.max(scaleX, scaleY); // cover: fill tile, crop excess
+      const offsetX = (w - 1920 * s) / 2;
+      const offsetY = (h - 1080 * s) / 2;
+      this._inner.style.cssText = [
+        'position:absolute',
+        `left:${offsetX}px`, `top:${offsetY}px`,
+        'width:1920px', 'height:1080px',
+        'transform-origin:0 0',
+        `transform:scale(${s})`,
+      ].join(';');
+    }
   }
 
   // ── Private: create and inject the <iframe> ───────────────────────────────
@@ -185,8 +203,9 @@ export class VideoLayer {
     iframe.src   = src;
     iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
     iframe.setAttribute('allowfullscreen', 'false');
-    // Oversize to hide the YouTube letterbox bar (CSS handles -10%/120%)
-    iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;pointer-events:none;';
+    // Fixed 1920×1080 natural size — YouTube serves HD quality based on DOM size.
+    // The outer div (_inner) is CSS-scaled to cover the map tile area each frame.
+    iframe.style.cssText = 'position:absolute;top:0;left:0;width:1920px;height:1080px;border:none;pointer-events:none;';
 
     this._inner.innerHTML = '';
     this._inner.appendChild(iframe);

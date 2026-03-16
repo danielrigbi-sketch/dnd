@@ -165,7 +165,13 @@ export class SceneWizard {
     this._engine.S.fog       = { ...d.fog };
     this._engine.setPlayers(this.players);
     const bgSrc = d.bgBase64 || d._bgBlob || d.bgUrl;   // SA-1: base64 wins
-    if (bgSrc) this._engine._loadBg(bgSrc);
+    if (bgSrc) {
+      this._engine._loadBg(bgSrc);
+    } else if (d.bgVideoUrl) {
+      // No static image — load YouTube thumbnail as canvas background so obstacles can be painted
+      const ytId = VideoLayer.parseVideoId(d.bgVideoUrl);
+      if (ytId) this._engine._loadBg(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`);
+    }
     if (d.bgVideoUrl) {
       // Init video layer using wizard canvas wrap, then load
       const wrap = document.getElementById('wizard-canvas-wrap');
@@ -708,8 +714,9 @@ export class SceneWizard {
       this._data.bgUrl      = '';
       this._data.bgBase64   = '';
       this._data._bgBlob    = null;
-      // Live preview in wizard engine
+      // Live preview in wizard engine: load thumbnail as static canvas bg
       if (eng) {
+        eng._loadBg(`https://img.youtube.com/vi/${id}/hqdefault.jpg`);
         const wrap = document.getElementById('wizard-canvas-wrap');
         if (wrap && !eng._video?.isActive()) eng.initVideo(wrap);
         eng.loadBgVideo(url);
