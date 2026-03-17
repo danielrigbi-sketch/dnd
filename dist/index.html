@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="/assets/logo-BC8cyOVF.png">
     
-  <script type="module" crossorigin src="/assets/index-DPBEnL8M.js"></script>
+  <script type="module" crossorigin src="/assets/index-DjWbM8fM.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-C4wdADi6.css">
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
@@ -245,7 +245,7 @@
 
                 <!-- Ability Scores -->
                 <div style="margin-top:15px; border-top:1px dashed rgba(255,255,255,0.2); padding-top:10px;">
-                    <div style="font-size:14px; color:#e67e22; margin-bottom:8px; font-weight:bold;">💪 Ability Scores <span style="font-size:10px;color:#666;font-weight:normal;">(optional — enables skill checks & saves)</span></div>
+                    <div style="font-size:14px; color:#e67e22; margin-bottom:8px; font-weight:bold;"><span data-i18n="cb_ability_scores">💪 Ability Scores</span> <span data-i18n="cb_ability_scores_hint" style="font-size:10px;color:#666;font-weight:normal;">(optional — enables skill checks & saves)</span></div>
                     <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:5px;">
                         <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
                             <label style="font-size:10px;color:#aaa;">STR</label>
@@ -276,7 +276,7 @@
 
                 <!-- Saving Throw Proficiencies -->
                 <div style="margin-top:10px;">
-                    <div style="font-size:11px; color:#aaa; margin-bottom:5px;">Saving Throw Proficiencies</div>
+                    <div data-i18n="cb_saving_throws" style="font-size:11px; color:#aaa; margin-bottom:5px;">Saving Throw Proficiencies</div>
                     <div style="display:flex; flex-wrap:wrap; gap:10px;">
                         <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-str" style="accent-color:#e67e22;"> STR</label>
                         <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-dex" style="accent-color:#e67e22;"> DEX</label>
@@ -289,7 +289,7 @@
 
                 <!-- Skill Proficiencies -->
                 <div style="margin-top:10px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px;">
-                    <div style="font-size:11px; color:#aaa; margin-bottom:5px;">Skill Proficiencies</div>
+                    <div data-i18n="cb_skill_proficiencies" style="font-size:11px; color:#aaa; margin-bottom:5px;">Skill Proficiencies</div>
                     <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px;">
                         <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-acrobatics" style="accent-color:#3498db;"> Acrobatics</label>
                         <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-animal_handling" style="accent-color:#3498db;"> Animal Handling</label>
@@ -314,15 +314,15 @@
 
                 <!-- Languages & Damage Modifiers -->
                 <div style="margin-top:10px; display:flex; flex-direction:column; gap:5px;">
-                    <input type="text" id="cb-languages" class="builder-input" placeholder="Languages (e.g., Common, Elvish, Dwarvish)">
-                    <input type="text" id="cb-resistances" class="builder-input" placeholder="Damage Resistances (e.g., Poison, Fire)">
-                    <input type="text" id="cb-immunities" class="builder-input" placeholder="Damage Immunities">
+                    <input type="text" id="cb-languages" class="builder-input" data-i18n-placeholder="cb_languages_ph" placeholder="Languages (e.g., Common, Elvish, Dwarvish)">
+                    <input type="text" id="cb-resistances" class="builder-input" data-i18n-placeholder="cb_resistances_ph" placeholder="Damage Resistances (e.g., Poison, Fire)">
+                    <input type="text" id="cb-immunities" class="builder-input" data-i18n-placeholder="cb_immunities_ph" placeholder="Damage Immunities">
                 </div>
 
                 <!-- Loot & Equipment -->
                 <div style="margin-top:10px; border-top:1px dashed rgba(255,255,255,0.2); padding-top:10px;">
-                    <div style="font-size:14px; color:#f1c40f; margin-bottom:6px; font-weight:bold;">🎒 Loot &amp; Equipment</div>
-                    <textarea id="cb-loot" class="builder-input" rows="3" placeholder="Inventory, equipment, gold, magic items…" style="resize:vertical;min-height:60px;width:100%;box-sizing:border-box;font-size:12px;"></textarea>
+                    <div data-i18n="cb_loot_title" style="font-size:14px; color:#f1c40f; margin-bottom:6px; font-weight:bold;">🎒 Loot &amp; Equipment</div>
+                    <textarea id="cb-loot" class="builder-input" rows="3" data-i18n-placeholder="cb_loot_ph" placeholder="Inventory, equipment, gold, magic items…" style="resize:vertical;min-height:60px;width:100%;box-sizing:border-box;font-size:12px;"></textarea>
                 </div>
 
                 <!-- Portrait (moved last) -->

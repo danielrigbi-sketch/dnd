@@ -887,36 +887,36 @@ function _initCampaignPanel(campaignId) {
     section.id = 'campaign-mgmt-accordion';
     section.className = 'accordion-item campaign-accordion';
     section.innerHTML = `
-        <summary class="accordion-header">⚔️ ניהול קמפיין</summary>
+        <summary class="accordion-header">${t('campaign_mgmt_title')}</summary>
         <div class="accordion-body" id="campaign-mgmt-body">
             <div style="margin-bottom:8px;">
-                <label style="color:#aaa;font-size:11px;">שם קמפיין</label>
+                <label style="color:#aaa;font-size:11px;">${t('campaign_name_label')}</label>
                 <div style="display:flex;gap:6px;margin-top:3px;">
                     <input type="text" id="ingame-campaign-name" class="input-padded" style="flex:1;font-size:12px;" maxlength="50">
-                    <button class="hover-btn" id="ingame-campaign-name-save" style="background:#9b59b6;color:white;padding:4px 8px;border-radius:4px;font-size:11px;">שמור</button>
+                    <button class="hover-btn" id="ingame-campaign-name-save" style="background:#9b59b6;color:white;padding:4px 8px;border-radius:4px;font-size:11px;">${t('campaign_save')}</button>
                 </div>
             </div>
             <div style="margin-bottom:8px;">
-                <label style="color:#aaa;font-size:11px;">הערות סשן</label>
-                <textarea id="ingame-campaign-notes" class="input-padded" rows="3" style="width:100%;font-size:11px;resize:vertical;margin-top:3px;" placeholder="הערות, לור, תוכניות…" maxlength="1000"></textarea>
-                <button class="hover-btn" id="ingame-campaign-notes-save" style="margin-top:4px;background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:11px;">💾 שמור הערות</button>
+                <label style="color:#aaa;font-size:11px;">${t('campaign_notes_label')}</label>
+                <textarea id="ingame-campaign-notes" class="input-padded" rows="3" style="width:100%;font-size:11px;resize:vertical;margin-top:3px;" placeholder="${t('campaign_notes_ingame_ph')}" maxlength="1000"></textarea>
+                <button class="hover-btn" id="ingame-campaign-notes-save" style="margin-top:4px;background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:11px;">${t('campaign_notes_save')}</button>
             </div>
             <div style="margin-bottom:8px;">
-                <div style="color:#aaa;font-size:11px;margin-bottom:4px;">🗺️ סצנות</div>
+                <div style="color:#aaa;font-size:11px;margin-bottom:4px;">${t('campaign_scenes_title')}</div>
                 <div id="ingame-scenes-list" style="display:flex;flex-direction:column;gap:3px;max-height:120px;overflow-y:auto;"></div>
             </div>
             <div style="margin-bottom:8px;">
-                <div style="color:#aaa;font-size:11px;margin-bottom:4px;">שחקנים מאושרים</div>
+                <div style="color:#aaa;font-size:11px;margin-bottom:4px;">${t('campaign_approved_players')}</div>
                 <div id="ingame-player-roster"></div>
             </div>
             <div id="ingame-pending-section" style="display:none;margin-bottom:8px;">
-                <div style="color:#f1c40f;font-size:11px;margin-bottom:4px;">⏳ בקשות ממתינות</div>
+                <div style="color:#f1c40f;font-size:11px;margin-bottom:4px;">${t('campaign_pending_requests')}</div>
                 <div id="ingame-pending-list"></div>
             </div>
             <div style="border-top:1px solid #333;padding-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-                <button class="hover-btn" id="ingame-long-rest-btn" style="background:#2980b9;color:white;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:bold;flex:1;">🌙 מנוחה ארוכה</button>
+                <button class="hover-btn" id="ingame-long-rest-btn" style="background:#2980b9;color:white;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:bold;flex:1;">${t('campaign_long_rest_btn')}</button>
                 <button class="hover-btn" id="ingame-copy-code-btn" style="background:#2c3e50;color:#ccc;padding:6px 10px;border-radius:6px;font-size:11px;flex:1;">📋 ${campaignId}</button>
-                <button class="hover-btn" id="ingame-end-session-btn" style="background:#6c3483;color:white;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:bold;flex:1;">📜 סיים סשן</button>
+                <button class="hover-btn" id="ingame-end-session-btn" style="background:#6c3483;color:white;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:bold;flex:1;">${t('campaign_end_session_btn')}</button>
             </div>
         </div>
     `;
@@ -937,32 +937,32 @@ function _initCampaignPanel(campaignId) {
         const n = document.getElementById('ingame-campaign-name')?.value.trim();
         if (!n) return;
         await db.updateCampaignMeta(campaignId, { name: n });
-        showToast('שם עודכן!', 'success');
+        showToast(t('campaign_name_updated'), 'success');
     });
 
     document.getElementById('ingame-campaign-notes-save')?.addEventListener('click', async () => {
         const notes = document.getElementById('ingame-campaign-notes')?.value || '';
         await db.updateCampaignMeta(campaignId, { description: notes });
-        showToast('הערות נשמרו.', 'success');
+        showToast(t('campaign_notes_saved'), 'success');
     });
 
     document.getElementById('ingame-copy-code-btn')?.addEventListener('click', () => {
-        navigator.clipboard.writeText(campaignId).then(() => showToast('קוד הועתק!', 'success'));
+        navigator.clipboard.writeText(campaignId).then(() => showToast(t('campaign_code_copied'), 'success'));
     });
 
     document.getElementById('ingame-long-rest-btn')?.addEventListener('click', async () => {
-        if (!confirm('מנוחה ארוכה — שחזר HP ו-Spell Slots לכל השחקנים?')) return;
+        if (!confirm(t('campaign_long_rest_confirm'))) return;
         await db.longRestCampaign(campaignId);
-        showToast('🌙 מנוחה ארוכה! HP ו-Spell Slots שוחזרו.', 'success');
+        showToast(t('campaign_long_rest_success'), 'success');
     });
 
     document.getElementById('ingame-end-session-btn')?.addEventListener('click', async () => {
-        const notes = prompt('הערות לסשן (אופציונלי):') ?? null;
+        const notes = prompt(t('campaign_end_session_notes_ph')) ?? null;
         if (notes === null) return; // cancelled
         try {
             const meta = await db.getCampaignMeta(campaignId);
             const dmUid = meta?.dmUid;
-            if (!dmUid) { showToast('שגיאה: לא נמצא DM.', 'error'); return; }
+            if (!dmUid) { showToast(t('campaign_err_no_dm'), 'error'); return; }
             // Snapshot last 50 rolls
             const rollsSnap = await db.getRecentRolls(campaignId, 50);
             const sessionData = {
@@ -972,10 +972,10 @@ function _initCampaignPanel(campaignId) {
             };
             await db.saveSession(campaignId, dmUid, sessionData);
             await db.updateCampaignMeta(campaignId, { lastSession: Date.now() });
-            showToast('📜 הסשן נשמר!', 'success');
+            showToast(t('campaign_session_saved'), 'success');
         } catch (e) {
             console.error('End session error:', e);
-            showToast('שגיאה בשמירת הסשן.', 'error');
+            showToast(t('campaign_session_err'), 'error');
         }
     });
 
@@ -984,13 +984,13 @@ function _initCampaignPanel(campaignId) {
         const roster = document.getElementById('ingame-player-roster');
         if (!roster) return;
         if (!players || !Object.keys(players).length) {
-            roster.innerHTML = '<div style="color:#555;font-size:11px;">אין שחקנים עדיין.</div>';
+            roster.innerHTML = `<div style="color:#555;font-size:11px;">${t('campaign_no_players_yet')}</div>`;
             return;
         }
         roster.innerHTML = Object.entries(players).map(([uid, p]) => `
             <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;background:rgba(255,255,255,0.04);margin-bottom:3px;">
                 <span style="color:white;font-size:11px;"><strong>${p.playerName || '?'}</strong> · ${p.charName || '?'}</span>
-                <button class="hover-btn" onclick="window.__campaignKick('${campaignId}','${uid}')" style="background:#c0392b;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">הסר</button>
+                <button class="hover-btn" onclick="window.__campaignKick('${campaignId}','${uid}')" style="background:#c0392b;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">${t('campaign_kick')}</button>
             </div>`).join('');
     });
 
@@ -1005,8 +1005,8 @@ function _initCampaignPanel(campaignId) {
             <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;background:rgba(241,196,15,0.07);margin-bottom:3px;">
                 <span style="color:#f1c40f;font-size:11px;"><strong>${r.playerName || '?'}</strong> · ${r.charName || '?'}</span>
                 <div style="display:flex;gap:4px;">
-                    <button class="hover-btn" onclick="window.__campaignApprove('${campaignId}','${uid}')" style="background:#27ae60;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">✅</button>
-                    <button class="hover-btn" onclick="window.__campaignDeny('${campaignId}','${uid}')" style="background:#666;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">❌</button>
+                    <button class="hover-btn" onclick="window.__campaignApprove('${campaignId}','${uid}')" style="background:#27ae60;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">${t('campaign_approve_btn')}</button>
+                    <button class="hover-btn" onclick="window.__campaignDeny('${campaignId}','${uid}')" style="background:#666;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">${t('campaign_deny_btn')}</button>
                 </div>
             </div>`).join('');
     });
@@ -1023,7 +1023,7 @@ function _initCampaignPanel(campaignId) {
         const list = document.getElementById('ingame-scenes-list');
         if (!list) return;
         if (!_allScenes || !Object.keys(_allScenes).length) {
-            list.innerHTML = '<div style="color:#555;font-size:11px;">אין סצנות עדיין.</div>';
+            list.innerHTML = `<div style="color:#555;font-size:11px;">${t('campaign_no_scenes')}</div>`;
             return;
         }
         list.innerHTML = Object.entries(_allScenes).map(([sid, s]) => {
