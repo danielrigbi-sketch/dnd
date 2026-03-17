@@ -181,6 +181,39 @@ export function listenToCampaignAllowedPlayers(campaignId, cb) {
     return onValue(ref(db, `campaigns/${campaignId}/allowedPlayers`), s => cb(s.val()));
 }
 
+// Listen for a single player's approval status (used by waiting lobby)
+export function listenToApprovalStatus(campaignId, uid, cb) {
+    return onValue(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`), s => cb(s.val()));
+}
+
+// ── Session Archive (stored under users/{dmUid} — no extra rules needed) ──────
+export async function saveSession(campaignId, dmUid, sessionData) {
+    const ts = Date.now();
+    await set(ref(db, `users/${dmUid}/campaignSessions/${campaignId}/${ts}`), { ...sessionData, ts });
+    // Keep only last 5 sessions
+    const allSnap = await get(ref(db, `users/${dmUid}/campaignSessions/${campaignId}`));
+    if (allSnap.exists()) {
+        const keys = Object.keys(allSnap.val()).sort();
+        if (keys.length > 5) {
+            await Promise.all(
+                keys.slice(0, keys.length - 5).map(k =>
+                    remove(ref(db, `users/${dmUid}/campaignSessions/${campaignId}/${k}`))
+                )
+            );
+        }
+    }
+    return ts;
+}
+
+export async function getRecentSessions(campaignId, dmUid) {
+    const snap = await get(ref(db, `users/${dmUid}/campaignSessions/${campaignId}`));
+    if (!snap.exists()) return [];
+    return Object.entries(snap.val())
+        .sort(([a], [b]) => Number(b) - Number(a))
+        .slice(0, 5)
+        .map(([ts, data]) => ({ ts: Number(ts), ...data }));
+}
+
 export function listenToCampaignsByDM(dmUid, cb) {
     // Read from user's own dmCampaigns index — no collection-level read needed
     return onValue(ref(db, `users/${dmUid}/dmCampaigns`), async snap => {
@@ -284,6 +317,12 @@ export function listenToActiveTurn(cb)  { onValue(ref(db, `rooms/${activeRoom}/a
 export function listenToRoundNumber(cb) { onValue(ref(db, `rooms/${activeRoom}/round_number`), s => cb(s.val() || 0)); }
 
 // ==========================================
+export async function getRecentRolls(campaignId, n = 50) {
+    const snap = await get(query(ref(db, `rooms/${campaignId}/rolls`), limitToLast(n)));
+    if (!snap.exists()) return null;
+    return snap.val();
+}
+
 export async function loadRecentRolls(n = 20) {
     const snap = await get(query(ref(db, `rooms/${activeRoom}/rolls`), limitToLast(n)));
     if (!snap.exists()) return [];

@@ -912,6 +912,7 @@ function _initCampaignPanel(campaignId) {
             <div style="border-top:1px solid #333;padding-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
                 <button class="hover-btn" id="ingame-long-rest-btn" style="background:#2980b9;color:white;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:bold;flex:1;">🌙 מנוחה ארוכה</button>
                 <button class="hover-btn" id="ingame-copy-code-btn" style="background:#2c3e50;color:#ccc;padding:6px 10px;border-radius:6px;font-size:11px;flex:1;">📋 ${campaignId}</button>
+                <button class="hover-btn" id="ingame-end-session-btn" style="background:#6c3483;color:white;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:bold;flex:1;">📜 סיים סשן</button>
             </div>
         </div>
     `;
@@ -949,6 +950,29 @@ function _initCampaignPanel(campaignId) {
         if (!confirm('מנוחה ארוכה — שחזר HP ו-Spell Slots לכל השחקנים?')) return;
         await db.longRestCampaign(campaignId);
         showToast('🌙 מנוחה ארוכה! HP ו-Spell Slots שוחזרו.', 'success');
+    });
+
+    document.getElementById('ingame-end-session-btn')?.addEventListener('click', async () => {
+        const notes = prompt('הערות לסשן (אופציונלי):') ?? null;
+        if (notes === null) return; // cancelled
+        try {
+            const meta = await db.getCampaignMeta(campaignId);
+            const dmUid = meta?.dmUid;
+            if (!dmUid) { showToast('שגיאה: לא נמצא DM.', 'error'); return; }
+            // Snapshot last 50 rolls
+            const rollsSnap = await db.getRecentRolls(campaignId, 50);
+            const sessionData = {
+                notes: notes || '',
+                rollCount: rollsSnap ? Object.keys(rollsSnap).length : 0,
+                rollLogSnapshot: rollsSnap || {}
+            };
+            await db.saveSession(campaignId, dmUid, sessionData);
+            await db.updateCampaignMeta(campaignId, { lastSession: Date.now() });
+            showToast('📜 הסשן נשמר!', 'success');
+        } catch (e) {
+            console.error('End session error:', e);
+            showToast('שגיאה בשמירת הסשן.', 'error');
+        }
     });
 
     // Listen to players roster
