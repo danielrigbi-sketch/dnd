@@ -133,6 +133,8 @@ async function _requestAccess() {
         // Check if already approved
         const isApproved = await db.isCampaignPlayer(code, _uid);
         if (isApproved) {
+            // Ensure their playerCampaigns index exists (repairs accounts approved before the fix)
+            try { await db.savePlayerCampaignIndex(code, _uid); } catch(e) { console.warn('[Campaign] savePlayerCampaignIndex repair failed:', e); }
             _showToast(t('campaign_already_approved'), 'info');
             return;
         }
@@ -221,12 +223,14 @@ function _showWaitingScreen(campaignId, campaignName, dmName, charName) {
     });
 
     // Live listener — fires when DM approves
-    _approvalUnsubscribe = db.listenToApprovalStatus(campaignId, _uid, (data) => {
+    _approvalUnsubscribe = db.listenToApprovalStatus(campaignId, _uid, async (data) => {
         if (!data?.approved) return;
         // Approved! clean up and open vault
         if (_approvalUnsubscribe) { _approvalUnsubscribe(); _approvalUnsubscribe = null; }
         modal.remove();
         _showToast(t('campaign_approved_toast'), 'success');
+        // Player self-writes their own index — DM cannot do this due to Firebase rules
+        try { await db.savePlayerCampaignIndex(campaignId, _uid); } catch(e) { console.warn('[Campaign] savePlayerCampaignIndex failed:', e); }
         _openVaultForCampaign(campaignId, charName);
     });
 }

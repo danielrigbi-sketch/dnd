@@ -134,6 +134,21 @@ export async function isCampaignPlayer(campaignId, uid) {
     return snap.exists() && snap.val().approved === true;
 }
 
+// Must be called from the PLAYER's own client — writes to their own users/ node.
+// approveCampaignPlayer cannot do this because it runs on the DM's client (wrong auth UID).
+export async function savePlayerCampaignIndex(campaignId, uid) {
+    const [metaSnap, playerSnap] = await Promise.all([
+        get(ref(db, `campaigns/${campaignId}/meta`)),
+        get(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`))
+    ]);
+    const meta   = metaSnap.val()   || {};
+    const player = playerSnap.val() || {};
+    await set(ref(db, `users/${uid}/playerCampaigns/${campaignId}`), {
+        name: meta.name || campaignId, dmName: meta.dmName || '?',
+        charName: player.charName || '', lastSession: meta.lastSession || Date.now()
+    });
+}
+
 export async function requestCampaignAccess(campaignId, uid, playerName, charName) {
     await set(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`), {
         playerName, charName, requestedAt: Date.now()
