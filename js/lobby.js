@@ -201,19 +201,43 @@ let currentVaultCharacters = {};
 updateDOM();
 
 // ── Lobby tab switching ───────────────────────────────────────────────────────
+function _switchLobbyTab(tabName) {
+    document.querySelectorAll('.lobby-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.lobby-tab-content').forEach(c => { c.classList.remove('active'); c.style.display = 'none'; });
+    const btn = document.querySelector(`.lobby-tab[data-tab="${tabName}"]`);
+    if (btn) btn.classList.add('active');
+    const panel = document.getElementById(`lobby-tab-${tabName}`);
+    if (panel) { panel.classList.add('active'); panel.style.display = tabName === 'quick-room' ? 'flex' : 'block'; }
+}
+
 function _initLobbyTabs() {
     document.querySelectorAll('.lobby-tab').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const target = btn.dataset.tab;
-            document.querySelectorAll('.lobby-tab').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.lobby-tab-content').forEach(c => { c.classList.remove('active'); c.style.display = 'none'; });
-            btn.classList.add('active');
-            const panel = document.getElementById(`lobby-tab-${target}`);
-            if (panel) { panel.classList.add('active'); panel.style.display = target === 'quick-room' ? 'flex' : 'block'; }
-        });
+        btn.addEventListener('click', () => _switchLobbyTab(btn.dataset.tab));
     });
 }
 _initLobbyTabs();
+
+// ── URL param: ?campaign=XXXX auto-fills join code and switches to campaign tab
+const _urlCampaignCode = new URLSearchParams(window.location.search).get('campaign');
+if (_urlCampaignCode) {
+    // Wait for auth + lobby render, then switch tab and pre-fill code
+    const _applyUrlCampaign = () => {
+        _switchLobbyTab('campaigns');
+        const codeInput = document.getElementById('campaign-join-code');
+        if (codeInput) codeInput.value = _urlCampaignCode.toUpperCase();
+        // Clean URL so reload doesn't re-trigger
+        window.history.replaceState({}, '', window.location.pathname);
+    };
+    // Auth listener fires before renderVault; campaigns tab may not exist yet — wait for it
+    const _waitForCampaignTab = setInterval(() => {
+        if (document.getElementById('campaign-join-code')) {
+            clearInterval(_waitForCampaignTab);
+            _applyUrlCampaign();
+        }
+    }, 200);
+    // Give up after 10s
+    setTimeout(() => clearInterval(_waitForCampaignTab), 10000);
+}
 
 db.listenToAuthState((user) => {
     if (user) {
@@ -343,8 +367,58 @@ function openBuilderForEdit(charId) {
         document.querySelectorAll('.builder-portrait-btn').forEach(btn => { btn.classList.remove('active'); if (btn.src === selectedPortrait) btn.classList.add('active'); });
     }
 
+    // Ability scores
+    document.getElementById('cb-str').value = c._str || '';
+    document.getElementById('cb-dex').value = c._dex || '';
+    document.getElementById('cb-con').value = c._con || '';
+    document.getElementById('cb-int').value = c._int || '';
+    document.getElementById('cb-wis').value = c._wis || '';
+    document.getElementById('cb-cha').value = c._cha || '';
+
+    // Saving throw proficiencies — check box if savingThrows[ab] is set
+    ['str','dex','con','int','wis','cha'].forEach(ab => {
+        const el = document.getElementById('cb-save-'+ab);
+        if (el) el.checked = !!(c.savingThrows?.[ab]);
+    });
+
+    // Skill proficiencies
+    const SKILL_ID_MAP_EDIT = {
+        'cb-skill-acrobatics': 'acrobatics',
+        'cb-skill-animal_handling': 'animal handling',
+        'cb-skill-arcana': 'arcana',
+        'cb-skill-athletics': 'athletics',
+        'cb-skill-deception': 'deception',
+        'cb-skill-history': 'history',
+        'cb-skill-insight': 'insight',
+        'cb-skill-intimidation': 'intimidation',
+        'cb-skill-investigation': 'investigation',
+        'cb-skill-medicine': 'medicine',
+        'cb-skill-nature': 'nature',
+        'cb-skill-perception': 'perception',
+        'cb-skill-performance': 'performance',
+        'cb-skill-persuasion': 'persuasion',
+        'cb-skill-religion': 'religion',
+        'cb-skill-sleight_of_hand': 'sleight of hand',
+        'cb-skill-stealth': 'stealth',
+        'cb-skill-survival': 'survival',
+    };
+    Object.entries(SKILL_ID_MAP_EDIT).forEach(([id, skillKey]) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = !!(c.skills?.[skillKey]);
+    });
+
+    // Languages, resistances, immunities, loot
+    const langEl = document.getElementById('cb-languages');
+    if (langEl) langEl.value = c.languages || '';
+    const resEl = document.getElementById('cb-resistances');
+    if (resEl) resEl.value = c.damageResistances || '';
+    const immEl = document.getElementById('cb-immunities');
+    if (immEl) immEl.value = c.damageImmunities || '';
+    const lootEl = document.getElementById('cb-loot');
+    if (lootEl) lootEl.value = c.loot || '';
+
     if (attacksList) attacksList.innerHTML = '';
-    // Sprint 6: load spell slots
+    // Spell slots
     for (let lv = 1; lv <= 9; lv++) {
         const el = document.getElementById('cb-spell-'+lv);
         if (el) el.value = (c.spellSlots?.max?.[lv]) || '';
@@ -469,7 +543,72 @@ if(saveCharBtn) {
                 ranged: parseInt(ranged), rangedDmg: rangedDmg,
                 customAttacks: customAttacks, color: color, portrait: selectedPortrait, createdAt: Date.now()
             };
-            // Sprint 6: spell slots (only include levels with > 0 max)
+
+            // Ability scores
+            const _str = parseInt(document.getElementById('cb-str')?.value) || 0;
+            const _dex = parseInt(document.getElementById('cb-dex')?.value) || 0;
+            const _con = parseInt(document.getElementById('cb-con')?.value) || 0;
+            const _int = parseInt(document.getElementById('cb-int')?.value) || 0;
+            const _wis = parseInt(document.getElementById('cb-wis')?.value) || 0;
+            const _cha = parseInt(document.getElementById('cb-cha')?.value) || 0;
+            if (_str || _dex || _con || _int || _wis || _cha) {
+                if (_str) charData._str = _str;
+                if (_dex) charData._dex = _dex;
+                if (_con) charData._con = _con;
+                if (_int) charData._int = _int;
+                if (_wis) charData._wis = _wis;
+                if (_cha) charData._cha = _cha;
+            }
+
+            // Saving throw proficiencies — store as numeric bonus = abilityMod + profBonus
+            const profB = charLevel < 5 ? 2 : charLevel < 9 ? 3 : charLevel < 13 ? 4 : charLevel < 17 ? 5 : 6;
+            const saveAbilScores = { str: _str||10, dex: _dex||10, con: _con||10, int: _int||10, wis: _wis||10, cha: _cha||10 };
+            const savingThrows = {};
+            ['str','dex','con','int','wis','cha'].forEach(ab => {
+                if (document.getElementById('cb-save-'+ab)?.checked) {
+                    savingThrows[ab] = Math.floor((saveAbilScores[ab] - 10) / 2) + profB;
+                }
+            });
+            if (Object.keys(savingThrows).length > 0) charData.savingThrows = savingThrows;
+
+            // Skill proficiencies — store as { skillName: true } matching SKILL_ABILITIES keys
+            const SKILL_ID_MAP = {
+                'cb-skill-acrobatics': 'acrobatics',
+                'cb-skill-animal_handling': 'animal handling',
+                'cb-skill-arcana': 'arcana',
+                'cb-skill-athletics': 'athletics',
+                'cb-skill-deception': 'deception',
+                'cb-skill-history': 'history',
+                'cb-skill-insight': 'insight',
+                'cb-skill-intimidation': 'intimidation',
+                'cb-skill-investigation': 'investigation',
+                'cb-skill-medicine': 'medicine',
+                'cb-skill-nature': 'nature',
+                'cb-skill-perception': 'perception',
+                'cb-skill-performance': 'performance',
+                'cb-skill-persuasion': 'persuasion',
+                'cb-skill-religion': 'religion',
+                'cb-skill-sleight_of_hand': 'sleight of hand',
+                'cb-skill-stealth': 'stealth',
+                'cb-skill-survival': 'survival',
+            };
+            const skills = {};
+            Object.entries(SKILL_ID_MAP).forEach(([id, skillKey]) => {
+                if (document.getElementById(id)?.checked) skills[skillKey] = true;
+            });
+            if (Object.keys(skills).length > 0) charData.skills = skills;
+
+            // Languages, resistances, immunities, loot
+            const languages = document.getElementById('cb-languages')?.value.trim();
+            if (languages) charData.languages = languages;
+            const resistances = document.getElementById('cb-resistances')?.value.trim();
+            if (resistances) charData.damageResistances = resistances;
+            const immunities = document.getElementById('cb-immunities')?.value.trim();
+            if (immunities) charData.damageImmunities = immunities;
+            const loot = document.getElementById('cb-loot')?.value.trim();
+            if (loot) charData.loot = loot;
+
+            // Spell slots (only include levels with > 0 max)
             const spellMax = {};
             for (let lv = 1; lv <= 9; lv++) {
                 const val = parseInt(document.getElementById('cb-spell-'+lv)?.value) || 0;

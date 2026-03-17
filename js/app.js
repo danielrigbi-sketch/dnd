@@ -902,6 +902,10 @@ function _initCampaignPanel(campaignId) {
                 <button class="hover-btn" id="ingame-campaign-notes-save" style="margin-top:4px;background:#555;color:white;padding:4px 10px;border-radius:4px;font-size:11px;">💾 שמור הערות</button>
             </div>
             <div style="margin-bottom:8px;">
+                <div style="color:#aaa;font-size:11px;margin-bottom:4px;">🗺️ סצנות</div>
+                <div id="ingame-scenes-list" style="display:flex;flex-direction:column;gap:3px;max-height:120px;overflow-y:auto;"></div>
+            </div>
+            <div style="margin-bottom:8px;">
                 <div style="color:#aaa;font-size:11px;margin-bottom:4px;">שחקנים מאושרים</div>
                 <div id="ingame-player-roster"></div>
             </div>
@@ -1006,6 +1010,37 @@ function _initCampaignPanel(campaignId) {
                 </div>
             </div>`).join('');
     });
+
+    // Scene switcher — lets DM switch active scene from campaign panel
+    let _activeSceneId = null;
+    db.listenActiveScene(campaignId, id => { _activeSceneId = id; _renderSceneList(); });
+    db.listenScenes(campaignId, scenes => {
+        _allScenes = scenes;
+        _renderSceneList();
+    });
+    let _allScenes = null;
+    function _renderSceneList() {
+        const list = document.getElementById('ingame-scenes-list');
+        if (!list) return;
+        if (!_allScenes || !Object.keys(_allScenes).length) {
+            list.innerHTML = '<div style="color:#555;font-size:11px;">אין סצנות עדיין.</div>';
+            return;
+        }
+        list.innerHTML = Object.entries(_allScenes).map(([sid, s]) => {
+            const isActive = sid === _activeSceneId;
+            return `<button class="hover-btn" onclick="window.__campaignSetScene('${campaignId}','${sid}')"
+                style="text-align:left;padding:5px 8px;border-radius:4px;font-size:11px;
+                       background:${isActive ? 'rgba(46,204,113,0.2)' : 'rgba(255,255,255,0.04)'};
+                       border:1px solid ${isActive ? '#2ecc71' : 'transparent'};
+                       color:${isActive ? '#2ecc71' : '#ccc'};width:100%;">
+                ${isActive ? '▶ ' : ''}${s.meta?.name || sid}
+            </button>`;
+        }).join('');
+    }
+    window.__campaignSetScene = (cId, sceneId) => {
+        db.setActiveScene(cId, sceneId);
+        showToast(`🗺️ ${_allScenes?.[sceneId]?.meta?.name || sceneId}`, 'success');
+    };
 }
 
 // =====================================================================

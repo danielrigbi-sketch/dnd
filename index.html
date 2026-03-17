@@ -120,113 +120,6 @@
                 <input type="color" id="cb-color" value="#3498db" style="width: 50px; height: 30px; border: none; cursor: pointer; background: transparent;">
             </div>
 
-            <div class="text-center" style="margin-bottom: 15px; border-bottom: 1px dashed #555; padding-bottom: 10px;">
-                <div data-i18n="cb_portrait" style="font-size: 12px; color: #ccc; margin-bottom: 5px;"></div>
-                
-                <div class="flex-center" style="gap: 8px; margin-bottom: 10px; flex-wrap:wrap;">
-                    <button type="button" id="tab-portrait-preset" class="portrait-tab" data-i18n="port_tab_preset"></button>
-                    <button type="button" id="tab-portrait-2mt" class="portrait-tab" data-i18n="port_tab_2mt"></button>
-                    <button type="button" id="tab-portrait-url" class="portrait-tab" data-i18n="port_tab_url"></button>
-                    <button type="button" id="tab-portrait-file" class="portrait-tab" data-i18n="port_tab_file"></button>
-                </div>
-
-                <div id="portrait-preset-area" style="display:none; flex-direction:column; gap:6px;">
-                    <!-- Row 1: Warriors -->
-                    <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=fighter_knight&backgroundColor=c0392b" class="builder-portrait-btn active" title="Fighter">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=paladin_holy&backgroundColor=f39c12" class="builder-portrait-btn" title="Paladin">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=barbarian_rage&backgroundColor=e74c3c" class="builder-portrait-btn" title="Barbarian">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=ranger_hunter&backgroundColor=27ae60" class="builder-portrait-btn" title="Ranger">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=monk_swift&backgroundColor=16a085" class="builder-portrait-btn" title="Monk">
-                    </div>
-                    <!-- Row 2: Casters -->
-                    <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=wizard_arcane&backgroundColor=8e44ad" class="builder-portrait-btn" title="Wizard">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=sorcerer_wild&backgroundColor=9b59b6" class="builder-portrait-btn" title="Sorcerer">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=warlock_pact&backgroundColor=2c3e50" class="builder-portrait-btn" title="Warlock">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=cleric_divine&backgroundColor=2980b9" class="builder-portrait-btn" title="Cleric">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=druid_nature&backgroundColor=1abc9c" class="builder-portrait-btn" title="Druid">
-                    </div>
-                    <!-- Row 3: Rogues / Bards + Races -->
-                    <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=rogue_shadow&backgroundColor=34495e" class="builder-portrait-btn" title="Rogue">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=bard_song&backgroundColor=f1c40f" class="builder-portrait-btn" title="Bard">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=elf_arcane_f&backgroundColor=2ecc71" class="builder-portrait-btn" title="Elf F">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=dwarf_stone_m&backgroundColor=e67e22" class="builder-portrait-btn" title="Dwarf M">
-                        <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=tiefling_dark_f&backgroundColor=c0392b" class="builder-portrait-btn" title="Tiefling F">
-                    </div>
-                </div>
-                
-                <!-- 2 Minute Tabletop Token Art -->
-                <div id="portrait-2mt-area" style="display:none; flex-direction:column; gap:5px;">
-                    <div class="tmt-attr" style="font-size:10px; color:#888; text-align:center; margin-bottom:2px;">
-                        Art by <a href="https://2minutetabletop.com" target="_blank" style="color:#f1c40f;">2 Minute Tabletop</a> (CC-BY 4.0)
-                    </div>
-                    <!-- Dynamic section — filled by JS based on class/race/gender -->
-                    <div class="tmt-dynamic" style="display:flex; flex-direction:column; gap:4px; padding:4px 0 6px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:4px;">
-                        <div style="font-size:9px;color:#666;text-align:center;">Select a class &amp; race above to see matching tokens</div>
-                    </div>
-                    <!-- Row 1: Warriors & Martial -->
-                    <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">⚔️ WARRIORS</div>
-                    <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png" class="builder-portrait-btn tmt" title="Human Fighter" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/legendarypaladin2/preview.png" class="builder-portrait-btn tmt" title="Paladin" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/dragonbornfighter/preview.png" class="builder-portrait-btn tmt" title="Dragonborn Fighter" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/tieflingfighter4/preview.png" class="builder-portrait-btn tmt" title="Tiefling Fighter" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/halflingfighter/preview.png" class="builder-portrait-btn tmt" title="Halfling Fighter" onerror="this.style.display='none'">
-                    </div>
-                    <!-- Row 2: Casters & Support -->
-                    <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">🧙 CASTERS</div>
-                    <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/elfwizard4/preview.png" class="builder-portrait-btn tmt" title="Elf Wizard" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/owlfolkwizard1/preview.png" class="builder-portrait-btn tmt" title="Owlfolk Wizard" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/halforccleric1/preview.png" class="builder-portrait-btn tmt" title="Half-Orc Cleric" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/orccleric/preview.png" class="builder-portrait-btn tmt" title="Orc Cleric" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/warforgedranger2/preview.png" class="builder-portrait-btn tmt" title="Warforged Ranger" onerror="this.style.display='none'">
-                    </div>
-                    <!-- Row 3: Rogues, Rangers & Bards -->
-                    <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">🗡️ ROGUES & RANGERS</div>
-                    <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/rogue/preview.png" class="builder-portrait-btn tmt" title="Rogue" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanrogue3/preview.png" class="builder-portrait-btn tmt" title="Human Rogue" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/legendaryranger2/preview.png" class="builder-portrait-btn tmt" title="Legendary Ranger" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/satyrbard1/preview.png" class="builder-portrait-btn tmt" title="Satyr Bard" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/yuantipurebloodbarbarian1/preview.png" class="builder-portrait-btn tmt" title="Barbarian" onerror="this.style.display='none'">
-                    </div>
-                    <!-- Row 4: Goblins & Orcs -->
-                    <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">👺 GOBLINS & ORCS</div>
-                    <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/goblin03/preview.png" class="builder-portrait-btn tmt" title="Goblin" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/goblin07/preview.png" class="builder-portrait-btn tmt" title="Goblin" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/goblinpaladin1/preview.png" class="builder-portrait-btn tmt" title="Goblin Boss" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/hobgoblin3/preview.png" class="builder-portrait-btn tmt" title="Hobgoblin" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/hobgoblincleric1/preview.png" class="builder-portrait-btn tmt" title="Hobgoblin Captain" onerror="this.style.display='none'">
-                    </div>
-                    <!-- Row 5: Undead -->
-                    <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">💀 UNDEAD</div>
-                    <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/zombie/preview.png" class="builder-portrait-btn tmt" title="Zombie" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/zombie2/preview.png" class="builder-portrait-btn tmt" title="Zombie" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/skeletonfighter1/preview.png" class="builder-portrait-btn tmt" title="Skeleton" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/ghost2/preview.png" class="builder-portrait-btn tmt" title="Ghost" onerror="this.style.display='none'">
-                        <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/deathknight/preview.png" class="builder-portrait-btn tmt" title="Death Knight" onerror="this.style.display='none'">
-                    </div>
-                </div>
-
-                <div id="portrait-url-area" style="display: none;">
-                    <input type="text" id="cb-portrait-url" class="builder-input text-left" dir="ltr" data-i18n-placeholder="port_url_ph" style="width:100%;">
-                </div>
-                
-                <div id="portrait-file-area" style="display: none;">
-                    <input type="file" id="cb-portrait-file" accept="image/*" class="builder-input w-100" style="color: white; padding: 6px;">
-                    <span id="portrait-upload-progress" style="display:none; font-size:11px; color:#f1c40f; margin-top:4px;"></span>
-                </div>
-
-                <div style="margin-top: 10px;">
-                    <img id="portrait-preview" src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png" style="width: 60px; height: 60px; border-radius: 0; object-fit: cover; border: 2px solid #f1c40f; background: transparent;">
-                </div>
-            </div>
-
             <div class="flex-column">
                 <input type="text" id="cb-name" class="builder-input" data-i18n-placeholder="cb_name_ph" autocomplete="off">
                 <div class="flex-row">
@@ -348,6 +241,181 @@
                             <label style="font-size:10px; color:#aaa;">Lv 9</label>
                             <input type="number" id="cb-spell-9" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
                         </div>
+                    </div>
+                </div>
+
+                <!-- Ability Scores -->
+                <div style="margin-top:15px; border-top:1px dashed rgba(255,255,255,0.2); padding-top:10px;">
+                    <div style="font-size:14px; color:#e67e22; margin-bottom:8px; font-weight:bold;">💪 Ability Scores <span style="font-size:10px;color:#666;font-weight:normal;">(optional — enables skill checks & saves)</span></div>
+                    <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:5px;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                            <label style="font-size:10px;color:#aaa;">STR</label>
+                            <input type="number" id="cb-str" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                            <label style="font-size:10px;color:#aaa;">DEX</label>
+                            <input type="number" id="cb-dex" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                            <label style="font-size:10px;color:#aaa;">CON</label>
+                            <input type="number" id="cb-con" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                            <label style="font-size:10px;color:#aaa;">INT</label>
+                            <input type="number" id="cb-int" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                            <label style="font-size:10px;color:#aaa;">WIS</label>
+                            <input type="number" id="cb-wis" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                            <label style="font-size:10px;color:#aaa;">CHA</label>
+                            <input type="number" id="cb-cha" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saving Throw Proficiencies -->
+                <div style="margin-top:10px;">
+                    <div style="font-size:11px; color:#aaa; margin-bottom:5px;">Saving Throw Proficiencies</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-str" style="accent-color:#e67e22;"> STR</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-dex" style="accent-color:#e67e22;"> DEX</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-con" style="accent-color:#e67e22;"> CON</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-int" style="accent-color:#e67e22;"> INT</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-wis" style="accent-color:#e67e22;"> WIS</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-cha" style="accent-color:#e67e22;"> CHA</label>
+                    </div>
+                </div>
+
+                <!-- Skill Proficiencies -->
+                <div style="margin-top:10px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px;">
+                    <div style="font-size:11px; color:#aaa; margin-bottom:5px;">Skill Proficiencies</div>
+                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px;">
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-acrobatics" style="accent-color:#3498db;"> Acrobatics</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-animal_handling" style="accent-color:#3498db;"> Animal Handling</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-arcana" style="accent-color:#3498db;"> Arcana</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-athletics" style="accent-color:#3498db;"> Athletics</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-deception" style="accent-color:#3498db;"> Deception</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-history" style="accent-color:#3498db;"> History</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-insight" style="accent-color:#3498db;"> Insight</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-intimidation" style="accent-color:#3498db;"> Intimidation</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-investigation" style="accent-color:#3498db;"> Investigation</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-medicine" style="accent-color:#3498db;"> Medicine</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-nature" style="accent-color:#3498db;"> Nature</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-perception" style="accent-color:#3498db;"> Perception</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-performance" style="accent-color:#3498db;"> Performance</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-persuasion" style="accent-color:#3498db;"> Persuasion</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-religion" style="accent-color:#3498db;"> Religion</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-sleight_of_hand" style="accent-color:#3498db;"> Sleight of Hand</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-stealth" style="accent-color:#3498db;"> Stealth</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-survival" style="accent-color:#3498db;"> Survival</label>
+                    </div>
+                </div>
+
+                <!-- Languages & Damage Modifiers -->
+                <div style="margin-top:10px; display:flex; flex-direction:column; gap:5px;">
+                    <input type="text" id="cb-languages" class="builder-input" placeholder="Languages (e.g., Common, Elvish, Dwarvish)">
+                    <input type="text" id="cb-resistances" class="builder-input" placeholder="Damage Resistances (e.g., Poison, Fire)">
+                    <input type="text" id="cb-immunities" class="builder-input" placeholder="Damage Immunities">
+                </div>
+
+                <!-- Loot & Equipment -->
+                <div style="margin-top:10px; border-top:1px dashed rgba(255,255,255,0.2); padding-top:10px;">
+                    <div style="font-size:14px; color:#f1c40f; margin-bottom:6px; font-weight:bold;">🎒 Loot &amp; Equipment</div>
+                    <textarea id="cb-loot" class="builder-input" rows="3" placeholder="Inventory, equipment, gold, magic items…" style="resize:vertical;min-height:60px;width:100%;box-sizing:border-box;font-size:12px;"></textarea>
+                </div>
+
+                <!-- Portrait (moved last) -->
+                <div class="text-center" style="margin-top:15px; border-top:1px dashed #555; padding-top:10px;">
+                    <div data-i18n="cb_portrait" style="font-size:12px; color:#ccc; margin-bottom:5px;"></div>
+                    <div class="flex-center" style="gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+                        <button type="button" id="tab-portrait-preset" class="portrait-tab" data-i18n="port_tab_preset"></button>
+                        <button type="button" id="tab-portrait-2mt" class="portrait-tab" data-i18n="port_tab_2mt"></button>
+                        <button type="button" id="tab-portrait-url" class="portrait-tab" data-i18n="port_tab_url"></button>
+                        <button type="button" id="tab-portrait-file" class="portrait-tab" data-i18n="port_tab_file"></button>
+                    </div>
+                    <div id="portrait-preset-area" style="display:none; flex-direction:column; gap:6px;">
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=fighter_knight&backgroundColor=c0392b" class="builder-portrait-btn active" title="Fighter">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=paladin_holy&backgroundColor=f39c12" class="builder-portrait-btn" title="Paladin">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=barbarian_rage&backgroundColor=e74c3c" class="builder-portrait-btn" title="Barbarian">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=ranger_hunter&backgroundColor=27ae60" class="builder-portrait-btn" title="Ranger">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=monk_swift&backgroundColor=16a085" class="builder-portrait-btn" title="Monk">
+                        </div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=wizard_arcane&backgroundColor=8e44ad" class="builder-portrait-btn" title="Wizard">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=sorcerer_wild&backgroundColor=9b59b6" class="builder-portrait-btn" title="Sorcerer">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=warlock_pact&backgroundColor=2c3e50" class="builder-portrait-btn" title="Warlock">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=cleric_divine&backgroundColor=2980b9" class="builder-portrait-btn" title="Cleric">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=druid_nature&backgroundColor=1abc9c" class="builder-portrait-btn" title="Druid">
+                        </div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=rogue_shadow&backgroundColor=34495e" class="builder-portrait-btn" title="Rogue">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=bard_song&backgroundColor=f1c40f" class="builder-portrait-btn" title="Bard">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=elf_arcane_f&backgroundColor=2ecc71" class="builder-portrait-btn" title="Elf F">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=dwarf_stone_m&backgroundColor=e67e22" class="builder-portrait-btn" title="Dwarf M">
+                            <img src="https://api.dicebear.com/8.x/adventurer/svg?seed=tiefling_dark_f&backgroundColor=c0392b" class="builder-portrait-btn" title="Tiefling F">
+                        </div>
+                    </div>
+                    <!-- 2 Minute Tabletop Token Art -->
+                    <div id="portrait-2mt-area" style="display:none; flex-direction:column; gap:5px;">
+                        <div class="tmt-attr" style="font-size:10px; color:#888; text-align:center; margin-bottom:2px;">
+                            Art by <a href="https://2minutetabletop.com" target="_blank" style="color:#f1c40f;">2 Minute Tabletop</a> (CC-BY 4.0)
+                        </div>
+                        <div class="tmt-dynamic" style="display:flex; flex-direction:column; gap:4px; padding:4px 0 6px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:4px;">
+                            <div style="font-size:9px;color:#666;text-align:center;">Select a class &amp; race above to see matching tokens</div>
+                        </div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">⚔️ WARRIORS</div>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png" class="builder-portrait-btn tmt" title="Human Fighter" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/legendarypaladin2/preview.png" class="builder-portrait-btn tmt" title="Paladin" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/dragonbornfighter/preview.png" class="builder-portrait-btn tmt" title="Dragonborn Fighter" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/tieflingfighter4/preview.png" class="builder-portrait-btn tmt" title="Tiefling Fighter" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/halflingfighter/preview.png" class="builder-portrait-btn tmt" title="Halfling Fighter" onerror="this.style.display='none'">
+                        </div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">🧙 CASTERS</div>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/elfwizard4/preview.png" class="builder-portrait-btn tmt" title="Elf Wizard" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/owlfolkwizard1/preview.png" class="builder-portrait-btn tmt" title="Owlfolk Wizard" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/halforccleric1/preview.png" class="builder-portrait-btn tmt" title="Half-Orc Cleric" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/orccleric/preview.png" class="builder-portrait-btn tmt" title="Orc Cleric" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/warforgedranger2/preview.png" class="builder-portrait-btn tmt" title="Warforged Ranger" onerror="this.style.display='none'">
+                        </div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">🗡️ ROGUES & RANGERS</div>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/rogue/preview.png" class="builder-portrait-btn tmt" title="Rogue" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanrogue3/preview.png" class="builder-portrait-btn tmt" title="Human Rogue" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/legendaryranger2/preview.png" class="builder-portrait-btn tmt" title="Legendary Ranger" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/satyrbard1/preview.png" class="builder-portrait-btn tmt" title="Satyr Bard" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/yuantipurebloodbarbarian1/preview.png" class="builder-portrait-btn tmt" title="Barbarian" onerror="this.style.display='none'">
+                        </div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">👺 GOBLINS & ORCS</div>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/goblin03/preview.png" class="builder-portrait-btn tmt" title="Goblin" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/goblin07/preview.png" class="builder-portrait-btn tmt" title="Goblin" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/goblinpaladin1/preview.png" class="builder-portrait-btn tmt" title="Goblin Boss" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/hobgoblin3/preview.png" class="builder-portrait-btn tmt" title="Hobgoblin" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/hobgoblincleric1/preview.png" class="builder-portrait-btn tmt" title="Hobgoblin Captain" onerror="this.style.display='none'">
+                        </div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">💀 UNDEAD</div>
+                        <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/zombie/preview.png" class="builder-portrait-btn tmt" title="Zombie" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/zombie2/preview.png" class="builder-portrait-btn tmt" title="Zombie" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/skeletonfighter1/preview.png" class="builder-portrait-btn tmt" title="Skeleton" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/ghost2/preview.png" class="builder-portrait-btn tmt" title="Ghost" onerror="this.style.display='none'">
+                            <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/deathknight/preview.png" class="builder-portrait-btn tmt" title="Death Knight" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                    <div id="portrait-url-area" style="display:none;">
+                        <input type="text" id="cb-portrait-url" class="builder-input text-left" dir="ltr" data-i18n-placeholder="port_url_ph" style="width:100%;">
+                    </div>
+                    <div id="portrait-file-area" style="display:none;">
+                        <input type="file" id="cb-portrait-file" accept="image/*" class="builder-input w-100" style="color:white; padding:6px;">
+                        <span id="portrait-upload-progress" style="display:none; font-size:11px; color:#f1c40f; margin-top:4px;"></span>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <img id="portrait-preview" src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png" style="width:60px; height:60px; border-radius:0; object-fit:cover; border:2px solid #f1c40f; background:transparent;">
                     </div>
                 </div>
 
