@@ -188,6 +188,20 @@ export async function kickCampaignPlayer(campaignId, uid) {
     await remove(ref(db, `users/${uid}/playerCampaigns/${campaignId}`));
 }
 
+// Player removes themselves from their own campaign list (e.g. after DM deleted the campaign)
+export async function removePlayerCampaignIndex(campaignId, uid) {
+    await remove(ref(db, `users/${uid}/playerCampaigns/${campaignId}`));
+}
+
+// DM deletes entire campaign. Cannot remove players' own index entries (Firebase rules),
+// but those will show gracefully until players manually remove them.
+export async function deleteCampaign(campaignId, dmUid) {
+    await remove(ref(db, `campaigns/${campaignId}`));
+    await remove(ref(db, `users/${dmUid}/dmCampaigns/${campaignId}`));
+    // Room data also cleaned up
+    await remove(ref(db, `rooms/${campaignId}`));
+}
+
 export function listenToPendingRequests(campaignId, cb) {
     return onValue(ref(db, `campaigns/${campaignId}/pendingRequests`), s => cb(s.val()));
 }

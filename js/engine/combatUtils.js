@@ -150,12 +150,20 @@ export function skillMod(skillName, player) {
   const ability  = SKILL_ABILITIES[skillName] || 'str';
   const score    = player[`_${ability}`] ?? player[ability] ?? 10;
   const abilityM = Math.floor((score - 10) / 2);
-  if (!player.skills) return abilityM;
+  const pb       = profBonus(player.level || 1);
+  if (!player.skills) {
+    // Jack of All Trades: Bard feature — half proficiency to non-proficient skills
+    if (player.jackOfAllTrades) return abilityM + Math.floor(pb / 2);
+    return abilityM;
+  }
   // Open5e stores "animal handling" or "animal_handling" — try both
   const keyU = skillName.replace(/\s+/g, '_');
   const val  = player.skills[skillName] ?? player.skills[keyU];
-  if (typeof val === 'number') return val;          // pre-computed (NPC)
-  if (val) return abilityM + profBonus(player.level || 1); // proficient (PC)
+  if (typeof val === 'number') return val;              // pre-computed (NPC)
+  if (val === 'expert') return abilityM + pb * 2;       // expertise (double proficiency)
+  if (val) return abilityM + pb;                        // proficient
+  // Jack of All Trades applies to non-proficient skills
+  if (player.jackOfAllTrades) return abilityM + Math.floor(pb / 2);
   return abilityM;
 }
 

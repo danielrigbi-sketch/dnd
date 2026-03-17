@@ -404,8 +404,12 @@ function openBuilderForEdit(charId) {
     };
     Object.entries(SKILL_ID_MAP_EDIT).forEach(([id, skillKey]) => {
         const el = document.getElementById(id);
-        if (el) el.checked = !!(c.skills?.[skillKey]);
+        if (!el) return;
+        const val = c.skills?.[skillKey];
+        el.value = val === 'expert' ? 'expert' : val ? 'prof' : '';
     });
+    const joatEl = document.getElementById('cb-jack-of-all-trades');
+    if (joatEl) joatEl.checked = !!c.jackOfAllTrades;
 
     // Languages, resistances, immunities, loot
     const langEl = document.getElementById('cb-languages');
@@ -594,9 +598,12 @@ if(saveCharBtn) {
             };
             const skills = {};
             Object.entries(SKILL_ID_MAP).forEach(([id, skillKey]) => {
-                if (document.getElementById(id)?.checked) skills[skillKey] = true;
+                const val = document.getElementById(id)?.value;
+                if (val === 'expert') skills[skillKey] = 'expert';
+                else if (val === 'prof') skills[skillKey] = true;
             });
             if (Object.keys(skills).length > 0) charData.skills = skills;
+            if (document.getElementById('cb-jack-of-all-trades')?.checked) charData.jackOfAllTrades = true;
 
             // Languages, resistances, immunities, loot
             const languages = document.getElementById('cb-languages')?.value.trim();

@@ -1,5 +1,6 @@
 :root {
   /* CritRoll Design Tokens v127 */
+  --panel-width: 360px;
 
   /* Brand colours */
   --cr-crimson:       #c0392b;
@@ -321,8 +322,12 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .skill-btn:hover { background: rgba(46,204,113,0.18); border-color: #2ecc71; color: white; }
 .skill-btn.prof { border-color: rgba(46,204,113,0.35); color: #a8e6b8; }
 .skill-btn.prof .sk-mod { color: #2ecc71; }
+.skill-btn.expert { border-color: rgba(52,152,219,0.5); color: #add5f7; background: rgba(52,152,219,0.08); }
+.skill-btn.expert .sk-mod { color: #3498db; font-weight: 900; }
+.skill-btn.expert .sk-name::after { content: '★'; font-size: 7px; margin-right: 2px; color: #3498db; }
 .skill-btn .sk-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .skill-btn .sk-mod { font-weight: 700; min-width: 20px; text-align: right; color: #7fb3d3; }
+.skill-select { background: #222; color: #ccc; border: 1px solid #444; border-radius: 3px; font-size: 10px; padding: 1px 2px; width: 28px; cursor: pointer; }
 
 /* Card section labels */
 .card-section-label { font-size: 9px; font-weight: 900; letter-spacing: 1.5px; color: #555; text-transform: uppercase; margin: 8px 0 3px; border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 2px; }

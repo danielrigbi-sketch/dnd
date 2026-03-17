@@ -842,8 +842,8 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
             _initCampaignPanel(roomCode);
             import('./campaign.js').then(({ watchPendingRequestsInGame }) => {
                 watchPendingRequestsInGame(roomCode,
-                    (uid, req) => showToast(`✅ ${req.playerName} (${req.charName}) הצטרף לקמפיין!`, 'success'),
-                    (uid, req) => showToast(`❌ בקשת ${req.playerName} נדחתה.`, 'info')
+                    (uid, req) => showToast(`✅ ${req.playerName} (${req.charName})`, 'success'),
+                    (uid, req) => showToast(`❌ ${req.playerName}`, 'info')
                 );
             });
         }

@@ -268,32 +268,33 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             <div class="stat-box" style="color:#e74c3c;"><span>${t('card_melee')}</span>⚔️ ${i.melee >= 0 ? '+'+(i.melee||0) : i.melee}</div>
                             <div class="stat-box" style="color:#3498db;"><span>${t('card_ranged')}</span>🏹 ${i.ranged >= 0 ? '+'+(i.ranged||0) : i.ranged}</div>
                         </div>
-                        ${[['STR',i._str],['DEX',i._dex],['CON',i._con],['INT',i._int],['WIS',i._wis],['CHA',i._cha]].some(([,v])=>v) ? `
-                        <div class="card-section-label">Abilities</div>
+                        ${[['ab_str',i._str],['ab_dex',i._dex],['ab_con',i._con],['ab_int',i._int],['ab_wis',i._wis],['ab_cha',i._cha]].some(([,v])=>v) ? `
+                        <div class="card-section-label">${t('card_abilities_label')}</div>
                         <div class="ability-row">
-                            ${[['STR',i._str],['DEX',i._dex],['CON',i._con],['INT',i._int],['WIS',i._wis],['CHA',i._cha]].map(([name,score]) => {
+                            ${[['ab_str',i._str,'STR'],['ab_dex',i._dex,'DEX'],['ab_con',i._con,'CON'],['ab_int',i._int,'INT'],['ab_wis',i._wis,'WIS'],['ab_cha',i._cha,'CHA']].map(([key,score,raw]) => {
                                 if (!score) return '';
                                 const mod = Math.floor((score - 10) / 2);
-                                return `<button class="ability-btn" onclick="window.rollAbilityCheck('${_esc(i.name)}','${name}',${score})" title="${name} check">
-                                    <span class="ab-name">${name}</span>
+                                return `<button class="ability-btn" onclick="window.rollAbilityCheck('${_esc(i.name)}','${raw}',${score})" title="${t(key)} check">
+                                    <span class="ab-name">${t(key)}</span>
                                     <span class="ab-score">${score}</span>
                                     <span class="ab-mod">${mod >= 0 ? '+'+mod : mod}</span>
                                 </button>`;
                             }).join('')}
                         </div>
                         <div style="margin-top:4px;">
-                            <div class="card-section-label">Skills</div>
+                            <div class="card-section-label">${t('card_skills_label')}</div>
                             <div class="skills-grid">
                                 ${Object.entries(SKILL_ABILITIES).sort().map(([skill, abil]) => {
                                     const mod = skillMod(skill, i);
                                     const modStr = mod >= 0 ? '+'+mod : String(mod);
                                     const keyU = skill.replace(/\s+/g, '_');
                                     const skillVal = i.skills?.[skill] ?? i.skills?.[keyU];
-                                    const isProf = typeof skillVal === 'number' || !!skillVal;
-                                    const dispName = skill.replace(/(^|\s)\w/g, s => s.toUpperCase());
-                                    return `<button class="skill-btn${isProf ? ' prof' : ''}"
+                                    const isExpert = skillVal === 'expert';
+                                    const isProf = isExpert || typeof skillVal === 'number' || !!skillVal;
+                                    const dispName = t('skill_' + keyU);
+                                    return `<button class="skill-btn${isExpert ? ' expert' : isProf ? ' prof' : ''}"
                                         onclick="window.rollSkillCheck('${_esc(i.name)}','${skill}')"
-                                        title="${dispName} (${abil.toUpperCase()})">
+                                        title="${dispName} (${t('ab_' + abil)})">
                                         <span class="sk-name">${dispName}</span>
                                         <span class="sk-mod">${modStr}</span>
                                     </button>`;

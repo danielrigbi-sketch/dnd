@@ -11,8 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/jpeg" href="/assets/logo-BC8cyOVF.png">
     
-  <script type="module" crossorigin src="/assets/index-HsXekw5w.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-C4wdADi6.css">
+  <script type="module" crossorigin src="/assets/index-D1szINrw.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-Cd40W1hF.css">
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
 
@@ -287,29 +287,33 @@
                     </div>
                 </div>
 
-                <!-- Skill Proficiencies -->
+                <!-- Skill Proficiencies — select: ""=none / "prof"=proficient / "expert"=expertise -->
                 <div style="margin-top:10px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px;">
                     <div data-i18n="cb_skill_proficiencies" style="font-size:11px; color:#aaa; margin-bottom:5px;">Skill Proficiencies</div>
-                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px;">
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-acrobatics" style="accent-color:#3498db;"> Acrobatics</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-animal_handling" style="accent-color:#3498db;"> Animal Handling</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-arcana" style="accent-color:#3498db;"> Arcana</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-athletics" style="accent-color:#3498db;"> Athletics</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-deception" style="accent-color:#3498db;"> Deception</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-history" style="accent-color:#3498db;"> History</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-insight" style="accent-color:#3498db;"> Insight</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-intimidation" style="accent-color:#3498db;"> Intimidation</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-investigation" style="accent-color:#3498db;"> Investigation</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-medicine" style="accent-color:#3498db;"> Medicine</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-nature" style="accent-color:#3498db;"> Nature</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-perception" style="accent-color:#3498db;"> Perception</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-performance" style="accent-color:#3498db;"> Performance</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-persuasion" style="accent-color:#3498db;"> Persuasion</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-religion" style="accent-color:#3498db;"> Religion</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-sleight_of_hand" style="accent-color:#3498db;"> Sleight of Hand</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-stealth" style="accent-color:#3498db;"> Stealth</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-skill-survival" style="accent-color:#3498db;"> Survival</label>
+                    <div style="font-size:9px;color:#666;margin-bottom:4px;">–=none &nbsp; ✓=proficient &nbsp; ★=expertise</div>
+                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:3px;">
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-acrobatics" class="skill-select">  <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Acrobatics</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-animal_handling" class="skill-select"><option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Animal Handling</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-arcana" class="skill-select">       <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Arcana</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-athletics" class="skill-select">    <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Athletics</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-deception" class="skill-select">    <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Deception</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-history" class="skill-select">      <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> History</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-insight" class="skill-select">      <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Insight</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-intimidation" class="skill-select"> <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Intimidation</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-investigation" class="skill-select"><option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Investigation</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-medicine" class="skill-select">     <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Medicine</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-nature" class="skill-select">       <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Nature</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-perception" class="skill-select">   <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Perception</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-performance" class="skill-select">  <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Performance</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-persuasion" class="skill-select">   <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Persuasion</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-religion" class="skill-select">     <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Religion</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-sleight_of_hand" class="skill-select"><option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Sleight of Hand</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-stealth" class="skill-select">      <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Stealth</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-survival" class="skill-select">     <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Survival</label>
                     </div>
+                    <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#9b59b6;margin-top:6px;cursor:pointer;" data-i18n="cb_jack_of_all_trades">
+                        <input type="checkbox" id="cb-jack-of-all-trades" style="accent-color:#9b59b6;"> 🃏 Jack of All Trades (Bard)
+                    </label>
                 </div>
 
                 <!-- Languages & Damage Modifiers -->

@@ -257,6 +257,7 @@ function _renderDMCampaigns(campaigns) {
                     <button class="hover-btn campaign-resume-btn" onclick="window.__campaignResume('${id}')">${t('campaign_resume')}</button>
                     <button class="hover-btn campaign-manage-btn" onclick="window.__campaignManage('${id}')">${t('campaign_manage')}</button>
                     <button class="hover-btn campaign-invite-btn" onclick="window.__campaignInvite('${id}')" title="${t('campaign_invite_copied')}">🔗</button>
+                    <button class="hover-btn" onclick="window.__campaignDelete('${id}')" style="background:#c0392b;color:white;padding:4px 8px;border-radius:6px;font-size:11px;">${t('campaign_delete_btn')}</button>
                 </div>
             </div>`;
     }).join('');
@@ -282,6 +283,7 @@ function _renderPlayerCampaigns(campaigns) {
                 <div class="campaign-card-meta">DM: ${_esc(meta.dmName || '?')} · ${_esc(myInfo.charName || '?')} · ${lastPlayed}</div>
                 <div class="campaign-card-actions">
                     <button class="hover-btn campaign-rejoin-btn" onclick="window.__campaignRejoin('${id}', '${_esc(myInfo.charName || '')}')">${t('campaign_rejoin')}</button>
+                    <button class="hover-btn" onclick="window.__campaignLeave('${id}')" style="background:#555;color:#ccc;padding:4px 8px;border-radius:6px;font-size:11px;">✕</button>
                 </div>
             </div>`;
     }).join('');
@@ -517,12 +519,26 @@ function _stopManageListeners() {
 
 // Global approve/deny/kick handlers
 window.__campaignApprove = async (campaignId, uid) => {
+    document.getElementById(`approval-toast-${uid}`)?.remove();
     await db.approveCampaignPlayer(campaignId, uid);
     _showToast(t('campaign_player_approved'), 'success');
+};
+window.__campaignDelete = async (campaignId) => {
+    if (!confirm(t('campaign_delete_confirm'))) return;
+    try {
+        await db.deleteCampaign(campaignId, _uid);
+        _showToast(t('campaign_deleted'), 'success');
+    } catch(e) {
+        console.error('[Campaign] delete error:', e);
+        _showToast(t('campaign_delete_err'), 'error');
+    }
 };
 window.__campaignDeny = async (campaignId, uid) => {
     await db.denyCampaignRequest(campaignId, uid);
     _showToast(t('campaign_request_denied'), 'info');
+};
+window.__campaignLeave = async (campaignId) => {
+    await db.removePlayerCampaignIndex(campaignId, _uid);
 };
 window.__campaignKick = async (campaignId, uid) => {
     if (!confirm(t('campaign_kick_confirm'))) return;
@@ -563,6 +579,7 @@ function _showApprovalToast(campaignId, uid, req, onApprove, onDeny) {
             <button class="hover-btn" id="deny-${uid}" style="flex:1;background:#c0392b;color:white;padding:6px;border-radius:6px;font-size:12px;font-weight:bold;">${t('campaign_deny_btn')}</button>
         </div>
     `;
+    toast.id = `approval-toast-${uid}`;
     document.body.appendChild(toast);
 
     toast.querySelector(`#approve-${uid}`).addEventListener('click', async () => {
