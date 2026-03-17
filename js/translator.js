@@ -30,9 +30,17 @@ function _lsGet(key) {
   } catch { return null; }
 }
 
+function _lsEvict() {
+  Object.keys(localStorage).filter(k => k.startsWith(LS_PREFIX)).forEach(k => localStorage.removeItem(k));
+}
 function _lsSet(key, text) {
   try { localStorage.setItem(LS_PREFIX + key, JSON.stringify({ ts: Date.now(), text })); }
-  catch { /* quota exceeded — silent */ }
+  catch (e) {
+    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+      _lsEvict();
+      try { localStorage.setItem(LS_PREFIX + key, JSON.stringify({ ts: Date.now(), text })); } catch { /* give up */ }
+    }
+  }
 }
 
 // ── Core translate ─────────────────────────────────────────────────────────────

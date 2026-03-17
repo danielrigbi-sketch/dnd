@@ -36,9 +36,17 @@ function _lsGet(k) {
     return data;
   } catch { return null; }
 }
+function _lsEvict() {
+  Object.keys(localStorage).filter(k => k.startsWith(LS_PREFIX)).forEach(k => localStorage.removeItem(k));
+}
 function _lsSet(k, data) {
   try { localStorage.setItem(LS_PREFIX + k, JSON.stringify({ ts: Date.now(), data })); }
-  catch { /* quota exceeded — silent fail */ }
+  catch (e) {
+    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+      _lsEvict();
+      try { localStorage.setItem(LS_PREFIX + k, JSON.stringify({ ts: Date.now(), data })); } catch { /* give up */ }
+    }
+  }
 }
 
 // ── Core fetch with two-layer cache ────────────────────────────────────────────

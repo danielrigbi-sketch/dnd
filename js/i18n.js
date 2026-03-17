@@ -795,7 +795,7 @@ document.documentElement.dir = currentLang === 'he' ? 'rtl' : 'ltr';
 
 export function setLanguage(lang) {
     currentLang = lang;
-    localStorage.setItem('critroll_lang', lang);
+    try { localStorage.setItem('critroll_lang', lang); } catch { /* quota full — lang not persisted */ }
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
     updateDOM();
