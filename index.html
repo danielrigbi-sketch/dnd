@@ -3,32 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="CritRoll — Virtual Tabletop for D&D 5e. Real-time tactical maps, dice rolling, fog of war, and more.">
-    <meta name="theme-color" content="#2c1e16">
-    <title>CritRoll - DND Virtual Tabletop</title>
+    <meta name="description" content="ParaDice — Your party's home away from home.">
+    <meta name="theme-color" content="#1c1510">
+    <title>ParaDice - Virtual Tabletop</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/jpeg" href="assets/logo.png">
+    <link rel="icon" type="image/webp" href="assets/logo.webp">
     
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/mapStyles.css">
     <link rel="stylesheet" href="css/diceStyles.css">
 </head>
-<body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #2c1e16;">
+<body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #080503;">
 
     <button id="lang-toggle-btn" style="position: absolute; top: 15px; left: 15px; z-index: 2000; background: rgba(0,0,0,0.6); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s;">English</button>
 
-    <div id="lobby-wrapper" style="position: absolute; inset: 0; z-index: 1000; background-image: url('https://as2.ftcdn.net/jpg/03/19/51/81/1000_F_319518163_MFy3GSyG5d382jMYkeiqa3rhixvrUX6h.jpg'); background-size: cover; background-position: center;" class="flex-center">
-        <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.7); z-index: 0;"></div>
+    <div id="lobby-wrapper" style="position: absolute; inset: 0; z-index: 1000; background-color: #060402; background-image: radial-gradient(ellipse at 50% 110%, rgba(220,80,15,0.28) 0%, rgba(180,55,10,0.14) 30%, transparent 60%), radial-gradient(ellipse at 30% 100%, rgba(200,100,20,0.12) 0%, transparent 40%), radial-gradient(ellipse at 70% 100%, rgba(200,100,20,0.10) 0%, transparent 40%), radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.85) 100%);" class="flex-center">
 
-        <form id="auth-screen" class="auth-box text-center" onsubmit="event.preventDefault();">
-            <img src="assets/logo.png" alt="CritRoll Logo" style="max-width: 180px; margin-bottom: 20px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));">
-            <h1 data-i18n="app_title" style="color: white; margin-bottom: 10px; font-size: 24px;"></h1>
-            <p data-i18n="app_desc" style="color: #ccc; margin-bottom: 30px; font-size: 14px;"></p>
+        <!-- Tavern exterior video background (login screen) -->
+        <video id="login-bg-video" class="scene-video" autoplay muted loop playsinline preload="auto">
+            <source src="assets/video/tavern-exterior.mp4" type="video/mp4">
+        </video>
+        <!-- Door-open transition video (plays once on login success) -->
+        <video id="door-open-video" class="scene-video scene-video--transition" muted preload="auto" style="display:none;opacity:0;">
+            <source src="assets/video/door-open.mp4" type="video/mp4">
+        </video>
+        <!-- Tavern interior video background (lobby screen — fullscreen) -->
+        <video id="lobby-bg-video" class="scene-video" autoplay muted loop playsinline preload="auto" style="display:none;">
+            <source src="assets/video/tavern-interior.mp4" type="video/mp4">
+        </video>
+        <!-- Overlays (one per screen state) -->
+        <div class="scene-overlay" id="auth-scene-overlay"></div>
+        <div class="scene-overlay scene-overlay--lobby" id="lobby-scene-overlay" style="display:none;"></div>
+
+        <form id="auth-screen" class="auth-box text-center" onsubmit="event.preventDefault();" style="background-color: #13090300; background-image: linear-gradient(180deg, rgba(26,14,4,0.98) 0%, rgba(10,6,2,0.99) 100%); border: 1px solid rgba(180,80,15,0.35); border-top-color: rgba(220,120,40,0.5); border-radius: 6px; box-shadow: 0 0 120px rgba(200,70,10,0.15), 0 0 40px rgba(200,70,10,0.08), 0 40px 80px rgba(0,0,0,0.95), inset 0 1px 0 rgba(220,140,60,0.12);">
+            <img src="assets/logo.webp" alt="ParaDice Logo" class="auth-logo">
+            <h1 data-i18n="app_title" style="color: #d4903a; margin-bottom: 8px; font-size: 24px; font-weight: 800; text-shadow: 0 0 24px rgba(200,100,20,0.5);"></h1>
+            <p data-i18n="app_desc" style="font-style: italic; color: #7a6045; margin-bottom: 30px; font-size: 14px;"></p>
             
             <div id="auth-error" style="display:none; background:rgba(231,76,60,0.15); border:1px solid #e74c3c; color:#ff6b6b; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:13px; text-align:center;"></div>
-            <button type="submit" id="google-login-btn" class="hover-btn w-100 flex-center" style="background: white; color: #333; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 8px; gap: 10px;">
+            <button type="submit" id="google-login-btn" class="hover-btn w-100 flex-center" style="background: linear-gradient(180deg, #2a1a08, #1a1006); color: #c8803a; border: 1px solid rgba(200,100,20,0.45); border-top-color: rgba(220,130,40,0.6); padding: 12px 24px; font-size: 15px; font-weight: 700; border-radius: 4px; gap: 10px; box-shadow: 0 2px 16px rgba(0,0,0,0.7), inset 0 1px 0 rgba(220,140,60,0.1); letter-spacing: 0.03em;">
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width:20px; height:20px;">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.7 17.74 9.5 24 9.5z"></path>
                     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
@@ -40,11 +55,11 @@
         </form>
 
         <div id="lobby-screen" style="display: none;" class="lobby-box">
-            <header class="flex-between" style="background: #2c3e50; padding: 15px 20px; border-bottom: 2px solid #e74c3c;">
+            <header class="flex-between" style="background: rgba(0,0,0,0.5); padding: 15px 20px; border-bottom: 1px solid rgba(160,70,15,0.3); box-shadow: 0 2px 20px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(200,90,20,0.08);">
                 <div class="flex-center" style="gap: 10px;">
-                    <img id="user-avatar" src="assets/logo.png" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #f1c40f; object-fit: cover;">
+                    <img id="user-avatar" src="/assets/icons/toolbar/campaign.png" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(200,90,20,0.6); object-fit: cover; box-shadow: 0 0 12px rgba(200,80,15,0.3); background: var(--pd-bg-dark);">
                     <div>
-                        <div style="color: #f1c40f; font-weight: bold; font-size: 16px;"><span data-i18n="hello"></span>, <span id="user-display-name"></span></div>
+                        <div style="color: #c8803a; font-weight: 800; font-size: 15px;"><span data-i18n="hello"></span>, <span id="user-display-name"></span></div>
                         <div style="color: #aaa; font-size: 12px;" id="user-email"></div>
                     </div>
                 </div>
@@ -106,232 +121,63 @@
         </div>
     </div>
 
+    <!-- Feat picker modal — outside form to avoid z-index issues inside scrolling step panel -->
+    <div id="feat-picker-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#1a1a2e; border:1px solid rgba(155,89,182,0.5); border-radius:10px; padding:16px; z-index:6000; width:320px; max-height:400px; overflow-y:auto; box-shadow:0 10px 40px rgba(0,0,0,0.7);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="font-weight:bold; color:#d7bde2;" data-i18n="cb_feat_picker_title">⭐ Choose a Feat</span>
+            <button type="button" onclick="document.getElementById('feat-picker-modal').style.display='none'" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:18px;">✕</button>
+        </div>
+        <input type="text" id="feat-search" class="builder-input" style="margin-bottom:8px; width:100%; font-size:12px;" data-i18n-placeholder="cb_feat_search" placeholder="Search feats…">
+        <div id="feat-picker-list" style="display:flex; flex-direction:column; gap:3px;"></div>
+    </div>
+
     <div id="char-builder-modal" class="modal-overlay flex-center">
-        <form id="char-builder-form" class="modal-content" onsubmit="event.preventDefault();">
-            <div class="flex-between" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 15px;">
-                <h2 id="cb-main-title" data-i18n="cb_title" style="margin: 0; color: #f1c40f; font-size: 20px;"></h2>
-                <button type="button" id="close-builder-btn" class="close-btn" aria-label="סגור חלון">&times;</button>
-            </div>
+        <form id="char-builder-form" class="modal-content cb-wizard" onsubmit="event.preventDefault();">
 
             <input type="hidden" id="cb-char-id">
 
-            <div class="flex-between" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; margin-bottom: 15px;">
-                <div style="color: #ccc; font-size: 14px; font-weight: bold;" data-i18n="color_picker_label"></div>
-                <input type="color" id="cb-color" value="#3498db" style="width: 50px; height: 30px; border: none; cursor: pointer; background: transparent;">
+            <!-- ── WIZARD HEADER ─────────────────────────────────────── -->
+            <div class="cb-wizard-header">
+                <h2 id="cb-main-title" data-i18n="cb_title" class="cb-wizard-title"></h2>
+                <button type="button" id="close-builder-btn" class="close-btn" aria-label="סגור חלון">&times;</button>
             </div>
 
-            <div class="flex-column">
-                <input type="text" id="cb-name" class="builder-input" data-i18n-placeholder="cb_name_ph" autocomplete="off">
-                <div class="flex-row">
-                    <select id="cb-race" class="builder-input w-50" style="flex:1;">
-                        <option value="" disabled selected data-i18n="cb_race"></option>
-                        <option value="Human" data-i18n="race_human"></option>
-                        <option value="Elf" data-i18n="race_elf"></option>
-                        <option value="Dwarf" data-i18n="race_dwarf"></option>
-                        <option value="Half-Orc" data-i18n="race_halforc"></option>
-                        <option value="Halfling" data-i18n="race_halfling"></option>
-                        <option value="Gnome" data-i18n="race_gnome"></option>
-                        <option value="Dragonborn" data-i18n="race_dragonborn"></option>
-                    </select>
-                    <select id="cb-class" class="builder-input w-50" style="flex:1;">
-                        <option value="" disabled selected data-i18n="cb_class"></option>
-                        <option value="Fighter" data-i18n="class_fighter"></option>
-                        <option value="Wizard" data-i18n="class_wizard"></option>
-                        <option value="Rogue" data-i18n="class_rogue"></option>
-                        <option value="Cleric" data-i18n="class_cleric"></option>
-                        <option value="Barbarian" data-i18n="class_barbarian"></option>
-                        <option value="Bard" data-i18n="class_bard"></option>
-                        <option value="Druid" data-i18n="class_druid"></option>
-                        <option value="Paladin" data-i18n="class_paladin"></option>
-                        <option value="Ranger" data-i18n="class_ranger"></option>
-                        <option value="Warlock" data-i18n="class_warlock"></option>
-                    </select>
-                    <select id="cb-gender" class="builder-input" style="flex:0 0 auto; min-width:90px;">
-                        <option value="male" data-i18n="gender_male">Male</option>
-                        <option value="female" data-i18n="gender_female">Female</option>
-                        <option value="nonbinary" data-i18n="gender_nonbinary">Non-binary</option>
-                    </select>
-                    <select id="cb-size" class="builder-input" style="flex:0 0 auto; min-width:100px;" title="Creature Size">
-                        <option value="Tiny">Tiny ·½×½</option>
-                        <option value="Small">Small ·1×1</option>
-                        <option value="Medium" selected>Medium·1×1</option>
-                        <option value="Large">Large ·2×2</option>
-                        <option value="Huge">Huge ·3×3</option>
-                        <option value="Gargantuan">Gargantuan ·4×4</option>
-                    </select>
+            <!-- ── STEP INDICATOR ────────────────────────────────────── -->
+            <div class="cb-step-indicator">
+                <div class="cb-step-dot active" data-step="1">
+                    <span class="cb-step-num">1</span>
+                    <span class="cb-step-label" data-i18n="wizard_step1_label">Identity</span>
                 </div>
-
-
-                <div class="flex-row">
-                    <input type="number" id="cb-ac" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_ac">
-                    <input type="number" id="cb-speed" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_speed">
-                    <input type="number" id="cb-level" class="builder-input" style="flex:0.7;" placeholder="Level" min="1" max="20" value="1">
-                    <input type="number" id="cb-pp" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_pp">
-                    <input type="number" id="cb-init" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_init">
-                    <input type="number" id="cb-darkvision" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_darkvision" min="0" step="30">
+                <div class="cb-step-connector"></div>
+                <div class="cb-step-dot" data-step="2">
+                    <span class="cb-step-num">2</span>
+                    <span class="cb-step-label" data-i18n="wizard_step2_label">Class</span>
                 </div>
-
-                <div class="flex-row">
-                    <input type="number" id="cb-hp" class="builder-input w-100" data-i18n-placeholder="cb_hp">
+                <div class="cb-step-connector"></div>
+                <div class="cb-step-dot" data-step="3">
+                    <span class="cb-step-num">3</span>
+                    <span class="cb-step-label" data-i18n="wizard_step3_label">Abilities</span>
                 </div>
-
-                <div class="flex-row">
-                    <input type="number" id="cb-melee" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_melee">
-                    <select id="cb-melee-dmg" class="builder-input" style="flex:1;">
-                        <option value="1d4">1d4</option>
-                        <option value="1d6" selected>1d6</option>
-                        <option value="1d8">1d8</option>
-                        <option value="1d10">1d10</option>
-                        <option value="1d12">1d12</option>
-                        <option value="2d6">2d6</option>
-                    </select>
-                    <input type="number" id="cb-ranged" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_ranged">
-                    <select id="cb-ranged-dmg" class="builder-input" style="flex:1;">
-                        <option value="1d4">1d4</option>
-                        <option value="1d6" selected>1d6</option>
-                        <option value="1d8">1d8</option>
-                        <option value="1d10">1d10</option>
-                        <option value="1d12">1d12</option>
-                    </select>
+                <div class="cb-step-connector"></div>
+                <div class="cb-step-dot" data-step="4">
+                    <span class="cb-step-num">4</span>
+                    <span class="cb-step-label" data-i18n="wizard_step4_label">Skills</span>
                 </div>
-
-                <div style="margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;">
-                    <div data-i18n="cb_attacks_title" style="font-size: 14px; color: #f1c40f; margin-bottom: 8px; font-weight: bold;"></div>
-                    <div id="custom-attacks-list" class="flex-column" style="gap: 8px;"></div>
-                    <button type="button" id="add-custom-attack-btn" class="hover-btn w-100" data-i18n="cb_add_attack" style="background: rgba(52, 152, 219, 0.3); color: #3498db; border: 1px dashed #3498db; padding: 8px; border-radius: 6px; font-size: 12px; margin-top: 10px;"></button>
+                <div class="cb-step-connector"></div>
+                <div class="cb-step-dot" data-step="5">
+                    <span class="cb-step-num">5</span>
+                    <span class="cb-step-label" data-i18n="wizard_step5_label">Combat</span>
                 </div>
+            </div>
 
-                <!-- Sprint 6: Spell Slots -->
-                <div style="margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;">
-                    <div style="font-size: 14px; color: var(--cr-purple); margin-bottom: 8px; font-weight: bold;" data-i18n="spell_slots_header">🔮 Spell Slots (optional)</div>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
-                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                            <label style="font-size:10px; color:#aaa;">Lv 1</label>
-                            <input type="number" id="cb-spell-1" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                            <label style="font-size:10px; color:#aaa;">Lv 2</label>
-                            <input type="number" id="cb-spell-2" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                            <label style="font-size:10px; color:#aaa;">Lv 3</label>
-                            <input type="number" id="cb-spell-3" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                            <label style="font-size:10px; color:#aaa;">Lv 4</label>
-                            <input type="number" id="cb-spell-4" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                            <label style="font-size:10px; color:#aaa;">Lv 5</label>
-                            <input type="number" id="cb-spell-5" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                            <label style="font-size:10px; color:#aaa;">Lv 6</label>
-                            <input type="number" id="cb-spell-6" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                            <label style="font-size:10px; color:#aaa;">Lv 7</label>
-                            <input type="number" id="cb-spell-7" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                            <label style="font-size:10px; color:#aaa;">Lv 8</label>
-                            <input type="number" id="cb-spell-8" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
-                            <label style="font-size:10px; color:#aaa;">Lv 9</label>
-                            <input type="number" id="cb-spell-9" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
-                        </div>
-                    </div>
-                </div>
+            <!-- ══════════════════════════════════════════════════════
+                 STEP 1 — IDENTITY
+                 Portrait · Color · Name · Race · Gender · Size
+            ══════════════════════════════════════════════════════ -->
+            <div class="cb-wizard-step active" data-step="1">
 
-                <!-- Ability Scores -->
-                <div style="margin-top:15px; border-top:1px dashed rgba(255,255,255,0.2); padding-top:10px;">
-                    <div style="font-size:14px; color:#e67e22; margin-bottom:8px; font-weight:bold;"><span data-i18n="cb_ability_scores">💪 Ability Scores</span> <span data-i18n="cb_ability_scores_hint" style="font-size:10px;color:#666;font-weight:normal;">(optional — enables skill checks & saves)</span></div>
-                    <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:5px;">
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                            <label style="font-size:10px;color:#aaa;">STR</label>
-                            <input type="number" id="cb-str" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
-                        </div>
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                            <label style="font-size:10px;color:#aaa;">DEX</label>
-                            <input type="number" id="cb-dex" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
-                        </div>
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                            <label style="font-size:10px;color:#aaa;">CON</label>
-                            <input type="number" id="cb-con" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
-                        </div>
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                            <label style="font-size:10px;color:#aaa;">INT</label>
-                            <input type="number" id="cb-int" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
-                        </div>
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                            <label style="font-size:10px;color:#aaa;">WIS</label>
-                            <input type="number" id="cb-wis" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
-                        </div>
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                            <label style="font-size:10px;color:#aaa;">CHA</label>
-                            <input type="number" id="cb-cha" class="builder-input" min="1" max="30" placeholder="10" style="padding:5px;font-size:13px;text-align:center;">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Saving Throw Proficiencies -->
-                <div style="margin-top:10px;">
-                    <div data-i18n="cb_saving_throws" style="font-size:11px; color:#aaa; margin-bottom:5px;">Saving Throw Proficiencies</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-str" style="accent-color:#e67e22;"> STR</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-dex" style="accent-color:#e67e22;"> DEX</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-con" style="accent-color:#e67e22;"> CON</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-int" style="accent-color:#e67e22;"> INT</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-wis" style="accent-color:#e67e22;"> WIS</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-cha" style="accent-color:#e67e22;"> CHA</label>
-                    </div>
-                </div>
-
-                <!-- Skill Proficiencies — select: ""=none / "prof"=proficient / "expert"=expertise -->
-                <div style="margin-top:10px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px;">
-                    <div data-i18n="cb_skill_proficiencies" style="font-size:11px; color:#aaa; margin-bottom:5px;">Skill Proficiencies</div>
-                    <div style="font-size:9px;color:#666;margin-bottom:4px;">–=none &nbsp; ✓=proficient &nbsp; ★=expertise</div>
-                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:3px;">
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-acrobatics" class="skill-select">  <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Acrobatics</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-animal_handling" class="skill-select"><option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Animal Handling</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-arcana" class="skill-select">       <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Arcana</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-athletics" class="skill-select">    <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Athletics</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-deception" class="skill-select">    <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Deception</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-history" class="skill-select">      <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> History</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-insight" class="skill-select">      <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Insight</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-intimidation" class="skill-select"> <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Intimidation</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-investigation" class="skill-select"><option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Investigation</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-medicine" class="skill-select">     <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Medicine</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-nature" class="skill-select">       <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Nature</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-perception" class="skill-select">   <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Perception</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-performance" class="skill-select">  <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Performance</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-persuasion" class="skill-select">   <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Persuasion</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-religion" class="skill-select">     <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Religion</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-sleight_of_hand" class="skill-select"><option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Sleight of Hand</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-stealth" class="skill-select">      <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Stealth</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-survival" class="skill-select">     <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> Survival</label>
-                    </div>
-                    <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#9b59b6;margin-top:6px;cursor:pointer;" data-i18n="cb_jack_of_all_trades">
-                        <input type="checkbox" id="cb-jack-of-all-trades" style="accent-color:#9b59b6;"> 🃏 Jack of All Trades (Bard)
-                    </label>
-                </div>
-
-                <!-- Languages & Damage Modifiers -->
-                <div style="margin-top:10px; display:flex; flex-direction:column; gap:5px;">
-                    <input type="text" id="cb-languages" class="builder-input" data-i18n-placeholder="cb_languages_ph" placeholder="Languages (e.g., Common, Elvish, Dwarvish)">
-                    <input type="text" id="cb-resistances" class="builder-input" data-i18n-placeholder="cb_resistances_ph" placeholder="Damage Resistances (e.g., Poison, Fire)">
-                    <input type="text" id="cb-immunities" class="builder-input" data-i18n-placeholder="cb_immunities_ph" placeholder="Damage Immunities">
-                </div>
-
-                <!-- Loot & Equipment -->
-                <div style="margin-top:10px; border-top:1px dashed rgba(255,255,255,0.2); padding-top:10px;">
-                    <div data-i18n="cb_loot_title" style="font-size:14px; color:#f1c40f; margin-bottom:6px; font-weight:bold;">🎒 Loot &amp; Equipment</div>
-                    <textarea id="cb-loot" class="builder-input" rows="3" data-i18n-placeholder="cb_loot_ph" placeholder="Inventory, equipment, gold, magic items…" style="resize:vertical;min-height:60px;width:100%;box-sizing:border-box;font-size:12px;"></textarea>
-                </div>
-
-                <!-- Portrait (moved last) -->
-                <div class="text-center" style="margin-top:15px; border-top:1px dashed #555; padding-top:10px;">
+                <!-- Portrait (moved to top!) -->
+                <div class="text-center" style="margin-bottom:4px;">
                     <div data-i18n="cb_portrait" style="font-size:12px; color:#ccc; margin-bottom:5px;"></div>
                     <div class="flex-center" style="gap:8px; margin-bottom:10px; flex-wrap:wrap;">
                         <button type="button" id="tab-portrait-preset" class="portrait-tab" data-i18n="port_tab_preset"></button>
@@ -370,7 +216,7 @@
                         <div class="tmt-dynamic" style="display:flex; flex-direction:column; gap:4px; padding:4px 0 6px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:4px;">
                             <div style="font-size:9px;color:#666;text-align:center;">Select a class &amp; race above to see matching tokens</div>
                         </div>
-                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">⚔️ WARRIORS</div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;" data-i18n="port_cat_warriors">⚔️ WARRIORS</div>
                         <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png" class="builder-portrait-btn tmt" title="Human Fighter" onerror="this.style.display='none'">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/legendarypaladin2/preview.png" class="builder-portrait-btn tmt" title="Paladin" onerror="this.style.display='none'">
@@ -378,7 +224,7 @@
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/tieflingfighter4/preview.png" class="builder-portrait-btn tmt" title="Tiefling Fighter" onerror="this.style.display='none'">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/halflingfighter/preview.png" class="builder-portrait-btn tmt" title="Halfling Fighter" onerror="this.style.display='none'">
                         </div>
-                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">🧙 CASTERS</div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;" data-i18n="port_cat_casters">🧙 CASTERS</div>
                         <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/elfwizard4/preview.png" class="builder-portrait-btn tmt" title="Elf Wizard" onerror="this.style.display='none'">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/owlfolkwizard1/preview.png" class="builder-portrait-btn tmt" title="Owlfolk Wizard" onerror="this.style.display='none'">
@@ -386,7 +232,7 @@
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/orccleric/preview.png" class="builder-portrait-btn tmt" title="Orc Cleric" onerror="this.style.display='none'">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/warforgedranger2/preview.png" class="builder-portrait-btn tmt" title="Warforged Ranger" onerror="this.style.display='none'">
                         </div>
-                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">🗡️ ROGUES & RANGERS</div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;" data-i18n="port_cat_rogues">🗡️ ROGUES &amp; RANGERS</div>
                         <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/rogue/preview.png" class="builder-portrait-btn tmt" title="Rogue" onerror="this.style.display='none'">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanrogue3/preview.png" class="builder-portrait-btn tmt" title="Human Rogue" onerror="this.style.display='none'">
@@ -394,7 +240,7 @@
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/satyrbard1/preview.png" class="builder-portrait-btn tmt" title="Satyr Bard" onerror="this.style.display='none'">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/yuantipurebloodbarbarian1/preview.png" class="builder-portrait-btn tmt" title="Barbarian" onerror="this.style.display='none'">
                         </div>
-                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">👺 GOBLINS & ORCS</div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;" data-i18n="port_cat_goblins">👺 GOBLINS &amp; ORCS</div>
                         <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/goblin03/preview.png" class="builder-portrait-btn tmt" title="Goblin" onerror="this.style.display='none'">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/goblin07/preview.png" class="builder-portrait-btn tmt" title="Goblin" onerror="this.style.display='none'">
@@ -402,7 +248,7 @@
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/hobgoblin3/preview.png" class="builder-portrait-btn tmt" title="Hobgoblin" onerror="this.style.display='none'">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/hobgoblincleric1/preview.png" class="builder-portrait-btn tmt" title="Hobgoblin Captain" onerror="this.style.display='none'">
                         </div>
-                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;">💀 UNDEAD</div>
+                        <div style="font-size:9px;color:#666;text-align:center;letter-spacing:.5px;" data-i18n="port_cat_undead">💀 UNDEAD</div>
                         <div style="display:flex; gap:5px; flex-wrap:wrap; justify-content:center;">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/zombie/preview.png" class="builder-portrait-btn tmt" title="Zombie" onerror="this.style.display='none'">
                             <img src="https://tools.2minutetabletop.com/token-editor/token-uploads/undead/zombie2/preview.png" class="builder-portrait-btn tmt" title="Zombie" onerror="this.style.display='none'">
@@ -418,15 +264,490 @@
                         <input type="file" id="cb-portrait-file" accept="image/*" class="builder-input w-100" style="color:white; padding:6px;">
                         <span id="portrait-upload-progress" style="display:none; font-size:11px; color:#f1c40f; margin-top:4px;"></span>
                     </div>
-                    <div style="margin-top:10px;">
+                    <div style="margin-top:8px;">
                         <img id="portrait-preview" src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png" style="width:60px; height:60px; border-radius:0; object-fit:cover; border:2px solid #f1c40f; background:transparent;">
                     </div>
                 </div>
 
-                <button type="submit" id="save-char-btn" class="hover-btn w-100" data-i18n="cb_save_btn" style="background: #27ae60; color: white; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; margin-top: 20px;"></button>
+                <!-- Color picker -->
+                <div class="flex-between" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px;">
+                    <div style="color: #ccc; font-size: 14px; font-weight: bold;" data-i18n="color_picker_label"></div>
+                    <input type="color" id="cb-color" value="#3498db" style="width: 50px; height: 30px; border: none; cursor: pointer; background: transparent;">
+                </div>
+
+                <!-- Name -->
+                <input type="text" id="cb-name" class="builder-input" data-i18n-placeholder="cb_name_ph" autocomplete="off">
+
+                <!-- Race / Gender / Size -->
+                <div class="flex-row">
+                    <select id="cb-race" class="builder-input w-50" style="flex:2;">
+                        <option value="" disabled selected data-i18n="cb_race"></option>
+                        <optgroup label="Human" data-i18n-label="race_group_human">
+                            <option value="human" data-i18n="race_human">Human</option>
+                            <option value="variant-human" data-i18n="race_variant_human">Variant Human</option>
+                        </optgroup>
+                        <optgroup label="Elf" data-i18n-label="race_group_elf">
+                            <option value="high-elf" data-i18n="race_high_elf">High Elf</option>
+                            <option value="wood-elf" data-i18n="race_wood_elf">Wood Elf</option>
+                            <option value="dark-elf" data-i18n="race_dark_elf">Dark Elf (Drow)</option>
+                        </optgroup>
+                        <optgroup label="Dwarf" data-i18n-label="race_group_dwarf">
+                            <option value="hill-dwarf" data-i18n="race_hill_dwarf">Hill Dwarf</option>
+                            <option value="mountain-dwarf" data-i18n="race_mountain_dwarf">Mountain Dwarf</option>
+                        </optgroup>
+                        <optgroup label="Halfling" data-i18n-label="race_group_halfling">
+                            <option value="lightfoot-halfling" data-i18n="race_lightfoot_halfling">Lightfoot Halfling</option>
+                            <option value="stout-halfling" data-i18n="race_stout_halfling">Stout Halfling</option>
+                        </optgroup>
+                        <optgroup label="Half-Elf" data-i18n-label="race_group_half_elf"><option value="half-elf" data-i18n="race_half_elf">Half-Elf</option></optgroup>
+                        <optgroup label="Half-Orc" data-i18n-label="race_group_half_orc"><option value="half-orc" data-i18n="race_half_orc">Half-Orc</option></optgroup>
+                        <optgroup label="Tiefling" data-i18n-label="race_group_tiefling"><option value="tiefling" data-i18n="race_tiefling">Tiefling</option></optgroup>
+                        <optgroup label="Dragonborn" data-i18n-label="race_group_dragonborn"><option value="dragonborn" data-i18n="race_dragonborn">Dragonborn</option></optgroup>
+                        <optgroup label="Gnome" data-i18n-label="race_group_gnome">
+                            <option value="forest-gnome" data-i18n="race_forest_gnome">Forest Gnome</option>
+                            <option value="rock-gnome" data-i18n="race_rock_gnome">Rock Gnome</option>
+                        </optgroup>
+                        <optgroup label="Aasimar" data-i18n-label="race_group_aasimar"><option value="aasimar" data-i18n="race_aasimar">Aasimar</option></optgroup>
+                    </select>
+                    <select id="cb-gender" class="builder-input" style="flex:1; min-width:90px;">
+                        <option value="male" data-i18n="gender_male">Male</option>
+                        <option value="female" data-i18n="gender_female">Female</option>
+                        <option value="nonbinary" data-i18n="gender_nonbinary">Non-binary</option>
+                    </select>
+                    <select id="cb-size" class="builder-input" style="flex:1; min-width:90px;" title="Creature Size">
+                        <option value="Tiny" data-i18n="size_tiny">Tiny ·½×½</option>
+                        <option value="Small" data-i18n="size_small">Small ·1×1</option>
+                        <option value="Medium" selected data-i18n="size_medium">Medium ·1×1</option>
+                        <option value="Large" data-i18n="size_large">Large ·2×2</option>
+                        <option value="Huge" data-i18n="size_huge">Huge ·3×3</option>
+                        <option value="Gargantuan" data-i18n="size_gargantuan">Gargantuan ·4×4</option>
+                    </select>
+                </div>
+
+                <!-- Race traits preview -->
+                <div id="cb-race-traits-preview" style="font-size:10px; color:#c8873a; min-height:14px;"></div>
             </div>
+
+            <!-- ══════════════════════════════════════════════════════
+                 STEP 2 — CLASS
+                 Class cards · Level · Subclass · Speed · Darkvision
+            ══════════════════════════════════════════════════════ -->
+            <div class="cb-wizard-step" data-step="2">
+
+                <!-- Class card grid (visual) -->
+                <div>
+                    <div style="font-size:11px; color:#aaa; margin-bottom:6px;" data-i18n="cb_class_pick_label">Adventuring Class</div>
+                    <div class="cb-class-grid" id="cb-class-grid"></div>
+                    <!-- Hidden select — written by card clicks, read by buildCharData -->
+                    <select id="cb-class" style="display:none;">
+                        <option value="" disabled selected data-i18n="cb_class"></option>
+                        <option value="Barbarian" data-i18n="class_barbarian"></option>
+                        <option value="Bard" data-i18n="class_bard"></option>
+                        <option value="Cleric" data-i18n="class_cleric"></option>
+                        <option value="Druid" data-i18n="class_druid"></option>
+                        <option value="Fighter" data-i18n="class_fighter"></option>
+                        <option value="Monk" data-i18n="class_monk"></option>
+                        <option value="Paladin" data-i18n="class_paladin"></option>
+                        <option value="Ranger" data-i18n="class_ranger"></option>
+                        <option value="Rogue" data-i18n="class_rogue"></option>
+                        <option value="Sorcerer" data-i18n="class_sorcerer"></option>
+                        <option value="Warlock" data-i18n="class_warlock"></option>
+                        <option value="Wizard" data-i18n="class_wizard"></option>
+                    </select>
+                </div>
+
+                <!-- Level + Proficiency Bonus + Hit Die -->
+                <div class="flex-row" style="align-items:flex-end; gap:8px;">
+                    <div style="flex:1;">
+                        <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;">Level</label>
+                        <input type="number" id="cb-level" class="builder-input" style="flex:1;" placeholder="Level" min="1" max="20" value="1">
+                    </div>
+                    <div style="flex:1; text-align:center; background:rgba(0,0,0,0.3); border-radius:8px; padding:6px 4px;">
+                        <div style="font-size:9px; color:#aaa; margin-bottom:2px;">Prof Bonus</div>
+                        <div id="cb-prof-bonus-display" style="font-size:20px; font-weight:900; color:#f1c40f;">+2</div>
+                    </div>
+                    <div style="flex:1; text-align:center; background:rgba(0,0,0,0.3); border-radius:8px; padding:6px 4px;">
+                        <div style="font-size:9px; color:#aaa; margin-bottom:2px;">Hit Die</div>
+                        <div id="cb-hit-die-display" style="font-size:20px; font-weight:900; color:#e67e22;">—</div>
+                    </div>
+                </div>
+
+                <!-- Subclass -->
+                <div>
+                    <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_subclass_ph">Subclass</label>
+                    <select id="cb-subclass" class="builder-input">
+                        <option value="" data-i18n="cb_subclass_ph">Subclass…</option>
+                    </select>
+                </div>
+                <div id="cb-subclass-choices" data-choices="{}" style="margin-top:2px;"></div>
+
+                <!-- Speed / Darkvision (auto-filled from race) -->
+                <div class="flex-row" style="gap:8px;">
+                    <div style="flex:1;">
+                        <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_speed">Speed (ft)</label>
+                        <input type="number" id="cb-speed" class="builder-input" data-i18n-placeholder="cb_speed" placeholder="30">
+                        <div id="cb-speed-auto-badge" class="cb-autofill-badge" style="display:none;" data-i18n="autofill_badge">auto</div>
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_darkvision">Darkvision (ft)</label>
+                        <input type="number" id="cb-darkvision" class="builder-input" data-i18n-placeholder="cb_darkvision" min="0" step="30" placeholder="0">
+                        <div id="cb-darkvision-auto-badge" class="cb-autofill-badge" style="display:none;" data-i18n="autofill_badge">auto</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════
+                 STEP 3 — ABILITIES
+                 6 scores + live modifiers · Saving throws · Init · PP
+            ══════════════════════════════════════════════════════ -->
+            <div class="cb-wizard-step" data-step="3">
+
+                <div style="font-size:13px; color:#e67e22; font-weight:bold;">
+                    <span data-i18n="cb_ability_scores">💪 Ability Scores</span>
+                    <span data-i18n="cb_ability_scores_hint" style="font-size:10px;color:#666;font-weight:normal;"> (enables skill checks &amp; saves)</span>
+                </div>
+
+                <!-- 6 Ability Score blocks -->
+                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+                    <div class="cb-ability-block">
+                        <span class="cb-ability-label">STR</span>
+                        <input type="number" id="cb-str" class="builder-input cb-ability-input" min="1" max="30" placeholder="10">
+                        <div id="cb-str-mod" class="cb-ability-mod">+0</div>
+                    </div>
+                    <div class="cb-ability-block">
+                        <span class="cb-ability-label">DEX</span>
+                        <input type="number" id="cb-dex" class="builder-input cb-ability-input" min="1" max="30" placeholder="10">
+                        <div id="cb-dex-mod" class="cb-ability-mod">+0</div>
+                    </div>
+                    <div class="cb-ability-block">
+                        <span class="cb-ability-label">CON</span>
+                        <input type="number" id="cb-con" class="builder-input cb-ability-input" min="1" max="30" placeholder="10">
+                        <div id="cb-con-mod" class="cb-ability-mod">+0</div>
+                    </div>
+                    <div class="cb-ability-block">
+                        <span class="cb-ability-label">INT</span>
+                        <input type="number" id="cb-int" class="builder-input cb-ability-input" min="1" max="30" placeholder="10">
+                        <div id="cb-int-mod" class="cb-ability-mod">+0</div>
+                    </div>
+                    <div class="cb-ability-block">
+                        <span class="cb-ability-label">WIS</span>
+                        <input type="number" id="cb-wis" class="builder-input cb-ability-input" min="1" max="30" placeholder="10">
+                        <div id="cb-wis-mod" class="cb-ability-mod">+0</div>
+                    </div>
+                    <div class="cb-ability-block">
+                        <span class="cb-ability-label">CHA</span>
+                        <input type="number" id="cb-cha" class="builder-input cb-ability-input" min="1" max="30" placeholder="10">
+                        <div id="cb-cha-mod" class="cb-ability-mod">+0</div>
+                    </div>
+                </div>
+
+                <!-- Saving Throw Proficiencies -->
+                <div>
+                    <div data-i18n="cb_saving_throws" style="font-size:11px; color:#aaa; margin-bottom:5px;">Saving Throw Proficiencies</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-str" style="accent-color:#e67e22;"> STR</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-dex" style="accent-color:#e67e22;"> DEX</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-con" style="accent-color:#e67e22;"> CON</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-int" style="accent-color:#e67e22;"> INT</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-wis" style="accent-color:#e67e22;"> WIS</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-cha" style="accent-color:#e67e22;"> CHA</label>
+                    </div>
+                </div>
+
+                <!-- Initiative + Passive Perception (auto-filled) -->
+                <div class="flex-row" style="gap:8px;">
+                    <div style="flex:1;">
+                        <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_init">Initiative</label>
+                        <input type="number" id="cb-init" class="builder-input" data-i18n-placeholder="cb_init">
+                        <div id="cb-init-auto-badge" class="cb-autofill-badge" style="display:none;" data-i18n="autofill_badge">auto</div>
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_pp">Passive Perception</label>
+                        <input type="number" id="cb-pp" class="builder-input" data-i18n-placeholder="cb_pp">
+                        <div id="cb-pp-auto-badge" class="cb-autofill-badge" style="display:none;" data-i18n="autofill_badge">auto</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════
+                 STEP 4 — SKILLS & STORY
+                 Background · 18 skills · Languages · Res/Imm
+            ══════════════════════════════════════════════════════ -->
+            <div class="cb-wizard-step" data-step="4">
+
+                <!-- Background -->
+                <div>
+                    <label style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;" data-i18n="cb_background_label">📜 Background</label>
+                    <select id="cb-background" class="builder-input" data-i18n-placeholder="cb_background_ph">
+                        <option value="" data-i18n="cb_background_ph">Background…</option>
+                        <option value="acolyte" data-i18n="bg_acolyte">Acolyte</option>
+                        <option value="charlatan" data-i18n="bg_charlatan">Charlatan</option>
+                        <option value="criminal" data-i18n="bg_criminal">Criminal</option>
+                        <option value="entertainer" data-i18n="bg_entertainer">Entertainer</option>
+                        <option value="folk-hero" data-i18n="bg_folk_hero">Folk Hero</option>
+                        <option value="guild-artisan" data-i18n="bg_guild_artisan">Guild Artisan</option>
+                        <option value="hermit" data-i18n="bg_hermit">Hermit</option>
+                        <option value="noble" data-i18n="bg_noble">Noble</option>
+                        <option value="outlander" data-i18n="bg_outlander">Outlander</option>
+                        <option value="sage" data-i18n="bg_sage">Sage</option>
+                        <option value="sailor" data-i18n="bg_sailor">Sailor</option>
+                        <option value="soldier" data-i18n="bg_soldier">Soldier</option>
+                        <option value="urchin" data-i18n="bg_urchin">Urchin</option>
+                    </select>
+                    <div id="cb-background-skills-preview" style="font-size:10px; color:#2ecc71; min-height:14px; margin-top:4px;"></div>
+                </div>
+
+                <!-- Skill Proficiencies -->
+                <div>
+                    <div data-i18n="cb_skill_proficiencies" style="font-size:11px; color:#aaa; margin-bottom:5px;">Skill Proficiencies</div>
+                    <div style="font-size:9px;color:#666;margin-bottom:4px;" data-i18n="skill_legend">–=none &nbsp; ✓=proficient &nbsp; ★=expertise</div>
+                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:3px;">
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-acrobatics" class="skill-select">  <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_acrobatics">Acrobatics</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-animal_handling" class="skill-select"><option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_animal_handling">Animal Handling</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-arcana" class="skill-select">       <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_arcana">Arcana</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-athletics" class="skill-select">    <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_athletics">Athletics</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-deception" class="skill-select">    <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_deception">Deception</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-history" class="skill-select">      <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_history">History</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-insight" class="skill-select">      <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_insight">Insight</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-intimidation" class="skill-select"> <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_intimidation">Intimidation</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-investigation" class="skill-select"><option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_investigation">Investigation</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-medicine" class="skill-select">     <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_medicine">Medicine</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-nature" class="skill-select">       <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_nature">Nature</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-perception" class="skill-select">   <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_perception">Perception</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-performance" class="skill-select">  <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_performance">Performance</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-persuasion" class="skill-select">   <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_persuasion">Persuasion</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-religion" class="skill-select">     <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_religion">Religion</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-sleight_of_hand" class="skill-select"><option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_sleight_of_hand">Sleight of Hand</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-stealth" class="skill-select">      <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_stealth">Stealth</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#ccc;"><select id="cb-skill-survival" class="skill-select">     <option value="">–</option><option value="prof">✓</option><option value="expert">★</option></select> <span data-i18n="skill_survival">Survival</span></label>
+                    </div>
+                    <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#9b59b6;margin-top:6px;cursor:pointer;" data-i18n="cb_jack_of_all_trades">
+                        <input type="checkbox" id="cb-jack-of-all-trades" style="accent-color:#9b59b6;"> 🃏 Jack of All Trades (Bard)
+                    </label>
+                </div>
+
+                <!-- Languages / Resistances / Immunities -->
+                <div style="display:flex; flex-direction:column; gap:5px;">
+                    <input type="text" id="cb-languages" class="builder-input" data-i18n-placeholder="cb_languages_ph" placeholder="Languages (e.g., Common, Elvish, Dwarvish)">
+                    <input type="text" id="cb-resistances" class="builder-input" data-i18n-placeholder="cb_resistances_ph" placeholder="Damage Resistances (e.g., Poison, Fire)">
+                    <input type="text" id="cb-immunities" class="builder-input" data-i18n-placeholder="cb_immunities_ph" placeholder="Damage Immunities">
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════
+                 STEP 5 — COMBAT & GEAR
+                 HP · AC · Weapons · Spell Slots · Mods · Actions · Feats · Loot
+            ══════════════════════════════════════════════════════ -->
+            <div class="cb-wizard-step" data-step="5">
+
+                <!-- HP / HD / TempHP -->
+                <div class="flex-row" style="gap:8px; align-items:flex-end;">
+                    <div style="flex:2;">
+                        <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_hp">Max HP</label>
+                        <div style="display:flex; gap:4px;">
+                            <input type="number" id="cb-hp" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_hp">
+                            <button type="button" id="cb-hp-auto-btn" class="cb-autocalc-btn" title="Auto-calculate from CON + class HD" data-i18n="cb_hp_auto_title">⚡</button>
+                        </div>
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_hd_remaining">HD Left</label>
+                        <input type="number" id="cb-hd-remaining" class="builder-input" min="0" data-i18n-placeholder="cb_hd_remaining" placeholder="HD">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_temp_hp">Temp HP</label>
+                        <input type="number" id="cb-temp-hp" class="builder-input" min="0" placeholder="0" data-i18n-placeholder="cb_temp_hp">
+                    </div>
+                </div>
+
+                <!-- AC + live preview -->
+                <div class="flex-row" style="gap:8px; align-items:flex-end;">
+                    <div style="flex:0 0 80px;">
+                        <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_ac">AC</label>
+                        <input type="number" id="cb-ac" class="builder-input" data-i18n-placeholder="cb_ac">
+                    </div>
+                    <div id="cb-ac-preview" style="flex:1; font-size:11px; color:#3498db; font-style:italic; min-height:16px; padding-bottom:10px;" data-i18n="cb_ac_preview"></div>
+                </div>
+
+                <!-- Armor & Weapons -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                    <div>
+                        <div style="font-size:10px; color:#aaa; margin-bottom:2px;" data-i18n="cb_armor_slot">🛡️ Armor</div>
+                        <select id="cb-armor" class="builder-input" style="width:100%; font-size:11px;">
+                            <option value="" data-i18n="equip_unarmored">— Unarmored —</option>
+                            <optgroup label="Light" data-i18n-label="equip_light">
+                                <option value='{"name":"Padded","type":"light","baseAC":11,"stealthDisadv":true}' data-i18n="armor_padded">Padded (AC 11+DEX)</option>
+                                <option value='{"name":"Leather","type":"light","baseAC":11}' data-i18n="armor_leather">Leather (AC 11+DEX)</option>
+                                <option value='{"name":"Studded Leather","type":"light","baseAC":12}' data-i18n="armor_studded">Studded Leather (AC 12+DEX)</option>
+                            </optgroup>
+                            <optgroup label="Medium" data-i18n-label="equip_medium">
+                                <option value='{"name":"Hide","type":"medium","baseAC":12}' data-i18n="armor_hide">Hide (AC 12+DEX≤2)</option>
+                                <option value='{"name":"Chain Shirt","type":"medium","baseAC":13}' data-i18n="armor_chain_shirt">Chain Shirt (AC 13+DEX≤2)</option>
+                                <option value='{"name":"Scale Mail","type":"medium","baseAC":14,"stealthDisadv":true}' data-i18n="armor_scale_mail">Scale Mail (AC 14+DEX≤2)</option>
+                                <option value='{"name":"Breastplate","type":"medium","baseAC":14}' data-i18n="armor_breastplate">Breastplate (AC 14+DEX≤2)</option>
+                                <option value='{"name":"Half Plate","type":"medium","baseAC":15,"stealthDisadv":true}' data-i18n="armor_half_plate">Half Plate (AC 15+DEX≤2)</option>
+                            </optgroup>
+                            <optgroup label="Heavy" data-i18n-label="equip_heavy">
+                                <option value='{"name":"Ring Mail","type":"heavy","baseAC":14,"stealthDisadv":true}' data-i18n="armor_ring_mail">Ring Mail (AC 14)</option>
+                                <option value='{"name":"Chain Mail","type":"heavy","baseAC":16,"stealthDisadv":true}' data-i18n="armor_chain_mail">Chain Mail (AC 16)</option>
+                                <option value='{"name":"Splint","type":"heavy","baseAC":17,"stealthDisadv":true}' data-i18n="armor_splint">Splint (AC 17)</option>
+                                <option value='{"name":"Plate","type":"heavy","baseAC":18,"stealthDisadv":true}' data-i18n="armor_plate">Plate (AC 18)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div>
+                        <div style="font-size:10px; color:#aaa; margin-bottom:2px;" data-i18n="cb_main_hand_slot">⚔️ Main Hand</div>
+                        <select id="cb-main-hand" class="builder-input" style="width:100%; font-size:11px;">
+                            <option value="" data-i18n="equip_unarmed">— Unarmed —</option>
+                            <optgroup label="Simple Melee" data-i18n-label="equip_simple_melee">
+                                <option value='{"name":"Dagger","damage":"1d4","type":"piercing","props":["finesse","light","thrown"]}' data-i18n="wpn_dagger">Dagger 1d4</option>
+                                <option value='{"name":"Handaxe","damage":"1d6","type":"slashing","props":["light","thrown"]}' data-i18n="wpn_handaxe">Handaxe 1d6</option>
+                                <option value='{"name":"Quarterstaff","damage":"1d6","type":"bludgeoning","props":["versatile"]}' data-i18n="wpn_quarterstaff">Quarterstaff 1d6</option>
+                                <option value='{"name":"Mace","damage":"1d6","type":"bludgeoning"}' data-i18n="wpn_mace">Mace 1d6</option>
+                                <option value='{"name":"Greatclub","damage":"1d8","type":"bludgeoning","props":["two-handed"]}' data-i18n="wpn_greatclub">Greatclub 1d8</option>
+                                <option value='{"name":"Spear","damage":"1d6","type":"piercing","props":["thrown","versatile"]}' data-i18n="wpn_spear">Spear 1d6</option>
+                            </optgroup>
+                            <optgroup label="Martial Melee" data-i18n-label="equip_martial_melee">
+                                <option value='{"name":"Longsword","damage":"1d8","type":"slashing","props":["versatile"]}' data-i18n="wpn_longsword">Longsword 1d8</option>
+                                <option value='{"name":"Shortsword","damage":"1d6","type":"piercing","props":["finesse","light"]}' data-i18n="wpn_shortsword">Shortsword 1d6</option>
+                                <option value='{"name":"Rapier","damage":"1d8","type":"piercing","props":["finesse"]}' data-i18n="wpn_rapier">Rapier 1d8</option>
+                                <option value='{"name":"Battleaxe","damage":"1d8","type":"slashing","props":["versatile"]}' data-i18n="wpn_battleaxe">Battleaxe 1d8</option>
+                                <option value='{"name":"Warhammer","damage":"1d8","type":"bludgeoning","props":["versatile"]}' data-i18n="wpn_warhammer">Warhammer 1d8</option>
+                                <option value='{"name":"Greatsword","damage":"2d6","type":"slashing","props":["heavy","two-handed"]}' data-i18n="wpn_greatsword">Greatsword 2d6</option>
+                                <option value='{"name":"Greataxe","damage":"1d12","type":"slashing","props":["heavy","two-handed"]}' data-i18n="wpn_greataxe">Greataxe 1d12</option>
+                                <option value='{"name":"Maul","damage":"2d6","type":"bludgeoning","props":["heavy","two-handed"]}' data-i18n="wpn_maul">Maul 2d6</option>
+                                <option value='{"name":"Glaive","damage":"1d10","type":"slashing","props":["heavy","reach","two-handed"]}' data-i18n="wpn_glaive">Glaive 1d10</option>
+                                <option value='{"name":"Halberd","damage":"1d10","type":"slashing","props":["heavy","reach","two-handed"]}' data-i18n="wpn_halberd">Halberd 1d10</option>
+                                <option value='{"name":"Pike","damage":"1d10","type":"piercing","props":["heavy","reach","two-handed"]}' data-i18n="wpn_pike">Pike 1d10</option>
+                                <option value='{"name":"Flail","damage":"1d8","type":"bludgeoning"}' data-i18n="wpn_flail">Flail 1d8</option>
+                                <option value='{"name":"Morningstar","damage":"1d8","type":"piercing"}' data-i18n="wpn_morningstar">Morningstar 1d8</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#ccc; cursor:pointer;">
+                            <input type="checkbox" id="cb-shield" style="accent-color:#3498db;">
+                            <span data-i18n="cb_shield_slot">🛡️ Shield (+2 AC)</span>
+                        </label>
+                    </div>
+                    <div>
+                        <div style="font-size:10px; color:#aaa; margin-bottom:2px;" data-i18n="cb_ranged_slot">🏹 Ranged</div>
+                        <select id="cb-ranged-weapon" class="builder-input" style="width:100%; font-size:11px;">
+                            <option value="" data-i18n="equip_none">— None —</option>
+                            <option value='{"name":"Shortbow","damage":"1d6","type":"piercing","props":["ranged","two-handed"],"range":"80/320"}' data-i18n="wpn_shortbow">Shortbow 1d6 (80/320)</option>
+                            <option value='{"name":"Longbow","damage":"1d8","type":"piercing","props":["ranged","heavy","two-handed"],"range":"150/600"}' data-i18n="wpn_longbow">Longbow 1d8 (150/600)</option>
+                            <option value='{"name":"Light Crossbow","damage":"1d8","type":"piercing","props":["ranged","two-handed"],"range":"80/320"}' data-i18n="wpn_light_crossbow">Lt. Crossbow 1d8 (80/320)</option>
+                            <option value='{"name":"Heavy Crossbow","damage":"1d10","type":"piercing","props":["ranged","heavy","two-handed"],"range":"100/400"}' data-i18n="wpn_heavy_crossbow">Hvy. Crossbow 1d10 (100/400)</option>
+                            <option value='{"name":"Hand Crossbow","damage":"1d6","type":"piercing","props":["ranged","light"],"range":"30/120"}' data-i18n="wpn_hand_crossbow">Hand Crossbow 1d6 (30/120)</option>
+                            <option value='{"name":"Dart","damage":"1d4","type":"piercing","props":["ranged","finesse","thrown"],"range":"20/60"}' data-i18n="wpn_dart">Dart 1d4 (20/60)</option>
+                            <option value='{"name":"Sling","damage":"1d4","type":"bludgeoning","props":["ranged"],"range":"30/120"}' data-i18n="wpn_sling">Sling 1d4 (30/120)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Spell Slots (conditional — shown only for caster classes) -->
+                <div id="cb-spell-slots-section" style="display:none;">
+                    <div style="font-size:13px; color:var(--cr-purple); margin-bottom:8px; font-weight:bold;" data-i18n="spell_slots_header">🔮 Spell Slots</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;" data-i18n="spell_lv_1">Lv 1</label>
+                            <input type="number" id="cb-spell-1" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;" data-i18n="spell_lv_2">Lv 2</label>
+                            <input type="number" id="cb-spell-2" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;" data-i18n="spell_lv_3">Lv 3</label>
+                            <input type="number" id="cb-spell-3" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;" data-i18n="spell_lv_4">Lv 4</label>
+                            <input type="number" id="cb-spell-4" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;" data-i18n="spell_lv_5">Lv 5</label>
+                            <input type="number" id="cb-spell-5" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;" data-i18n="spell_lv_6">Lv 6</label>
+                            <input type="number" id="cb-spell-6" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;" data-i18n="spell_lv_7">Lv 7</label>
+                            <input type="number" id="cb-spell-7" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;" data-i18n="spell_lv_8">Lv 8</label>
+                            <input type="number" id="cb-spell-8" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:3px; align-items:center;">
+                            <label style="font-size:10px; color:#aaa;" data-i18n="spell_lv_9">Lv 9</label>
+                            <input type="number" id="cb-spell-9" class="builder-input" min="0" max="9" placeholder="0" style="padding:5px; font-size:13px; text-align:center;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Combat modifier row -->
+                <div class="cb-mods-grid">
+                    <div class="cb-mod-field">
+                        <span class="cb-mod-icon">⚔️</span>
+                        <label class="cb-mod-label" data-i18n="combat_melee_hit">Melee Hit</label>
+                        <input type="number" id="cb-melee" class="builder-input cb-mod-input" min="-5" max="15" placeholder="0">
+                    </div>
+                    <div class="cb-mod-field">
+                        <span class="cb-mod-icon">🏹</span>
+                        <label class="cb-mod-label" data-i18n="combat_ranged_hit">Ranged Hit</label>
+                        <input type="number" id="cb-ranged" class="builder-input cb-mod-input" min="-5" max="15" placeholder="0">
+                    </div>
+                    <div class="cb-mod-field">
+                        <span class="cb-mod-icon">✨</span>
+                        <label class="cb-mod-label" data-i18n="combat_spell_atk">Spell Atk</label>
+                        <input type="number" id="cb-spell-atk" class="builder-input cb-mod-input" min="-5" max="15" placeholder="0">
+                    </div>
+                    <div class="cb-mod-field">
+                        <span class="cb-mod-icon">💪</span>
+                        <label class="cb-mod-label" data-i18n="combat_melee_dmg">Melee Dmg</label>
+                        <input type="number" id="cb-melee-dmg-mod" class="builder-input cb-mod-input" min="-5" max="15" placeholder="0">
+                    </div>
+                    <div class="cb-mod-field">
+                        <span class="cb-mod-icon">🎯</span>
+                        <label class="cb-mod-label" data-i18n="combat_ranged_dmg">Ranged Dmg</label>
+                        <input type="number" id="cb-ranged-dmg-mod" class="builder-input cb-mod-input" min="-5" max="15" placeholder="0">
+                    </div>
+                </div>
+
+                <!-- Custom actions -->
+                <div style="border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;">
+                    <div style="font-size: 14px; color: #f1c40f; margin-bottom: 8px; font-weight: bold;"><span data-i18n="cb_custom_actions_title">⚡ Custom Actions</span> <span style="font-size:11px; color:#aaa; font-weight:400;" data-i18n="cb_custom_actions_limit">(up to 5)</span></div>
+                    <div id="custom-attacks-list" class="flex-column" style="gap: 10px;"></div>
+                    <button type="button" id="add-custom-attack-btn" class="hover-btn w-100" style="background: rgba(52, 152, 219, 0.3); color: #3498db; border: 1px dashed #3498db; padding: 8px; border-radius: 6px; font-size: 12px; margin-top: 10px;" data-i18n="cb_add_action_btn">+ Add Action</button>
+                </div>
+
+                <!-- Feats -->
+                <div style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 8px;">
+                    <div style="font-size:13px; font-weight:bold; color:#9b59b6; margin-bottom:6px;" data-i18n="cb_feats_section">⭐ Feats</div>
+                    <div id="cb-feat-chips" data-feats="[]" style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; min-height:24px;"></div>
+                    <button type="button" id="cb-add-feat-btn" class="builder-input" style="width:auto; padding:4px 12px; font-size:12px; background:rgba(155,89,182,0.2); border:1px solid rgba(155,89,182,0.4); color:#d7bde2; cursor:pointer;" data-i18n="cb_add_feat">+ Add Feat</button>
+                </div>
+
+                <!-- Loot & Equipment -->
+                <div style="border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;">
+                    <div data-i18n="cb_loot_title" style="font-size:14px; color:#f1c40f; margin-bottom:6px; font-weight:bold;">🎒 Loot &amp; Equipment</div>
+                    <textarea id="cb-loot" class="builder-input" rows="3" data-i18n-placeholder="cb_loot_ph" placeholder="Inventory, equipment, gold, magic items…" style="resize:vertical;min-height:60px;width:100%;box-sizing:border-box;font-size:12px;"></textarea>
+                </div>
+            </div>
+
+            <!-- ── WIZARD NAVIGATION FOOTER ──────────────────────── -->
+            <div class="cb-wizard-nav">
+                <button type="button" id="cb-back-btn" class="cb-nav-btn cb-nav-back" style="visibility:hidden;" data-i18n="wizard_back">← Back</button>
+                <span id="cb-step-counter" style="font-size:11px; color:#555;">1 / 5</span>
+                <button type="button" id="cb-next-btn" class="cb-nav-btn cb-nav-next" data-i18n="wizard_next">Next →</button>
+                <button type="submit" id="save-char-btn" class="cb-nav-btn cb-nav-save" style="display:none;" data-i18n="cb_save_btn">Save</button>
+            </div>
+
         </form>
     </div>
+
 
     <!-- Sprint 4: YOUR TURN notification banner -->
     <div id="your-turn-banner" class="hidden" onclick="window.dismissYourTurn()">
@@ -445,12 +766,415 @@
 
     <div id="game-screen" style="display: none; height: 100%; flex-direction: row; width: 100%;">
 
+        <!-- Default room background video -->
+        <video id="room-bg-video" autoplay muted loop playsinline
+               style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none;">
+            <source src="assets/video/table-bg.mp4" type="video/mp4">
+        </video>
+
         <!-- ══════════════════════════════════════════════
-             SIDE PANEL
+             PORTRAIT GALLERY (left fixed strip)
+             ══════════════════════════════════════════════ -->
+        <div id="portrait-gallery"></div>
+
+        <!-- ══════════════════════════════════════════════
+             CHARACTER QUICK-PANEL (slides in from left)
+             ══════════════════════════════════════════════ -->
+        <div id="char-quick-panel" class="char-quick-panel--hidden">
+            <button class="char-panel-close" onclick="window.closeCharPanel()">✕</button>
+            <div id="char-panel-content"></div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════
+             HUD TOOLBAR (floating bottom bar)
+             ══════════════════════════════════════════════ -->
+        <div id="hud-toolbar">
+
+            <!-- LEFT: D20 GLASS LIQUID HP HOLDER -->
+            <div class="d20-hp-holder" id="d20-hp-holder">
+                <svg id="d20-hp-svg" class="d20-hp-svg" viewBox="0 0 120 138"
+                     xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <clipPath id="d20-clip">
+                            <polygon points="60,4 116,34 116,104 60,134 4,104 4,34"/>
+                        </clipPath>
+                        <radialGradient id="d20-shine" cx="30%" cy="25%" r="55%">
+                            <stop offset="0%"   stop-color="rgba(255,255,255,0.18)"/>
+                            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                        </radialGradient>
+                        <filter id="d20-glow">
+                            <feGaussianBlur stdDeviation="2" result="blur"/>
+                            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                        </filter>
+                    </defs>
+                    <!-- Dark glass background -->
+                    <polygon points="60,4 116,34 116,104 60,134 4,104 4,34"
+                             fill="rgba(8,2,2,0.82)" clip-path="url(#d20-clip)"/>
+                    <!-- Liquid fill group -->
+                    <g clip-path="url(#d20-clip)">
+                        <rect id="d20-liquid-rect" x="0" y="100" width="120" height="40"
+                              fill="rgba(200,30,30,0.88)"/>
+                        <ellipse id="d20-wave-ellipse" cx="60" cy="100" rx="62" ry="7"
+                                 fill="rgba(240,60,60,0.7)">
+                            <animate attributeName="cx" values="50;70;50" dur="3s" repeatCount="indefinite"/>
+                            <animate attributeName="ry" values="6;9;6" dur="2.5s" repeatCount="indefinite"/>
+                        </ellipse>
+                        <ellipse cx="35" cy="110" rx="12" ry="4" fill="rgba(255,120,120,0.18)"/>
+                    </g>
+                    <!-- Facet lines -->
+                    <line x1="60"  y1="4"   x2="4"   y2="34"  stroke="rgba(200,135,58,0.25)" stroke-width="0.8"/>
+                    <line x1="60"  y1="4"   x2="116" y2="34"  stroke="rgba(200,135,58,0.25)" stroke-width="0.8"/>
+                    <line x1="60"  y1="4"   x2="60"  y2="69"  stroke="rgba(200,135,58,0.15)" stroke-width="0.7"/>
+                    <line x1="4"   y1="34"  x2="60"  y2="69"  stroke="rgba(200,135,58,0.12)" stroke-width="0.6"/>
+                    <line x1="116" y1="34"  x2="60"  y2="69"  stroke="rgba(200,135,58,0.12)" stroke-width="0.6"/>
+                    <line x1="4"   y1="104" x2="60"  y2="69"  stroke="rgba(200,135,58,0.12)" stroke-width="0.6"/>
+                    <line x1="116" y1="104" x2="60"  y2="69"  stroke="rgba(200,135,58,0.12)" stroke-width="0.6"/>
+                    <line x1="60"  y1="134" x2="60"  y2="69"  stroke="rgba(200,135,58,0.15)" stroke-width="0.7"/>
+                    <line x1="4"   y1="104" x2="60"  y2="134" stroke="rgba(200,135,58,0.25)" stroke-width="0.8"/>
+                    <line x1="116" y1="104" x2="60"  y2="134" stroke="rgba(200,135,58,0.25)" stroke-width="0.8"/>
+                    <!-- Glass shine -->
+                    <polygon points="60,4 116,34 116,104 60,134 4,104 4,34"
+                             fill="url(#d20-shine)" clip-path="url(#d20-clip)"/>
+                    <!-- Gold border -->
+                    <polygon points="60,4 116,34 116,104 60,134 4,104 4,34"
+                             fill="none" stroke="rgba(200,135,58,0.85)" stroke-width="2.5"
+                             filter="url(#d20-glow)"/>
+                    <!-- HP text -->
+                    <text id="d20-hp-text" x="60" y="82" text-anchor="middle"
+                          fill="white" font-size="16" font-weight="900" font-family="serif"
+                          style="text-shadow:0 0 8px rgba(0,0,0,1);">—</text>
+                    <text x="60" y="97" text-anchor="middle"
+                          fill="rgba(200,135,58,0.7)" font-size="9" font-weight="700"
+                          font-family="serif" letter-spacing="2">HP</text>
+                </svg>
+            </div>
+
+            <!-- LEFT ORNAMENT -->
+            <div class="hud-ornament hud-ornament--left" aria-hidden="true"></div>
+
+            <!-- CENTER ACTION AREA -->
+            <div class="hud-center-bar">
+
+                <!-- Row 1: Identity -->
+                <div class="hud-identity-strip">
+                    <span class="hud-role-label">ROLLING AS</span>
+                    <span id="hud-roller-name">—</span>
+                    <button id="hud-reset-roller" onclick="window.resetRoller()" title="Reset">↩</button>
+                </div>
+
+                <!-- Row 2: Action slots -->
+                <div class="hud-action-row">
+
+                    <!-- MOD slot -->
+                    <div class="diablo-slot diablo-slot--mod" title="Modifier">
+                        <span class="slot-key-label">MOD</span>
+                        <input type="number" id="mod-input" value="0">
+                    </div>
+
+                    <!-- Dice popup trigger (replaces inline dice zone) -->
+                    <button class="diablo-slot dice-popup-trigger" id="dice-popup-btn"
+                            onclick="window.toggleDicePopup()">
+                        <span class="slot-icon"><img src="/assets/icons/toolbar/dice.png" alt="Dice" class="custom-icon"></span>
+                        <span class="slot-label">DICE</span>
+                        <span class="dice-mult-badge" id="dice-mult-badge">×1</span>
+                    </button>
+
+                    <!-- ADV / DIS — clear green/red labeled slots -->
+                    <button id="adv-btn" class="diablo-slot diablo-slot--adv hover-btn"
+                            onclick="window.setMode('adv')" data-i18n="adv">
+                        <span class="slot-icon adv-icon"><img src="/assets/icons/toolbar/advantage.png" alt="Advantage" class="custom-icon"></span>
+                        <span class="slot-label">ADVANTAGE</span>
+                    </button>
+                    <button id="dis-btn" class="diablo-slot diablo-slot--dis hover-btn"
+                            onclick="window.setMode('dis')" data-i18n="dis">
+                        <span class="slot-icon dis-icon"><img src="/assets/icons/toolbar/disadvantage.png" alt="Disadvantage" class="custom-icon"></span>
+                        <span class="slot-label">DISADV</span>
+                    </button>
+
+                    <div class="hud-slot-divider"></div>
+
+                    <!-- Initiative -->
+                    <button id="init-btn" class="diablo-slot diablo-slot--init"
+                            disabled onclick="window.rollInit()" data-i18n="waiting_combat">
+                        <span class="slot-icon"><img src="/assets/icons/toolbar/initiative.png" alt="Initiative" class="custom-icon"></span>
+                        <span class="slot-label">INIT</span>
+                    </button>
+
+                    <!-- Custom action slots (up to 5, populated from character data) -->
+                    <div id="hud-actions-zone" class="hud-actions-zone" style="display:none;"></div>
+
+                    <!-- Combat nav -->
+                    <div id="hud-combat-controls" class="hidden">
+                        <span id="hud-round-counter" class="round-counter-badge"></span>
+                        <button class="hud-nav-btn" onclick="window.prevTurn()">◀</button>
+                        <button class="hud-nav-btn" onclick="window.nextTurn()">▶</button>
+                        <span id="hud-turn-timer" class="turn-timer-badge"></span>
+                    </div>
+
+                    <div class="hud-slot-divider"></div>
+
+                    <!-- Tool cluster -->
+                    <div class="hud-tools-cluster">
+                        <button class="hud-tool-btn" onclick="window._toggleMusicPanel()" title="Music"><img src="/assets/icons/toolbar/music.png" alt="Music" class="custom-icon"></button>
+                        <button class="hud-tool-btn" id="hud-log-toggle" onclick="window.toggleLogPanel()" title="Roll Log"><img src="/assets/icons/toolbar/log.png" alt="Log" class="custom-icon"></button>
+                        <button class="hud-tool-btn" onclick="window.openSpellPanel?.()" title="Spells"><img src="/assets/icons/toolbar/spells.png" alt="Spells" class="custom-icon"></button>
+                        <button class="hud-tool-btn" id="mute-btn" onclick="window.toggleMute()" title="Mute"><img src="/assets/icons/toolbar/mute.png" alt="Mute" class="custom-icon"></button>
+                        <button class="hud-tool-btn dm-only" id="master-combat-btn" onclick="window.toggleCombat()" title="Combat"><img src="/assets/icons/toolbar/combat.png" alt="Combat" class="custom-icon"></button>
+                        <button class="hud-tool-btn dm-only" id="npc-gen-btn" onclick="window.openNPCPanel?.()" title="NPC"><img src="/assets/icons/toolbar/npc.png" alt="NPC" class="custom-icon"></button>
+                        <button class="hud-tool-btn dm-only" id="monster-book-btn" onclick="window.openMonsterBook?.()" title="Monsters"><img src="/assets/icons/toolbar/monsters.png" alt="Monsters" class="custom-icon"></button>
+                        <button class="hud-tool-btn dm-only" onclick="window.openSceneWizard()" title="Scene"><img src="/assets/icons/toolbar/scene.png" alt="Scene" class="custom-icon"></button>
+                        <button class="hud-tool-btn dm-only" id="short-rest-btn" onclick="window.openShortRest?.()" title="Rest"><img src="/assets/icons/toolbar/rest.png" alt="Rest" class="custom-icon"></button>
+                        <button class="hud-tool-btn dm-only" id="bc-default" onclick="window._broadcastDefault()" title="Table"><img src="/assets/icons/toolbar/table.png" alt="Table" class="custom-icon"></button>
+                        <button class="hud-tool-btn dm-only" id="bc-scene" onclick="window._broadcastScene()" title="Scene"><img src="/assets/icons/toolbar/scene.png" alt="Scene" class="custom-icon"></button>
+                        <button class="hud-tool-btn dm-only" id="bc-present" onclick="window._broadcastPresent()" title="Present"><img src="/assets/icons/toolbar/present.png" alt="Present" class="custom-icon"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT ORNAMENT -->
+            <div class="hud-ornament hud-ornament--right" aria-hidden="true"></div>
+
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             PLAYER TOOLBAR — shown for players only (DM keeps #hud-toolbar)
+             ══════════════════════════════════════════════════════ -->
+        <div id="player-toolbar">
+
+            <!-- HP overlay: full-width toolbar image (gem pre-positioned at 12.81%,46% in TOOLBAR/*.png) -->
+            <img id="pt-hp-overlay" alt="HP" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;z-index:1;display:none;">
+            <!-- HP text: positioned at gem center -->
+            <div id="pt-hp-display">
+                <span id="pt-hp-text">—</span>
+                <span id="pt-hp-label" data-i18n="pt_hp_label">HP</span>
+            </div>
+
+            <!-- Slots 1–4: Assignable custom actions -->
+            <button class="pt-slot" id="pt-slot-0" onclick="window.openActionAssignPanel(0)" title="Custom Action 1">
+                <span class="pt-slot-key">1</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon">+</span><span class="pt-slot-label" data-i18n="pt_slot_assign">ASSIGN</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-1" onclick="window.openActionAssignPanel(1)" title="Custom Action 2">
+                <span class="pt-slot-key">2</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon">+</span><span class="pt-slot-label" data-i18n="pt_slot_assign">ASSIGN</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-2" onclick="window.openActionAssignPanel(2)" title="Custom Action 3">
+                <span class="pt-slot-key">3</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon">+</span><span class="pt-slot-label" data-i18n="pt_slot_assign">ASSIGN</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-3" onclick="window.openActionAssignPanel(3)" title="Custom Action 4">
+                <span class="pt-slot-key">4</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon">+</span><span class="pt-slot-label" data-i18n="pt_slot_assign">ASSIGN</span></div>
+            </button>
+
+            <!-- Slots 5–12: Fixed function slots -->
+            <button class="pt-slot" id="pt-slot-4" onclick="window.openSpecialAbilitiesMenu()" title="Special Abilities">
+                <span class="pt-slot-key">5</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/abilities.png" alt="Abilities" class="custom-icon"></span><span class="pt-slot-label" data-i18n="pt_slot_abilities">ABILITIES</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-5" onclick="window.openRestMenu()" title="Rest">
+                <span class="pt-slot-key">6</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/rest.png" alt="Rest" class="custom-icon"></span><span class="pt-slot-label" data-i18n="pt_slot_rest">REST</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-6" onclick="window.toggleDicePopup()" title="Dice">
+                <span class="pt-slot-key">7</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/dice.png" alt="Dice" class="custom-icon"></span><span class="pt-slot-label" data-i18n="pt_slot_dice">DICE</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-7" onclick="window.openSpellPanel?.()" title="Spellbook">
+                <span class="pt-slot-key">8</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/spells.png" alt="Spells" class="custom-icon"></span><span class="pt-slot-label" data-i18n="pt_slot_spells">SPELLS</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-8" onclick="window.toggleLogPanel()" title="Roll Log">
+                <span class="pt-slot-key">9</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/log.png" alt="Log" class="custom-icon"></span><span class="pt-slot-label" data-i18n="pt_slot_log">LOG</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-9" onclick="window.openCharPanel(window._ptCName||'')" title="Character Sheet">
+                <span class="pt-slot-key">10</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/character.png" alt="Character" class="custom-icon"></span><span class="pt-slot-label" data-i18n="pt_slot_char">CHAR</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-10" onclick="window._toggleMusicPanel()" title="Music">
+                <span class="pt-slot-key">11</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/music.png" alt="Music" class="custom-icon"></span><span class="pt-slot-label" data-i18n="pt_slot_music">MUSIC</span></div>
+            </button>
+            <button class="pt-slot" id="pt-slot-11" onclick="window.rollInit()" title="Roll Initiative">
+                <span class="pt-slot-key">12</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/combat.png" alt="Init" class="custom-icon"></span><span class="pt-slot-label" data-i18n="pt_slot_init">INIT</span></div>
+            </button>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             DM TOOLBAR — shown for DM only (mirrors #player-toolbar)
+             ══════════════════════════════════════════════════════ -->
+        <div id="dm-toolbar">
+
+            <!-- HP overlay: full-width toolbar image (gem pre-positioned at 12.81%,46%) -->
+            <img id="dm-hp-overlay" alt="HP"
+                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;z-index:1;display:none;">
+            <!-- HP text: positioned at gem center -->
+            <div id="dm-hp-display">
+                <span id="dm-hp-text">—</span>
+                <span id="dm-hp-label" data-i18n="dm_hp_label">HP</span>
+            </div>
+
+            <button class="dm-slot" id="dm-slot-0" onclick="window.toggleDicePopup()" title="Dice">
+                <span class="dm-slot-key">1</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/dice.png" alt="Dice" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_dice">DICE</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-1" onclick="window._openDMCombatPopup()" title="Combat">
+                <span class="dm-slot-key">2</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/combat.png" alt="Combat" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_combat">COMBAT</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-2" onclick="window.rollInit()" title="Initiative">
+                <span class="dm-slot-key">3</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/initiative.png" alt="Initiative" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_init">INIT</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-3" onclick="window.openMonsterBook?.()" title="Monsters">
+                <span class="dm-slot-key">4</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/monsters.png" alt="Monsters" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_monsters">MONSTERS</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-4" onclick="window.openNPCPanel?.()" title="NPC">
+                <span class="dm-slot-key">5</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/npc.png" alt="NPC" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_npc">NPC</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-5" onclick="window._openDMScenesPopup()" title="Scenes">
+                <span class="dm-slot-key">6</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/scene.png" alt="Scene" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_scenes">SCENES</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-6" onclick="window._openDMBroadcastPopup()" title="Broadcast">
+                <span class="dm-slot-key">7</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/broadcast.png" alt="Broadcast" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_broadcast">BROADCAST</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-7" onclick="window._toggleMusicPanel()" title="Music">
+                <span class="dm-slot-key">8</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/music.png" alt="Music" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_music">MUSIC</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-8" onclick="window.toggleLogPanel()" title="Roll Log">
+                <span class="dm-slot-key">9</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/log.png" alt="Log" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_log">LOG</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-9" onclick="window._openDMCampaignPopup()" title="Campaign">
+                <span class="dm-slot-key">10</span>
+                <span id="dm-campaign-badge" class="dm-slot-badge hidden">0</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/campaign.png" alt="Campaign" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_campaign">CAMPAIGN</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-10" onclick="window._openDMNotesPopup()" title="Notes">
+                <span class="dm-slot-key">11</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/notes.png" alt="Notes" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_notes">NOTES</span></div>
+            </button>
+            <button class="dm-slot" id="dm-slot-11" onclick="window._toggleMapEditor()" title="Map Editor">
+                <span class="dm-slot-key">12</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/editor.png" alt="Editor" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_editor">EDITOR</span></div>
+            </button>
+        </div>
+
+        <!-- DM Popup Backdrop -->
+        <div id="dm-popup-backdrop" class="dm-popup-backdrop hidden" onclick="window._closeDMPopups()"></div>
+
+        <!-- DM Combat Popup -->
+        <div id="dm-combat-popup" class="dm-popup hidden">
+            <div class="dm-popup-header">
+                <span class="dm-popup-title" data-i18n="dm_slot_combat">COMBAT</span>
+                <button class="dm-popup-close" onclick="window._closeDMPopups()">✕</button>
+            </div>
+            <button id="dm-combat-toggle-btn" class="dm-popup-action-btn" onclick="window.toggleCombat()" data-i18n="dm_combat_toggle_start">⚔️ Start Combat</button>
+            <div id="dm-combat-details" class="hidden">
+                <div class="dm-combat-row">
+                    <span data-i18n="dm_combat_round">Round</span>
+                    <span id="dm-round-display" class="dm-badge">1</span>
+                </div>
+                <div class="dm-combat-row">
+                    <button class="dm-nav-btn" onclick="window.prevTurn()" data-i18n="dm_combat_prev">◀ Prev</button>
+                    <button class="dm-nav-btn" onclick="window.nextTurn()" data-i18n="dm_combat_next">Next ▶</button>
+                </div>
+                <div id="dm-turn-timer-display" class="dm-timer-display"></div>
+            </div>
+        </div>
+
+        <!-- DM Broadcast Popup -->
+        <div id="dm-broadcast-popup" class="dm-popup hidden">
+            <div class="dm-popup-header">
+                <span class="dm-popup-title" data-i18n="dm_slot_broadcast">BROADCAST</span>
+                <button class="dm-popup-close" onclick="window._closeDMPopups()">✕</button>
+            </div>
+            <button class="dm-popup-action-btn" onclick="window._broadcastDefault(); window._closeDMPopups();" data-i18n="dm_broadcast_table">🪵 Table View</button>
+            <button class="dm-popup-action-btn" onclick="window._broadcastScene(); window._closeDMPopups();" data-i18n="dm_broadcast_scene">🗺 Battle Scene</button>
+            <button class="dm-popup-action-btn" onclick="window._broadcastPresent(); window._closeDMPopups();" data-i18n="dm_broadcast_present">🖼️ Present</button>
+        </div>
+
+        <!-- DM Rest Popup -->
+        <div id="dm-rest-popup" class="dm-popup hidden">
+            <div class="dm-popup-header">
+                <span class="dm-popup-title" data-i18n="dm_rest_title">😴 REST</span>
+                <button class="dm-popup-close" onclick="window._closeDMPopups()">✕</button>
+            </div>
+            <button class="dm-popup-action-btn" onclick="window.openShortRest?.(); window._closeDMPopups();" data-i18n="dm_rest_short">Short Rest</button>
+            <button class="dm-popup-action-btn" onclick="window._dmLongRest?.(); window._closeDMPopups();" data-i18n="dm_rest_long">Long Rest</button>
+        </div>
+
+        <!-- DM Scenes Popup -->
+        <div id="dm-scenes-popup" class="dm-popup dm-scenes-popup hidden">
+            <div class="dm-popup-header">
+                <span class="dm-popup-title" data-i18n="dm_slot_scenes">SCENES</span>
+                <button class="dm-popup-close" onclick="window._closeDMPopups()">✕</button>
+            </div>
+            <button class="dm-popup-action-btn" onclick="window.openSceneWizard(); window._closeDMPopups();" data-i18n="dm_scenes_new">✨ New Scene</button>
+            <div class="dm-scenes-saved-header" data-i18n="dm_scenes_saved">Saved Scenes</div>
+            <div id="dm-scenes-saved-list" class="dm-scenes-saved-list"></div>
+        </div>
+
+        <!-- DM Campaign Popup -->
+        <div id="dm-campaign-popup" class="dm-popup dm-campaign-popup hidden">
+            <div class="dm-popup-header">
+                <span class="dm-popup-title" data-i18n="dm_slot_campaign">CAMPAIGN</span>
+                <button class="dm-popup-close" onclick="window._closeDMPopups()">✕</button>
+            </div>
+            <div id="dm-campaign-popup-body">
+                <div class="dm-camp-section-label" data-i18n="dm_campaign_pending">Pending Requests</div>
+                <div id="dm-camp-pending-list" class="dm-camp-list"></div>
+                <div class="dm-camp-section-label dm-camp-section-label--players" data-i18n="dm_campaign_players">Participants</div>
+                <div id="dm-camp-players-list" class="dm-camp-list"></div>
+                <button class="dm-popup-action-btn dm-camp-full-btn" onclick="window._openFullCampaignManager()">⚙️ Full Manager</button>
+            </div>
+            <div id="dm-campaign-popup-nocampaign" class="dm-camp-nocampaign hidden" data-i18n="dm_campaign_no_campaign">Not in a campaign session</div>
+        </div>
+
+        <!-- DM Notes Popup -->
+        <div id="dm-notes-popup" class="dm-popup dm-notes-popup hidden">
+            <div class="dm-popup-header">
+                <span class="dm-popup-title" data-i18n="dm_notes_title">📝 NOTES</span>
+                <button class="dm-popup-close" onclick="window._closeDMPopups()">✕</button>
+            </div>
+            <div class="dm-notes-body">
+                <div class="dm-notes-list-pane">
+                    <button class="dm-notes-new-btn" onclick="window._dmNewNote()" data-i18n="dm_notes_new">+ New Note</button>
+                    <div id="dm-notes-list" class="dm-notes-list"></div>
+                </div>
+                <div class="dm-notes-editor-pane" id="dm-notes-editor" style="display:none;">
+                    <input type="text" id="dm-note-title-input" class="dm-note-title-input" placeholder="Note title…">
+                    <select id="dm-note-tag-select" class="dm-note-tag-select">
+                        <option value="mechanic" data-i18n="dm_notes_tag_mechanic">Mechanic</option>
+                        <option value="story" data-i18n="dm_notes_tag_story">Story</option>
+                        <option value="riddle" data-i18n="dm_notes_tag_riddle">Riddle</option>
+                        <option value="npc" data-i18n="dm_notes_tag_npc">NPC</option>
+                        <option value="item" data-i18n="dm_notes_tag_item">Item</option>
+                        <option value="other" data-i18n="dm_notes_tag_other">Other</option>
+                    </select>
+                    <textarea id="dm-note-content-input" class="dm-note-content-input"
+                              data-i18n-placeholder="dm_notes_placeholder" placeholder="Note content…"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════
+             SIDE PANEL (hidden — kept for JS compat)
              ══════════════════════════════════════════════ -->
         <div id="side-panel">
-            <img src="assets/logo.png" alt="Small Logo" class="side-logo">
-            <h3 data-i18n="party_title" style="margin:0 0 10px 0; font-size: 16px; text-align:center;"></h3>
+            <div class="panel-title-bar">
+                <span class="panel-title-ornament">✦</span>
+                <span class="panel-title-text" data-i18n="party_title">PARTY</span>
+                <span class="panel-title-ornament">✦</span>
+            </div>
+            <img src="assets/logo.webp" alt="Small Logo" class="side-logo">
 
             <div id="active-roller-banner">
                 <span data-i18n="rolling_as"></span>&nbsp;
@@ -494,7 +1218,7 @@
 
             <div class="side-footer">
                 <div class="side-buttons-row">
-                    <button id="master-combat-btn" class="side-btn hover-btn" data-i18n="open_combat" style="display:none; background:#2c3e50;" onclick="window.toggleCombat()"></button>
+                    <button id="sp-master-combat-btn" class="side-btn hover-btn" data-i18n="open_combat" style="display:none; background:#2c3e50;" onclick="window.toggleCombat()"></button>
 
                     <div id="dm-turn-controls" style="display:none; flex-direction:column; gap:6px;">
                         <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(241,196,15,0.1); border:1px solid rgba(241,196,15,0.3); border-radius:8px; padding:6px 10px;">
@@ -504,7 +1228,7 @@
                         <div style="display:flex; gap:6px;">
                             <button onclick="window.prevTurn()" class="side-btn hover-btn" style="flex:1; background:var(--cr-bg-dark); padding:8px; font-size:18px;" title="Previous Turn" data-i18n="prev_turn">◀</button>
                             <button onclick="window.nextTurn()" class="side-btn hover-btn" style="flex:2; background:var(--cr-orange); padding:8px; font-weight:900; font-size:13px;" data-i18n="next_turn_btn"></button>
-                            <button onclick="window.openShortRest?.()" id="short-rest-btn" class="side-btn hover-btn" style="flex:1; background:var(--cr-green); padding:8px; font-size:16px; display:none;" title="Short Rest">😴</button>
+                            <button onclick="window.openShortRest?.()" id="sp-short-rest-btn" class="side-btn hover-btn" style="flex:1; background:var(--cr-green); padding:8px; font-size:16px; display:none;" title="Short Rest">😴</button>
                         </div>
                         <button id="reroll-initiatives-btn" onclick="window.rerollAllInitiatives()" class="side-btn hover-btn" data-i18n="reroll_initiatives" style="display:none; background:rgba(52,152,219,0.3); border:1px solid #3498db; color:#3498db; font-size:12px; padding:7px;"></button>
                         <!-- S16: Turn Timer -->
@@ -521,7 +1245,7 @@
                         </div>
                     </div>
 
-                    <button id="mute-btn" class="side-btn hover-btn" data-i18n="mute_sound" onclick="window.toggleMute()"></button>
+                    <button id="sp-mute-btn" class="side-btn hover-btn" data-i18n="mute_sound" onclick="window.toggleMute()"></button>
 
                     <!-- Wave 2: Quick-access tool buttons -->
                     <div style="display:flex; gap:6px; margin-bottom:4px;">
@@ -529,12 +1253,12 @@
                             style="flex:1; background:rgba(142,68,173,0.25); border:1px solid #8e44ad;
                                    color:#c39bd3; font-size:12px; padding:7px; font-weight:700;"
                             title="Open Spell Compendium (SRD spells)" data-i18n="spells_btn"></button>
-                        <button id="npc-gen-btn" onclick="window.openNPCPanel?.()" class="side-btn hover-btn"
+                        <button id="sp-npc-gen-btn" onclick="window.openNPCPanel?.()" class="side-btn hover-btn"
                             data-i18n="npc_gen_btn"
                             style="flex:1; background:rgba(39,174,96,0.2); border:1px solid #27ae60;
                                    color:#82e0aa; font-size:12px; padding:7px; font-weight:700; display:none;"
                             title="NPC Generator"></button>
-                        <button id="monster-book-btn" onclick="window.openMonsterBook?.()" class="side-btn hover-btn"
+                        <button id="sp-monster-book-btn" onclick="window.openMonsterBook?.()" class="side-btn hover-btn"
                             data-i18n="monster_book_btn"
                             style="flex:1; background:rgba(231,76,60,0.2); border:1px solid #e74c3c;
                                    color:#f1948a; font-size:12px; padding:7px; font-weight:700; display:none;"
@@ -600,29 +1324,29 @@
                             <span class="map-tb-icon gi-tb" data-gi="toolbar-aoe">💥</span><span class="map-tb-label">AoE</span>
                         </button>
                         <button class="map-tb-btn" data-mode="calibrate"      onclick="window._mapToolBtn(this)" title="Calibrate Grid — click &amp; drag across one tile (C)">
-                            <span class="map-tb-icon">🔲</span><span class="map-tb-label">Calibrate</span>
+                            <span class="map-tb-icon"><img src="/assets/icons/toolbar/abilities.png" alt="Calibrate" class="custom-icon"></span><span class="map-tb-label">Calibrate</span>
                         </button>
                         <div class="map-tb-sep"></div>
                         <!-- Video background controls (shown when a YouTube video is active) -->
                         <button class="map-tb-btn" id="btn-video-bg" onclick="window._videoToggleBtn()" title="Video Background Controls" style="display:none;">
-                            <span class="map-tb-icon">🎬</span><span class="map-tb-label">Video</span>
+                            <span class="map-tb-icon"><img src="/assets/icons/toolbar/present.png" alt="Video" class="custom-icon"></span><span class="map-tb-label">Video</span>
                         </button>
                         <button class="map-tb-btn" id="btn-music" onclick="window._toggleMusicPanel()" title="Background Music">
-                            <span class="map-tb-icon">🎵</span><span class="map-tb-label">Music</span>
+                            <span class="map-tb-icon"><img src="/assets/icons/toolbar/music.png" alt="Music" class="custom-icon"></span><span class="map-tb-label">Music</span>
                         </button>
                         <div class="map-tb-sep"></div>
                         <button class="map-tb-btn" onclick="window._handoutBtn()" title="Print Dungeon Handout (E7)" id="btn-handout">
-                            <span class="map-tb-icon">📜</span><span class="map-tb-label">Handout</span>
+                            <span class="map-tb-icon"><img src="/assets/icons/toolbar/log.png" alt="Handout" class="custom-icon"></span><span class="map-tb-label">Handout</span>
                         </button>
                         <button class="map-tb-btn" onclick="window._watabouBtn()" title="Open in Watabou OPD" id="btn-watabou">
-                            <span class="map-tb-icon">🗺</span><span class="map-tb-label">Watabou</span>
+                            <span class="map-tb-icon"><img src="/assets/icons/toolbar/scene.png" alt="Watabou" class="custom-icon"></span><span class="map-tb-label">Watabou</span>
                         </button>
                         <div class="map-tb-sep"></div>
                         <button class="map-tb-btn" onclick="window.toggleTokenRoster()" title="Place Tokens on Map">
                             <span class="map-tb-icon gi-tb" data-gi="toolbar-tokens">👥</span><span class="map-tb-label">Tokens</span>
                         </button>
                         <button class="map-tb-btn red" onclick="window.deactivateScene()" title="Close Map View">
-                            <span class="map-tb-icon">✕</span><span class="map-tb-label">Close</span>
+                            <span class="map-tb-icon"><img src="/assets/icons/toolbar/combat.png" alt="Close" class="custom-icon" style="filter:hue-rotate(340deg) saturate(2)"></span><span class="map-tb-label">Close</span>
                         </button>
                     </div>
                     <!-- On-map combat action popup (all users) -->
@@ -686,12 +1410,12 @@
                 <div id="controls">
                     <div class="mod-container">
                         <span data-i18n="mod_label" style="font-size: 14px; color: var(--parchment); margin-left: 5px;"></span>
-                        <input type="number" id="mod-input" value="0">
+                        <input type="number" id="ctrl-mod" value="0">
                     </div>
-                    <button id="init-btn" data-i18n="waiting_combat" disabled style="opacity: 0.3;" onclick="window.rollInit()"></button>
+                    <button id="ctrl-init" data-i18n="waiting_combat" disabled style="opacity: 0.3;" onclick="window.rollInit()"></button>
                     <button id="open-dice-menu" data-i18n="dice_menu" class="special-roll-btn hover-btn" style="background:#3498db; flex: 0.5;" onclick="document.getElementById('custom-dice-menu').style.display='flex'"></button>
-                    <button id="adv-btn" data-i18n="adv" class="special-roll-btn adv hover-btn" onclick="window.setMode('adv')"></button>
-                    <button id="dis-btn" data-i18n="dis" class="special-roll-btn dis hover-btn" onclick="window.setMode('dis')"></button>
+                    <button id="ctrl-adv" data-i18n="adv" class="special-roll-btn adv hover-btn" onclick="window.setMode('adv')"></button>
+                    <button id="ctrl-dis" data-i18n="dis" class="special-roll-btn dis hover-btn" onclick="window.setMode('dis')"></button>
                     <div id="custom-dice-menu">
                         <div class="w-100 text-left mb-10">
                             <button type="button" class="close-btn" aria-label="סגור תפריט קוביות" onclick="document.getElementById('custom-dice-menu').style.display='none'">&times;</button>
@@ -985,6 +1709,99 @@
     </button>
   </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════
+     DICE POPUP PANEL — floating above HUD toolbar
+     ══════════════════════════════════════════════════════ -->
+<div id="dice-popup-panel" class="dice-popup-panel hidden" role="dialog" aria-label="Dice selector">
+    <div class="dice-popup-header">
+        <span class="dice-popup-title" data-i18n="pt_dice_popup_title">Choose Your Dice</span>
+        <button class="dice-popup-close" onclick="window.closeDicePopup()" aria-label="Close">✕</button>
+    </div>
+    <!-- Multiplier row -->
+    <div class="dice-popup-multiplier">
+        <span class="mult-label">ROLL</span>
+        <button class="mult-btn active" data-mult="1" onclick="window.setDiceMult(1)">×1</button>
+        <button class="mult-btn" data-mult="2" onclick="window.setDiceMult(2)">×2</button>
+        <button class="mult-btn" data-mult="3" onclick="window.setDiceMult(3)">×3</button>
+        <button class="mult-btn" data-mult="4" onclick="window.setDiceMult(4)">×4</button>
+        <span class="mult-label">DICE</span>
+    </div>
+    <!-- ADV / DIS row -->
+    <div class="dice-popup-adv-row">
+        <button id="pt-adv-btn" class="pt-mode-btn" onclick="window.setMode('adv')" data-i18n="pt_adv_btn">ADV</button>
+        <button id="pt-dis-btn" class="pt-mode-btn" onclick="window.setMode('dis')" data-i18n="pt_dis_btn">DIS</button>
+    </div>
+    <!-- Custom modifier row -->
+    <div class="dice-popup-mod-row">
+        <span class="mult-label" data-i18n="pt_mod_label">MOD</span>
+        <button class="mod-step-btn" onclick="window._ptAdjMod(-1)">−</button>
+        <input type="number" id="pt-mod-input" class="pt-mod-input" value="0" min="-10" max="20">
+        <button class="mod-step-btn" onclick="window._ptAdjMod(1)">+</button>
+    </div>
+    <!-- Dice grid (populated by JS) -->
+    <div class="dice-popup-grid" id="dice-popup-grid"></div>
+</div>
+<!-- Dice popup backdrop -->
+<div id="dice-popup-backdrop" class="dice-popup-backdrop hidden" onclick="window.closeDicePopup()"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     PLAYER TOOLBAR POPUPS
+     ══════════════════════════════════════════════════════ -->
+<!-- Action Assign Picker -->
+<div id="pt-action-picker" class="pt-popup hidden">
+    <div class="pt-popup-header">
+        <span class="pt-popup-title" data-i18n="pt_action_picker_title">⚡ Assign Action</span>
+        <button class="pt-popup-close" onclick="window._closePtPopups()">✕</button>
+    </div>
+    <div id="pt-action-picker-list" class="pt-picker-list"></div>
+</div>
+
+<!-- Special Abilities Popup -->
+<div id="pt-special-popup" class="pt-popup hidden">
+    <div class="pt-popup-header">
+        <span class="pt-popup-title" data-i18n="pt_special_title">✨ Special Abilities</span>
+        <button class="pt-popup-close" onclick="window._closePtPopups()">✕</button>
+    </div>
+    <div id="pt-special-list" class="pt-special-list"></div>
+</div>
+
+<!-- Rest Menu Popup -->
+<div id="pt-rest-popup" class="pt-popup hidden">
+    <div class="pt-popup-header">
+        <span class="pt-popup-title" data-i18n="pt_rest_title">😴 Rest</span>
+        <button class="pt-popup-close" onclick="window._closePtPopups()">✕</button>
+    </div>
+    <div class="pt-rest-btns">
+        <button class="pt-rest-btn" onclick="window.openShortRest?.(); window._closePtPopups();">
+            <span class="pt-rest-icon">🌙</span>
+            <span class="pt-rest-name" data-i18n="pt_rest_short_name">Short Rest</span>
+            <span class="pt-rest-desc" data-i18n="pt_rest_short_desc">Roll Hit Dice to heal</span>
+        </button>
+        <button class="pt-rest-btn" onclick="window._ptLongRest(); window._closePtPopups();">
+            <span class="pt-rest-icon">⭐</span>
+            <span class="pt-rest-name" data-i18n="pt_rest_long_name">Long Rest</span>
+            <span class="pt-rest-desc" data-i18n="pt_rest_long_desc">Full HP &amp; ability restore</span>
+        </button>
+    </div>
+</div>
+
+<!-- Action choice popup (OUTSIDE #player-toolbar to avoid stacking context z-index issue) -->
+<div id="pt-action-choice" class="pt-action-choice hidden">
+    <button id="pt-choice-hit"  class="pt-choice-btn" onclick="window._ptFireHit()" data-i18n="pt_choice_hit">⚔️ Attack Roll</button>
+    <button id="pt-choice-dmg"  class="pt-choice-btn" onclick="window._ptFireDmg()" data-i18n="pt_choice_dmg">💥 Damage Roll</button>
+    <button id="pt-choice-both" class="pt-choice-btn" onclick="window._ptFireBoth()" data-i18n="pt_choice_both">⚡ Both</button>
+    <!-- Per-roll modifier -->
+    <div class="pt-choice-mod-row">
+        <span class="mult-label" data-i18n="pt_mod_label">MOD</span>
+        <button class="mod-step-btn" onclick="window._ptAdjActionMod(-1)">−</button>
+        <input type="number" id="pt-action-mod-input" class="pt-mod-input" value="0" min="-20" max="20">
+        <button class="mod-step-btn" onclick="window._ptAdjActionMod(1)">+</button>
+    </div>
+</div>
+
+<!-- Shared popup backdrop -->
+<div id="pt-popup-backdrop" class="pt-popup-backdrop hidden" onclick="window._closePtPopups()"></div>
 
 </body>
 </html>

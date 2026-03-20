@@ -2,7 +2,7 @@
 import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js";
 import { getFlavorText } from "./messages.js";
 import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown, _esc } from "./ui.js";
 import * as db from "./firebaseService.js";
 import { pruneOrphanTokens } from "./firebaseService.js"; // S11: direct import prevents Rollup tree-shaking
 import { t } from "./i18n.js";
@@ -17,13 +17,21 @@ import { openNPCPanel, closeNPCPanel } from "./npcPanel.js";
 import { generateNPC } from "./faker.js";
 import { printHandout, openWatabou, captureMapCanvas } from "./handout.js"; // E7
 import { iconHTML } from "./icons.js";
+import { iconImg } from "./iconMap.js";
 import { initMonsterBook } from "./monsterBook.js";
 import { fetchMonsterBySlug, open5eToNPC } from "./open5e.js";
 import { VideoLayer } from "./videoLayer.js";
-import { initClassResources, onShortRest, onLongRest, WILD_SHAPES } from "./engine/classAbilities.js";
+import { initClassResources, onShortRest, onLongRest, WILD_SHAPES, getSelfActions, WILD_MAGIC_SURGES } from "./engine/classAbilities.js";
 import { statusFlavor, healFlavor } from "./combatFlavor.js";
-import { skillMod, SKILL_ABILITIES } from "./engine/combatUtils.js";
+import { compute } from "./engine/charEngine.js";
+import { skillMod, SKILL_ABILITIES, profBonus } from "./engine/combatUtils.js";
 import { MusicPlayer, MUSIC_LIBRARY, MUSIC_CATEGORIES, TRACK_BY_ID } from "./musicPlayer.js";
+
+// One-time migration: move old critroll_ keys to paradice_ prefix
+['initBonus', 'cName'].forEach(k => {
+    const v = localStorage.getItem('critroll_' + k);
+    if (v) { localStorage.setItem('paradice_' + k, v); localStorage.removeItem('critroll_' + k); }
+});
 
 // Expose Wave 2 panels globally
 window.openStatBlock     = openStatBlock;
@@ -265,15 +273,290 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
             break;
         }
 
+        // ── Sorcerer — Wild Magic ──
+        case 'tidesOfChaos': {
+            const toc = cr.tidesOfChaos;
+            const remaining = typeof toc === 'object' ? (toc.remaining ?? 0) : (toc ?? 0);
+            if (remaining <= 0) return;
+            const newToc = typeof toc === 'object'
+                ? { ...toc, remaining: remaining - 1 }
+                : { total: 1, remaining: 0 };
+            db.patchClassResources(targetCName, { tidesOfChaos: newToc });
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `🌀 ${targetCName} uses Tides of Chaos — advantage on next attack/ability/save roll! (Will surge next cast)`, ts: Date.now() });
+            break;
+        }
+        case 'wildMagicSurge': {
+            const surgeRoll = Math.floor(Math.random() * 20);
+            const surgeText = WILD_MAGIC_SURGES[surgeRoll];
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `💥 Wild Magic Surge (d20=${surgeRoll + 1}): ${surgeText}`, ts: Date.now() });
+            showToast(`Wild Magic Surge! ${surgeText}`, 'warning', 8000);
+            break;
+        }
+
+        // ── Paladin — Sacred Weapon / Holy Nimbus ──
+        case 'sacredWeapon': {
+            window.toggleStatus?.(targetCName, 'Concentrating');
+            db.patchClassResources(targetCName, { sacredWeaponActive: true });
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `✨ ${targetCName} imbues their weapon with holy power (+${profBonus(lvl)} to attack rolls, sheds light 20ft, for 1 min)`, ts: Date.now() });
+            break;
+        }
+
+        // ── Paladin / Vengeance — Vow of Enmity ──
+        case 'vowOfEnmity': {
+            db.patchClassResources(targetCName, { vowTarget: extraCName });
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `⚔️ ${targetCName} swears a Vow of Enmity against ${extraCName || 'target'} (advantage on attacks until 0 HP or unconscious)`, ts: Date.now() });
+            break;
+        }
+
+        // ── War Cleric — War Priest bonus attack ──
+        case 'warPriest': {
+            const wisModWP = p._resolved?.mods?.wis ?? 0;
+            const wpUses   = cr.warPriestAttacks?.remaining ?? wisModWP;
+            if (wpUses <= 0) { showToast(t('toast_war_priest_spent'), 'warning'); return; }
+            const wpPatch  = typeof cr.warPriestAttacks === 'object'
+                ? { warPriestAttacks: { ...cr.warPriestAttacks, remaining: wpUses - 1 } }
+                : { warPriestAttacks: { total: wisModWP, remaining: wisModWP - 1 } };
+            db.patchClassResources(targetCName, wpPatch);
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `⚔️ ${targetCName} uses War Priest to make a bonus weapon attack against ${extraCName || 'target'}!`, ts: Date.now() });
+            break;
+        }
+
+        // ── Ranger — Horde Breaker extra attack ──
+        case 'hordeBreaker': {
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `⚔️ Horde Breaker: ${targetCName} makes an extra attack against ${extraCName || 'a nearby enemy'}!`, ts: Date.now() });
+            break;
+        }
+
+        // ── Ranger — Gloom Stalker Dread Ambusher ──
+        case 'dreadAmbusher': {
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `🌑 Dread Ambusher: ${targetCName} makes a bonus attack this first turn! (handled via combat action)`, ts: Date.now() });
+            break;
+        }
+
+        // ── Beast Master — Command Companion ──
+        case 'summonCompanion': {
+            _openWildShapeModal(targetCName, true);
+            break;
+        }
+        case 'companionAttack': {
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `🐾 ${targetCName} commands their companion to attack ${extraCName || 'the enemy'}!`, ts: Date.now() });
+            break;
+        }
+
+        // ── Berserker — Frenzy ──
+        case 'frenzy': {
+            if (!(cr.raging)) { showToast(t('toast_frenzy_need_rage'), 'warning'); return; }
+            db.patchClassResources(targetCName, { frenzyActive: true });
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `😤 ${targetCName} enters a Frenzy! (Bonus attack each turn while raging. Exhaustion 1 when rage ends)`, ts: Date.now() });
+            break;
+        }
+
+        // ── Berserker — Intimidating Presence ──
+        case 'intimidatingPresence': {
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `😠 ${targetCName} uses Intimidating Presence! (DC ${8 + profBonus(lvl) + (p._resolved?.mods?.cha ?? 0)} Wis save or Frightened)`, ts: Date.now() });
+            break;
+        }
+
+        // ── Archfey Warlock — Fey Presence ──
+        case 'feyPresence': {
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `🧚 ${targetCName} uses Fey Presence! All creatures in 10ft cube must Wisdom save DC ${8 + profBonus(lvl) + (p._resolved?.mods?.cha ?? 0)} or be Charmed/Frightened until end of next turn.`, ts: Date.now() });
+            break;
+        }
+
+        // ── Archfey Warlock — Misty Escape ──
+        case 'mistyEscape': {
+            window.toggleStatus?.(targetCName, 'Invisible');
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `👻 ${targetCName} uses Misty Escape! Teleports up to 60 ft and becomes Invisible until start of next turn.`, ts: Date.now() });
+            break;
+        }
+
+        // ── Tempest Cleric — Wrath of the Storm / Warding Flare ──
+        case 'wrathOfStorm': {
+            const dcWoS = 8 + profBonus(lvl) + (p._resolved?.mods?.wis ?? 0);
+            db.patchClassResources(targetCName, { channelDivinity: Math.max(0, (cr.channelDivinity ?? 0) - 1) });
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `⛈️ Wrath of the Storm! ${extraCName || 'Target'} must DC ${dcWoS} DEX save or take 2d8 lightning/thunder damage.`, ts: Date.now() });
+            break;
+        }
+        case 'wardingFlare': {
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `🌟 Warding Flare: ${extraCName || 'Attacker'} must re-roll their attack with disadvantage (reaction).`, ts: Date.now() });
+            break;
+        }
+
+        // ── Monk ki abilities ──
+        case 'flurryOfBlows': {
+            if ((cr.kiPoints ?? 0) < 2) return;
+            db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 2) });
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '🥊 Flurry of Blows',
+                msg: `${targetCName} spends 2 ki — make 2 bonus unarmed strikes.`, ts: Date.now() });
+            break;
+        }
+        case 'patientDefense': {
+            if ((cr.kiPoints ?? 0) < 1) return;
+            db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 1) });
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '🛡️ Patient Defense',
+                msg: `${targetCName} spends 1 ki — take Dodge action as bonus action.`, ts: Date.now() });
+            break;
+        }
+        case 'stepOfWind': {
+            if ((cr.kiPoints ?? 0) < 1) return;
+            db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 1) });
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '💨 Step of the Wind',
+                msg: `${targetCName} spends 1 ki — Dash/Disengage as bonus action, jump distance doubled.`, ts: Date.now() });
+            break;
+        }
+        case 'stunningStrike': {
+            if ((cr.kiPoints ?? 0) < 1) return;
+            const ssDC = 8 + profBonus(lvl) + (p._resolved?.mods?.wis ?? 0);
+            db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 1) });
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '⚡ Stunning Strike',
+                msg: `${targetCName} spends 1 ki — ${extraCName || 'target'} must CON save DC ${ssDC} or be Stunned until end of next turn.`, ts: Date.now() });
+            break;
+        }
+
+        // ── Bard ──
+        case 'bardicInspiration': {
+            if ((cr.bardicInspiration ?? 0) <= 0) return;
+            db.patchClassResources(targetCName, { bardicInspiration: Math.max(0, (cr.bardicInspiration ?? 1) - 1) });
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '🎵 Bardic Inspiration',
+                msg: `${targetCName} grants Bardic Inspiration to ${extraCName || 'an ally'} — add the die to one roll.`, ts: Date.now() });
+            break;
+        }
+
+        // ── Cleric ──
+        case 'channelDivinity': {
+            if ((cr.channelDivinity ?? 0) <= 0) return;
+            db.patchClassResources(targetCName, { channelDivinity: Math.max(0, (cr.channelDivinity ?? 1) - 1) });
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '✨ Channel Divinity',
+                msg: `${targetCName} channels divine power.`, ts: Date.now() });
+            break;
+        }
+
+        // ── Paladin ──
+        case 'layOnHands': {
+            const loh = cr.layOnHandsHp ?? 0;
+            if (loh <= 0) return;
+            const healAmt = Math.min(loh, parseInt(prompt(`Lay on Hands: heal how many HP? (up to ${loh})`) || '0') || 0);
+            if (healAmt <= 0) break;
+            const curHp = p.hp || 0;
+            const maxHpLoh = p._resolved?.maxHp ?? p.maxHp ?? 999;
+            const newHpLoh = Math.min(maxHpLoh, curHp + healAmt);
+            await db.updatePlayerHPInDB(targetCName, newHpLoh);
+            db.patchClassResources(targetCName, { layOnHandsHp: loh - healAmt });
+            db.saveRollToDB({ cName: targetCName, type: 'HEAL', res: healAmt, newHp: newHpLoh, maxHp: maxHpLoh,
+                color: '#2ecc71', flavor: `🙏 ${targetCName} uses Lay on Hands — restored ${healAmt} HP (pool: ${loh-healAmt} remaining).`, ts: Date.now() });
+            break;
+        }
+        case 'divineSense': {
+            if ((cr.divineSense ?? 0) <= 0) return;
+            db.patchClassResources(targetCName, { divineSense: Math.max(0, (cr.divineSense ?? 1) - 1) });
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '👁️ Divine Sense',
+                msg: `${targetCName} uses Divine Sense — detects celestials, fiends, and undead within 60 ft until end of next turn.`, ts: Date.now() });
+            break;
+        }
+
+        // ── Wizard ──
+        case 'arcaneRecovery': {
+            if ((cr.arcaneRecovery ?? 0) <= 0) return;
+            db.patchClassResources(targetCName, { arcaneRecovery: 0 });
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '📚 Arcane Recovery',
+                msg: `${targetCName} uses Arcane Recovery — regain spell slots totaling up to ${Math.ceil(lvl/2)} levels (short rest).`, ts: Date.now() });
+            showToast(`Arcane Recovery: restore spell slots totaling ${Math.ceil(lvl/2)} levels`, 'info');
+            break;
+        }
+
+        // ── Shadow Monk — Shadow Step ──
+        case 'shadowStep': {
+            if ((cr.kiPoints ?? 0) < 2) return;
+            db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 2) });
+            window.toggleStatus?.(targetCName, 'Invisible');
+            db.saveRollToDB({ cName: targetCName, type: 'STATUS',
+                status: `🌑 ${targetCName} uses Shadow Step (2 ki) — teleports 60 ft between shadows, advantage on first melee attack, then Invisible until next turn.`, ts: Date.now() });
+            break;
+        }
+
+        // ── Open Hand Monk — Wholeness of Body ──
+        case 'wholenessOfBody': {
+            const wbHeal = (p._resolved?.maxHp ?? p.maxHp ?? 1) * 3;
+            const newHpWB = Math.min(p._resolved?.maxHp ?? p.maxHp ?? 999, (p.hp || 0) + wbHeal);
+            await db.updatePlayerHPInDB(targetCName, newHpWB);
+            db.saveRollToDB({ cName: targetCName, type: 'HEAL', res: wbHeal, newHp: newHpWB, maxHp: p._resolved?.maxHp ?? p.maxHp,
+                color: '#2ecc71', flavor: `✨ Wholeness of Body: ${targetCName} regains ${wbHeal} HP!`, ts: Date.now() });
+            break;
+        }
+
         default: break;
     }
+};
+
+// ── Roll Save Check (from save-chip click in tracker card) ───────────────────
+window.rollSaveCheck = async (cName, ability) => {
+    const p = await db.getPlayerData(cName);
+    if (!p) return;
+    const resolved = p._resolved;
+    const ab = ability.toLowerCase();
+    const saveVal = resolved?.saves?.[ab] ?? Math.floor(((p['_'+ab] || 10) - 10) / 2);
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const total = roll + saveVal;
+    db.saveRollToDB({ cName, type: 'ABILITY_CHECK', ability: `${ability} Save`,
+        res: roll, mod: saveVal, total, color: p.pColor, ts: Date.now() });
+};
+
+// ── Portent die use (Divination Wizard) ──────────────────────────────────────
+window.usePortentDie = async (cName, dieIndex) => {
+    const p = await db.getPlayerData(cName);
+    if (!p) return;
+    const pd = p.classResources?.portentDice;
+    if (!pd?.rolls) return;
+    const used = [...(pd.used || [])];
+    if (used.includes(dieIndex)) return;
+    used.push(dieIndex);
+    db.patchClassResources(cName, { 'portentDice/used': used });
+    db.saveRollToDB({ cName, type: 'PORTENT', portentValue: pd.rolls[dieIndex], color: p.pColor, ts: Date.now() });
+    showToast(`Portent die [${pd.rolls[dieIndex]}] used — replace any d20 roll with this value`, 'info');
+};
+
+// ── EK/AT subclass spell slot tracking ───────────────────────────────────────
+window.useSubclassSpellSlot = async (cName, level) => {
+    const p = await db.getPlayerData(cName);
+    if (!p) return;
+    const subSlots = p._resolved?.subclassSpellSlots;
+    if (!subSlots?.[level]) return;
+    const usedObj = { ...(p.subclassSpellSlotsUsed || {}) };
+    const max = subSlots[level];
+    const used = (usedObj[level] || 0) + 1;
+    if (used > max) return;
+    usedObj[level] = used;
+    db.patchPlayerInDB(cName, { subclassSpellSlotsUsed: usedObj });
+};
+
+window.restoreSubclassSpellSlot = async (cName, level) => {
+    const p = await db.getPlayerData(cName);
+    if (!p) return;
+    const usedObj = { ...(p.subclassSpellSlotsUsed || {}) };
+    if (!usedObj[level]) return;
+    usedObj[level] = Math.max(0, (usedObj[level] || 0) - 1);
+    db.patchPlayerInDB(cName, { subclassSpellSlotsUsed: usedObj });
 };
 
 // ── Wild Shape modal helper ────────────────────────────────────────────────────
 function _openWildShapeModal(forCName, summonMode) {
     const modal = document.getElementById('wild-shape-modal');
     if (!modal) return;
-    document.getElementById('ws-modal-title').textContent = summonMode ? 'Summon Animal' : 'Choose Wild Shape';
+    document.getElementById('ws-modal-title').textContent = summonMode ? t('ws_summon_title') : t('ws_title');
     const list = document.getElementById('ws-beast-list');
     list.innerHTML = WILD_SHAPES.map(b => `
       <div class="ws-beast-card" data-id="${b.id}" style="background:#2a1a3e;border:1px solid #8e44ad;border-radius:8px;padding:12px;cursor:pointer;text-align:center;">
@@ -327,7 +610,9 @@ function _openWildShapeModal(forCName, summonMode) {
 }
 
 function _beastEmoji(id) {
-    return { wolf: '🐺', brown_bear: '🐻', panther: '🐆', eagle: '🦅' }[id] || '🐾';
+    const map = { wolf: '🐺', brown_bear: '🐻', panther: '🐆', eagle: '🦅' };
+    const emoji = map[id] || '🐾';
+    return iconImg(emoji, '28px');
 }
 
 window.longRest = async (targetCName) => {
@@ -342,6 +627,15 @@ window.longRest = async (targetCName) => {
     // Reset class resources
     const lrPatch = onLongRest(p);
     if (Object.keys(lrPatch).length) db.patchClassResources(targetCName, lrPatch);
+    // Restore hit dice (regain up to half total on long rest) and clear temp HP
+    const totalHD = p.level || 1;
+    const currentHD = p.hdRemaining ?? p.hdLeft ?? totalHD;
+    const regained  = Math.max(1, Math.floor(totalHD / 2));
+    db.patchPlayerInDB(targetCName, {
+        hdRemaining: Math.min(totalHD, currentHD + regained),
+        hdLeft:      Math.min(totalHD, currentHD + regained),
+        tempHp: 0,
+    });
     db.saveRollToDB({ cName: targetCName, type: "STATUS", status: statusFlavor('longRest', targetCName), ts: Date.now() });
 };
 
@@ -375,10 +669,10 @@ let _confirmResolve = null;
 export function showToast(msg, type='info', durationMs=3000) {
     const container = document.getElementById('toast-container');
     if (!container) return;
-    const icons = { success:'✅', error:'❌', info:'ℹ️', warning:'⚠️' };
+    const icons = { success:'/assets/icons/toolbar/advantage.png', error:'/assets/icons/toolbar/disadvantage.png', info:'/assets/icons/toolbar/spells.png', warning:'/assets/icons/toolbar/combat.png' };
     const el = document.createElement('div');
     el.className = `cr-toast ${type}`;
-    el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+    el.innerHTML = `<span><img src="${icons[type]||icons.info}" alt="${type}" class="custom-icon" style="width:18px;height:18px;" loading="lazy"></span><span>${msg}</span>`;
     container.appendChild(el);
     const remove = () => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); };
     const timer = setTimeout(remove, durationMs);
@@ -396,7 +690,7 @@ function _showLairActionPrompt(npcName, lairActions) {
     el.style.cssText = 'cursor:default; min-width:220px; max-width:280px; padding:10px 12px;';
     const shown = lairActions.slice(0, 4);
     el.innerHTML = `
-        <div style="font-weight:700; margin-bottom:5px;">🏰 Lair Actions — ${esc(npcName)}</div>
+        <div style="font-weight:700; margin-bottom:5px;">${iconImg('🏰', '18px', 'Lair')} Lair Actions — ${esc(npcName)}</div>
         <div style="display:flex; flex-direction:column; gap:4px;">
             ${shown.map((a, i) => `
                 <button class="lair-action-btn" data-idx="${i}"
@@ -437,12 +731,12 @@ function _showOAPrompt(attackerName, targetName, onAttack) {
     el.className = 'cr-toast oa-prompt';
     el.style.cssText = 'cursor:default; min-width:210px; padding:10px 12px;';
     el.innerHTML = `
-        <div style="font-weight:700; margin-bottom:5px;">🗡️ Opportunity Attack!</div>
+        <div style="font-weight:700; margin-bottom:5px;">${iconImg('🗡️', '18px', 'Dagger')} Opportunity Attack!</div>
         <div style="font-size:12px; margin-bottom:8px; opacity:0.9;">
             <strong>${esc(attackerName)}</strong> → <strong>${esc(targetName)}</strong> is leaving!
         </div>
         <div style="display:flex; gap:6px;">
-            <button class="oa-yes-btn" style="flex:1; padding:5px; background:#e74c3c; border:none; color:white; border-radius:5px; cursor:pointer; font-weight:700; font-size:12px;">⚔️ Attack!</button>
+            <button class="oa-yes-btn" style="flex:1; padding:5px; background:#e74c3c; border:none; color:white; border-radius:5px; cursor:pointer; font-weight:700; font-size:12px;">${iconImg('⚔️', '14px', 'Attack')} Attack!</button>
             <button class="oa-no-btn"  style="flex:1; padding:5px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:white; border-radius:5px; cursor:pointer; font-size:12px;">✗ Skip</button>
         </div>
     `;
@@ -472,7 +766,7 @@ export function crConfirm(msg, title='Are you sure?', icon='⚠️', okLabel='Co
     return new Promise(resolve => {
         const overlay = document.getElementById('cr-confirm-overlay');
         if (!overlay) { resolve(window.confirm(msg)); return; }  // fallback
-        document.getElementById('cr-confirm-icon').textContent  = icon;
+        document.getElementById('cr-confirm-icon').innerHTML     = iconImg(icon, '28px');
         document.getElementById('cr-confirm-title').textContent = title;
         document.getElementById('cr-confirm-msg').textContent   = msg;
         document.getElementById('cr-confirm-ok').textContent     = okLabel;
@@ -520,6 +814,61 @@ function _initConfirmModal() {
 }
 document.addEventListener('DOMContentLoaded', _initConfirmModal);
 document.addEventListener('DOMContentLoaded', _upgradeToolbarIcons);
+document.addEventListener('DOMContentLoaded', () => {
+    // Clone dice buttons from hidden #custom-dice-menu into HUD toolbar dice zone
+    const diceSrc  = document.getElementById('custom-dice-menu');
+    const diceDest = document.getElementById('hud-dice-zone');
+    if (diceSrc && diceDest) {
+        diceSrc.querySelectorAll('.dice-btn').forEach(btn => {
+            diceDest.appendChild(btn.cloneNode(true));
+        });
+    }
+    // Populate dice popup grid (same source, close popup on click)
+    const dicePopupGrid = document.getElementById('dice-popup-grid');
+    if (diceSrc && dicePopupGrid) {
+        diceSrc.querySelectorAll('.dice-btn').forEach(btn => {
+            const clone = btn.cloneNode(true);
+            const orig = clone.getAttribute('onclick') || '';
+            clone.setAttribute('onclick', orig + '; window.closeDicePopup();');
+            dicePopupGrid.appendChild(clone);
+        });
+    }
+    // Dice popup controls
+    window.toggleDicePopup = () => {
+        const panel    = document.getElementById('dice-popup-panel');
+        const backdrop = document.getElementById('dice-popup-backdrop');
+        if (!panel) return;
+        const wasHidden = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden', !wasHidden);
+        if (backdrop) backdrop.classList.toggle('hidden', !wasHidden);
+    };
+    window.closeDicePopup = () => {
+        document.getElementById('dice-popup-panel')?.classList.add('hidden');
+        document.getElementById('dice-popup-backdrop')?.classList.add('hidden');
+    };
+    window.setDiceMult = (n) => {
+        diceMultiplier = n;
+        const badge = document.getElementById('dice-mult-badge');
+        if (badge) badge.textContent = `×${n}`;
+        document.querySelectorAll('.mult-btn').forEach(b => {
+            b.classList.toggle('active', parseInt(b.dataset.mult) === n);
+        });
+    };
+    // DM-only tool buttons: hide for non-DM (role assigned later, so re-hide on role set)
+    window._applyDMVisibility = (isDM) => {
+        document.querySelectorAll('.hud-tool-btn.dm-only').forEach(btn => {
+            btn.style.display = isDM ? '' : 'none';
+        });
+    };
+
+    // Numeral keyboard shortcuts: 1–9 → trigger custom action slot
+    document.addEventListener('keydown', (e) => {
+        const tag = document.activeElement?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        const n = parseInt(e.key);
+        if (!isNaN(n) && n >= 1 && n <= 9) window.triggerAction?.(n - 1);
+    });
+});
 
 // =====================================================================
 // GLOBALS
@@ -532,6 +881,7 @@ let pName = "", cName = "", pColor = "#3498db", userRole = "player", charPortrai
 let isMuted = false, isCooldown = false, canAnimate = false;
 let activeMode = 'normal';
 let activeRoller = null;
+let diceMultiplier = 1;
 
 let currentActiveTurn  = null;
 let currentRoundNumber = 0;
@@ -546,7 +896,7 @@ let _appUnsubs = [];
 
 // ── Background Music ──────────────────────────────────────────────────────────
 const musicPlayer = new MusicPlayer();
-musicPlayer.onBlocked(() => showToast('🎵 Click anywhere to start music', 'info'));
+musicPlayer.onBlocked(() => showToast('Click anywhere to start music', 'info'));
 // Unlock pending autoplay on the first user gesture — self-removing via { once: true }
 const _unlockMusic = () => musicPlayer.unlock();
 document.addEventListener('click',      _unlockMusic, { once: true });
@@ -579,7 +929,7 @@ function _buildMusicPanel() {
         _updateMusicNowPlaying();
         _renderMusicTracks();
     });
-    musicPlayer.onError(track => showToast(`⚠️ Track unavailable: ${track.title}`, 'warning'));
+    musicPlayer.onError(track => showToast(`Track unavailable: ${track.title}`, 'warning'));
 }
 
 function _highlightMusicCat() {
@@ -624,9 +974,9 @@ function _updateMusicNowPlaying() {
     } else if (musicPlayer.currentId && !musicPlayer.playing) {
         el.textContent = `⏸ ${TRACK_BY_ID[musicPlayer.currentId]?.title || ''}`;
     } else {
-        el.textContent = 'No track playing';
+        el.textContent = t('music_no_track');
     }
-    if (muteBtn) muteBtn.textContent = musicPlayer.localMuted ? '🔇' : '🔊';
+    if (muteBtn) muteBtn.innerHTML = musicPlayer.localMuted ? iconImg('🔇', '18px', 'Muted') : iconImg('🔊', '18px', 'Unmuted');
     // Player music button — visible when music is active (all roles)
     const playerBtn = document.getElementById('player-music-btn');
     if (playerBtn) {
@@ -636,7 +986,7 @@ function _updateMusicNowPlaying() {
         playerBtn.style.display = (hasTrack && !isDM) ? 'flex' : 'none';
         playerBtn.style.alignItems = 'center';
         playerBtn.style.justifyContent = 'center';
-        playerBtn.textContent = musicPlayer.localMuted ? '🔇' : '🔊';
+        playerBtn.innerHTML = musicPlayer.localMuted ? iconImg('🔇', '18px', 'Muted') : iconImg('🔊', '18px', 'Unmuted');
     }
 }
 
@@ -712,6 +1062,7 @@ window.dismissYourTurn = hideYourTurnBanner;
 export function cleanupAppListeners() {
     _appUnsubs.forEach(u => { try { u?.(); } catch(_){} });
     _appUnsubs = [];
+    if (_dmNotesUnsub) { try { _dmNotesUnsub(); } catch(_){} _dmNotesUnsub = null; }
 }
 
 
@@ -720,9 +1071,9 @@ export function cleanupAppListeners() {
 // Allows players to spend Hit Dice to recover HP between encounters.
 // =====================================================================
 const HIT_DICE_BY_CLASS = {
-    'Barbarian':6, 'Fighter':5, 'Paladin':5, 'Ranger':5, 'Cleric':4,
-    'Druid':4, 'Monk':4, 'Rogue':4, 'Bard':3, 'Warlock':3,
-    'Sorcerer':3, 'Wizard':2, 'default':4
+    'Barbarian':12, 'Fighter':10, 'Paladin':10, 'Ranger':10, 'Cleric':8,
+    'Druid':8, 'Monk':8, 'Rogue':8, 'Bard':8, 'Warlock':8,
+    'Sorcerer':6, 'Wizard':6, 'default':8
 };
 
 window.openShortRest = async function() {
@@ -731,7 +1082,7 @@ window.openShortRest = async function() {
     const playerData = await db.getPlayerData(cName);
     if (!playerData) return;
 
-    const charClass  = playerData.charClass || 'default';
+    const charClass  = playerData.charClass || playerData.class || 'default';
     const hdType     = HIT_DICE_BY_CLASS[charClass] || HIT_DICE_BY_CLASS['default'];
     const hdMax      = playerData.hdMax  !== undefined ? playerData.hdMax  : Math.max(1, Math.floor((playerData.level||1)));
     const hdLeft     = playerData.hdLeft !== undefined ? playerData.hdLeft : hdMax;
@@ -762,7 +1113,7 @@ window.openShortRest = async function() {
         </div>
         <div style="display:flex;gap:12px;justify-content:center;">
           <button id="sr-cancel" style="padding:10px 24px;border-radius:8px;background:rgba(255,255,255,0.1);color:#ccc;border:1px solid rgba(255,255,255,0.2);font-weight:700;cursor:pointer;">Cancel</button>
-          <button id="sr-roll" style="padding:10px 24px;border-radius:8px;background:var(--cr-green);color:#fff;border:none;font-weight:700;cursor:pointer;">🎲 Roll & Rest</button>
+          <button id="sr-roll" style="padding:10px 24px;border-radius:8px;background:var(--cr-green);color:#fff;border:none;font-weight:700;cursor:pointer;">${iconImg('🎲', '16px', 'Dice')} Roll & Rest</button>
         </div>
       </div>
     `;
@@ -804,26 +1155,70 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
     const gameScreen = document.getElementById('game-screen');
     if (gameScreen) gameScreen.style.display = 'flex';
     const titleHeader = document.querySelector('#side-panel h3');
-    const modeLabel   = isCampaign ? '⚔️ ' : '';
-    if (titleHeader) titleHeader.innerText = `${modeLabel}${t('party_title')} (${roomCode})`;
+    const modeLabel   = isCampaign ? iconImg('⚔️', '18px', 'Campaign') + ' ' : '';
+    if (titleHeader) titleHeader.innerHTML = `${modeLabel}${_esc(t('party_title'))} (${_esc(roomCode)})`;
+
+    // Init HUD roller identity
+    const _hudName = document.getElementById('hud-roller-name');
+    if (_hudName) _hudName.innerText = userRole === 'dm' ? 'DM' : (charData?.name || '—');
+
+    // Init D20 HP holder
+    if (userRole === 'player' && charData) {
+        const startHp    = charData.hp    ?? charData.maxHp ?? 0;
+        const startMaxHp = charData.maxHp ?? 0;
+        const startPct   = startMaxHp > 0 ? (startHp / startMaxHp * 100) : 100;
+        window.updateHPGlobe?.(startPct, startHp, startMaxHp);
+    }
 
     if (userRole === 'player') {
         pName       = document.getElementById('user-display-name')?.innerText || "Player";
         cName       = charData.name;
         pColor      = charData.color || "#3498db";
         charPortrait = charData.portrait;
-        localStorage.setItem('critroll_initBonus', charData.initBonus || 0);
-        localStorage.setItem('critroll_cName', cName);
+        localStorage.setItem('paradice_initBonus', charData.initBonus || 0);
+        localStorage.setItem('paradice_cName', cName);
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, charData, isCampaign);
-        // Initialize classResources if not already set
+        // Initialize classResources if not already set (pass full charData so subclass resources are included)
         if (!charData.classResources && charData.class) {
-            db.patchClassResources(cName, initClassResources(charData.class, charData.level));
+            db.patchClassResources(cName, initClassResources(charData, charData.level));
         }
+        // Seed EK/AT spell slots from subclass table if not manually set in builder
+        if (!charData.spellSlots) {
+            const resolvedForSlots = compute(charData);
+            if (resolvedForSlots?.subclassSpellSlots) {
+                db.updateSpellSlotsInDB?.(cName, { max: resolvedForSlots.subclassSpellSlots, used: {} });
+            }
+        }
+        // Hide DM-only HUD tools for players
+        window._applyDMVisibility?.(false);
+        // Switch to player toolbar
+        const _dmToolbar = document.getElementById('hud-toolbar');
+        const _ptToolbar = document.getElementById('player-toolbar');
+        if (_dmToolbar) _dmToolbar.style.display = 'none';
+        if (_ptToolbar) _ptToolbar.style.display = 'block';
+        // Player view class — used by CSS for panel offsets and map viewport
+        document.body.classList.add('player-view');
+        // Expose cName for character sheet slot
+        window._ptCName = charData.name;
+        // Viewport insets for map engine (toolbar 30% reduced = 10.9375vw)
+        const _tbH = Math.round(window.innerWidth * 0.109375);
+        mapEngine?.setViewportInsets?.({ left: 80, bottom: _tbH });
+        // Populate custom action slots from charData
+        window.initCharActionSlots?.(charData);
+        // Init player toolbar (HP display + assignable slots)
+        window.initPlayerToolbar?.(charData);
     } else {
         pName        = document.getElementById('user-display-name')?.innerText || "DM";
         cName        = "DM_" + pName;
+        window._dmCName = cName;
         pColor       = "#c0392b";
-        charPortrait = document.getElementById('user-avatar')?.src || "assets/logo.png";
+        charPortrait = document.getElementById('user-avatar')?.src || "assets/logo.webp";
+        document.body.classList.remove('player-view');
+        document.body.classList.add('dm-view');
+        _dmIsCampaign = !!isCampaign;
+        // DM toolbar height = 10.9375vw
+        const dmToolbarH = Math.round(window.innerWidth * 0.109375);
+        mapEngine?.setViewportInsets?.({ left: 0, bottom: dmToolbarH });
         document.getElementById('master-combat-btn').style.display    = 'block';
         document.getElementById('dm-turn-controls').style.display     = 'none';
         document.getElementById('reroll-initiatives-btn').style.display = 'block';
@@ -832,18 +1227,20 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
         document.getElementById('refresh-npcs-btn').style.display     = 'block';
         document.getElementById('dm-music-btn').style.display         = 'block';
         document.getElementById('short-rest-btn').style.display       = 'none';
-        localStorage.setItem('critroll_cName', 'DM');
+        localStorage.setItem('paradice_cName', 'DM');
         initMonsterBook();
         populateMonsterSelect();
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, { isHidden: true }, isCampaign);
+        // Show DM-only HUD tools
+        window._applyDMVisibility?.(true);
 
         // Campaign: show campaign management panel + watch for pending requests
         if (isCampaign) {
             _initCampaignPanel(roomCode);
             import('./campaign.js').then(({ watchPendingRequestsInGame }) => {
                 watchPendingRequestsInGame(roomCode,
-                    (uid, req) => showToast(`✅ ${req.playerName} (${req.charName})`, 'success'),
-                    (uid, req) => showToast(`❌ ${req.playerName}`, 'info')
+                    (uid, req) => showToast(`${req.playerName} (${req.charName})`, 'success'),
+                    (uid, req) => showToast(`${req.playerName}`, 'info')
                 );
             });
         }
@@ -980,7 +1377,7 @@ function _initCampaignPanel(campaignId) {
     });
 
     // Listen to players roster
-    db.listenToCampaignAllowedPlayers(campaignId, players => {
+    _appUnsubs.push(db.listenToCampaignAllowedPlayers(campaignId, players => {
         const roster = document.getElementById('ingame-player-roster');
         if (!roster) return;
         if (!players || !Object.keys(players).length) {
@@ -992,10 +1389,13 @@ function _initCampaignPanel(campaignId) {
                 <span style="color:white;font-size:11px;"><strong>${p.playerName || '?'}</strong> · ${p.charName || '?'}</span>
                 <button class="hover-btn" onclick="window.__campaignKick('${campaignId}','${uid}')" style="background:#c0392b;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">${t('campaign_kick')}</button>
             </div>`).join('');
-    });
+    }));
 
     // Listen to pending requests (in-game)
-    db.listenToPendingRequests(campaignId, pending => {
+    _appUnsubs.push(db.listenToPendingRequests(campaignId, pending => {
+        // Update badge on toolbar slot
+        window._updateDMCampaignBadge(pending ? Object.keys(pending).length : 0);
+
         const section  = document.getElementById('ingame-pending-section');
         const container = document.getElementById('ingame-pending-list');
         if (!section || !container) return;
@@ -1009,15 +1409,15 @@ function _initCampaignPanel(campaignId) {
                     <button class="hover-btn" onclick="window.__campaignDeny('${campaignId}','${uid}')" style="background:#666;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">${t('campaign_deny_btn')}</button>
                 </div>
             </div>`).join('');
-    });
+    }));
 
     // Scene switcher — lets DM switch active scene from campaign panel
     let _activeSceneId = null;
-    db.listenActiveScene(campaignId, id => { _activeSceneId = id; _renderSceneList(); });
-    db.listenScenes(campaignId, scenes => {
+    _appUnsubs.push(db.listenActiveScene(campaignId, id => { _activeSceneId = id; _renderSceneList(); }));
+    _appUnsubs.push(db.listenScenes(campaignId, scenes => {
         _allScenes = scenes;
         _renderSceneList();
-    });
+    }));
     let _allScenes = null;
     function _renderSceneList() {
         const list = document.getElementById('ingame-scenes-list');
@@ -1039,7 +1439,7 @@ function _initCampaignPanel(campaignId) {
     }
     window.__campaignSetScene = (cId, sceneId) => {
         db.setActiveScene(cId, sceneId);
-        showToast(`🗺️ ${_allScenes?.[sceneId]?.meta?.name || sceneId}`, 'success');
+        showToast(`${_allScenes?.[sceneId]?.meta?.name || sceneId}`, 'success');
     };
 }
 
@@ -1153,8 +1553,15 @@ function updateTurnUI() {
     const roundEl  = document.getElementById('round-counter');
     const activeEl = document.getElementById('active-turn-name');
     const name = sortedCombatants[currentActiveTurn]?.name || '';
-    if (roundEl)  roundEl.innerText  = currentRoundNumber > 0 ? `Round ${currentRoundNumber}` : '';
+    if (roundEl)  roundEl.innerText  = currentRoundNumber > 0 ? `${t('round_label')} ${currentRoundNumber}` : '';
     if (activeEl) activeEl.innerText = name;
+    // Sync HUD combat controls
+    const hudRound = document.getElementById('hud-round-counter');
+    const hudControls = document.getElementById('hud-combat-controls');
+    if (hudRound)    hudRound.innerText = currentRoundNumber > 0 ? `${t('round_label')} ${currentRoundNumber}` : '';
+    if (hudControls) hudControls.classList.toggle('hidden', currentRoundNumber <= 0);
+    // Sync DM toolbar combat popup
+    window._syncDMCombatPopup?.(currentRoundNumber > 0, currentRoundNumber);
 }
 
 // =====================================================================
@@ -1177,11 +1584,19 @@ window.roll = async (type, isInit = false) => {
             const r = await roll3DDice(`2${type}`);
             res1 = r[0].value; res2 = r[1].value;
             finalRes = currentMode === 'adv' ? Math.max(res1, res2) : Math.min(res1, res2);
-        } else { finalRes = (await roll3DDice(`1${type}`))[0].value; }
+        } else {
+            const mult = isInit ? 1 : diceMultiplier;
+            const dice = await roll3DDice(`${mult}${type}`);
+            finalRes = dice.reduce((sum, d) => sum + d.value, 0);
+        }
     } catch { isCooldown = false; setDiceCooldown(false); return; }
     const mod = isInit
-        ? (parseInt(localStorage.getItem('critroll_initBonus')) || 0)
-        : (parseInt(document.getElementById('mod-input')?.value) || 0);
+        ? (parseInt(localStorage.getItem('paradice_initBonus')) || 0)
+        : (() => {
+            const dmMod = parseInt(document.getElementById('mod-input')?.value) || 0;
+            const ptMod = parseInt(document.getElementById('pt-mod-input')?.value) || 0;
+            return dmMod || ptMod;
+          })();
     const rollData = { pName: rollPName, cName: rollCName, type, res: finalRes, mod, color: rollColor, mode: currentMode, ts: Date.now() };
     if (res1 !== null) { rollData.res1 = res1; rollData.res2 = res2; }
     db.saveRollToDB(rollData);
@@ -1211,17 +1626,69 @@ window.rollMacro = async (targetCName, attackName, bonus) => {
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
-window.rollDamageMacro = async (targetCName, attackName, diceString, bonus) => {
+// Custom action slots — populated from charData.customActions on game start (up to 5)
+let _charActions = [];
+window.initCharActionSlots = (charData) => {
+    if (!charData) return;
+    _charActions = charData.customActions || (charData.customAttacks?.map(a => ({
+        name: a.name, hitType: 'melee', hitMod: a.bonus || 0,
+        damageDice: (a.dmg||'').replace(/[+\-]\d+$/, ''), damageMult: 1, icon: '⚔️'
+    })) || []);
+    const zone = document.getElementById('hud-actions-zone');
+    if (!zone) return;
+    zone.innerHTML = '';
+    _charActions.slice(0, 5).forEach((action, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'diablo-slot diablo-slot--action';
+        btn.title = action.name;
+        btn.innerHTML = `
+            <span class="slot-key-num">${idx + 1}</span>
+            <span class="slot-icon">${iconImg(action.icon || '⚔️', '20px', 'Action')}</span>
+            <span class="slot-label">${(action.name || 'ACT').toUpperCase().slice(0, 6)}</span>
+        `;
+        btn.onclick = () => window.triggerAction(idx);
+        zone.appendChild(btn);
+    });
+    zone.style.display = _charActions.length > 0 ? 'flex' : 'none';
+};
+window.triggerAction = async (idx) => {
+    const action = _charActions[idx];
+    if (!action || isCooldown || !isDiceBoxReady) return;
+    const mult = parseInt(action.damageMult) || 1;
+    const dmgStr = action.damageDice
+        ? (mult > 1 ? action.damageDice.replace(/^\d+/, n => String(parseInt(n) * mult)) : action.damageDice)
+        : '';
+    if (action.hitType === 'always') {
+        showToast(`🎯 ${action.name} — Auto Hit!`, 'info');
+    } else if (action.hitType !== 'none') {
+        await window.rollMacro(cName, action.name, parseInt(action.hitMod) || 0);
+    }
+    if (dmgStr) {
+        await window.rollDamageMacro(cName, action.name, dmgStr, 0);
+    }
+    if (action.hitType === 'none' && !dmgStr) {
+        showToast(`⚡ ${action.name} used!`, 'info');
+    }
+};
+// Backward compat
+window.initCharActionBtn = window.initCharActionSlots;
+window.triggerCharAction = () => window.triggerAction(0);
+
+window.rollDamageMacro = async (targetCName, attackName, diceString, bonus, actionType = 'damage') => {
     if (isCooldown || !isDiceBoxReady) return;
     if (!diceString || diceString === '0') { showToast(t('alert_no_dmg'), 'error'); return; }
     isCooldown = true; setDiceCooldown(true); playStartRollSound(isMuted);
     const p = await db.getPlayerData(targetCName);
-    const macroColor = p?.pColor || "#e74c3c";
+    const isHeal = actionType === 'heal';
+    const macroColor = isHeal ? '#27ae60' : (p?.pColor || "#e74c3c");
     await updateDiceColor(macroColor);
     let finalRes = 0;
     try { finalRes = (await roll3DDice(diceString)).reduce((s, d) => s + d.value, 0); }
     catch { isCooldown = false; setDiceCooldown(false); return; }
-    db.saveRollToDB({ pName: p?.pName || "DM", cName: targetCName, type: diceString, res: finalRes, mod: parseInt(bonus)||0, color: macroColor, mode: 'normal', flavor: `${t('log_roll_dmg')} ${attackName}!`, ts: Date.now() });
+    const flavor = isHeal
+        ? `💚 ${attackName} — ${t('pt_action_type_heal')}!`
+        : `${t('log_roll_dmg')} ${attackName}!`;
+    db.saveRollToDB({ pName: p?.pName || "DM", cName: targetCName, type: diceString, res: finalRes, mod: parseInt(bonus)||0, color: macroColor, mode: 'normal', flavor, ts: Date.now() });
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
@@ -1258,7 +1725,19 @@ window.changeHP = async (targetCName, isPlus) => {
     const amount = parseInt(inputField?.value) || 1;
     const p = await db.getPlayerData(targetCName);
     if (!p) return;
-    const newHp = Math.max(0, Math.min(p.maxHp, (p.hp || 0) + (isPlus ? amount : -amount)));
+    let delta = isPlus ? amount : -amount;
+    // Temp HP absorbs damage first (not healing)
+    if (delta < 0 && p.tempHp > 0) {
+        const absorbed = Math.min(p.tempHp, Math.abs(delta));
+        db.patchPlayerInDB(targetCName, { tempHp: p.tempHp - absorbed });
+        delta += absorbed;
+        if (delta >= 0) {
+            if (inputField) inputField.value = 1;
+            db.saveRollToDB({ cName: targetCName, type: "DAMAGE", res: amount, newHp: p.hp || 0, color: "#e74c3c", flavor: `🛡️ ${t('log_takes_dmg')} (${amount} ${t('log_points')}) — absorbed by temp HP`, ts: Date.now() });
+            return;
+        }
+    }
+    const newHp = Math.max(0, Math.min(p.maxHp, (p.hp || 0) + delta));
     db.updatePlayerHPInDB(targetCName, newHp);
     // Auto-break concentration on damage
     if (!isPlus && p.concentrating) {
@@ -1320,17 +1799,30 @@ window.impersonate = async (targetCName) => {
     activeRoller = { cName: targetCName, pName: "DM", color: p.pColor || "#c0392b" };
     document.getElementById('active-roller-banner').style.display = 'flex';
     document.getElementById('active-roller-name').innerText = targetCName;
+    // Sync HUD identity
+    const hudName = document.getElementById('hud-roller-name');
+    if (hudName) hudName.innerText = targetCName;
     updateDiceColor(activeRoller.color);
 };
 window.resetRoller = () => {
     activeRoller = null;
     document.getElementById('active-roller-banner').style.display = 'none';
+    // Restore HUD identity to own character name
+    const myLabel = localStorage.getItem('paradice_cName') || '—';
+    const hudName = document.getElementById('hud-roller-name');
+    if (hudName) hudName.innerText = myLabel;
     updateDiceColor(pColor);
 };
 
 window.setMode      = (mode) => { activeMode = activeMode === mode ? 'normal' : mode; updateModeUI(activeMode); };
 window.getCombatMode = () => activeMode;
-window.toggleMute = () => { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? t('unmute_sound') : t('mute_sound'); };
+window.toggleMute = () => {
+    isMuted = !isMuted;
+    const btn = document.getElementById('mute-btn');
+    if (btn) btn.innerHTML = isMuted
+        ? `${iconImg('🔊', '16px', 'Unmute')} ${t('unmute_sound').replace(/^[\u{1F500}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]+\s*/u, '')}`
+        : `${iconImg('🔇', '16px', 'Mute')} ${t('mute_sound').replace(/^[\u{1F500}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]+\s*/u, '')}`;
+};
 
 window.toggleCombat = async () => {
     if (userRole !== 'dm') return;
@@ -1341,6 +1833,7 @@ window.toggleCombat = async () => {
             currentActiveTurn = null; currentRoundNumber = 0; sortedCombatants = [];
             document.getElementById('dm-turn-controls').style.display = 'none';
             document.getElementById('round-counter').innerText = '';
+            window._syncDMCombatPopup?.(false, 0);
         }
     } else { db.setCombatStatus(true); }
 };
@@ -1348,7 +1841,11 @@ window.toggleCombat = async () => {
 window.rollInit = async () => {
     const btn = document.getElementById('init-btn');
     if (btn) btn.disabled = true;
-    if (!await db.getCombatStatus()) { if (btn) btn.disabled = false; showToast(t('alert_not_started'), 'error'); return; }
+    try {
+    // DM must have combat started to roll for NPCs; players can pre-roll
+    if (userRole !== 'player' && !await db.getCombatStatus()) {
+        showToast(t('alert_not_started'), 'error'); return;
+    }
     // When DM acts as a monster, roll initiative for that monster
     const targetName  = (userRole === 'dm' && activeRoller) ? activeRoller.cName  : cName;
     const targetPName = (userRole === 'dm' && activeRoller) ? activeRoller.pName  : pName;
@@ -1358,11 +1855,14 @@ window.rollInit = async () => {
         rollResult = await window.roll('d20', true);
     } else {
         // Fallback: plain random d20 when 3D dice box not yet ready (e.g. late-joining player)
-        const mod = parseInt(localStorage.getItem('critroll_initBonus')) || 0;
+        const mod = parseInt(localStorage.getItem('paradice_initBonus')) || 0;
         rollResult = Math.ceil(Math.random() * 20) + mod;
     }
-    if (rollResult == null) { if (btn) btn.disabled = false; return; }
+    if (rollResult == null) { return; }
     db.setPlayerInitiativeInDB(targetName, targetPName, rollResult, targetColor);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 };
 
 window.handlePresetChange = (val) => {
@@ -1426,7 +1926,7 @@ window.refreshNPCsFromOpen5e = async () => {
     if (!npcs.length) { showToast('No Open5e monsters found in this session.', 'warning'); return; }
 
     const btn = document.getElementById('refresh-npcs-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Refreshing…'; }
+    if (btn) { btn.disabled = true; btn.textContent = t('npc_refreshing'); }
 
     // Fields to preserve (combat state)
     const KEEP = new Set(['hp', 'maxHp', 'statuses', 'score', 'pName', 'pColor', 'role',
@@ -1449,8 +1949,8 @@ window.refreshNPCsFromOpen5e = async () => {
         }
     }
 
-    if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh NPCs'; }
-    showToast(`✅ Refreshed ${done} NPC${done !== 1 ? 's' : ''}${failed ? ` (${failed} failed)` : ''}`, done > 0 ? 'success' : 'error');
+    if (btn) { btn.disabled = false; btn.textContent = t('npc_refresh_btn'); }
+    showToast(`Refreshed ${done} NPC${done !== 1 ? 's' : ''}${failed ? ` (${failed} failed)` : ''}`, done > 0 ? 'success' : 'error');
 };
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
@@ -1610,7 +2110,7 @@ function initMap() {
         ].join(';');
 
         dlg.innerHTML = `
-            <div style="font-weight:bold;font-size:14px;color:#f1c40f;margin-bottom:12px;">🎬 Animated Map Background</div>
+            <div style="font-weight:bold;font-size:14px;color:#f1c40f;margin-bottom:12px;">${iconImg('🎬', '18px', 'Video')} Animated Map Background</div>
             <label style="font-size:11px;color:#aaa;display:block;margin-bottom:3px;">YouTube URL</label>
             <input id="vcd-url" type="text" placeholder="https://youtu.be/…" value="${currentUrl.split('?')[0]}"
                 style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.2);
@@ -1774,7 +2274,7 @@ function _renderSceneGallery(scenes) {
 
     const entries = Object.entries(deduped).sort(([,a],[,b]) => (b.createdAt||0)-(a.createdAt||0));
     if (!entries.length) {
-        gallery.innerHTML = '<div style="font-size:11px;color:#555;font-style:italic;padding:4px 0;">No scenes yet. Create your first!</div>';
+        gallery.innerHTML = `<div style="font-size:11px;color:#555;font-style:italic;padding:4px 0;">${t('gallery_empty')}</div>`;
         return;
     }
     gallery.innerHTML = entries.map(([id, s]) => {
@@ -1793,15 +2293,16 @@ function _renderSceneGallery(scenes) {
             } catch (_) { ytId = /^[A-Za-z0-9_\-]{11}$/.test(s.bgVideoUrl) ? s.bgVideoUrl : null; }
             thumbHtml = ytId
                 ? `<img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" class="scene-thumb-img" alt="${s.name||'Scene'}" onerror="this.style.display='none'">`
-                : `<div class="scene-thumb">🎬</div>`;
+                : `<div class="scene-thumb">${iconImg('🎬', '28px', 'Video')}</div>`;
         } else {
-            thumbHtml = `<div class="scene-thumb">${s.atmosphere?.weather==='fog'?'🌫':s.atmosphere?.weather==='heavy_rain'?'⛈':s.atmosphere?.weather==='blizzard'?'❄️':'🗺'}</div>`;
+            const _weatherIcon = s.atmosphere?.weather==='fog'?'🌫':s.atmosphere?.weather==='heavy_rain'?'⛈':s.atmosphere?.weather==='blizzard'?'❄️':'🗺';
+            thumbHtml = `<div class="scene-thumb">${iconImg(_weatherIcon, '28px', 'Scene')}</div>`;
         }
         const isLive = id === activeSceneId;
         return `
         <div class="scene-gallery-card ${isLive?'active':''}" id="sgc-${id}">
             ${thumbHtml}
-            ${isLive ? '<div class="scene-live-badge">🎲 LIVE</div>' : ''}
+            ${isLive ? `<div class="scene-live-badge">${iconImg('🎲', '14px', 'Live')} LIVE</div>` : ''}
             <div class="scene-card-info">
                 <div class="scene-card-name">${s.name||'Unnamed'}</div>
                 <div class="scene-card-sub">${new Date(s.createdAt||0).toLocaleDateString()}</div>
@@ -1835,11 +2336,11 @@ function _updateTokenRoster() {
         const row = document.createElement('div');
         row.className = 'map-token-row';
         row.innerHTML = `
-            <img src="${c.portrait||'assets/logo.png'}" style="width:22px;height:22px;border-radius:50%;border:2px solid ${c.pColor||'#fff'}">
+            <img src="${c.portrait||'assets/logo.webp'}" style="width:22px;height:22px;border-radius:50%;border:2px solid ${c.pColor||'#fff'}">
             <span style="flex:1;font-size:11px;color:white;">${c.name}</span>
             ${onMap
-                ? `<button onclick="window._mapEng?.removeToken('${c.name}')" class="map-dash-btn danger">✕</button>`
-                : `<button onclick="window._mapEng?.startPlacing('${c.name}')" class="map-dash-btn">📍</button>`
+                ? `<button onclick="window._mapEng?.removeToken('${_esc(c.name)}')" class="map-dash-btn danger">✕</button>`
+                : `<button onclick="window._mapEng?.startPlacing('${_esc(c.name)}')" class="map-dash-btn">📍</button>`
             }
         `;
         roster.appendChild(row);
@@ -1903,6 +2404,7 @@ window.deactivateScene = () => {
     container?.classList.add('map-bg-hidden');
     document.getElementById('dice-arena')?.classList.remove('map-active');
     document.getElementById('map-toolbar').style.display = 'none';
+    document.getElementById('dm-slot-11')?.classList.remove('dm-slot--active');
     document.getElementById('map-token-roster-popup').style.display = 'none';
     document.querySelectorAll('.scene-gallery-card').forEach(c => c.classList.remove('active'));
 };
@@ -1941,8 +2443,8 @@ function _syncBcBar(mode) {
     });
 }
 
-window._broadcastDefault  = () => { db.setDisplay(db.getActiveRoom(), { mode: 'default' }); _syncBcBar('default'); };
-window._broadcastScene    = () => { db.setDisplay(db.getActiveRoom(), { mode: 'scene'   }); _syncBcBar('scene'); };
+window._broadcastDefault  = () => { db.setDisplay(db.getActiveRoom(), { mode: 'default' }); _syncBcBar('default'); showToast(t('dm_broadcast_toast_table') || '📡 Table view', 'info'); };
+window._broadcastScene    = () => { db.setDisplay(db.getActiveRoom(), { mode: 'scene'   }); _syncBcBar('scene');   showToast(t('dm_broadcast_toast_scene') || '📡 Scene view', 'info'); };
 window._broadcastPresent  = () => {
     const url = window.prompt('Paste an image URL or a YouTube URL to present to all players:');
     if (!url || !url.trim()) return;
@@ -1989,6 +2491,7 @@ function _activateMapCanvas(sceneData) {
     document.getElementById('dice-arena')?.classList.add('map-active');
     if (userRole === 'dm') {
         document.getElementById('map-toolbar').style.display = 'flex';
+        document.getElementById('dm-slot-11')?.classList.add('dm-slot--active');
     }
     // E2-A: Initialize PixiJS overlay (lazy — only once)
     if (!mapEngine._pixiInited) {
@@ -2040,6 +2543,10 @@ function setupDatabaseListeners() {
 
     _appUnsubs.push(db.listenToPlayers((playersData) => {
         if (playersData) {
+            // Attach resolved stats so tokenSystem + ui.js can read them without recomputing
+            Object.values(playersData).forEach(p => {
+                if (p.type !== 'npc') p._resolved = compute(p);
+            });
             sortedCombatants = Object.keys(playersData)
                 .map(k => ({ name: k, ...playersData[k] }))
                 .filter(p => p.userRole !== 'dm')
@@ -2209,4 +2716,518 @@ document.addEventListener('click', (e) => {
     if (e.target === document.getElementById('credits-modal')) {
         document.getElementById('credits-modal').style.display = 'none';
     }
+});
+
+// ══════════════════════════════════════════════════════════════
+// PLAYER TOOLBAR
+// ══════════════════════════════════════════════════════════════
+
+let _ptSlots = [null, null, null, null]; // indices into _charActions
+let _ptCharData = null;
+const PT_THRESHOLDS = [10, 15, 25, 40, 50, 60, 75, 90, 100];
+
+window.updatePlayerHP = function(pct, current, max) {
+    const safePct = Math.max(0, Math.min(100, pct || 0));
+    const pick = safePct <= 0 ? 10 : (PT_THRESHOLDS.find(t => t >= safePct) ?? 100);
+    const overlay = document.getElementById('pt-hp-overlay');
+    const text    = document.getElementById('pt-hp-text');
+    const display = document.getElementById('pt-hp-display');
+    if (overlay) { overlay.src = `/assets/TOOLBAR/${pick}.webp`; overlay.style.display = ''; }
+    if (text)    text.textContent = max > 0 ? `${Math.round(current)}/${max}` : '—';
+    if (display) display.classList.toggle('pt-hp-critical', safePct > 0 && safePct < 30);
+};
+
+window.initPlayerToolbar = function(charData) {
+    _ptCharData = charData;
+    // Load persisted slot assignments
+    try {
+        const saved = localStorage.getItem('pt_slots_' + (charData.name || ''));
+        if (saved) _ptSlots = JSON.parse(saved);
+    } catch (_) {}
+    // Render assignable slots 0-3
+    for (let i = 0; i < 4; i++) _renderPtActionSlot(i);
+    // Set initial HP
+    const hp    = charData.hp    ?? charData.maxHp ?? 0;
+    const maxHp = charData.maxHp ?? 0;
+    window.updatePlayerHP(maxHp > 0 ? (hp / maxHp * 100) : 100, hp, maxHp);
+};
+
+function _renderPtActionSlot(idx) {
+    const btn     = document.getElementById(`pt-slot-${idx}`);
+    if (!btn) return;
+    const actionIdx = _ptSlots[idx];
+    const action    = (actionIdx != null) ? (_charActions[actionIdx] ?? null) : null;
+    if (action) {
+        btn.innerHTML = `
+            <span class="pt-slot-key">${idx + 1}</span>
+            <div class="pt-slot-inner">
+                <span class="pt-slot-icon">${iconImg(action.icon || '⚔️', '20px', 'Action')}</span>
+                <span class="pt-slot-label">${action.name || '?'}</span>
+            </div>`;
+        btn.onclick = (e) => { e.stopPropagation(); window._openActionChoice(actionIdx, btn); };
+        btn.title   = action.name;
+    } else {
+        btn.innerHTML = `
+            <span class="pt-slot-key">${idx + 1}</span>
+            <div class="pt-slot-inner">
+                <span class="pt-slot-icon">+</span>
+                <span class="pt-slot-label">ASSIGN</span>
+            </div>`;
+        btn.onclick = () => window.openActionAssignPanel(idx);
+        btn.title   = `Assign to slot ${idx + 1}`;
+    }
+}
+
+function _savePtSlots() {
+    try {
+        localStorage.setItem('pt_slots_' + ((_ptCharData?.name) || ''), JSON.stringify(_ptSlots));
+    } catch (_) {}
+}
+
+window._closePtPopups = function() {
+    ['pt-action-picker', 'pt-special-popup', 'pt-rest-popup', 'pt-action-choice'].forEach(id => {
+        document.getElementById(id)?.classList.add('hidden');
+    });
+    document.getElementById('pt-popup-backdrop')?.classList.add('hidden');
+};
+
+function _showPtPopup(id) {
+    window._closePtPopups();
+    document.getElementById(id)?.classList.remove('hidden');
+    document.getElementById('pt-popup-backdrop')?.classList.remove('hidden');
+}
+
+window.openActionAssignPanel = function(slotIdx) {
+    const list = document.getElementById('pt-action-picker-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!_charActions.length) {
+        list.innerHTML = '<div style="padding:8px;color:rgba(255,255,255,0.5);font-size:12px;">No custom actions defined.<br>Add them in the character creator.</div>';
+    } else {
+        _charActions.forEach((action, idx) => {
+            const item = document.createElement('button');
+            item.className = 'pt-picker-item';
+            item.innerHTML = `<span class="pt-picker-icon">${iconImg(action.icon || '⚔️', '20px', 'Action')}</span>
+                <span class="pt-picker-name">${action.name}</span>
+                <span class="pt-picker-meta">${action.damageDice || ''}</span>`;
+            item.onclick = () => {
+                _ptSlots[slotIdx] = idx;
+                _savePtSlots();
+                _renderPtActionSlot(slotIdx);
+                window._closePtPopups();
+            };
+            list.appendChild(item);
+        });
+        // "Clear slot" option if slot is assigned
+        if (_ptSlots[slotIdx] != null) {
+            const clear = document.createElement('button');
+            clear.className = 'pt-picker-item';
+            clear.style.borderColor = 'rgba(200,60,60,0.3)';
+            clear.innerHTML = '<span class="pt-picker-icon">✕</span><span class="pt-picker-name" style="color:rgba(200,100,100,0.9)">Clear Slot</span>';
+            clear.onclick = () => { _ptSlots[slotIdx] = null; _savePtSlots(); _renderPtActionSlot(slotIdx); window._closePtPopups(); };
+            list.appendChild(clear);
+        }
+    }
+    // Anchor popup above its slot
+    const popup  = document.getElementById('pt-action-picker');
+    const slotEl = document.getElementById(`pt-slot-${slotIdx}`);
+    if (popup && slotEl) {
+        const rect = slotEl.getBoundingClientRect();
+        popup.style.left = Math.max(4, rect.left - 10) + 'px';
+        popup.style.right = 'auto';
+    }
+    _showPtPopup('pt-action-picker');
+};
+
+window.openSpecialAbilitiesMenu = function() {
+    const list = document.getElementById('pt-special-list');
+    if (!list || !_ptCharData) return;
+    list.innerHTML = '';
+
+    const playerSnapshot = { ..._ptCharData };
+    // Try to pull live classResources from Firebase cache
+    const liveKey = `paradice_cr_${cName}`;
+    try {
+        const cached = JSON.parse(localStorage.getItem(liveKey) || 'null');
+        if (cached) playerSnapshot.classResources = cached;
+    } catch (_) {}
+
+    const actions = getSelfActions(playerSnapshot);
+
+    // Dragonborn breath weapon
+    if (playerSnapshot.race === 'Dragonborn') {
+        actions.push({
+            label: '🐉 Breath Weapon',
+            cls: 'dragonborn',
+            available: true,
+            fn: () => window.roll('d6', false, '🐉 Breath Weapon!')
+        });
+    }
+
+    if (!actions.length) {
+        list.innerHTML = '<div style="padding:8px;color:rgba(255,255,255,0.5);font-size:12px;">No special abilities for this class.</div>';
+    } else {
+        actions.forEach(ab => {
+            const btn = document.createElement('button');
+            btn.className = 'pt-ability-btn';
+            btn.disabled  = !ab.available;
+            const usesText = (ab.uses != null) ? `<span class="pt-ability-uses">${ab.uses} left</span>` : '';
+            btn.innerHTML  = `${ab.label}${usesText}`;
+            btn.onclick    = () => { ab.fn(cName); window._closePtPopups(); };
+            list.appendChild(btn);
+        });
+    }
+
+    const popup  = document.getElementById('pt-special-popup');
+    const slotEl = document.getElementById('pt-slot-4');
+    if (popup && slotEl) {
+        const rect = slotEl.getBoundingClientRect();
+        popup.style.left = Math.max(4, rect.left - 10) + 'px';
+        popup.style.right = 'auto';
+    }
+    _showPtPopup('pt-special-popup');
+};
+
+window.openRestMenu = function() {
+    const popup  = document.getElementById('pt-rest-popup');
+    const slotEl = document.getElementById('pt-slot-5');
+    if (popup && slotEl) {
+        const rect = slotEl.getBoundingClientRect();
+        popup.style.left = Math.max(4, rect.left - 10) + 'px';
+        popup.style.right = 'auto';
+    }
+    _showPtPopup('pt-rest-popup');
+};
+
+window._ptLongRest = function() {
+    if (cName) window.longRest?.(cName);
+};
+
+// ── Action Choice Popup (Bug 5) ─────────────────────────────
+let _ptActiveActionIdx = null;
+window._openActionChoice = function(idx, anchorEl) {
+    _ptActiveActionIdx = idx;
+    const action = _charActions[idx];
+    const popup  = document.getElementById('pt-action-choice');
+    if (!popup || !action) return;
+    const hasHit = action.hitType !== 'none';
+    const hasDmg = !!action.damageDice;
+    document.getElementById('pt-choice-hit').style.display  = hasHit ? '' : 'none';
+    document.getElementById('pt-choice-dmg').style.display  = hasDmg ? '' : 'none';
+    document.getElementById('pt-choice-both').style.display = (hasHit && hasDmg) ? '' : 'none';
+    // Reset per-roll modifier
+    const modInp = document.getElementById('pt-action-mod-input');
+    if (modInp) modInp.value = 0;
+    if (anchorEl) {
+        const r = anchorEl.getBoundingClientRect();
+        popup.style.left = Math.max(4, r.left - 10) + 'px';
+        popup.style.right = 'auto';
+    }
+    popup.classList.remove('hidden');
+    document.getElementById('pt-popup-backdrop')?.classList.remove('hidden');
+};
+window._ptFireHit = async function() {
+    const extraMod = parseInt(document.getElementById('pt-action-mod-input')?.value) || 0;
+    window._closePtPopups();
+    const action = _charActions[_ptActiveActionIdx];
+    if (!action) return;
+    if (action.hitType === 'always') showToast(`🎯 ${action.name} — Auto Hit!`, 'info');
+    else await window.rollMacro(cName, action.name, (parseInt(action.hitMod) || 0) + extraMod);
+};
+window._ptFireDmg = async function() {
+    const extraMod = parseInt(document.getElementById('pt-action-mod-input')?.value) || 0;
+    window._closePtPopups();
+    const action = _charActions[_ptActiveActionIdx];
+    if (!action) return;
+    const mult   = parseInt(action.damageMult) || 1;
+    const dmgStr = action.damageDice
+        ? (mult > 1 ? action.damageDice.replace(/^\d+/, n => String(parseInt(n) * mult)) : action.damageDice)
+        : '';
+    if (dmgStr) await window.rollDamageMacro(cName, action.name, dmgStr, extraMod, action.actionType || 'damage');
+};
+window._ptFireBoth = async function() {
+    window._closePtPopups();
+    await window._ptFireHit();
+    await new Promise(r => setTimeout(r, 1200)); // wait for cooldown
+    await window._ptFireDmg();
+};
+
+// ── Dice popup modifier helper (Bug 3) ──────────────────────
+window._ptAdjMod = function(delta) {
+    const inp = document.getElementById('pt-mod-input');
+    if (inp) inp.value = Math.max(-10, Math.min(20, (parseInt(inp.value) || 0) + delta));
+};
+
+// ── Action choice popup modifier helper ─────────────────────
+window._ptAdjActionMod = function(delta) {
+    const inp = document.getElementById('pt-action-mod-input');
+    if (inp) inp.value = Math.max(-20, Math.min(20, (parseInt(inp.value) || 0) + delta));
+};
+
+// ════════════════════════════════════════════════════════════
+// DM TOOLBAR
+// ════════════════════════════════════════════════════════════
+
+// ── DM HP gem update (mirrors updatePlayerHP) ──────────────
+window.updateDMHP = function(pct, current, max) {
+    const safePct = Math.max(0, Math.min(100, pct || 0));
+    const pick = safePct <= 0 ? 10 : (PT_THRESHOLDS.find(t => t >= safePct) ?? 100);
+    const overlay = document.getElementById('dm-hp-overlay');
+    const text    = document.getElementById('dm-hp-text');
+    const display = document.getElementById('dm-hp-display');
+    if (overlay) { overlay.src = `/assets/TOOLBAR/${pick}.webp`; overlay.style.display = ''; }
+    if (text)    text.textContent = max > 0 ? `${Math.round(current)}/${max}` : '—';
+    if (display) display.classList.toggle('dm-hp-critical', safePct > 0 && safePct < 30);
+};
+
+// ── DM Popup helpers ──────────────────────────────────────
+window._closeDMPopups = function() {
+    ['dm-combat-popup','dm-broadcast-popup','dm-rest-popup','dm-scenes-popup','dm-campaign-popup','dm-notes-popup'].forEach(id => {
+        document.getElementById(id)?.classList.add('hidden');
+    });
+    document.getElementById('dm-popup-backdrop')?.classList.add('hidden');
+    _dmCampaignPopupUnsubs.forEach(u => u?.());
+    _dmCampaignPopupUnsubs = [];
+};
+
+function _showDMPopup(id) {
+    window._closeDMPopups();
+    document.getElementById(id)?.classList.remove('hidden');
+    document.getElementById('dm-popup-backdrop')?.classList.remove('hidden');
+}
+
+window._openDMCombatPopup    = function() { _showDMPopup('dm-combat-popup'); };
+window._openDMBroadcastPopup = function() { _showDMPopup('dm-broadcast-popup'); };
+window._openDMRestPopup      = function() { _showDMPopup('dm-rest-popup'); };
+
+// ── Map Editor Toggle ────────────────────────────────────────
+window._toggleMapEditor = function() {
+    const toolbar = document.getElementById('map-toolbar');
+    if (!toolbar) return;
+    const isVisible = toolbar.style.display === 'flex';
+    toolbar.style.display = isVisible ? 'none' : 'flex';
+    document.getElementById('dm-slot-11')?.classList.toggle('dm-slot--active', !isVisible);
+};
+
+// ── Scenes Popup ─────────────────────────────────────────────
+window._openDMScenesPopup = async function() {
+    _showDMPopup('dm-scenes-popup');
+    const list = document.getElementById('dm-scenes-saved-list');
+    if (!list) return;
+    list.innerHTML = '<div class="dm-scenes-loading">…</div>';
+    const esc = s => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    try {
+        const scenes = await db.getUserScenesOnce(uid);
+        list.innerHTML = '';
+        if (!scenes || !Object.keys(scenes).length) {
+            list.innerHTML = `<div class="dm-scenes-empty">${t('dm_scenes_empty') || 'No saved scenes'}</div>`;
+            return;
+        }
+        Object.entries(scenes).forEach(([id, s]) => {
+            const item = document.createElement('div');
+            item.className = 'dm-scene-item';
+            item.innerHTML = `
+                <span class="dm-scene-name">${esc(s.name || id)}</span>
+                <button class="dm-scene-act-btn" title="${t('dm_scenes_activate')||'Activate'}"
+                    onclick="window.activateScene('${esc(id)}'); window._closeDMPopups();">▶</button>
+                <button class="dm-scene-edit-btn" title="${t('dm_scenes_edit')||'Edit'}"
+                    onclick="window.editScene('${esc(id)}'); window._closeDMPopups();"><img src="/assets/icons/toolbar/editor.png" alt="Edit" class="custom-icon" style="width:14px;height:14px;" loading="lazy"></button>`;
+            list.appendChild(item);
+        });
+    } catch(e) {
+        list.innerHTML = '<div class="dm-scenes-empty">Error loading scenes</div>';
+    }
+};
+
+// ── Long rest handler for DM (triggers global long rest logic) ──
+window._dmLongRest = function() {
+    if (typeof onLongRest === 'function') {
+        onLongRest(window._dmCName || cName, true);
+    }
+};
+
+// ── Combat popup sync (called by existing toggleCombat/updateRound) ──
+window._syncDMCombatPopup = function(isActive, round) {
+    const btn     = document.getElementById('dm-combat-toggle-btn');
+    const details = document.getElementById('dm-combat-details');
+    const roundEl = document.getElementById('dm-round-display');
+    if (btn) {
+        btn.innerHTML = isActive
+            ? (t('dm_combat_toggle_end')   || 'End Combat')
+            : (t('dm_combat_toggle_start') || `${iconImg('⚔️', '14px', 'Combat')} Start Combat`);
+    }
+    if (details) details.classList.toggle('hidden', !isActive);
+    if (roundEl && round != null) roundEl.textContent = round;
+};
+
+// ── DM Notes ─────────────────────────────────────────────────
+let _dmNotesUnsub = null;
+let _dmNotesCurrent = [];   // local cache of notes from Firebase
+let _dmActiveNoteId = null;
+let _dmNoteSaveTimer = null;
+let _dmIsCampaign = false;
+
+// ── Campaign Popup ───────────────────────────────────────────
+let _dmCampaignPopupUnsubs = [];
+
+window._openDMCampaignPopup = function() {
+    _showDMPopup('dm-campaign-popup');
+    const campaignId = db.getActiveRoom();
+    const body    = document.getElementById('dm-campaign-popup-body');
+    const nocamp  = document.getElementById('dm-campaign-popup-nocampaign');
+    if (!_dmIsCampaign || !campaignId) {
+        body?.classList.add('hidden');
+        nocamp?.classList.remove('hidden');
+        return;
+    }
+    body?.classList.remove('hidden');
+    nocamp?.classList.add('hidden');
+
+    const esc = s => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const pendingEl = document.getElementById('dm-camp-pending-list');
+    const playersEl = document.getElementById('dm-camp-players-list');
+
+    // Live pending requests
+    const unsubPending = db.listenToPendingRequests(campaignId, pending => {
+        if (!pendingEl) return;
+        const entries = pending ? Object.entries(pending) : [];
+        if (!entries.length) {
+            pendingEl.innerHTML = `<div class="dm-camp-empty">${t('dm_campaign_empty_pending')}</div>`;
+        } else {
+            pendingEl.innerHTML = entries.map(([uid, r]) => `
+                <div class="dm-camp-item">
+                    <div class="dm-camp-item-info">
+                        <span class="dm-camp-name">${esc(r.playerName)}</span>
+                        <span class="dm-camp-char">${esc(r.charName || '')}</span>
+                    </div>
+                    <button class="dm-camp-btn dm-camp-btn--approve" title="${t('dm_campaign_approve')}"
+                        onclick="window.__campaignApprove('${esc(campaignId)}','${esc(uid)}')"><img src="/assets/icons/toolbar/advantage.png" alt="Approve" class="custom-icon" style="width:16px;height:16px;" loading="lazy"></button>
+                    <button class="dm-camp-btn dm-camp-btn--deny" title="${t('dm_campaign_deny')}"
+                        onclick="window.__campaignDeny('${esc(campaignId)}','${esc(uid)}')">✗</button>
+                </div>`).join('');
+        }
+    });
+
+    // Live participants
+    const unsubPlayers = db.listenToCampaignAllowedPlayers(campaignId, players => {
+        if (!playersEl) return;
+        const entries = players ? Object.entries(players).filter(([id]) => id !== uid) : [];
+        if (!entries.length) {
+            playersEl.innerHTML = `<div class="dm-camp-empty">${t('dm_campaign_empty_players')}</div>`;
+        } else {
+            playersEl.innerHTML = entries.map(([pUid, p]) => `
+                <div class="dm-camp-item">
+                    <div class="dm-camp-item-info">
+                        <span class="dm-camp-name">${esc(p.playerName)}</span>
+                        <span class="dm-camp-char">${esc(p.charName || '')}</span>
+                    </div>
+                    <button class="dm-camp-btn dm-camp-btn--kick" title="${t('dm_campaign_kick')}"
+                        onclick="window.__campaignKick('${esc(campaignId)}','${esc(pUid)}')">🥾</button>
+                </div>`).join('');
+        }
+    });
+
+    _dmCampaignPopupUnsubs = [unsubPending, unsubPlayers];
+};
+
+window._openFullCampaignManager = function() {
+    window._closeDMPopups();
+    const campaignId = db.getActiveRoom();
+    if (campaignId && _dmIsCampaign) window.__campaignManage?.(campaignId);
+};
+
+window._updateDMCampaignBadge = function(count) {
+    const badge = document.getElementById('dm-campaign-badge');
+    if (!badge) return;
+    if (count > 0) {
+        badge.textContent = count > 9 ? '9+' : count;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+};
+
+window._openDMNotesPopup = function() {
+    _showDMPopup('dm-notes-popup');
+    // Start listener if not already running
+    if (!_dmNotesUnsub) {
+        _dmNotesUnsub = db.listenDMNotes(_renderDMNotesList, _dmIsCampaign);
+    }
+};
+
+function _renderDMNotesList(notes) {
+    _dmNotesCurrent = notes;
+    const list = document.getElementById('dm-notes-list');
+    if (!list) return;
+    list.innerHTML = '';
+    notes.forEach(note => {
+        const item = document.createElement('div');
+        item.className = 'dm-note-item' + (note.id === _dmActiveNoteId ? ' active' : '');
+        item.innerHTML = `
+            <span class="dm-note-item-title">${_esc(note.title || t('dm_notes_placeholder') || 'Untitled')}</span>
+            <span class="dm-note-tag-badge">${_esc(note.tag || '')}</span>
+            <button class="dm-note-delete-btn" title="Delete" onclick="window._dmDeleteNote('${note.id}', event)">✕</button>`;
+        item.addEventListener('click', e => {
+            if (e.target.classList.contains('dm-note-delete-btn')) return;
+            _dmLoadNoteInEditor(note);
+        });
+        list.appendChild(item);
+    });
+}
+
+function _dmLoadNoteInEditor(note) {
+    _dmActiveNoteId = note.id;
+    const editor = document.getElementById('dm-notes-editor');
+    const titleInp = document.getElementById('dm-note-title-input');
+    const tagSel   = document.getElementById('dm-note-tag-select');
+    const content  = document.getElementById('dm-note-content-input');
+    if (editor)   editor.style.display = 'flex';
+    if (titleInp) titleInp.value = note.title || '';
+    if (tagSel)   tagSel.value   = note.tag   || 'other';
+    if (content)  content.value  = note.content || '';
+    // Highlight active in list
+    document.querySelectorAll('.dm-note-item').forEach(el => el.classList.remove('active'));
+    const items = document.querySelectorAll('.dm-note-item');
+    const idx = _dmNotesCurrent.findIndex(n => n.id === note.id);
+    if (items[idx]) items[idx].classList.add('active');
+}
+
+window._dmNewNote = function() {
+    const id = `note_${Date.now()}`;
+    const blank = { id, title: '', content: '', tag: 'other' };
+    db.saveDMNote(id, blank, _dmIsCampaign)
+        .then(() => _dmLoadNoteInEditor(blank))
+        .catch(e => console.warn('DM note create failed:', e));
+};
+
+window._dmDeleteNote = function(id, evt) {
+    if (evt) evt.stopPropagation();
+    if (!confirm(t('dm_notes_delete_confirm') || 'Delete this note?')) return;
+    db.deleteDMNote(id, _dmIsCampaign)
+        .catch(e => console.warn('DM note delete failed:', e));
+    if (_dmActiveNoteId === id) {
+        _dmActiveNoteId = null;
+        const editor = document.getElementById('dm-notes-editor');
+        if (editor) editor.style.display = 'none';
+    }
+};
+
+function _dmScheduleNoteSave() {
+    if (!_dmActiveNoteId) return;
+    clearTimeout(_dmNoteSaveTimer);
+    _dmNoteSaveTimer = setTimeout(() => {
+        const title   = document.getElementById('dm-note-title-input')?.value || '';
+        const tag     = document.getElementById('dm-note-tag-select')?.value  || 'other';
+        const content = document.getElementById('dm-note-content-input')?.value || '';
+        db.saveDMNote(_dmActiveNoteId, { title, content, tag }, _dmIsCampaign)
+            .catch(e => console.warn('DM note autosave failed:', e));
+    }, 800);
+}
+
+// Attach autosave listeners once DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    ['dm-note-title-input','dm-note-tag-select','dm-note-content-input'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', _dmScheduleNoteSave);
+        document.getElementById(id)?.addEventListener('change', _dmScheduleNoteSave);
+    });
 });

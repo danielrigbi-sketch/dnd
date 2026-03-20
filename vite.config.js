@@ -3,10 +3,11 @@ import { defineConfig } from 'vite';
 import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
-// Recursively copy src dir into dest dir
-function copyDir(src, dest) {
+// Recursively copy src dir into dest dir, skipping entries in the exclude list
+function copyDir(src, dest, exclude = []) {
   if (!existsSync(dest)) mkdirSync(dest, { recursive: true });
   for (const entry of readdirSync(src)) {
+    if (exclude.includes(entry)) continue;
     const srcPath  = join(src, entry);
     const destPath = join(dest, entry);
     if (statSync(srcPath).isDirectory()) {
@@ -22,7 +23,8 @@ function copyStaticAssets() {
   return {
     name: 'copy-static-assets',
     closeBundle() {
-      copyDir('assets', 'dist/assets');
+      // Exclude 'video' — Rollup already emits hashed copies to dist/assets/
+      copyDir('assets', 'dist/assets', ['video']);
       // Tile spritesheet + manifest
       if (existsSync('public/tiles')) {
         copyDir('public/tiles', 'dist/tiles');
@@ -31,13 +33,22 @@ function copyStaticAssets() {
       if (existsSync('public/icons')) {
         copyDir('public/icons', 'dist/icons');
       }
+      // Canva-generated UI assets (HUD bar bg, slot frame, ornaments)
+      if (existsSync('public/assets/ui')) {
+        copyDir('public/assets/ui', 'dist/assets/ui');
+      }
+      // Canva-generated icon PNGs (emoji replacements)
+      if (existsSync('public/assets/icons')) {
+        copyDir('public/assets/icons', 'dist/assets/icons');
+      }
     }
   };
 }
 
 export default defineConfig({
-  // Disable Vite's built-in publicDir — we handle asset copying ourselves
-  publicDir: false,
+  // Serve public/ in dev (icons, tiles, ui assets). Build-time copying
+  // is still handled by copyStaticAssets() for the production dist.
+  publicDir: 'public',
 
   plugins: [copyStaticAssets()],
 
@@ -45,6 +56,14 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       external: (id) => id.startsWith('https://'),
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/firebase')) return 'vendor-firebase';
+          if (id.includes('node_modules/pixi') || id.includes('node_modules/@pixi')) return 'vendor-pixi';
+          if (id.includes('node_modules/rot-js') || id.includes('node_modules/easystarjs')) return 'vendor-map';
+          if (id.includes('node_modules/@babylonjs') || id.includes('node_modules/babylonjs')) return 'vendor-babylon';
+        },
+      },
     },
   },
 });

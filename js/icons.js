@@ -86,3 +86,22 @@ export function iconHTML(name, color = 'currentColor', size = '14px') {
     `vertical-align:-2px;flex-shrink:0;` +
     `" aria-hidden="true" title="${name}"></span>`;
 }
+
+/** Path to Canva-generated condition PNGs */
+const CONDITION_PNG_BASE = '/assets/icons/toolbar';
+
+/**
+ * Return an <img> tag for a condition icon using the Canva-generated PNG.
+ * Unlike iconHTML() which uses mask-image (colorable), this shows the
+ * pre-colored amber/gold Canva design.
+ *
+ * @param {string} name  — condition name e.g. "Poisoned"
+ * @param {string} size  — CSS size e.g. "16px"
+ * @returns {string} HTML <img> tag or empty string
+ */
+export function conditionIconPNG(name, size = '16px') {
+  const slug = ICONS[name];
+  if (!slug) return '';
+  return `<img src="${CONDITION_PNG_BASE}/${slug}.png" alt="${name}" class="custom-icon" `
+       + `style="width:${size};height:${size};" loading="lazy">`;
+}
