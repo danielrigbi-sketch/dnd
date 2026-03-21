@@ -1,0 +1,202 @@
+[
+  {
+    "slug": "champion",
+    "name": "Champion",
+    "class": "fighter"
+  },
+  {
+    "slug": "battle-master",
+    "name": "Battle Master",
+    "class": "fighter"
+  },
+  {
+    "slug": "eldritch-knight",
+    "name": "Eldritch Knight",
+    "class": "fighter"
+  },
+  {
+    "slug": "berserker",
+    "name": "Berserker",
+    "class": "barbarian"
+  },
+  {
+    "slug": "totem-warrior",
+    "name": "Totem Warrior",
+    "class": "barbarian"
+  },
+  {
+    "slug": "thief",
+    "name": "Thief",
+    "class": "rogue"
+  },
+  {
+    "slug": "assassin",
+    "name": "Assassin",
+    "class": "rogue"
+  },
+  {
+    "slug": "arcane-trickster",
+    "name": "Arcane Trickster",
+    "class": "rogue"
+  },
+  {
+    "slug": "life",
+    "name": "Life",
+    "class": "cleric"
+  },
+  {
+    "slug": "light",
+    "name": "Light",
+    "class": "cleric"
+  },
+  {
+    "slug": "tempest",
+    "name": "Tempest",
+    "class": "cleric"
+  },
+  {
+    "slug": "war",
+    "name": "War",
+    "class": "cleric"
+  },
+  {
+    "slug": "knowledge",
+    "name": "Knowledge",
+    "class": "cleric"
+  },
+  {
+    "slug": "nature",
+    "name": "Nature",
+    "class": "cleric"
+  },
+  {
+    "slug": "trickery",
+    "name": "Trickery",
+    "class": "cleric"
+  },
+  {
+    "slug": "land",
+    "name": "Land",
+    "class": "druid"
+  },
+  {
+    "slug": "moon",
+    "name": "Moon",
+    "class": "druid"
+  },
+  {
+    "slug": "devotion",
+    "name": "Devotion",
+    "class": "paladin"
+  },
+  {
+    "slug": "ancients",
+    "name": "Ancients",
+    "class": "paladin"
+  },
+  {
+    "slug": "vengeance",
+    "name": "Vengeance",
+    "class": "paladin"
+  },
+  {
+    "slug": "hunter",
+    "name": "Hunter",
+    "class": "ranger"
+  },
+  {
+    "slug": "beast-master",
+    "name": "Beast Master",
+    "class": "ranger"
+  },
+  {
+    "slug": "open-hand",
+    "name": "Open Hand",
+    "class": "monk"
+  },
+  {
+    "slug": "shadow",
+    "name": "Shadow",
+    "class": "monk"
+  },
+  {
+    "slug": "four-elements",
+    "name": "Four Elements",
+    "class": "monk"
+  },
+  {
+    "slug": "lore",
+    "name": "Lore",
+    "class": "bard"
+  },
+  {
+    "slug": "valor",
+    "name": "Valor",
+    "class": "bard"
+  },
+  {
+    "slug": "draconic",
+    "name": "Draconic",
+    "class": "sorcerer"
+  },
+  {
+    "slug": "wild-magic",
+    "name": "Wild Magic",
+    "class": "sorcerer"
+  },
+  {
+    "slug": "archfey",
+    "name": "Archfey",
+    "class": "warlock"
+  },
+  {
+    "slug": "fiend",
+    "name": "Fiend",
+    "class": "warlock"
+  },
+  {
+    "slug": "great-old-one",
+    "name": "Great Old One",
+    "class": "warlock"
+  },
+  {
+    "slug": "evocation",
+    "name": "Evocation",
+    "class": "wizard"
+  },
+  {
+    "slug": "divination",
+    "name": "Divination",
+    "class": "wizard"
+  },
+  {
+    "slug": "abjuration",
+    "name": "Abjuration",
+    "class": "wizard"
+  },
+  {
+    "slug": "necromancy",
+    "name": "Necromancy",
+    "class": "wizard"
+  },
+  {
+    "slug": "illusion",
+    "name": "Illusion",
+    "class": "wizard"
+  },
+  {
+    "slug": "enchantment",
+    "name": "Enchantment",
+    "class": "wizard"
+  },
+  {
+    "slug": "conjuration",
+    "name": "Conjuration",
+    "class": "wizard"
+  },
+  {
+    "slug": "transmutation",
+    "name": "Transmutation",
+    "class": "wizard"
+  }
+]

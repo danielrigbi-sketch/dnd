@@ -1,0 +1,425 @@
+[
+  {
+    "slug": "acolyte",
+    "name": "Acolyte",
+    "skills": [
+      "insight",
+      "religion"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "artisan",
+    "name": "Artisan",
+    "skills": [
+      "persuasion",
+      "and_either_insight_or_history"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "charlatan",
+    "name": "Charlatan",
+    "skills": [
+      "deception",
+      "and_either_culture",
+      "insight",
+      "or_sleight_of_hand"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "con-artist",
+    "name": "Con Artist",
+    "skills": [
+      "deception",
+      "sleight_of_hand"
+    ],
+    "tools": "Two of your choice",
+    "desc": ""
+  },
+  {
+    "slug": "court-servant",
+    "name": "Court Servant",
+    "skills": [
+      "history",
+      "insight"
+    ],
+    "tools": "One artisan's tools set of your choice",
+    "desc": ""
+  },
+  {
+    "slug": "crime-syndicate-member",
+    "name": "Crime Syndicate Member",
+    "skills": [
+      "deception",
+      "plus_your_choice_of_one_between_sleight_of_hand_or_stealth"
+    ],
+    "tools": "Your choice of one from Thieves’ Tools, Forgery Kit, or Disguise Kit.",
+    "desc": ""
+  },
+  {
+    "slug": "criminal",
+    "name": "Criminal",
+    "skills": [
+      "stealth",
+      "and_either_deception_or_intimidation"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "desert-runner",
+    "name": "Desert Runner",
+    "skills": [
+      "perception",
+      "survival"
+    ],
+    "tools": "Herbalist kit",
+    "desc": ""
+  },
+  {
+    "slug": "destined",
+    "name": "Destined",
+    "skills": [
+      "history",
+      "insight"
+    ],
+    "tools": "No additional tool proficiencies",
+    "desc": ""
+  },
+  {
+    "slug": "diplomat",
+    "name": "Diplomat",
+    "skills": [
+      "insight",
+      "persuasion"
+    ],
+    "tools": "No additional tool proficiencies",
+    "desc": ""
+  },
+  {
+    "slug": "elemental-warden",
+    "name": "Elemental Warden",
+    "skills": [
+      "nature",
+      "plus_your_choice_of_one_between_arcana_or_survival"
+    ],
+    "tools": "Herbalism Kit",
+    "desc": ""
+  },
+  {
+    "slug": "entertainer",
+    "name": "Entertainer",
+    "skills": [
+      "performance",
+      "and_either_acrobatics",
+      "culture",
+      "or_persuasion"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "exile",
+    "name": "Exile",
+    "skills": [
+      "survival",
+      "and_either_history_or_performance"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "farmer",
+    "name": "Farmer",
+    "skills": [
+      "nature",
+      "and_either_animal_handling_or_survival"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "fate-touched",
+    "name": "Fate-Touched",
+    "skills": [],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "folk-hero",
+    "name": "Folk Hero",
+    "skills": [
+      "survival",
+      "and_either_animal_handling_or_nature"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "forest-dweller",
+    "name": "Forest Dweller",
+    "skills": [
+      "nature",
+      "survival"
+    ],
+    "tools": "Woodcarver's tools, Herbalism kit",
+    "desc": ""
+  },
+  {
+    "slug": "former-adventurer",
+    "name": "Former Adventurer",
+    "skills": [
+      "perception",
+      "survival"
+    ],
+    "tools": "No additional tool proficiencies",
+    "desc": ""
+  },
+  {
+    "slug": "freebooter",
+    "name": "Freebooter",
+    "skills": [
+      "athletics",
+      "survival"
+    ],
+    "tools": "Navigator's tools, vehicles (water)",
+    "desc": ""
+  },
+  {
+    "slug": "gambler",
+    "name": "Gambler",
+    "skills": [
+      "deception",
+      "and_either_insight_or_sleight_of_hand"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "gamekeeper",
+    "name": "Gamekeeper",
+    "skills": [
+      "animal_handling",
+      "persuasion"
+    ],
+    "tools": "Leatherworker's tools",
+    "desc": ""
+  },
+  {
+    "slug": "guildmember",
+    "name": "Guildmember",
+    "skills": [
+      "two_of_your_choice"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "hermit",
+    "name": "Hermit",
+    "skills": [
+      "religion",
+      "and_either_medicine_or_survival"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "innkeeper",
+    "name": "Innkeeper",
+    "skills": [
+      "insight_plus_one_of_your_choice_from_among_intimidation_or_persuasion"
+    ],
+    "tools": "No additional tool proficiencies",
+    "desc": ""
+  },
+  {
+    "slug": "lyceum-student",
+    "name": "Lyceum Student",
+    "skills": [
+      "your_choice_of_two_from_among_arcana",
+      "history",
+      "and_persuasion"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "marauder",
+    "name": "Marauder",
+    "skills": [
+      "survival",
+      "and_either_intimidation_or_stealth"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "mercenary-company-scion",
+    "name": "Mercenary Company Scion",
+    "skills": [
+      "athletics",
+      "history"
+    ],
+    "tools": "One type of gaming set, one musical instrument",
+    "desc": ""
+  },
+  {
+    "slug": "mercenary-recruit",
+    "name": "Mercenary Recruit",
+    "skills": [
+      "athletics",
+      "persuasion"
+    ],
+    "tools": "One type of gaming set",
+    "desc": ""
+  },
+  {
+    "slug": "monstrous-adoptee",
+    "name": "Monstrous Adoptee",
+    "skills": [
+      "intimidation",
+      "survival"
+    ],
+    "tools": "No additional tool proficiencies",
+    "desc": ""
+  },
+  {
+    "slug": "mysterious-origins",
+    "name": "Mysterious Origins",
+    "skills": [
+      "deception",
+      "survival"
+    ],
+    "tools": "One type of artisan's tools or one type of musical instrument",
+    "desc": ""
+  },
+  {
+    "slug": "northern-minstrel",
+    "name": "Northern Minstrel",
+    "skills": [
+      "perception_plus_one_of_your_choice_from_among_history_or_performance"
+    ],
+    "tools": "One type of musical instrument",
+    "desc": ""
+  },
+  {
+    "slug": "occultist",
+    "name": "Occultist",
+    "skills": [
+      "arcana",
+      "religion"
+    ],
+    "tools": "Thieves' tools",
+    "desc": ""
+  },
+  {
+    "slug": "outlander",
+    "name": "Outlander",
+    "skills": [
+      "survival",
+      "and_either_athletics_or_intimidation"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "parfumier",
+    "name": "Parfumier",
+    "skills": [
+      "nature",
+      "investigation"
+    ],
+    "tools": "Alchemist's supplies, herbalism kit",
+    "desc": ""
+  },
+  {
+    "slug": "recovered-cultist",
+    "name": "Recovered Cultist",
+    "skills": [
+      "religion_and_deception"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "sage",
+    "name": "Sage",
+    "skills": [
+      "history",
+      "and_either_arcana",
+      "culture",
+      "engineering",
+      "or_religion"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "sailor",
+    "name": "Sailor",
+    "skills": [
+      "athletics",
+      "and_either_acrobatics_or_perception"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "scoundrel",
+    "name": "Scoundrel",
+    "skills": [
+      "athletics",
+      "sleight_of_hand"
+    ],
+    "tools": "One type of gaming set, thieves' tools",
+    "desc": ""
+  },
+  {
+    "slug": "sentry",
+    "name": "Sentry",
+    "skills": [
+      "insight",
+      "perception"
+    ],
+    "tools": "One type of gaming set",
+    "desc": ""
+  },
+  {
+    "slug": "trader",
+    "name": "Trader",
+    "skills": [
+      "persuasion",
+      "and_either_culture",
+      "deception",
+      "or_insight"
+    ],
+    "tools": "",
+    "desc": ""
+  },
+  {
+    "slug": "trophy-hunter",
+    "name": "Trophy Hunter",
+    "skills": [
+      "nature",
+      "survival"
+    ],
+    "tools": "Leatherworker's tools, vehicles (land)",
+    "desc": ""
+  },
+  {
+    "slug": "urchin",
+    "name": "Urchin",
+    "skills": [
+      "sleight_of_hand",
+      "and_either_deception_or_stealth"
+    ],
+    "tools": "",
+    "desc": ""
+  }
+]

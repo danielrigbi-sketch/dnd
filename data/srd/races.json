@@ -1,0 +1,377 @@
+[
+  {
+    "slug": "alseid",
+    "name": "Alseid",
+    "speed": 40,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": []
+  },
+  {
+    "slug": "catfolk",
+    "name": "Catfolk",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "malkin",
+        "name": "Malkin",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "pantheran",
+        "name": "Pantheran",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "darakhul",
+    "name": "Darakhul",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "derro-heritage",
+        "name": "Derro Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "dragonborn-heritage",
+        "name": "Dragonborn Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "drow-heritage",
+        "name": "Drow Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "dwarf-heritage",
+        "name": "Dwarf Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "elfshadow-fey-heritage",
+        "name": "Elf/Shadow Fey Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "gnome-heritage",
+        "name": "Gnome Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "halfling-heritage",
+        "name": "Halfling Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "humanhalf-elf-heritage",
+        "name": "Human/Half-Elf Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "kobold-heritage",
+        "name": "Kobold Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "ravenfolk",
+        "name": "Ravenfolk",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "tiefling-heritage",
+        "name": "Tiefling Heritage",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "trollkin-heritage",
+        "name": "Trollkin Heritage",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "derro",
+    "name": "Derro",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "far-touched",
+        "name": "Far-Touched",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "mutated",
+        "name": "Mutated",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "uncorrupted",
+        "name": "Uncorrupted",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "dragonborn",
+    "name": "Dragonborn",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": []
+  },
+  {
+    "slug": "drow",
+    "name": "Drow",
+    "speed": 25,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "delver",
+        "name": "Delver",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "fever-bit",
+        "name": "Fever-Bit",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "purified",
+        "name": "Purified",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "dwarf",
+    "name": "Dwarf",
+    "speed": 25,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "hill-dwarf",
+        "name": "Hill Dwarf",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "elf",
+    "name": "Elf",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "high-elf",
+        "name": "High Elf",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "erina",
+    "name": "Erina",
+    "speed": 25,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": []
+  },
+  {
+    "slug": "gearforged",
+    "name": "Gearforged",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "dwarf-chassis",
+        "name": "Dwarf Chassis",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "gnome-chassis",
+        "name": "Gnome Chassis",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "human-chassis",
+        "name": "Human Chassis",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "kobold-chassis",
+        "name": "Kobold Chassis",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "gnome",
+    "name": "Gnome",
+    "speed": 25,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "rock-gnome",
+        "name": "Rock Gnome",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "half-elf",
+    "name": "Half-Elf",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": []
+  },
+  {
+    "slug": "half-orc",
+    "name": "Half-Orc",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": []
+  },
+  {
+    "slug": "halfling",
+    "name": "Halfling",
+    "speed": 25,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "lightfoot",
+        "name": "Lightfoot",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "stoor-halfling",
+        "name": "Stoor Halfling",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "human",
+    "name": "Human",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": []
+  },
+  {
+    "slug": "minotaur",
+    "name": "Minotaur",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "bhain-kwai",
+        "name": "Bhain Kwai",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "boghaid",
+        "name": "Boghaid",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "mushroomfolk",
+    "name": "Mushroomfolk",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": [
+      {
+        "slug": "acid-cap",
+        "name": "Acid Cap",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "favored",
+        "name": "Favored",
+        "abilBonus": {},
+        "traits": []
+      },
+      {
+        "slug": "morel",
+        "name": "Morel",
+        "abilBonus": {},
+        "traits": []
+      }
+    ]
+  },
+  {
+    "slug": "satarre",
+    "name": "Satarre",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": []
+  },
+  {
+    "slug": "shade",
+    "name": "Shade",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": []
+  },
+  {
+    "slug": "tiefling",
+    "name": "Tiefling",
+    "speed": 30,
+    "abilBonus": {},
+    "traits": [],
+    "subraces": []
+  }
+]

@@ -1,0 +1,158 @@
+[
+  {
+    "slug": "barbarian",
+    "name": "Barbarian",
+    "hitDie": 8,
+    "spellAbility": "",
+    "proficiencies": {
+      "armor": "Light armor, medium armor, shields",
+      "weapons": "Simple weapons, martial weapons",
+      "tools": "None",
+      "savingThrows": [],
+      "skills": "Choose two from Animal Handling, Athletics, Intimidation, Nature, Perception, and Survival"
+    }
+  },
+  {
+    "slug": "bard",
+    "name": "Bard",
+    "hitDie": 8,
+    "spellAbility": "Charisma",
+    "proficiencies": {
+      "armor": "Light armor",
+      "weapons": "Simple weapons, hand crossbows, longswords, rapiers, shortswords",
+      "tools": "Three musical instruments of your choice",
+      "savingThrows": [],
+      "skills": "Choose any three"
+    }
+  },
+  {
+    "slug": "cleric",
+    "name": "Cleric",
+    "hitDie": 8,
+    "spellAbility": "Wisdom",
+    "proficiencies": {
+      "armor": "Light armor, medium armor, shields",
+      "weapons": "Simple weapons",
+      "tools": "None",
+      "savingThrows": [],
+      "skills": "Choose two from History, Insight, Medicine, Persuasion, and Religion"
+    }
+  },
+  {
+    "slug": "druid",
+    "name": "Druid",
+    "hitDie": 8,
+    "spellAbility": "Wisdom",
+    "proficiencies": {
+      "armor": "Light armor, medium armor, shields (druids will not wear armor or use shields made of metal)",
+      "weapons": "Clubs, daggers, darts, javelins, maces, quarterstaffs, scimitars, sickles, slings, spears",
+      "tools": "Herbalism kit",
+      "savingThrows": [],
+      "skills": "Choose two from Arcana, Animal Handling, Insight, Medicine, Nature, Perception, Religion, and Survival"
+    }
+  },
+  {
+    "slug": "fighter",
+    "name": "Fighter",
+    "hitDie": 8,
+    "spellAbility": "",
+    "proficiencies": {
+      "armor": "All armor, shields",
+      "weapons": "Simple weapons, martial weapons",
+      "tools": "None",
+      "savingThrows": [],
+      "skills": "Choose two skills from Acrobatics, Animal, Handling, Athletics, History, Insight, Intimidation, Perception, and Survival"
+    }
+  },
+  {
+    "slug": "monk",
+    "name": "Monk",
+    "hitDie": 8,
+    "spellAbility": "",
+    "proficiencies": {
+      "armor": "None",
+      "weapons": "Simple weapons, shortswords",
+      "tools": "Choose one type of artisan's tools or one musical instrument",
+      "savingThrows": [],
+      "skills": "Choose two from Acrobatics, Athletics, History, Insight, Religion, and Stealth"
+    }
+  },
+  {
+    "slug": "paladin",
+    "name": "Paladin",
+    "hitDie": 8,
+    "spellAbility": "Charisma",
+    "proficiencies": {
+      "armor": "All armor, shields",
+      "weapons": "Simple weapons, martial weapons",
+      "tools": "None",
+      "savingThrows": [],
+      "skills": "Choose two from Athletics, Insight, Intimidation, Medicine, Persuasion, and Religion"
+    }
+  },
+  {
+    "slug": "ranger",
+    "name": "Ranger",
+    "hitDie": 8,
+    "spellAbility": "Wisdom",
+    "proficiencies": {
+      "armor": "Light armor, medium armor, shields",
+      "weapons": "Simple weapons, martial weapons",
+      "tools": "None",
+      "savingThrows": [],
+      "skills": "Choose three from Animal Handling, Athletics, Insight, Investigation, Nature, Perception, Stealth, and Survival"
+    }
+  },
+  {
+    "slug": "rogue",
+    "name": "Rogue",
+    "hitDie": 8,
+    "spellAbility": "",
+    "proficiencies": {
+      "armor": "Light armor",
+      "weapons": "Simple weapons, hand crossbows, longswords, rapiers, shortswords",
+      "tools": "Thieves' tools",
+      "savingThrows": [],
+      "skills": "Choose four from Acrobatics, Athletics, Deception, Insight, Intimidation, Investigation, Perception, Performance, Persuasion, Sleight of Hand, and Stealth"
+    }
+  },
+  {
+    "slug": "sorcerer",
+    "name": "Sorcerer",
+    "hitDie": 8,
+    "spellAbility": "Charisma",
+    "proficiencies": {
+      "armor": "None",
+      "weapons": "Daggers, darts, slings, quarterstaffs, light crossbows",
+      "tools": "None",
+      "savingThrows": [],
+      "skills": "Choose two from Arcana, Deception, Insight, Intimidation, Persuasion, and Religion"
+    }
+  },
+  {
+    "slug": "warlock",
+    "name": "Warlock",
+    "hitDie": 8,
+    "spellAbility": "Charisma",
+    "proficiencies": {
+      "armor": "Light armor",
+      "weapons": "Simple weapons",
+      "tools": "None",
+      "savingThrows": [],
+      "skills": "Choose two skills from Arcana, Deception, History, Intimidation, Investigation, Nature, and Religion"
+    }
+  },
+  {
+    "slug": "wizard",
+    "name": "Wizard",
+    "hitDie": 8,
+    "spellAbility": "Intelligence",
+    "proficiencies": {
+      "armor": "None",
+      "weapons": "Daggers, darts, slings, quarterstaffs, light crossbows",
+      "tools": "None",
+      "savingThrows": [],
+      "skills": "Choose two from Arcana, History, Insight, Investigation, Medicine, and Religion"
+    }
+  }
+]
