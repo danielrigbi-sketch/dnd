@@ -18,6 +18,8 @@ import { generateNPC } from "./faker.js";
 import { printHandout, openWatabou, captureMapCanvas } from "./handout.js"; // E7
 import { iconHTML } from "./icons.js";
 import { iconImg } from "./iconMap.js";
+import { openDashboard } from "./accountDashboard.js";
+import { getCurrentSub } from "./subscriptionService.js";
 import { initMonsterBook } from "./monsterBook.js";
 import { fetchMonsterBySlug, open5eToNPC } from "./open5e.js";
 import { VideoLayer } from "./videoLayer.js";
@@ -84,11 +86,11 @@ window.toggleDeathSave = async (targetCName, type, index) => {
     const fails = saves.failures.filter(Boolean).length;
     if (wins >= 3) {
         saves.stable = true;
-        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `💚 ${targetCName} is STABLE!`, ts: Date.now() });
+        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: t('combat_stable').replace('{name}', targetCName), ts: Date.now() });
     }
     if (fails >= 3) {
         saves.dead = true;
-        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `💀 ${targetCName} has DIED!`, ts: Date.now() });
+        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: t('combat_died').replace('{name}', targetCName), ts: Date.now() });
     }
     db.updateDeathSavesInDB(targetCName, saves);
 };
@@ -102,7 +104,7 @@ window.toggleConcentration = async (targetCName) => {
     if (!p) return;
     const newVal = !p.concentrating;
     db.updateConcentrationInDB(targetCName, newVal);
-    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: newVal ? `🔮 ${targetCName} is concentrating!` : `🔮 ${targetCName} lost concentration.`, ts: Date.now() });
+    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: newVal ? `${iconImg('🔮','14px')} ${targetCName} is concentrating!` : `${iconImg('🔮','14px')} ${targetCName} lost concentration.`, ts: Date.now() });
 };
 
 window.useSpellSlot = async (targetCName, level) => {
@@ -115,7 +117,7 @@ window.useSpellSlot = async (targetCName, level) => {
     if (currentUsed >= maxForLevel) return; // already exhausted
     const newUsed = { ...used, [level]: currentUsed + 1 };
     db.updateSpellSlotsInDB(targetCName, { max, used: newUsed });
-    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `🔮 ${targetCName} used a level ${level} spell slot (${maxForLevel - currentUsed - 1} remaining).`, ts: Date.now() });
+    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: t('combat_spell_used').replace('{name}', targetCName).replace('{level}', level).replace('{remaining}', maxForLevel - currentUsed - 1), ts: Date.now() });
 };
 
 window.restoreSpellSlot = async (targetCName, level) => {
@@ -283,14 +285,14 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
                 : { total: 1, remaining: 0 };
             db.patchClassResources(targetCName, { tidesOfChaos: newToc });
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `🌀 ${targetCName} uses Tides of Chaos — advantage on next attack/ability/save roll! (Will surge next cast)`, ts: Date.now() });
+                status: t('combat_tides_chaos').replace('{name}', targetCName), ts: Date.now() });
             break;
         }
         case 'wildMagicSurge': {
             const surgeRoll = Math.floor(Math.random() * 20);
             const surgeText = WILD_MAGIC_SURGES[surgeRoll];
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `💥 Wild Magic Surge (d20=${surgeRoll + 1}): ${surgeText}`, ts: Date.now() });
+                status: `${iconImg('💥','14px')} Wild Magic Surge (d20=${surgeRoll + 1}): ${surgeText}`, ts: Date.now() });
             showToast(`Wild Magic Surge! ${surgeText}`, 'warning', 8000);
             break;
         }
@@ -300,7 +302,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
             window.toggleStatus?.(targetCName, 'Concentrating');
             db.patchClassResources(targetCName, { sacredWeaponActive: true });
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `✨ ${targetCName} imbues their weapon with holy power (+${profBonus(lvl)} to attack rolls, sheds light 20ft, for 1 min)`, ts: Date.now() });
+                status: t('combat_divine_weapon').replace('{name}', targetCName).replace('{bonus}', profBonus(lvl)), ts: Date.now() });
             break;
         }
 
@@ -308,7 +310,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
         case 'vowOfEnmity': {
             db.patchClassResources(targetCName, { vowTarget: extraCName });
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `⚔️ ${targetCName} swears a Vow of Enmity against ${extraCName || 'target'} (advantage on attacks until 0 HP or unconscious)`, ts: Date.now() });
+                status: t('combat_vow_enmity').replace('{name}', targetCName).replace('{target}', extraCName || 'target'), ts: Date.now() });
             break;
         }
 
@@ -322,21 +324,21 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
                 : { warPriestAttacks: { total: wisModWP, remaining: wisModWP - 1 } };
             db.patchClassResources(targetCName, wpPatch);
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `⚔️ ${targetCName} uses War Priest to make a bonus weapon attack against ${extraCName || 'target'}!`, ts: Date.now() });
+                status: t('combat_war_priest').replace('{name}', targetCName).replace('{target}', extraCName || 'target'), ts: Date.now() });
             break;
         }
 
         // ── Ranger — Horde Breaker extra attack ──
         case 'hordeBreaker': {
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `⚔️ Horde Breaker: ${targetCName} makes an extra attack against ${extraCName || 'a nearby enemy'}!`, ts: Date.now() });
+                status: t('combat_horde_breaker').replace('{name}', targetCName).replace('{target}', extraCName || 'target'), ts: Date.now() });
             break;
         }
 
         // ── Ranger — Gloom Stalker Dread Ambusher ──
         case 'dreadAmbusher': {
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `🌑 Dread Ambusher: ${targetCName} makes a bonus attack this first turn! (handled via combat action)`, ts: Date.now() });
+                status: t('combat_dread_ambusher').replace('{name}', targetCName), ts: Date.now() });
             break;
         }
 
@@ -347,7 +349,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
         }
         case 'companionAttack': {
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `🐾 ${targetCName} commands their companion to attack ${extraCName || 'the enemy'}!`, ts: Date.now() });
+                status: t('combat_companion_attack').replace('{name}', targetCName).replace('{target}', extraCName || 'target'), ts: Date.now() });
             break;
         }
 
@@ -356,21 +358,21 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
             if (!(cr.raging)) { showToast(t('toast_frenzy_need_rage'), 'warning'); return; }
             db.patchClassResources(targetCName, { frenzyActive: true });
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `😤 ${targetCName} enters a Frenzy! (Bonus attack each turn while raging. Exhaustion 1 when rage ends)`, ts: Date.now() });
+                status: t('combat_frenzy').replace('{name}', targetCName), ts: Date.now() });
             break;
         }
 
         // ── Berserker — Intimidating Presence ──
         case 'intimidatingPresence': {
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `😠 ${targetCName} uses Intimidating Presence! (DC ${8 + profBonus(lvl) + (p._resolved?.mods?.cha ?? 0)} Wis save or Frightened)`, ts: Date.now() });
+                status: t('combat_intimidate').replace('{name}', targetCName).replace('{dc}', 8 + profBonus(lvl) + (p._resolved?.mods?.cha ?? 0)), ts: Date.now() });
             break;
         }
 
         // ── Archfey Warlock — Fey Presence ──
         case 'feyPresence': {
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `🧚 ${targetCName} uses Fey Presence! All creatures in 10ft cube must Wisdom save DC ${8 + profBonus(lvl) + (p._resolved?.mods?.cha ?? 0)} or be Charmed/Frightened until end of next turn.`, ts: Date.now() });
+                status: t('combat_fey_presence').replace('{name}', targetCName).replace('{dc}', 8 + profBonus(lvl) + (p._resolved?.mods?.cha ?? 0)), ts: Date.now() });
             break;
         }
 
@@ -378,7 +380,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
         case 'mistyEscape': {
             window.toggleStatus?.(targetCName, 'Invisible');
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `👻 ${targetCName} uses Misty Escape! Teleports up to 60 ft and becomes Invisible until start of next turn.`, ts: Date.now() });
+                status: t('combat_misty_escape').replace('{name}', targetCName), ts: Date.now() });
             break;
         }
 
@@ -387,12 +389,12 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
             const dcWoS = 8 + profBonus(lvl) + (p._resolved?.mods?.wis ?? 0);
             db.patchClassResources(targetCName, { channelDivinity: Math.max(0, (cr.channelDivinity ?? 0) - 1) });
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `⛈️ Wrath of the Storm! ${extraCName || 'Target'} must DC ${dcWoS} DEX save or take 2d8 lightning/thunder damage.`, ts: Date.now() });
+                status: t('combat_wrath_storm').replace('{target}', extraCName || 'target').replace('{dc}', dcWoS), ts: Date.now() });
             break;
         }
         case 'wardingFlare': {
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `🌟 Warding Flare: ${extraCName || 'Attacker'} must re-roll their attack with disadvantage (reaction).`, ts: Date.now() });
+                status: t('combat_warding_flare').replace('{target}', extraCName || 'target'), ts: Date.now() });
             break;
         }
 
@@ -400,21 +402,21 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
         case 'flurryOfBlows': {
             if ((cr.kiPoints ?? 0) < 2) return;
             db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 2) });
-            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '🥊 Flurry of Blows',
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: `${iconImg('🥊','14px')} Flurry of Blows`,
                 msg: `${targetCName} spends 2 ki — make 2 bonus unarmed strikes.`, ts: Date.now() });
             break;
         }
         case 'patientDefense': {
             if ((cr.kiPoints ?? 0) < 1) return;
             db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 1) });
-            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '🛡️ Patient Defense',
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: `${iconImg('🛡️','14px')} Patient Defense`,
                 msg: `${targetCName} spends 1 ki — take Dodge action as bonus action.`, ts: Date.now() });
             break;
         }
         case 'stepOfWind': {
             if ((cr.kiPoints ?? 0) < 1) return;
             db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 1) });
-            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '💨 Step of the Wind',
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: `${iconImg('💨','14px')} Step of the Wind`,
                 msg: `${targetCName} spends 1 ki — Dash/Disengage as bonus action, jump distance doubled.`, ts: Date.now() });
             break;
         }
@@ -422,7 +424,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
             if ((cr.kiPoints ?? 0) < 1) return;
             const ssDC = 8 + profBonus(lvl) + (p._resolved?.mods?.wis ?? 0);
             db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 1) });
-            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '⚡ Stunning Strike',
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: `${iconImg('⚡','14px')} Stunning Strike`,
                 msg: `${targetCName} spends 1 ki — ${extraCName || 'target'} must CON save DC ${ssDC} or be Stunned until end of next turn.`, ts: Date.now() });
             break;
         }
@@ -431,7 +433,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
         case 'bardicInspiration': {
             if ((cr.bardicInspiration ?? 0) <= 0) return;
             db.patchClassResources(targetCName, { bardicInspiration: Math.max(0, (cr.bardicInspiration ?? 1) - 1) });
-            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '🎵 Bardic Inspiration',
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: `${iconImg('🎵','14px')} Bardic Inspiration`,
                 msg: `${targetCName} grants Bardic Inspiration to ${extraCName || 'an ally'} — add the die to one roll.`, ts: Date.now() });
             break;
         }
@@ -440,7 +442,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
         case 'channelDivinity': {
             if ((cr.channelDivinity ?? 0) <= 0) return;
             db.patchClassResources(targetCName, { channelDivinity: Math.max(0, (cr.channelDivinity ?? 1) - 1) });
-            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '✨ Channel Divinity',
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: `${iconImg('✨','14px')} Channel Divinity`,
                 msg: `${targetCName} channels divine power.`, ts: Date.now() });
             break;
         }
@@ -457,13 +459,13 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
             await db.updatePlayerHPInDB(targetCName, newHpLoh);
             db.patchClassResources(targetCName, { layOnHandsHp: loh - healAmt });
             db.saveRollToDB({ cName: targetCName, type: 'HEAL', res: healAmt, newHp: newHpLoh, maxHp: maxHpLoh,
-                color: '#2ecc71', flavor: `🙏 ${targetCName} uses Lay on Hands — restored ${healAmt} HP (pool: ${loh-healAmt} remaining).`, ts: Date.now() });
+                color: '#2ecc71', flavor: `${iconImg('🙏','14px')} ${targetCName} uses Lay on Hands — restored ${healAmt} HP (pool: ${loh-healAmt} remaining).`, ts: Date.now() });
             break;
         }
         case 'divineSense': {
             if ((cr.divineSense ?? 0) <= 0) return;
             db.patchClassResources(targetCName, { divineSense: Math.max(0, (cr.divineSense ?? 1) - 1) });
-            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '👁️ Divine Sense',
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: `${iconImg('👁️','14px')} Divine Sense`,
                 msg: `${targetCName} uses Divine Sense — detects celestials, fiends, and undead within 60 ft until end of next turn.`, ts: Date.now() });
             break;
         }
@@ -472,7 +474,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
         case 'arcaneRecovery': {
             if ((cr.arcaneRecovery ?? 0) <= 0) return;
             db.patchClassResources(targetCName, { arcaneRecovery: 0 });
-            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: '📚 Arcane Recovery',
+            db.saveRollToDB({ cName: targetCName, type: 'RESOURCE', resourceName: `${iconImg('📚','14px')} Arcane Recovery`,
                 msg: `${targetCName} uses Arcane Recovery — regain spell slots totaling up to ${Math.ceil(lvl/2)} levels (short rest).`, ts: Date.now() });
             showToast(`Arcane Recovery: restore spell slots totaling ${Math.ceil(lvl/2)} levels`, 'info');
             break;
@@ -484,7 +486,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
             db.patchClassResources(targetCName, { kiPoints: Math.max(0, (cr.kiPoints ?? 0) - 2) });
             window.toggleStatus?.(targetCName, 'Invisible');
             db.saveRollToDB({ cName: targetCName, type: 'STATUS',
-                status: `🌑 ${targetCName} uses Shadow Step (2 ki) — teleports 60 ft between shadows, advantage on first melee attack, then Invisible until next turn.`, ts: Date.now() });
+                status: t('combat_shadow_step').replace('{name}', targetCName), ts: Date.now() });
             break;
         }
 
@@ -494,7 +496,7 @@ window.useClassAbility = async (targetCName, slug, extraCName = null) => {
             const newHpWB = Math.min(p._resolved?.maxHp ?? p.maxHp ?? 999, (p.hp || 0) + wbHeal);
             await db.updatePlayerHPInDB(targetCName, newHpWB);
             db.saveRollToDB({ cName: targetCName, type: 'HEAL', res: wbHeal, newHp: newHpWB, maxHp: p._resolved?.maxHp ?? p.maxHp,
-                color: '#2ecc71', flavor: `✨ Wholeness of Body: ${targetCName} regains ${wbHeal} HP!`, ts: Date.now() });
+                color: '#2ecc71', flavor: `${iconImg('✨','14px')} Wholeness of Body: ${targetCName} regains ${wbHeal} HP!`, ts: Date.now() });
             break;
         }
 
@@ -641,7 +643,7 @@ window.longRest = async (targetCName) => {
 
 window.rerollAllInitiatives = async () => {
     if (userRole !== 'dm') return;
-    const ok = await crConfirm(t('reroll_confirm_msg'), t('reroll_confirm_title'), '🎲', t('reroll_confirm_ok'), t('confirm_cancel'));
+    const ok = await crConfirm(t('reroll_confirm_msg'), t('reroll_confirm_title'), iconImg('🎲','18px'), t('reroll_confirm_ok'), t('confirm_cancel'));
     if (!ok) return;
     // Reset turn to 0
     currentActiveTurn  = 0;
@@ -655,7 +657,7 @@ window.rerollAllInitiatives = async () => {
         const newScore  = Math.floor(Math.random() * 20) + 1 + initBonus;
         db.setPlayerInitiativeInDB(c.name, p.pName || c.name, newScore, p.pColor || '#e74c3c');
     }
-    db.saveRollToDB({ cName: "DM", type: "STATUS", status: `🎲 Initiatives re-rolled! Round 1`, ts: Date.now() });
+    db.saveRollToDB({ cName: "DM", type: "STATUS", status: `${iconImg('🎲','14px')} Initiatives re-rolled! Round 1`, ts: Date.now() });
 };
 
 
@@ -714,7 +716,7 @@ function _showLairActionPrompt(npcName, lairActions) {
         btn.onclick = () => {
             const action = shown[parseInt(btn.dataset.idx)];
             db.saveRollToDB({ cName: npcName, type: 'STATUS',
-                status: `🏰 Lair Action: ${action.name}${action.desc ? ' — ' + action.desc.slice(0, 80) + (action.desc.length > 80 ? '…' : '') : ''}`,
+                status: `${iconImg('🏰','14px')} Lair Action: ${action.name}${action.desc ? ' — ' + action.desc.slice(0, 80) + (action.desc.length > 80 ? '…' : '') : ''}`,
                 ts: Date.now() });
             clearTimeout(timer); remove();
         };
@@ -762,7 +764,7 @@ window.hideSpinner = hideSpinner;
 
 // Styled replacement for native confirm()
 // Returns a Promise<boolean>
-export function crConfirm(msg, title='Are you sure?', icon='⚠️', okLabel='Confirm', cancelLabel='Cancel') {
+export function crConfirm(msg, title='Are you sure?', icon=iconImg('⚠️','18px'), okLabel='Confirm', cancelLabel='Cancel') {
     return new Promise(resolve => {
         const overlay = document.getElementById('cr-confirm-overlay');
         if (!overlay) { resolve(window.confirm(msg)); return; }  // fallback
@@ -1154,6 +1156,12 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
     if (lobbyWrapper) lobbyWrapper.style.display = 'none';
     const gameScreen = document.getElementById('game-screen');
     if (gameScreen) gameScreen.style.display = 'flex';
+    // Show in-game settings button
+    const _settingsBtn = document.getElementById('game-settings-btn');
+    if (_settingsBtn) {
+        _settingsBtn.style.display = 'flex';
+        _settingsBtn.onclick = () => openDashboard(isCampaign ? roomCode : null, role === 'dm');
+    }
     const titleHeader = document.querySelector('#side-panel h3');
     const modeLabel   = isCampaign ? iconImg('⚔️', '18px', 'Campaign') + ' ' : '';
     if (titleHeader) titleHeader.innerHTML = `${modeLabel}${_esc(t('party_title'))} (${_esc(roomCode)})`;
@@ -1686,7 +1694,7 @@ window.rollDamageMacro = async (targetCName, attackName, diceString, bonus, acti
     try { finalRes = (await roll3DDice(diceString)).reduce((s, d) => s + d.value, 0); }
     catch { isCooldown = false; setDiceCooldown(false); return; }
     const flavor = isHeal
-        ? `💚 ${attackName} — ${t('pt_action_type_heal')}!`
+        ? `${iconImg('💚','14px')} ${attackName} — ${t('pt_action_type_heal')}!`
         : `${t('log_roll_dmg')} ${attackName}!`;
     db.saveRollToDB({ pName: p?.pName || "DM", cName: targetCName, type: diceString, res: finalRes, mod: parseInt(bonus)||0, color: macroColor, mode: 'normal', flavor, ts: Date.now() });
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
@@ -1742,7 +1750,7 @@ window.changeHP = async (targetCName, isPlus) => {
     // Auto-break concentration on damage
     if (!isPlus && p.concentrating) {
         db.updateConcentrationInDB(targetCName, false);
-        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: `🔮 ${targetCName} lost concentration! (took damage)`, ts: Date.now() });
+        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: t('combat_lost_concentration').replace('{name}', targetCName), ts: Date.now() });
     }
     // Auto-apply Unconscious on 0 HP (4C)
     if (newHp <= 0 && !(p.statuses || []).includes('Unconscious')) {
@@ -1765,7 +1773,7 @@ window.toggleStatus = async (targetCName, status) => {
 
 window.removeNPC = async (targetCName) => {
     if (userRole !== 'dm') return;
-    if (await crConfirm(`${t('remove_confirm_msg')||'Remove'} ${targetCName}?`, t('remove_char_title')||'Remove Character', '🗑️', t('remove_confirm_ok'), t('confirm_cancel'))) {
+    if (await crConfirm(`${t('remove_confirm_msg')||'Remove'} ${targetCName}?`, t('remove_char_title')||'Remove Character', iconImg('🗑️','18px'), t('remove_confirm_ok'), t('confirm_cancel'))) {
         db.removePlayerFromDB(targetCName);
         if (activeRoller?.cName === targetCName) window.resetRoller();
         if (currentActiveTurn !== null && sortedCombatants.length > 1) {
@@ -2295,7 +2303,7 @@ function _renderSceneGallery(scenes) {
                 ? `<img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" class="scene-thumb-img" alt="${s.name||'Scene'}" onerror="this.style.display='none'">`
                 : `<div class="scene-thumb">${iconImg('🎬', '28px', 'Video')}</div>`;
         } else {
-            const _weatherIcon = s.atmosphere?.weather==='fog'?'🌫':s.atmosphere?.weather==='heavy_rain'?'⛈':s.atmosphere?.weather==='blizzard'?'❄️':'🗺';
+            const _weatherIcon = s.atmosphere?.weather==='fog'?iconImg('🌫','14px'):s.atmosphere?.weather==='heavy_rain'?iconImg('⛈','14px'):s.atmosphere?.weather==='blizzard'?iconImg('❄️','14px'):iconImg('🗺️','14px');
             thumbHtml = `<div class="scene-thumb">${iconImg(_weatherIcon, '28px', 'Scene')}</div>`;
         }
         const isLive = id === activeSceneId;
@@ -2310,7 +2318,7 @@ function _renderSceneGallery(scenes) {
             <div class="scene-card-btns">
                 <button class="scene-card-btn live"  title="Go Live"  onclick="window.activateScene('${id}')">▶</button>
                 <button class="scene-card-btn edit"  title="Edit"     onclick="window.editScene('${id}')">✎</button>
-                <button class="scene-card-btn del"   title="Delete"   onclick="window.deleteScene('${id}')">🗑</button>
+                <button class="scene-card-btn del"   title="Delete"   onclick="window.deleteScene('${id}')">${iconImg('🗑️','14px')}</button>
             </div>
         </div>`;
     }).join('');
@@ -2358,6 +2366,9 @@ window.openSceneWizard = (existingData=null) => {
             onGoLive: (id, data) => {
                 activeSceneId = id;
                 _activateMapCanvas(data);
+                // Auto-broadcast scene to all players
+                db.setDisplay(db.getActiveRoom(), { mode: 'scene', sceneId: id });
+                _syncBcBar('scene');
             },
         });
     } else {
@@ -2438,13 +2449,14 @@ function _applyDisplay(data) {
 }
 
 function _syncBcBar(mode) {
-    ['default','scene','present'].forEach(m => {
-        document.getElementById(`bc-${m}`)?.classList.toggle('bc-active', m === mode);
-    });
+    const stopBtn = document.getElementById('bc-stop');
+    const presentBtn = document.getElementById('bc-present');
+    if (stopBtn) stopBtn.style.display = (mode !== 'default') ? '' : 'none';
+    if (presentBtn) presentBtn.classList.toggle('bc-active', mode === 'present');
 }
 
-window._broadcastDefault  = () => { db.setDisplay(db.getActiveRoom(), { mode: 'default' }); _syncBcBar('default'); showToast(t('dm_broadcast_toast_table') || '📡 Table view', 'info'); };
-window._broadcastScene    = () => { db.setDisplay(db.getActiveRoom(), { mode: 'scene'   }); _syncBcBar('scene');   showToast(t('dm_broadcast_toast_scene') || '📡 Scene view', 'info'); };
+window._broadcastDefault  = () => { db.setDisplay(db.getActiveRoom(), { mode: 'default' }); _syncBcBar('default'); showToast(t('dm_broadcast_toast_table') || '📡 Broadcast stopped', 'info'); };
+window._broadcastScene    = () => { db.setDisplay(db.getActiveRoom(), { mode: 'scene', sceneId: activeSceneId }); _syncBcBar('scene'); showToast(t('dm_broadcast_toast_scene') || '📡 Scene live', 'info'); };
 window._broadcastPresent  = () => {
     const url = window.prompt('Paste an image URL or a YouTube URL to present to all players:');
     if (!url || !url.trim()) return;
@@ -2463,6 +2475,7 @@ window.toggleScenePanel = () => {
 };
 
 window.toggleNPCPanel = () => {
+    if (userRole !== 'dm') return;
     const panel = document.getElementById('dm-npc-controls');
     const chev  = document.getElementById('npc-panel-chevron');
     const open  = panel.style.display === 'none';
@@ -2673,6 +2686,9 @@ const _CREDITS = [
     { n: 'YouTube IFrame API', l: 'YouTube Terms of Service', u: 'https://developers.google.com/youtube/iframe_api_reference', d: 'Animated battle map video backgrounds via YouTube embed', c: '#FF0000' },
     { n: 'Kevin MacLeod', l: 'CC BY 4.0 (Required)', u: 'https://incompetech.com/', d: 'Background music library — incompetech.com', c: '#1abc9c', req: true },
     { n: 'FreePD.com', l: 'CC0 Public Domain', u: 'https://freepd.com/', d: 'Additional background music tracks', c: '#27AE60' },
+    { n: 'DiceBear', l: 'MIT', u: 'https://www.dicebear.com/', d: 'Avatar generation API for NPC and wild shape portraits', c: '#5B21B6' },
+    { n: 'Google Fonts (Assistant)', l: 'OFL', u: 'https://fonts.google.com/', d: 'Primary UI typeface', c: '#4285F4' },
+    { n: 'DOMPurify', l: 'Apache 2.0', u: 'https://github.com/cure53/DOMPurify', d: 'HTML sanitization for user-generated content', c: '#2ECC71' },
 ];
 
 function _buildCreditCard(lib) {
@@ -2802,7 +2818,7 @@ window.openActionAssignPanel = function(slotIdx) {
     if (!list) return;
     list.innerHTML = '';
     if (!_charActions.length) {
-        list.innerHTML = '<div style="padding:8px;color:rgba(255,255,255,0.5);font-size:12px;">No custom actions defined.<br>Add them in the character creator.</div>';
+        list.innerHTML = `<div style="padding:8px;color:rgba(255,255,255,0.5);font-size:12px;">${t('pt_no_actions')}</div>`;
     } else {
         _charActions.forEach((action, idx) => {
             const item = document.createElement('button');
@@ -2823,7 +2839,7 @@ window.openActionAssignPanel = function(slotIdx) {
             const clear = document.createElement('button');
             clear.className = 'pt-picker-item';
             clear.style.borderColor = 'rgba(200,60,60,0.3)';
-            clear.innerHTML = '<span class="pt-picker-icon">✕</span><span class="pt-picker-name" style="color:rgba(200,100,100,0.9)">Clear Slot</span>';
+            clear.innerHTML = `<span class="pt-picker-icon">✕</span><span class="pt-picker-name" style="color:rgba(200,100,100,0.9)">${t('pt_clear_slot')}</span>`;
             clear.onclick = () => { _ptSlots[slotIdx] = null; _savePtSlots(); _renderPtActionSlot(slotIdx); window._closePtPopups(); };
             list.appendChild(clear);
         }
@@ -2865,7 +2881,7 @@ window.openSpecialAbilitiesMenu = function() {
     }
 
     if (!actions.length) {
-        list.innerHTML = '<div style="padding:8px;color:rgba(255,255,255,0.5);font-size:12px;">No special abilities for this class.</div>';
+        list.innerHTML = `<div style="padding:8px;color:rgba(255,255,255,0.5);font-size:12px;">${t('pt_no_special')}</div>`;
     } else {
         actions.forEach(ab => {
             const btn = document.createElement('button');

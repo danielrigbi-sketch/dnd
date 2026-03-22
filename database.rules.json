@@ -5,7 +5,7 @@
         ".read": "auth != null",
 
         "dm_uid": {
-          ".write": "auth != null && (!data.exists() || data.val() === auth.uid)"
+          ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && root.child('users/' + auth.uid + '/subscription/tier').val() !== 'player'"
         },
 
         "players": {
@@ -32,6 +32,10 @@
         },
 
         "round_number": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+        },
+
+        "display": {
           ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
         },
 
@@ -76,9 +80,10 @@
 
     "campaigns": {
       "$cId": {
+        ".write": "auth != null && !newData.exists() && root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid",
         "meta": {
           ".read": "auth != null",
-          ".write": "auth != null && (newData.child('dmUid').val() === auth.uid || root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid)"
+          ".write": "auth != null && (newData.child('dmUid').val() === auth.uid || root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid) && root.child('users/' + auth.uid + '/subscription/tier').val() !== 'player'"
         },
         "allowedPlayers": {
           ".read": "auth != null",
@@ -89,9 +94,50 @@
         "pendingRequests": {
           ".read": "auth != null && root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid",
           "$uid": {
-            ".read": "auth != null && auth.uid === $uid",
-            ".write": "auth != null && auth.uid === $uid"
+            ".read": "auth != null && (auth.uid === $uid || root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid)",
+            ".write": "auth != null && (auth.uid === $uid || root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid)"
           }
+        },
+        "mechanics": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid"
+        }
+      }
+    },
+
+    "admin": {
+      ".read": "auth != null && auth.token.email === 'danielrigbi@gmail.com'",
+      ".write": "auth != null && auth.token.email === 'danielrigbi@gmail.com'",
+      "bugReports": {
+        "$reportId": {
+          ".write": "auth != null"
+        }
+      },
+      "founderCount": {
+        ".read": "auth != null"
+      },
+      "webhookLog": {
+        ".read": "auth != null && auth.token.email === 'danielrigbi@gmail.com'"
+      }
+    },
+
+    "communityHub": {
+      "listings": {
+        ".read": "auth != null",
+        ".indexOn": ["createdAt", "status", "schedule/date"],
+        "$listingId": {
+          ".write": "auth != null && (newData.child('dmUid').val() === auth.uid || data.child('dmUid').val() === auth.uid) && root.child('users/' + auth.uid + '/subscription/tier').val() !== 'player'",
+          "rsvps": {
+            "$uid": {
+              ".write": "auth != null && $uid === auth.uid"
+            }
+          }
+        }
+      },
+      "userProfiles": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && $uid === auth.uid"
         }
       }
     }

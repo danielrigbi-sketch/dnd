@@ -1937,6 +1937,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 /* ── Custom Icon utility (Canva-generated PNG replacements for emojis) ── */
 .custom-icon {
     display: inline-block;
+    width: 28px; height: 28px;
     object-fit: contain;
     vertical-align: -0.15em;
     filter: drop-shadow(0 0 3px rgba(200,135,58,0.35));
@@ -2445,14 +2446,22 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 .act-icon-gallery {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 6px;
     margin-top: 8px;
     padding-top: 6px;
     border-top: 1px dashed rgba(255,255,255,0.08);
 }
+.act-icon-gallery::before {
+    content: attr(data-label);
+    display: block;
+    width: 100%;
+    font-size: 10px;
+    color: #aaa;
+    margin-bottom: 2px;
+}
 .act-icon-btn {
-    width: 30px;
-    height: 30px;
+    width: 40px;
+    height: 40px;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.1);
     border-radius: 6px;
@@ -2462,6 +2471,13 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     align-items: center;
     justify-content: center;
     transition: all 0.12s;
+    overflow: hidden;
+}
+.act-icon-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
 }
 .act-icon-btn.selected {
     background: rgba(200,135,58,0.3);
@@ -3529,28 +3545,104 @@ body.dm-view #music-panel      { bottom: calc(10.9375vw + 10px) !important; }
 .cb-class-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 4px;
 }
 .cb-class-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
-    padding: 8px 4px;
-    border-radius: 8px;
+    justify-content: flex-end;
+    aspect-ratio: 3 / 4;
+    border-radius: 10px;
     cursor: pointer;
-    border: 2px solid rgba(255,255,255,0.06);
-    background: rgba(0,0,0,0.35);
-    transition: all 0.18s;
+    border: 2px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.5);
+    transition: all 0.25s ease;
     font-size: 10px;
-    color: #aaa;
+    color: #ccc;
     text-align: center;
+    overflow: hidden;
+    padding: 0;
 }
-.cb-class-card:hover { background: rgba(200,135,58,0.12); border-color: rgba(200,135,58,0.35); color: #c8873a; }
-.cb-class-card.selected { background: rgba(200,135,58,0.18); border-color: #c8873a; color: #f1c40f; }
-.cb-class-card-icon { font-size: 22px; line-height: 1; }
-.cb-class-card-name { font-weight: 700; font-size: 9px; letter-spacing: 0.04em; }
+.cb-class-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 40%, transparent 70%);
+    pointer-events: none;
+    transition: background 0.25s ease;
+    border-radius: 8px;
+}
+.cb-class-card:hover {
+    border-color: rgba(200,135,58,0.6);
+    box-shadow: 0 0 20px rgba(200,100,20,0.25), inset 0 0 30px rgba(200,100,20,0.08);
+    transform: translateY(-3px) scale(1.03);
+}
+.cb-class-card:hover::after {
+    background: linear-gradient(0deg, rgba(15,8,2,0.92) 0%, rgba(80,40,10,0.3) 45%, transparent 75%);
+}
+.cb-class-card.selected {
+    border-color: #c8873a;
+    box-shadow: 0 0 24px rgba(200,135,58,0.4), inset 0 0 20px rgba(200,135,58,0.1);
+}
+.cb-class-card.selected::after {
+    background: linear-gradient(0deg, rgba(30,15,4,0.9) 0%, rgba(100,50,10,0.25) 40%, transparent 70%);
+}
+.cb-class-card-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cb-class-card-icon img,
+.cb-class-card-icon .custom-icon {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    border-radius: 8px;
+}
+.cb-class-card-name {
+    position: relative;
+    z-index: 2;
+    font-weight: 900;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #e8d5b5;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.5);
+    padding: 0 6px 2px;
+    transition: all 0.25s ease;
+}
+.cb-class-card:hover .cb-class-card-name { color: #f1c40f; }
+.cb-class-card.selected .cb-class-card-name { color: #f1c40f; text-shadow: 0 0 12px rgba(200,135,58,0.6), 0 1px 4px rgba(0,0,0,0.9); }
+
+/* Golden shimmer on selected card */
+.cb-class-card.selected::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, transparent 40%, rgba(200,135,58,0.15) 50%, transparent 60%);
+    background-size: 200% 200%;
+    animation: cb-card-shimmer 3s ease infinite;
+    z-index: 1;
+    pointer-events: none;
+}
+@keyframes cb-card-shimmer {
+    0% { background-position: 200% 200%; }
+    100% { background-position: -200% -200%; }
+}
+
+/* Responsive: 3 columns on small screens, 5 on wide */
+@media (max-width: 420px) {
+    .cb-class-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+}
+@media (min-width: 600px) {
+    .cb-class-grid { grid-template-columns: repeat(5, 1fr); }
+}
 
 /* ── Navigation Footer ── */
 .cb-wizard-nav {
@@ -3589,16 +3681,22 @@ body.dm-view #music-panel      { bottom: calc(10.9375vw + 10px) !important; }
 
 /* ── Card taglines (race/class/subclass/belief) ── */
 .cb-card-tagline {
+    position: relative;
+    z-index: 2;
     font-size: 8px;
-    color: #888;
+    font-style: italic;
+    color: rgba(200,180,150,0.7);
     line-height: 1.3;
     text-align: center;
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 0 6px 8px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: all 0.25s ease;
 }
-.cb-class-card:hover .cb-card-tagline { color: #bbb; }
-.cb-class-card.selected .cb-card-tagline { color: #c8873a; }
+.cb-class-card:hover .cb-card-tagline { opacity: 1; transform: translateY(0); color: #d4b896; }
+.cb-class-card.selected .cb-card-tagline { opacity: 1; transform: translateY(0); color: #c8873a; }
 
 /* ── Belief cards ── */
 #cb-belief-grid {
