@@ -1,0 +1,20 @@
+{
+  "name": "ParaDice VTT",
+  "short_name": "ParaDice",
+  "description": "שולחן הרפתקנים וירטואלי — D&D 5e",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080503",
+  "theme_color": "#c8873a",
+  "orientation": "any",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/assets/logo.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ]
+}
