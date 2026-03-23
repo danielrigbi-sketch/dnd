@@ -28,6 +28,7 @@ import { statusFlavor, healFlavor } from "./combatFlavor.js";
 import { compute } from "./engine/charEngine.js";
 import { skillMod, SKILL_ABILITIES, profBonus } from "./engine/combatUtils.js";
 import { MusicPlayer, MUSIC_LIBRARY, MUSIC_CATEGORIES, TRACK_BY_ID } from "./musicPlayer.js";
+import * as videoChat from "./videoChat.js";
 
 // One-time migration: move old critroll_ keys to paradice_ prefix
 ['initBonus', 'cName'].forEach(k => {
@@ -1065,6 +1066,7 @@ export function cleanupAppListeners() {
     _appUnsubs.forEach(u => { try { u?.(); } catch(_){} });
     _appUnsubs = [];
     if (_dmNotesUnsub) { try { _dmNotesUnsub(); } catch(_){} _dmNotesUnsub = null; }
+    videoChat.destroyVideoChat();
 }
 
 
@@ -1270,11 +1272,21 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
         });
     } catch(e) { console.warn('Could not load roll history:', e); }
 
+    // Safety timeout — hide spinner after 15s max even if dice engine hangs
+    const spinnerTimeout = setTimeout(() => { hideSpinner(); console.warn('[Game] Spinner timeout — forced hide'); }, 15000);
     try { await initDiceEngine(); isDiceBoxReady = true; }
     catch (e) { console.error("Dice engine failed:", e); }
+    clearTimeout(spinnerTimeout);
     hideSpinner();
     showToast(t('toast_joined'), 'success');
     setTimeout(() => { canAnimate = true; }, 800);
+
+    // ── Video Chat init ──────────────────────────────────────────────
+    if (typeof RTCPeerConnection !== 'undefined') {
+        const vcUid = db.getAuthUid() || cName;
+        const vcName = userRole === 'dm' ? 'DM' : (charData?.name || pName || 'Player');
+        videoChat.initVideoChat(roomCode, vcUid, vcName, userRole);
+    }
 }
 
 // =====================================================================
@@ -1395,7 +1407,10 @@ function _initCampaignPanel(campaignId) {
         roster.innerHTML = Object.entries(players).map(([uid, p]) => `
             <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;background:rgba(255,255,255,0.04);margin-bottom:3px;">
                 <span style="color:white;font-size:11px;"><strong>${p.playerName || '?'}</strong> · ${p.charName || '?'}</span>
-                <button class="hover-btn" onclick="window.__campaignKick('${campaignId}','${uid}')" style="background:#c0392b;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">${t('campaign_kick')}</button>
+                <div style="display:flex;gap:3px;">
+                    <button class="hover-btn" onclick="window.__campaignKick('${campaignId}','${uid}')" style="background:#c0392b;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">${t('campaign_kick')}</button>
+                    <button class="hover-btn" onclick="window.__campaignBan('${campaignId}','${uid}')" style="background:#8e44ad;color:white;padding:2px 6px;border-radius:3px;font-size:10px;">🚫</button>
+                </div>
             </div>`).join('');
     }));
 
@@ -1824,6 +1839,11 @@ window.resetRoller = () => {
 
 window.setMode      = (mode) => { activeMode = activeMode === mode ? 'normal' : mode; updateModeUI(activeMode); };
 window.getCombatMode = () => activeMode;
+window.toggleVideoChat = () => {
+    if (videoChat.isInCall()) videoChat.leaveCall();
+    else videoChat.joinCall();
+};
+
 window.toggleMute = () => {
     isMuted = !isMuted;
     const btn = document.getElementById('mute-btn');

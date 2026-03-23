@@ -1,0 +1,318 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   VIDEO CHAT — Floating overlay panel
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Panel container ──────────────────────────────────────────────────── */
+.vc-panel {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    width: 340px;
+    max-height: 70vh;
+    background: rgba(26, 14, 4, 0.96);
+    border: 1px solid #c8803a;
+    border-radius: 12px;
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    transition: width 0.2s, max-height 0.2s, opacity 0.2s;
+}
+
+.vc-panel.vc-hidden {
+    display: none;
+}
+
+.vc-panel.vc-minimized {
+    max-height: 44px;
+    width: 220px;
+}
+
+.vc-panel.vc-minimized .vc-grid,
+.vc-panel.vc-minimized .vc-controls {
+    display: none;
+}
+
+/* RTL: mirror to top-left */
+[dir="rtl"] .vc-panel {
+    right: auto;
+    left: 12px;
+}
+
+/* ── Header (drag handle) ─────────────────────────────────────────────── */
+.vc-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: rgba(200, 128, 58, 0.15);
+    cursor: grab;
+    user-select: none;
+    border-bottom: 1px solid rgba(200, 128, 58, 0.3);
+    flex-shrink: 0;
+}
+
+.vc-header:active {
+    cursor: grabbing;
+}
+
+.vc-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #c8803a;
+    flex: 1;
+    white-space: nowrap;
+}
+
+.vc-participant-count {
+    background: #c8803a;
+    color: #1a0e04;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.vc-header-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.vc-header-btn {
+    background: transparent;
+    border: 1px solid rgba(200, 128, 58, 0.3);
+    color: #c8803a;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.vc-header-btn:hover {
+    background: rgba(200, 128, 58, 0.2);
+}
+
+.vc-close-btn {
+    color: #e74c3c;
+    border-color: rgba(231, 76, 60, 0.3);
+}
+
+.vc-close-btn:hover {
+    background: rgba(231, 76, 60, 0.2);
+}
+
+/* ── DM dropdown ──────────────────────────────────────────────────────── */
+.vc-dm-dropdown {
+    position: absolute;
+    top: 44px;
+    right: 10px;
+    background: rgba(26, 14, 4, 0.98);
+    border: 1px solid #c8803a;
+    border-radius: 8px;
+    padding: 10px;
+    z-index: 910;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 180px;
+}
+
+.vc-dm-dropdown.vc-hidden {
+    display: none;
+}
+
+[dir="rtl"] .vc-dm-dropdown {
+    right: auto;
+    left: 10px;
+}
+
+.vc-dm-option {
+    color: #d4a76a;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.vc-dm-option input[type="checkbox"] {
+    accent-color: #c8803a;
+}
+
+.vc-dm-mute-all-btn {
+    background: rgba(231, 76, 60, 0.15);
+    border: 1px solid rgba(231, 76, 60, 0.4);
+    color: #e74c3c;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.15s;
+}
+
+.vc-dm-mute-all-btn:hover {
+    background: rgba(231, 76, 60, 0.3);
+}
+
+/* ── Video grid ───────────────────────────────────────────────────────── */
+.vc-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--vc-cols, 1), 1fr);
+    gap: 4px;
+    padding: 4px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ── Video tiles ──────────────────────────────────────────────────────── */
+.vc-tile {
+    position: relative;
+    background: #0d0804;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+}
+
+.vc-tile video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 8px;
+}
+
+.vc-tile-local {
+    border: 2px solid rgba(200, 128, 58, 0.5);
+}
+
+.vc-tile-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 3px 8px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+    color: #fff;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vc-tile-mute {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 14px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+[dir="rtl"] .vc-tile-mute {
+    right: auto;
+    left: 4px;
+}
+
+/* Camera-off placeholder */
+.vc-tile-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a0e04;
+}
+
+.vc-tile-placeholder-text {
+    font-size: 36px;
+    font-weight: 700;
+    color: #c8803a;
+    text-transform: uppercase;
+}
+
+/* ── Controls bar ─────────────────────────────────────────────────────── */
+.vc-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px;
+    border-top: 1px solid rgba(200, 128, 58, 0.2);
+    flex-shrink: 0;
+}
+
+.vc-control-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(200, 128, 58, 0.4);
+    background: rgba(200, 128, 58, 0.1);
+    color: #d4a76a;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.vc-control-btn:hover {
+    background: rgba(200, 128, 58, 0.25);
+    transform: scale(1.05);
+}
+
+.vc-control-btn.vc-btn-off {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.5);
+}
+
+.vc-leave-control {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: rgba(231, 76, 60, 0.5);
+}
+
+.vc-leave-control:hover {
+    background: rgba(231, 76, 60, 0.4);
+}
+
+/* ── Active toolbar button indicator ──────────────────────────────────── */
+.vc-active {
+    box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
+    border-color: #2ecc71 !important;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .vc-panel {
+        width: 100%;
+        right: 0;
+        top: 0;
+        border-radius: 0 0 12px 12px;
+        max-height: 40vh;
+    }
+
+    [dir="rtl"] .vc-panel {
+        left: 0;
+    }
+
+    .vc-tile {
+        aspect-ratio: 16 / 9;
+    }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .vc-panel,
+    .vc-control-btn {
+        transition: none;
+    }
+}

@@ -60,6 +60,14 @@
           ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
         },
 
+        "music": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+        },
+
+        "dm_notes": {
+          ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+        },
+
         "rolls": {
           ".write": "auth != null",
           ".indexOn": ["ts"]
@@ -67,6 +75,32 @@
 
         "online": {
           ".write": "auth != null"
+        },
+
+        "webrtc": {
+          "enabled": {
+            ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+          },
+          "muteAll": {
+            ".write": "auth != null && root.child('rooms/' + $roomId + '/dm_uid').val() === auth.uid"
+          },
+          "participants": {
+            "$uid": {
+              ".write": "auth != null && $uid === auth.uid"
+            }
+          },
+          "signals": {
+            "$key": {
+              ".write": "auth != null",
+              ".read": "auth != null"
+            }
+          },
+          "ice": {
+            "$key": {
+              ".write": "auth != null",
+              ".read": "auth != null"
+            }
+          }
         }
       }
     },
@@ -80,12 +114,18 @@
 
     "campaigns": {
       "$cId": {
-        ".write": "auth != null && !newData.exists() && root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid",
+        ".write": "auth != null && !newData.exists() && (root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid || root.child('users/' + auth.uid + '/dmCampaigns/' + $cId).exists())",
         "meta": {
           ".read": "auth != null",
           ".write": "auth != null && (newData.child('dmUid').val() === auth.uid || root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid) && root.child('users/' + auth.uid + '/subscription/tier').val() !== 'player'"
         },
         "allowedPlayers": {
+          ".read": "auth != null",
+          "$uid": {
+            ".write": "auth != null && root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid"
+          }
+        },
+        "bannedPlayers": {
           ".read": "auth != null",
           "$uid": {
             ".write": "auth != null && root.child('campaigns/' + $cId + '/meta/dmUid').val() === auth.uid"

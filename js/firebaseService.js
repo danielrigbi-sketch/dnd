@@ -2,7 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut, onAuthStateChanged } from "firebase/auth";
 import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { getDatabase, ref, push, onChildAdded, set, onDisconnect, onValue, remove, query, limitToLast, orderByKey, update, get } from "firebase/database";
+import { getDatabase, ref, push, onChildAdded, onChildRemoved, set, onDisconnect, onValue, remove, query, limitToLast, orderByKey, orderByChild, update, get, off } from "firebase/database";
 import { firebaseConfig } from "./constants.js";
 
 const app = initializeApp(firebaseConfig);
@@ -64,6 +64,7 @@ export async function checkRedirectResult() {
 }
 export function logoutUser()                   { return signOut(auth); }
 export function listenToAuthState(callback)    { onAuthStateChanged(auth, user => callback(user)); }
+export function patchUser(uid, data)           { return update(ref(db, `users/${uid}`), data); }
 export function saveCharacterToVault(uid, d)   { return set(push(ref(db, `users/${uid}/characters`)), d); }
 export function listenToUserCharacters(uid, cb){ onValue(ref(db, `users/${uid}/characters`), s => cb(s.val())); }
 
@@ -134,6 +135,12 @@ export async function isCampaignPlayer(campaignId, uid) {
     return snap.exists() && snap.val().approved === true;
 }
 
+export async function getCampaignPlayerData(campaignId, uid) {
+    if (!uid) return null;
+    const snap = await get(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`));
+    return snap.exists() ? snap.val() : null;
+}
+
 // Must be called from the PLAYER's own client — writes to their own users/ node.
 // approveCampaignPlayer cannot do this because it runs on the DM's client (wrong auth UID).
 export async function savePlayerCampaignIndex(campaignId, uid) {
@@ -172,20 +179,55 @@ export async function approveCampaignPlayer(campaignId, uid) {
         playerName: req.playerName, charName: req.charName, approved: true
     });
     await remove(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`));
-    // Store reference under player's own user record
-    await set(ref(db, `users/${uid}/playerCampaigns/${campaignId}`), {
-        name: meta?.name || campaignId, dmName: meta?.dmName || '?',
-        charName: req.charName, lastSession: meta?.lastSession || Date.now()
-    });
+    // Note: users/{uid}/playerCampaigns is written by the PLAYER's own client on approval
+    // (in campaign.js _showWaitingScreen → listenToApprovalStatus callback)
+    // Cannot be written here — Firebase rules block DM from writing to other users' nodes.
 }
 
 export async function denyCampaignRequest(campaignId, uid) {
     await remove(ref(db, `campaigns/${campaignId}/pendingRequests/${uid}`));
 }
 
+export async function isBannedFromCampaign(campaignId, uid) {
+    if (!uid) return false;
+    const snap = await get(ref(db, `campaigns/${campaignId}/bannedPlayers/${uid}`));
+    return snap.exists();
+}
+
+export async function banCampaignPlayer(campaignId, uid) {
+    // Read player data before removing
+    const playerSnap = await get(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`));
+    const playerData = playerSnap.val() || {};
+    // Write to ban list
+    await set(ref(db, `campaigns/${campaignId}/bannedPlayers/${uid}`), {
+        playerName: playerData.playerName || 'Unknown',
+        charName: playerData.charName || '',
+        bannedAt: Date.now(),
+    });
+    // Then kick (removes from allowedPlayers, room, initiative, tokens)
+    await kickCampaignPlayer(campaignId, uid);
+}
+
+export async function unbanCampaignPlayer(campaignId, uid) {
+    await remove(ref(db, `campaigns/${campaignId}/bannedPlayers/${uid}`));
+}
+
 export async function kickCampaignPlayer(campaignId, uid) {
+    // Get the player's charName so we can remove them from the room too
+    const playerSnap = await get(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`));
+    const charName = playerSnap.val()?.charName;
+
     await remove(ref(db, `campaigns/${campaignId}/allowedPlayers/${uid}`));
-    await remove(ref(db, `users/${uid}/playerCampaigns/${campaignId}`));
+
+    // Remove from room players list + initiative + map tokens (campaign room ID = campaign ID)
+    if (charName) {
+        const safeName = sanitizeCName(charName);
+        await remove(ref(db, `rooms/${campaignId}/players/${safeName}`)).catch(() => {});
+        await remove(ref(db, `rooms/${campaignId}/initiative/${safeName}`)).catch(() => {});
+        await remove(ref(db, `rooms/${campaignId}/map/tokens/${safeName}`)).catch(() => {});
+    }
+    // Note: cannot remove users/{uid}/playerCampaigns from DM's client (Firebase rules block it).
+    // The kicked player's campaign card will remain until they leave manually or the listener detects removal.
 }
 
 // Player removes themselves from their own campaign list (e.g. after DM deleted the campaign)
@@ -374,9 +416,9 @@ export async function purgeOldRolls() {
         const toDelete = keys.slice(0, keys.length - MAX_ROLLS);
         const deletions = toDelete.map(k => remove(ref(db, `rooms/${activeRoom}/rolls/${k}`)));
         await Promise.all(deletions);
-        console.info(`[CritRoll] Purged ${toDelete.length} old roll log entries.`);
+        console.info(`[ParaDice] Purged ${toDelete.length} old roll log entries.`);
     } catch (e) {
-        console.warn('[CritRoll] purgeOldRolls failed:', e);
+        console.warn('[ParaDice] purgeOldRolls failed:', e);
     }
 }
 
@@ -559,6 +601,58 @@ export function patchClassResources(cName, patch) {
     update(ref(db, `rooms/${activeRoom}/players/${k}`), flatPatch);
 }
 
+// ── S15: DM Session Notes ─────────────────────────────────────────────────────
+
+/**
+ * S15: Get the Firebase ref for DM notes in the current room/campaign.
+ * @param {boolean} isCampaign
+ * @param {string}  [noteId]   — omit for the collection ref
+ */
+function _dmNoteRef(isCampaign, noteId) {
+    const base = isCampaign
+        ? `campaigns/${activeRoom}/dm_notes`
+        : `rooms/${activeRoom}/dm_notes`;
+    return noteId ? ref(db, `${base}/${noteId}`) : ref(db, base);
+}
+
+/**
+ * Save (create or overwrite) a DM note.
+ * @param {string}  id
+ * @param {{ title:string, content:string, tag:string }} noteData
+ * @param {boolean} isCampaign
+ */
+export function saveDMNote(id, noteData, isCampaign) {
+    return set(_dmNoteRef(isCampaign, id), { ...noteData, id, updatedAt: Date.now() });
+}
+
+/**
+ * Delete a DM note by id.
+ * @param {string}  id
+ * @param {boolean} isCampaign
+ */
+export function deleteDMNote(id, isCampaign) {
+    return remove(_dmNoteRef(isCampaign, id));
+}
+
+/**
+ * Subscribe to DM notes (real-time). Returns an unsubscribe function.
+ * @param {function} cb          — called with an array of note objects on each change
+ * @param {boolean}  isCampaign
+ * @returns {function}  unsubscribe
+ */
+export function listenDMNotes(cb, isCampaign) {
+    const r = _dmNoteRef(isCampaign);
+    const unsub = onValue(r, snap => {
+        const notes = [];
+        if (snap.exists()) {
+            snap.forEach(child => notes.push(child.val()));
+        }
+        notes.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        cb(notes);
+    });
+    return unsub;
+}
+
 // ── S14: Portrait Upload ──────────────────────────────────────────────────────
 
 const _storage = getStorage();
@@ -571,6 +665,134 @@ const _storage = getStorage();
  * @param {Function} onProgress — optional callback(0–100)
  * @returns {Promise<string>} public download URL
  */
+// ==========================================
+// User Preferences
+// ==========================================
+export async function getUserPreferences(uid) {
+    if (!uid) return {};
+    const snap = await get(ref(db, `users/${uid}/preferences`));
+    return snap.val() || {};
+}
+export function setUserPreference(uid, key, value) {
+    if (!uid || !key) return;
+    return update(ref(db, `users/${uid}/preferences`), { [key]: value });
+}
+export function listenToUserPreferences(uid, cb) {
+    if (!uid) return;
+    return onValue(ref(db, `users/${uid}/preferences`), s => cb(s.val() || {}));
+}
+
+// ==========================================
+// Campaign Mechanics (variant rules)
+// ==========================================
+export async function getCampaignMechanics(campaignId) {
+    if (!campaignId) return {};
+    const snap = await get(ref(db, `campaigns/${campaignId}/mechanics`));
+    return snap.val() || {};
+}
+export function setCampaignMechanic(campaignId, key, value) {
+    if (!campaignId || !key) return;
+    return update(ref(db, `campaigns/${campaignId}/mechanics`), { [key]: value });
+}
+export function setRoomMechanics(roomCode, mechanics) {
+    if (!roomCode) return;
+    return set(ref(db, `rooms/${roomCode}/mechanics`), mechanics);
+}
+export async function getRoomMechanics(roomCode) {
+    if (!roomCode) return {};
+    const snap = await get(ref(db, `rooms/${roomCode}/mechanics`));
+    return snap.val() || {};
+}
+
+// ==========================================
+// Portrait Upload
+// ==========================================
+// ==========================================
+// Community Hub — Listings
+// ==========================================
+
+export async function createListing(listingId, data) {
+    await set(ref(db, `communityHub/listings/${listingId}`), data);
+}
+
+export async function updateListing(listingId, updates) {
+    await update(ref(db, `communityHub/listings/${listingId}`), updates);
+}
+
+export async function deleteListing(listingId) {
+    await remove(ref(db, `communityHub/listings/${listingId}`));
+}
+
+export function listenToListings(cb) {
+    return onValue(
+        query(ref(db, 'communityHub/listings'), orderByChild('createdAt')),
+        s => cb(s.val())
+    );
+}
+
+export async function getListing(listingId) {
+    const snap = await get(ref(db, `communityHub/listings/${listingId}`));
+    return snap.val();
+}
+
+export async function rsvpToListing(listingId, uid, data) {
+    await set(ref(db, `communityHub/listings/${listingId}/rsvps/${uid}`), data);
+}
+
+export async function cancelRsvp(listingId, uid) {
+    await remove(ref(db, `communityHub/listings/${listingId}/rsvps/${uid}`));
+}
+
+export async function updateListingPlayerCount(listingId, count) {
+    await update(ref(db, `communityHub/listings/${listingId}`), { currentPlayers: count });
+}
+
+// ==========================================
+// Community Hub — User Profiles
+// ==========================================
+
+export async function saveUserProfile(uid, data) {
+    await set(ref(db, `users/${uid}/profile`), data);
+}
+
+export async function getUserProfilePrivate(uid) {
+    const snap = await get(ref(db, `users/${uid}/profile`));
+    return snap.val();
+}
+
+export async function syncPublicProfile(uid, publicData) {
+    await set(ref(db, `communityHub/userProfiles/${uid}`), publicData);
+}
+
+export async function getPublicProfile(uid) {
+    const snap = await get(ref(db, `communityHub/userProfiles/${uid}`));
+    return snap.val();
+}
+
+export function listenToLFGPlayers(cb) {
+    return onValue(ref(db, 'communityHub/userProfiles'), s => {
+        const all = s.val() || {};
+        const lfg = {};
+        for (const [uid, profile] of Object.entries(all)) {
+            if (profile.lfg) lfg[uid] = profile;
+        }
+        cb(lfg);
+    });
+}
+
+/** Close all public listings by a specific DM (e.g. on subscription downgrade). */
+export async function closeAllListings(dmUid) {
+    const snap = await get(ref(db, 'communityHub/listings'));
+    if (!snap.exists()) return;
+    const updates = {};
+    snap.forEach(child => {
+        if (child.val().dmUid === dmUid) {
+            updates[`communityHub/listings/${child.key}/status`] = 'closed';
+        }
+    });
+    if (Object.keys(updates).length) await update(ref(db), updates);
+}
+
 export function uploadPortrait(uid, file, onProgress) {
     return new Promise((resolve, reject) => {
         const ext  = (file.name.split('.').pop() || 'jpg').toLowerCase();
@@ -582,4 +804,82 @@ export function uploadPortrait(uid, file, onProgress) {
             async () => resolve(await getDownloadURL(task.snapshot.ref))
         );
     });
+}
+
+// ==========================================
+// Video Chat — WebRTC signaling via RTDB
+// ==========================================
+
+export function setVideoChatParticipant(roomCode, uid, data) {
+    const pRef = ref(db, `rooms/${roomCode}/webrtc/participants/${uid}`);
+    set(pRef, data);
+    onDisconnect(pRef).remove();
+}
+
+export function updateVideoChatParticipant(roomCode, uid, updates) {
+    update(ref(db, `rooms/${roomCode}/webrtc/participants/${uid}`), updates);
+}
+
+export function removeVideoChatParticipant(roomCode, uid) {
+    remove(ref(db, `rooms/${roomCode}/webrtc/participants/${uid}`));
+}
+
+export function listenToVideoChatParticipants(roomCode, onAdded, onRemoved) {
+    const pRef = ref(db, `rooms/${roomCode}/webrtc/participants`);
+    const addUnsub = onChildAdded(pRef, snap => onAdded(snap.key, snap.val()));
+    const remUnsub = onChildRemoved(pRef, snap => onRemoved(snap.key));
+    return () => { addUnsub(); remUnsub(); };
+}
+
+export function listenToVideoChatParticipantChanges(roomCode, uid, cb) {
+    const pRef = ref(db, `rooms/${roomCode}/webrtc/participants/${uid}`);
+    return onValue(pRef, snap => cb(snap.val()));
+}
+
+export function writeSignal(roomCode, fromUid, toUid, signal) {
+    set(ref(db, `rooms/${roomCode}/webrtc/signals/${fromUid}_${toUid}`), signal);
+}
+
+export function listenToSignal(roomCode, fromUid, toUid, cb) {
+    const sRef2 = ref(db, `rooms/${roomCode}/webrtc/signals/${fromUid}_${toUid}`);
+    return onValue(sRef2, snap => { if (snap.exists()) cb(snap.val()); });
+}
+
+export function pushIceCandidate(roomCode, fromUid, toUid, candidate) {
+    push(ref(db, `rooms/${roomCode}/webrtc/ice/${fromUid}_${toUid}`), candidate);
+}
+
+export function listenToIceCandidates(roomCode, fromUid, toUid, cb) {
+    const iRef = ref(db, `rooms/${roomCode}/webrtc/ice/${fromUid}_${toUid}`);
+    return onChildAdded(iRef, snap => cb(snap.val()));
+}
+
+export function clearWebRTCSignaling(roomCode, uid) {
+    // Remove own participant + all signal/ice paths involving this uid
+    remove(ref(db, `rooms/${roomCode}/webrtc/participants/${uid}`));
+}
+
+export function clearWebRTCPeerSignaling(roomCode, localUid, remoteUid) {
+    remove(ref(db, `rooms/${roomCode}/webrtc/signals/${localUid}_${remoteUid}`));
+    remove(ref(db, `rooms/${roomCode}/webrtc/signals/${remoteUid}_${localUid}`));
+    remove(ref(db, `rooms/${roomCode}/webrtc/ice/${localUid}_${remoteUid}`));
+    remove(ref(db, `rooms/${roomCode}/webrtc/ice/${remoteUid}_${localUid}`));
+}
+
+export function setVideoChatEnabled(roomCode, enabled) {
+    set(ref(db, `rooms/${roomCode}/webrtc/enabled`), enabled);
+}
+
+export function listenToVideoChatEnabled(roomCode, cb) {
+    const eRef = ref(db, `rooms/${roomCode}/webrtc/enabled`);
+    return onValue(eRef, snap => cb(snap.val() ?? true));
+}
+
+export function setVideoChatMuteAll(roomCode, muteAll) {
+    set(ref(db, `rooms/${roomCode}/webrtc/muteAll`), muteAll);
+}
+
+export function listenToVideoChatMuteAll(roomCode, cb) {
+    const mRef = ref(db, `rooms/${roomCode}/webrtc/muteAll`);
+    return onValue(mRef, snap => cb(snap.val() ?? false));
 }

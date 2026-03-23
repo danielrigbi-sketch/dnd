@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="css/diceStyles.css">
     <link rel="stylesheet" href="css/a11y.css">
     <link rel="stylesheet" href="css/communityHub.css">
+    <link rel="stylesheet" href="css/videoChat.css">
 </head>
 <body id="main-body" style="margin: 0; height: 100vh; overflow: hidden; background-color: #080503;">
 
@@ -298,9 +299,9 @@
 
     <!-- Legal footer links (visible on auth + lobby screens) -->
     <div id="legal-footer" style="position:fixed;bottom:4px;right:14px;z-index:2000;font-size:9px;color:#444;display:flex;gap:10px;">
-        <a href="/legal/terms.html" target="_blank" style="color:#555;text-decoration:none;" data-i18n="legal_terms">Terms</a>
-        <a href="/legal/privacy.html" target="_blank" style="color:#555;text-decoration:none;" data-i18n="legal_privacy">Privacy</a>
-        <a href="/legal/accessibility.html" target="_blank" style="color:#555;text-decoration:none;" data-i18n="legal_accessibility">Accessibility</a>
+        <a href="/legal/terms.html" target="_blank" rel="noopener" style="color:#555;text-decoration:none;" data-i18n="legal_terms">Terms</a>
+        <a href="/legal/privacy.html" target="_blank" rel="noopener" style="color:#555;text-decoration:none;" data-i18n="legal_privacy">Privacy</a>
+        <a href="/legal/accessibility.html" target="_blank" rel="noopener" style="color:#555;text-decoration:none;" data-i18n="legal_accessibility">Accessibility</a>
     </div>
 
     <div id="char-builder-modal" class="modal-overlay flex-center">
@@ -689,8 +690,21 @@
 
                 <!-- Deity (conditional, shown for Cleric/Paladin/etc.) -->
                 <div id="cb-deity-section">
-                    <label style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;" data-i18n="cb_deity_label">&#x1F3DB;&#xFE0F; Deity / Patron</label>
+                    <label style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;" data-i18n="cb_deity_label">Deity / Patron</label>
                     <input type="text" id="cb-deity" class="builder-input" data-i18n-placeholder="cb_deity_ph" placeholder="Deity or patron name...">
+                    <div id="cb-holy-symbol-section" style="margin-top:6px; display:none;">
+                        <label style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;" data-i18n="cb_holy_symbol">Holy Symbol</label>
+                        <select id="cb-holy-symbol" class="builder-input" style="width:100%; font-size:11px;">
+                            <option value="" data-i18n="cb_choose">-- Choose --</option>
+                            <option value="amulet" data-i18n="holy_amulet">Amulet</option>
+                            <option value="emblem" data-i18n="holy_emblem">Emblem</option>
+                            <option value="reliquary" data-i18n="holy_reliquary">Reliquary</option>
+                            <option value="totem" data-i18n="holy_totem">Totem</option>
+                            <option value="rod" data-i18n="holy_rod">Rod</option>
+                            <option value="orb" data-i18n="holy_orb">Orb</option>
+                        </select>
+                    </div>
+                    <div id="cb-deity-flavor" style="font-size:10px; color:#888; margin-top:4px; font-style:italic;"></div>
                 </div>
 
                 <!-- Personal Story -->
@@ -744,10 +758,18 @@
                         </select>
                     </div>
                     <div>
-                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:#ccc; cursor:pointer;">
-                            <input type="checkbox" id="cb-shield" style="accent-color:#3498db;" aria-label="Equip shield">
-                            <span data-i18n="cb_shield_slot">&#x1F6E1;&#xFE0F; Shield (+2 AC)</span>
-                        </label>
+                        <div style="font-size:10px; color:#aaa; margin-bottom:2px;" data-i18n="cb_hand_2">Off Hand / Shield</div>
+                        <select id="cb-offhand" class="builder-input" style="width:100%; font-size:11px;" aria-label="Off hand">
+                            <option value="" data-i18n="equip_empty_hand">&#x2014; Empty &#x2014;</option>
+                            <option value="shield" data-i18n="cb_shield_opt">Shield (+2 AC)</option>
+                            <optgroup label="Light Weapons" data-i18n-label="equip_light_weapons">
+                                <option value='{"name":"Dagger","damage":"1d4","type":"piercing","props":["finesse","light","thrown"]}' data-i18n="wpn_dagger_oh">Dagger 1d4</option>
+                                <option value='{"name":"Handaxe","damage":"1d6","type":"slashing","props":["light","thrown"]}' data-i18n="wpn_handaxe_oh">Handaxe 1d6</option>
+                                <option value='{"name":"Shortsword","damage":"1d6","type":"piercing","props":["finesse","light"]}' data-i18n="wpn_shortsword_oh">Shortsword 1d6</option>
+                                <option value='{"name":"Scimitar","damage":"1d6","type":"slashing","props":["finesse","light"]}' data-i18n="wpn_scimitar_oh">Scimitar 1d6</option>
+                            </optgroup>
+                        </select>
+                        <input type="checkbox" id="cb-shield" style="display:none;" aria-label="Equip shield">
                     </div>
                     <div>
                         <div style="font-size:10px; color:#aaa; margin-bottom:2px;" data-i18n="cb_armor_slot">&#x1F6E1;&#xFE0F; Armor</div>
@@ -934,7 +956,7 @@
                     <!-- 2 Minute Tabletop Token Art -->
                     <div id="portrait-2mt-area" style="display:none; flex-direction:column; gap:5px;">
                         <div class="tmt-attr" style="font-size:10px; color:#888; text-align:center; margin-bottom:2px;">
-                            Art by <a href="https://2minutetabletop.com" target="_blank" style="color:#f1c40f;">2 Minute Tabletop</a> (CC-BY 4.0)
+                            Art by <a href="https://2minutetabletop.com" target="_blank" rel="noopener" style="color:#f1c40f;">2 Minute Tabletop</a> (CC-BY 4.0)
                         </div>
                         <div class="tmt-dynamic" style="display:flex; flex-direction:column; gap:4px; padding:4px 0 6px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:4px;">
                             <div style="font-size:9px;color:#666;text-align:center;">Select a class &amp; race above to see matching tokens</div>
@@ -1199,6 +1221,7 @@
                         <button class="hud-tool-btn" id="hud-log-toggle" onclick="window.toggleLogPanel()" title="Roll Log" data-i18n-title="tb_log"><img src="/assets/icons/toolbar/log.png" alt="Log" class="custom-icon"></button>
                         <button class="hud-tool-btn" onclick="window.openSpellPanel?.()" title="Spells" data-i18n-title="tb_spells"><img src="/assets/icons/toolbar/spells.png" alt="Spells" class="custom-icon"></button>
                         <button class="hud-tool-btn" id="mute-btn" onclick="window.toggleMute()" title="Mute" data-i18n-title="tb_mute"><img src="/assets/icons/toolbar/mute.png" alt="Mute" class="custom-icon"></button>
+                        <button class="hud-tool-btn" id="vc-toggle-btn" onclick="window.toggleVideoChat()" title="Video Chat" data-i18n-title="tb_video_chat"><img src="/assets/icons/toolbar/videochat.png" alt="Video Chat" class="custom-icon"></button>
                         <button class="hud-tool-btn dm-only" id="master-combat-btn" onclick="window.toggleCombat()" title="Combat" data-i18n-title="tb_combat"><img src="/assets/icons/toolbar/combat.png" alt="Combat" class="custom-icon"></button>
                         <button class="hud-tool-btn dm-only" id="npc-gen-btn" onclick="window.openNPCPanel?.()" title="NPC" data-i18n-title="tb_npc"><img src="/assets/icons/toolbar/npc.png" alt="NPC" class="custom-icon"></button>
                         <button class="hud-tool-btn dm-only" id="monster-book-btn" onclick="window.openMonsterBook?.()" title="Monsters" data-i18n-title="tb_monsters"><img src="/assets/icons/toolbar/monsters.png" alt="Monsters" class="custom-icon"></button>
@@ -1279,6 +1302,10 @@
                 <span class="pt-slot-key">12</span>
                 <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/combat.png" alt="Init" class="custom-icon"></span><span class="pt-slot-label" data-i18n="pt_slot_init">INIT</span></div>
             </button>
+            <button class="pt-slot" id="pt-vc-btn" onclick="window.toggleVideoChat()" title="Video Chat" data-i18n-title="tb_video_chat">
+                <span class="pt-slot-key">13</span>
+                <div class="pt-slot-inner"><span class="pt-slot-icon"><img src="/assets/icons/toolbar/videochat.png" alt="Video Chat" class="custom-icon"></span><span class="pt-slot-label" data-i18n="tb_video_chat">VIDEO</span></div>
+            </button>
         </div>
 
         <!-- ══════════════════════════════════════════════════════
@@ -1343,6 +1370,10 @@
             <button class="dm-slot" id="dm-slot-11" onclick="window._toggleMapEditor()" title="Map Editor" data-i18n-title="tb_map_editor">
                 <span class="dm-slot-key">12</span>
                 <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/editor.png" alt="Editor" class="custom-icon"></span><span class="dm-slot-label" data-i18n="dm_slot_editor">EDITOR</span></div>
+            </button>
+            <button class="dm-slot" id="dm-vc-btn" onclick="window.toggleVideoChat()" title="Video Chat" data-i18n-title="tb_video_chat">
+                <span class="dm-slot-key">13</span>
+                <div class="dm-slot-inner"><span class="dm-slot-icon"><img src="/assets/icons/toolbar/videochat.png" alt="Video Chat" class="custom-icon"></span><span class="dm-slot-label" data-i18n="tb_video_chat">VIDEO</span></div>
             </button>
         </div>
 
@@ -1912,9 +1943,9 @@
                     <div style="color:#e74c3c; font-weight:900; font-size:13px; margin-bottom:6px;">⚠ Required Attributions</div>
                     <div style="color:#ccc; font-size:12px; line-height:1.6;">
                         <strong style="color:white;">Game-Icons.net (CC-BY 3.0):</strong> Icons by Lorc, Delapouite &amp; contributors —
-                        <a href="https://game-icons.net/" target="_blank" style="color:#3498db;">game-icons.net</a><br>
+                        <a href="https://game-icons.net/" target="_blank" rel="noopener" style="color:#3498db;">game-icons.net</a><br>
                         <strong style="color:white;">Open5e (CC-BY 4.0 + OGL):</strong> Monster, spell &amp; item data —
-                        <a href="https://open5e.com/" target="_blank" style="color:#3498db;">open5e.com</a>
+                        <a href="https://open5e.com/" target="_blank" rel="noopener" style="color:#3498db;">open5e.com</a>
                     </div>
                 </div>
 
