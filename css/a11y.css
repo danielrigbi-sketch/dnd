@@ -1,0 +1,54 @@
+/* a11y.css — Accessibility mode overrides */
+
+/* High contrast mode */
+.a11y-high-contrast {
+    filter: contrast(1.4);
+}
+.a11y-high-contrast * {
+    text-shadow: none !important;
+}
+.a11y-high-contrast .auth-box,
+.a11y-high-contrast .lobby-box,
+.a11y-high-contrast #side-panel {
+    background-color: #000 !important;
+    border-color: #fff !important;
+}
+.a11y-high-contrast button,
+.a11y-high-contrast .hover-btn {
+    border: 2px solid #fff !important;
+}
+
+/* Stop animations mode */
+.a11y-no-animations *,
+.a11y-no-animations *::before,
+.a11y-no-animations *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+}
+.a11y-no-animations video {
+    display: none !important;
+}
+
+/* Focus indicators (always visible for keyboard users) */
+*:focus-visible {
+    outline: 2px solid #3498db !important;
+    outline-offset: 2px;
+}
+
+/* Skip to content link */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #3498db;
+    color: #fff;
+    padding: 8px 16px;
+    z-index: 10000;
+    text-decoration: none;
+    font-weight: bold;
+    transition: top 0.2s;
+}
+.skip-link:focus {
+    top: 0;
+}
