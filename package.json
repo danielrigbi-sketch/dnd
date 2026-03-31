@@ -1,22 +1,23 @@
 {
-  "name": "critroll",
+  "name": "paradice",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "i18n:audit": "node scripts/i18n-audit.js"
   },
   "dependencies": {
-    "@faker-js/faker": "^10.3.0",
+    "@3d-dice/dice-box": "^1.1.3",
     "easystarjs": "^0.4.4",
     "firebase": "^10.8.0",
     "pixi.js": "^8.16.0",
-    "rot-js": "^2.2.1",
-    "three": "^0.183.2"
+    "rot-js": "^2.2.1"
   },
   "devDependencies": {
+    "sharp": "^0.34.5",
     "vite": "^5.4.0"
   }
 }

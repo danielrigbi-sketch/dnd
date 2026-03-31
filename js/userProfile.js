@@ -1,4 +1,5 @@
 // userProfile.js — Player profile editor + public sync for Community Hub
+import { escapeHtml } from './core/sanitize.js';
 import { t } from './i18n.js';
 import { saveUserProfile, getUserProfilePrivate, syncPublicProfile, getPublicProfile, getAuthUid } from './firebaseService.js';
 
@@ -17,8 +18,6 @@ function _ageRange(birthYear) {
     if (age <= 35) return '26-35';
     return '36+';
 }
-
-function _esc(s) { return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 /** Open the profile editor modal. Creates the modal HTML on first call. */
 export async function openProfileEditor(uid) {
@@ -71,7 +70,7 @@ export async function openProfileEditor(uid) {
                 </div>
                 <div class="editor-field">
                     <label>${t('profile_bio')}</label>
-                    <textarea id="prof-bio" maxlength="200" placeholder="${_esc(t('profile_bio_ph'))}">${_esc(p.bio || '')}</textarea>
+                    <textarea id="prof-bio" maxlength="200" placeholder="${escapeHtml(t('profile_bio_ph'))}">${escapeHtml(p.bio || '')}</textarea>
                 </div>
                 <div class="editor-field">
                     <label>${t('profile_language')}</label>

@@ -552,32 +552,32 @@
                 <!-- 6 Ability Score blocks -->
                 <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
                     <div class="cb-ability-block">
-                        <span class="cb-ability-label">STR</span>
+                        <span class="cb-ability-label" data-i18n="ability_str">STR</span>
                         <input type="number" id="cb-str" class="builder-input cb-ability-input" min="1" max="30" placeholder="10" aria-label="Strength score">
                         <div id="cb-str-mod" class="cb-ability-mod">+0</div>
                     </div>
                     <div class="cb-ability-block">
-                        <span class="cb-ability-label">DEX</span>
+                        <span class="cb-ability-label" data-i18n="ability_dex">DEX</span>
                         <input type="number" id="cb-dex" class="builder-input cb-ability-input" min="1" max="30" placeholder="10" aria-label="Dexterity score">
                         <div id="cb-dex-mod" class="cb-ability-mod">+0</div>
                     </div>
                     <div class="cb-ability-block">
-                        <span class="cb-ability-label">CON</span>
+                        <span class="cb-ability-label" data-i18n="ability_con">CON</span>
                         <input type="number" id="cb-con" class="builder-input cb-ability-input" min="1" max="30" placeholder="10" aria-label="Constitution score">
                         <div id="cb-con-mod" class="cb-ability-mod">+0</div>
                     </div>
                     <div class="cb-ability-block">
-                        <span class="cb-ability-label">INT</span>
+                        <span class="cb-ability-label" data-i18n="ability_int">INT</span>
                         <input type="number" id="cb-int" class="builder-input cb-ability-input" min="1" max="30" placeholder="10" aria-label="Intelligence score">
                         <div id="cb-int-mod" class="cb-ability-mod">+0</div>
                     </div>
                     <div class="cb-ability-block">
-                        <span class="cb-ability-label">WIS</span>
+                        <span class="cb-ability-label" data-i18n="ability_wis">WIS</span>
                         <input type="number" id="cb-wis" class="builder-input cb-ability-input" min="1" max="30" placeholder="10" aria-label="Wisdom score">
                         <div id="cb-wis-mod" class="cb-ability-mod">+0</div>
                     </div>
                     <div class="cb-ability-block">
-                        <span class="cb-ability-label">CHA</span>
+                        <span class="cb-ability-label" data-i18n="ability_cha">CHA</span>
                         <input type="number" id="cb-cha" class="builder-input cb-ability-input" min="1" max="30" placeholder="10" aria-label="Charisma score">
                         <div id="cb-cha-mod" class="cb-ability-mod">+0</div>
                     </div>
@@ -587,12 +587,12 @@
                 <div>
                     <div data-i18n="cb_saving_throws" style="font-size:11px; color:#aaa; margin-bottom:5px;">Saving Throw Proficiencies</div>
                     <fieldset style="border:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:10px;">
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-str" style="accent-color:#e67e22;" aria-label="Strength saving throw proficiency"> STR</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-dex" style="accent-color:#e67e22;" aria-label="Dexterity saving throw proficiency"> DEX</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-con" style="accent-color:#e67e22;" aria-label="Constitution saving throw proficiency"> CON</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-int" style="accent-color:#e67e22;" aria-label="Intelligence saving throw proficiency"> INT</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-wis" style="accent-color:#e67e22;" aria-label="Wisdom saving throw proficiency"> WIS</label>
-                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-cha" style="accent-color:#e67e22;" aria-label="Charisma saving throw proficiency"> CHA</label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-str" style="accent-color:#e67e22;" aria-label="Strength saving throw proficiency"> <span data-i18n="save_str">STR</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-dex" style="accent-color:#e67e22;" aria-label="Dexterity saving throw proficiency"> <span data-i18n="save_dex">DEX</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-con" style="accent-color:#e67e22;" aria-label="Constitution saving throw proficiency"> <span data-i18n="save_con">CON</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-int" style="accent-color:#e67e22;" aria-label="Intelligence saving throw proficiency"> <span data-i18n="save_int">INT</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-wis" style="accent-color:#e67e22;" aria-label="Wisdom saving throw proficiency"> <span data-i18n="save_wis">WIS</span></label>
+                        <label style="display:flex;align-items:center;gap:3px;font-size:12px;color:#ccc;cursor:pointer;"><input type="checkbox" id="cb-save-cha" style="accent-color:#e67e22;" aria-label="Charisma saving throw proficiency"> <span data-i18n="save_cha">CHA</span></label>
                     </fieldset>
                 </div>
 

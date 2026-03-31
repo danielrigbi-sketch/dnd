@@ -1,4 +1,5 @@
 // listingEditor.js — DM modal for publishing games to Community Hub
+import { escapeHtml } from './core/sanitize.js';
 import { t } from './i18n.js';
 import { createListing, updateListing, deleteListing, getListing, getAuthUid } from './firebaseService.js';
 import { checkCanCreateListing } from './subscriptionService.js';
@@ -6,8 +7,6 @@ import { checkCanCreateListing } from './subscriptionService.js';
 const GAME_STYLES = ['roleplay', 'combat', 'exploration', 'social', 'horror', 'mixed'];
 const EXP_LEVELS = ['beginner', 'intermediate', 'advanced', 'all'];
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-
-function _esc(s) { return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 /**
  * Open the listing editor modal.
@@ -57,11 +56,11 @@ export async function openListingEditor(prefill = {}, onSaved) {
             <div class="listing-editor-form">
                 <div class="editor-field">
                     <label>${t('editor_listing_title')}</label>
-                    <input type="text" id="ed-title" value="${_esc(d.title || prefill.title || '')}" placeholder="${_esc(t('editor_title_ph'))}" maxlength="80">
+                    <input type="text" id="ed-title" value="${escapeHtml(d.title || prefill.title || '')}" placeholder="${escapeHtml(t('editor_title_ph'))}" maxlength="80">
                 </div>
                 <div class="editor-field">
                     <label>${t('editor_description')}</label>
-                    <textarea id="ed-desc" placeholder="${_esc(t('editor_description_ph'))}" maxlength="500">${_esc(d.description || '')}</textarea>
+                    <textarea id="ed-desc" placeholder="${escapeHtml(t('editor_description_ph'))}" maxlength="500">${escapeHtml(d.description || '')}</textarea>
                 </div>
                 <div class="editor-field">
                     <label>${t('editor_max_players')}</label>
@@ -126,7 +125,7 @@ export async function openListingEditor(prefill = {}, onSaved) {
                 </div>
                 <div class="editor-field">
                     <label>${t('editor_tags')}</label>
-                    <input type="text" id="ed-tags" value="${_esc((d.tags || []).join(', '))}" placeholder="${_esc(t('editor_tags_ph'))}">
+                    <input type="text" id="ed-tags" value="${escapeHtml((d.tags || []).join(', '))}" placeholder="${escapeHtml(t('editor_tags_ph'))}">
                 </div>
                 <div class="editor-actions">
                     <button id="ed-cancel-btn" class="hover-btn" style="background:transparent;color:#ccc;border:1px solid #555;padding:8px 16px;border-radius:6px;">${t('editor_cancel')}</button>

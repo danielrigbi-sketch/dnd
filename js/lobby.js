@@ -2,13 +2,21 @@
 // lobby.js v130 (S14: portrait upload via Firebase Storage)
 import * as db from "./firebaseService.js";
 import { uploadPortrait } from "./firebaseService.js"; // S14: direct import
-import { startGame, setUid } from "./app.js";
-import { setLanguage, getLang, t, updateDOM } from "./i18n.js";
+import { startGame, setUid, showToast } from "./app.js";
+import { setLanguage, getLang, t, tg, updateDOM } from "./i18n.js";
 import { tmt2mtPlayerTokens } from "./tmt.js";
 import { initCampaigns } from "./campaign.js";
 import { compute } from "./engine/charEngine.js";
-import { SUBCLASS_MECHANICS, BACKGROUND_MECHANICS, FEAT_MECHANICS, ARMOR_TABLE } from "../data/mechanics.js";
+import { SUBCLASS_MECHANICS, BACKGROUND_MECHANICS, FEAT_MECHANICS, ARMOR_TABLE, RACE_MECHANICS } from "../data/mechanics.js";
+import { generateNPCName } from "./faker.js";
+import { listenToSubscription, checkCanCreateCharacter, checkCanCreateRoom, getCurrentSub } from "./subscriptionService.js";
+import "./bugReport.js";
+import "./a11y.js";
 import { CLASS_ICONS, classIconImg, iconImg } from './iconMap.js';
+import { roll3DDice, clearDice } from './diceEngine.js';
+import { initDashboard, openDashboard } from './accountDashboard.js';
+import { initCommunityHub } from './communityHub.js';
+import { ensureProfile } from './userProfile.js';
 
 const langToggleBtn = document.getElementById('lang-toggle-btn');
 langToggleBtn.innerText = getLang() === 'he' ? 'English' : 'עברית';
@@ -62,6 +70,12 @@ const addAttackBtn = document.getElementById('add-custom-attack-btn');
 const attacksList = document.getElementById('custom-attacks-list');
 
 let currentEditCharId = null;
+
+// ── Account Dashboard trigger ──
+document.getElementById('account-dashboard-btn')?.addEventListener('click', () => openDashboard());
+document.getElementById('account-dashboard-btn')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDashboard(); }
+});
 
 const tabPreset = document.getElementById('tab-portrait-preset');
 const tabTmt   = document.getElementById('tab-portrait-2mt');
@@ -162,7 +176,7 @@ document.getElementById('cb-add-feat-btn')?.addEventListener('click', _openFeatP
 document.getElementById('feat-search')?.addEventListener('input', e => _renderFeatList(e.target.value));
 
 // ── Wizard Navigation ──────────────────────────────────────────────────
-const _WIZ_TOTAL = 5;
+const _WIZ_TOTAL = 8;
 let _wizStep = 1;
 
 function _gotoStep(n) {
@@ -190,12 +204,34 @@ function _gotoStep(n) {
 
 function _validateStep(n) {
     if (n === 1) {
-        const name = document.getElementById('cb-name')?.value.trim();
-        if (!name) { _shakeAndFocus('cb-name'); return false; }
+        const race = document.getElementById('cb-race')?.value;
+        if (!race) { _shakeAndFocus('cb-race-grid'); showToast(t('cb_val_pick_race'), 'warning'); return false; }
     }
     if (n === 2) {
+        const name = document.getElementById('cb-name')?.value.trim();
+        if (!name) { _shakeAndFocus('cb-name'); showToast(t('cb_val_enter_name'), 'warning'); return false; }
+    }
+    if (n === 3) {
         const cls = document.getElementById('cb-class')?.value;
-        if (!cls) { _shakeAndFocus('cb-class-grid'); return false; }
+        if (!cls) { _shakeAndFocus('cb-class-grid'); showToast(t('cb_val_pick_class'), 'warning'); return false; }
+    }
+    if (n === 4) {
+        const str = +(document.getElementById('cb-str')?.value);
+        if (!str || str < 3) { _shakeAndFocus('cb-str'); showToast(t('cb_val_set_abilities'), 'warning'); return false; }
+    }
+    return true;
+}
+
+function _validateSave() {
+    const missing = [];
+    if (!document.getElementById('cb-race')?.value) missing.push(t('wizard_step_race'));
+    if (!document.getElementById('cb-name')?.value.trim()) missing.push(t('wizard_step_identity'));
+    if (!document.getElementById('cb-class')?.value) missing.push(t('wizard_step_class'));
+    const str = +(document.getElementById('cb-str')?.value);
+    if (!str || str < 3) missing.push(t('wizard_step_abilities'));
+    if (missing.length) {
+        showToast(`${t('cb_val_missing')}: ${missing.join(', ')}`, 'warning', 5000);
+        return false;
     }
     return true;
 }
@@ -231,6 +267,13 @@ const _RACE_DARKVISION = {
     'half-elf':60,'half-orc':60,'tiefling':60,'aasimar':60,'forest-gnome':60,'rock-gnome':60
 };
 const _SLOW_RACES = new Set(['hill-dwarf','mountain-dwarf','lightfoot-halfling','stout-halfling','forest-gnome','rock-gnome']);
+const _RACE_SIZE = {
+    'human':'Medium','variant-human':'Medium','high-elf':'Medium','wood-elf':'Medium','dark-elf':'Medium',
+    'hill-dwarf':'Medium','mountain-dwarf':'Medium','half-elf':'Medium','half-orc':'Medium',
+    'tiefling':'Medium','dragonborn':'Medium','aasimar':'Medium',
+    'lightfoot-halfling':'Small','stout-halfling':'Small','forest-gnome':'Small','rock-gnome':'Small',
+    'halfling':'Small','gnome':'Small'
+};
 
 function _abMod(score) { return Math.floor(((+score || 10) - 10) / 2); }
 function _abSign(n) { return n >= 0 ? `+${n}` : `${n}`; }
@@ -245,7 +288,8 @@ function _applySmartDefaults() {
     const pbDisp = document.getElementById('cb-prof-bonus-display');
     if (pbDisp) pbDisp.textContent = `+${pb}`;
     const hdDisp = document.getElementById('cb-hit-die-display');
-    if (hdDisp) hdDisp.textContent = _CLASS_HIT_DIE[cls] ? `d${_CLASS_HIT_DIE[cls]}` : '—';
+    const _diePrefix = getLang() === 'he' ? 'ק' : 'd';
+    if (hdDisp) hdDisp.textContent = _CLASS_HIT_DIE[cls] ? `${_diePrefix}${_CLASS_HIT_DIE[cls]}` : '—';
 
     // Ability modifier badges
     ['str','dex','con','int','wis','cha'].forEach(ab => {
@@ -275,6 +319,15 @@ function _applySmartDefaults() {
         if (badge) badge.style.display = 'inline-block';
     }
 
+    // Size ← race (auto)
+    const sizeEl = document.getElementById('cb-size');
+    const sizeVis = document.getElementById('cb-size-visible');
+    const raceSize = _RACE_SIZE[race] || 'Medium';
+    if (sizeEl) sizeEl.value = raceSize;
+    if (sizeVis) sizeVis.value = raceSize;
+    const sizeBadge = document.getElementById('cb-size-auto-badge');
+    if (sizeBadge && race) sizeBadge.style.display = 'inline-block';
+
     // Darkvision ← race (if not manually edited)
     const dvEl = document.getElementById('cb-darkvision');
     if (dvEl && !dvEl.dataset.manuallyEdited) {
@@ -300,7 +353,7 @@ function _applySmartDefaults() {
     if (racePreview) {
         const dv = _RACE_DARKVISION[race];
         const sp = _SLOW_RACES.has(race) ? 25 : 30;
-        racePreview.textContent = race ? `Speed: ${sp}ft${dv ? ` · Darkvision: ${dv}ft` : ''}` : '';
+        racePreview.textContent = race ? `${t('cb_speed')}: ${sp}ft${dv ? ` · ${t('cb_darkvision')}: ${dv}ft` : ''}` : '';
     }
 
     // Auto-check class saving throw profs — only if ALL saves currently unchecked
@@ -312,10 +365,64 @@ function _applySmartDefaults() {
             if (el) el.checked = true;
         });
     }
+
+    // ── Auto-calculate AC from armor + DEX + shield ──
+    const armorVal = document.getElementById('cb-armor')?.value;
+    const shieldChecked = document.getElementById('cb-shield')?.checked;
+    const acEl = document.getElementById('cb-ac');
+    const acPreview = document.getElementById('cb-ac-preview');
+    if (acEl && armorVal !== undefined) {
+        const dexMod = _abMod(document.getElementById('cb-dex')?.value);
+        let ac = 10 + dexMod; // unarmored default
+        let desc = `10 + DEX(${_abSign(dexMod)})`;
+        if (armorVal) {
+            try {
+                const armor = JSON.parse(armorVal);
+                if (armor.type === 'light') { ac = armor.baseAC + dexMod; desc = `${armor.name} ${armor.baseAC} + DEX(${_abSign(dexMod)})`; }
+                else if (armor.type === 'medium') { ac = armor.baseAC + Math.min(dexMod, 2); desc = `${armor.name} ${armor.baseAC} + DEX(${_abSign(Math.min(dexMod, 2))})`; }
+                else if (armor.type === 'heavy') { ac = armor.baseAC; desc = `${armor.name} ${armor.baseAC}`; }
+            } catch {}
+        }
+        if (shieldChecked) { ac += 2; desc += ' +🛡️2'; }
+        acEl.value = ac;
+        if (acPreview) acPreview.textContent = desc;
+    }
+
+    // ── Auto-populate spell slots from class + level ──
+    const _SPELL_SLOTS_TABLE = {
+        1:[2],2:[3],3:[4,2],4:[4,3],5:[4,3,2],6:[4,3,3],7:[4,3,3,1],8:[4,3,3,2],
+        9:[4,3,3,3,1],10:[4,3,3,3,2],11:[4,3,3,3,2,1],12:[4,3,3,3,2,1],
+        13:[4,3,3,3,2,1,1],14:[4,3,3,3,2,1,1],15:[4,3,3,3,2,1,1,1],
+        16:[4,3,3,3,2,1,1,1],17:[4,3,3,3,2,1,1,1,1],18:[4,3,3,3,3,1,1,1,1],
+        19:[4,3,3,3,3,2,1,1,1],20:[4,3,3,3,3,2,2,1,1]
+    };
+    const _HALF_CASTERS = new Set(['paladin','ranger']);
+    if (_CASTER_CLASSES.has(cls)) {
+        const effectiveLevel = _HALF_CASTERS.has(cls) ? Math.max(1, Math.floor(level / 2)) : level;
+        const slots = _SPELL_SLOTS_TABLE[effectiveLevel] || [];
+        for (let i = 1; i <= 9; i++) {
+            const slotEl = document.getElementById(`cb-spell-${i}`);
+            if (slotEl) slotEl.value = slots[i - 1] || 0;
+        }
+    }
+
+    // ── Auto-calculate hit modifiers ──
+    const strMod = _abMod(document.getElementById('cb-str')?.value);
+    const dexMod2 = _abMod(document.getElementById('cb-dex')?.value);
+    const meleeEl = document.getElementById('cb-melee');
+    const rangedEl = document.getElementById('cb-ranged');
+    const spellAtkEl = document.getElementById('cb-spell-atk');
+    if (meleeEl && !meleeEl.dataset.manuallyEdited) meleeEl.value = strMod + pb;
+    if (rangedEl && !rangedEl.dataset.manuallyEdited) rangedEl.value = dexMod2 + pb;
+    // Spell attack: CHA for bard/paladin/sorcerer/warlock, WIS for cleric/druid/ranger, INT for wizard
+    const _SPELL_AB = { bard:'cha', cleric:'wis', druid:'wis', paladin:'cha', ranger:'wis', sorcerer:'cha', warlock:'cha', wizard:'int' };
+    if (spellAtkEl && !spellAtkEl.dataset.manuallyEdited && _SPELL_AB[cls]) {
+        spellAtkEl.value = _abMod(document.getElementById(`cb-${_SPELL_AB[cls]}`)?.value) + pb;
+    }
 }
 
 // Prevent auto-overwrite when user manually edits these fields
-['cb-init','cb-pp','cb-darkvision','cb-speed'].forEach(id => {
+['cb-init','cb-pp','cb-darkvision','cb-speed','cb-melee','cb-ranged','cb-spell-atk'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', function () {
         this.dataset.manuallyEdited = '1';
         const badge = document.getElementById(`${id}-auto-badge`);
@@ -324,7 +431,7 @@ function _applySmartDefaults() {
 });
 
 // Re-run defaults when key fields change
-['cb-class','cb-race','cb-level','cb-str','cb-dex','cb-con','cb-int','cb-wis','cb-cha','cb-skill-perception'].forEach(id => {
+['cb-class','cb-race','cb-level','cb-str','cb-dex','cb-con','cb-int','cb-wis','cb-cha','cb-skill-perception','cb-armor','cb-shield','cb-offhand'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', _applySmartDefaults);
     document.getElementById(id)?.addEventListener('input', _applySmartDefaults);
 });
@@ -341,26 +448,369 @@ document.getElementById('cb-hp-auto-btn')?.addEventListener('click', () => {
     if (hpEl) hpEl.value = Math.max(1, hp);
 });
 
+// ── Ability Score Methods ──────────────────────────────────────────────
+const _STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
+const _ABILITY_IDS = ['cb-str', 'cb-dex', 'cb-con', 'cb-int', 'cb-wis', 'cb-cha'];
+let _abilityMethod = 'standard';
+
+document.getElementById('cb-ability-method')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-method]');
+    if (!btn) return;
+    _abilityMethod = btn.dataset.method;
+    document.querySelectorAll('.cb-ability-method-btn').forEach(el =>
+        el.classList.toggle('active', el.dataset.method === _abilityMethod)
+    );
+    // Toggle input editability
+    _ABILITY_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.readOnly = (_abilityMethod === 'standard');
+    });
+});
+
+// Standard Array: apply 15,14,13,12,10,8 sequentially to STR,DEX,CON,INT,WIS,CHA
+window._applyStandardArray = function() {
+    _ABILITY_IDS.forEach((id, i) => {
+        const el = document.getElementById(id);
+        if (el) el.value = _STANDARD_ARRAY[i];
+    });
+    _applySmartDefaults();
+};
+
+// Roll 4d6 drop lowest (using Math.random for instant results; dice engine for animation is optional)
+window._rollAbilityScores = async function() {
+    const results = [];
+    try {
+        // Roll 4d6 six times using 3D dice engine (visual on-screen rolls)
+        for (let i = 0; i < 6; i++) {
+            const rollResult = await roll3DDice('4d6');
+            if (rollResult && Array.isArray(rollResult)) {
+                const dice = rollResult.map(r => r.value).sort((a, b) => b - a);
+                results.push(dice[0] + dice[1] + dice[2]); // drop lowest
+            } else {
+                // Fallback if dice engine unavailable
+                const dice = [1,2,3,4].map(() => Math.floor(Math.random() * 6) + 1).sort((a, b) => b - a);
+                results.push(dice[0] + dice[1] + dice[2]);
+            }
+        }
+    } catch {
+        // Fallback: Math.random if dice engine fails
+        for (let i = results.length; i < 6; i++) {
+            const dice = [1,2,3,4].map(() => Math.floor(Math.random() * 6) + 1).sort((a, b) => b - a);
+            results.push(dice[0] + dice[1] + dice[2]);
+        }
+    }
+    clearDice();
+    results.sort((a, b) => b - a); // highest first
+    _ABILITY_IDS.forEach((id, i) => {
+        const el = document.getElementById(id);
+        if (el) el.value = results[i];
+    });
+    _applySmartDefaults();
+};
+
+// ── Race Card Grid ────────────────────────────────────────────────────
+const _RACE_CARDS = [
+    { value:'human',     icon:'<img src="/assets/icons/race/human.png" alt="Human" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'חיים קצרים, שאיפות אינסופיות — הכל אפשרי', en:'Short lives, endless ambition — anything goes' },
+    { value:'elf',       icon:'<img src="/assets/icons/race/elf.png" alt="Elf" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'אלף שנות חן, חוכמה וחרב חדה כתער', en:'A thousand years of grace, wisdom, and razor-sharp steel' },
+    { value:'dwarf',     icon:'<img src="/assets/icons/race/dwarf.png" alt="Dwarf" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'לא גבוהים, אבל תנסו להזיז אותנו', en:'Not tall, but good luck moving us' },
+    { value:'halfling',  icon:'<img src="/assets/icons/race/halfling.png" alt="Halfling" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'קטנים? כן. מפחדים? בחיים לא', en:'Small? Yes. Scared? Not a chance' },
+    { value:'half-elf',  icon:'<img src="/assets/icons/race/half-elf.png" alt="Half-Elf" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'חצי אלף, חצי אדם, כפול כריזמה', en:'Half elf, half human, double the charm' },
+    { value:'half-orc',  icon:'<img src="/assets/icons/race/half-orc.png" alt="Half-Orc" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'ניבים בולטים, אגרופים בולטים יותר', en:'Tusks stand out, fists stand out more' },
+    { value:'tiefling',  icon:'<img src="/assets/icons/race/tiefling.png" alt="Tiefling" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'קרניים, זנב, וחיוך שאומר ״אני יודע משהו שאתה לא״', en:'Horns, tail, and a smile that says "I know something you don\'t"' },
+    { value:'dragonborn', icon:'<img src="/assets/icons/race/dragonborn.png" alt="Dragonborn" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'דם דרקוני בעורקים — כבוד לפני הכל', en:'Dragon blood in the veins — honor above all' },
+    { value:'gnome',     icon:'<img src="/assets/icons/race/gnome.png" alt="Gnome" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'הראש קטן אבל הרעיונות ענקיים', en:'Tiny head, enormous ideas' },
+    { value:'aasimar',   icon:'<img src="/assets/icons/race/aasimar.png" alt="Aasimar" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy">', he:'זוהר שמימי מבפנים — אור שלא נכבה', en:'Celestial glow from within — a light that never fades' },
+];
+
+const _RACE_SUBRACES = {
+    'human':    [{ slug:'human', key:'race_human', icon:'human', he:'+1 לכל דבר — אין התמחות, יש הכל', en:'+1 to everything — no specialty, all potential' },
+                 { slug:'variant-human', key:'race_variant_human', icon:'human', he:'כישרון מולד וניסיון שקשה להתעלם ממנו', en:'Born talented, with experience hard to ignore' }],
+    'elf':      [{ slug:'high-elf', key:'race_high_elf', icon:'elf', he:'לחש על השפתיים וחרב ביד — אלגנטיות קטלנית', en:'Cantrip on the lips, blade in hand — lethal elegance' },
+                 { slug:'wood-elf', key:'race_wood_elf', icon:'elf', he:'מהירים כצבי, שקטים כרוח ביער', en:'Fast as a deer, silent as the forest wind' },
+                 { slug:'dark-elf', key:'race_dark_elf', icon:'elf', he:'מהאנדרדארק עולה משהו — ותרוצו כשתראו מה', en:'Something rises from the Underdark — run when you see it' }],
+    'dwarf':    [{ slug:'hill-dwarf', key:'race_hill_dwarf', icon:'dwarf', he:'חוכמת ההרים זורמת בדם — סבלני ועמיד', en:'Mountain wisdom in the blood — patient and tough' },
+                 { slug:'mountain-dwarf', key:'race_mountain_dwarf', icon:'dwarf', he:'נולדנו בשריון ועם פטיש ביד', en:'Born in armor, hammer already in hand' }],
+    'halfling': [{ slug:'lightfoot-halfling', key:'race_lightfoot_halfling', icon:'halfling', he:'פשוט נעלם — אל תחפש, לא תמצא', en:'Simply vanishes — don\'t bother looking' },
+                 { slug:'stout-halfling', key:'race_stout_halfling', icon:'halfling', he:'שותה גמדים מתחת לשולחן ועדיין עומד', en:'Drinks dwarves under the table and still stands' }],
+    'gnome':    [{ slug:'forest-gnome', key:'race_forest_gnome', icon:'gnome', he:'מדבר עם חיות ויוצר אשליות — ביום רגיל', en:'Talks to animals and creates illusions — on a normal day' },
+                 { slug:'rock-gnome', key:'race_rock_gnome', icon:'gnome', he:'אם זה לא עובד, תן לננס — יתקן ויוסיף כנפיים', en:'Broken? Give it to the gnome — fixed with wings added' }],
+    'half-elf':  null, 'half-orc': null, 'tiefling': null, 'dragonborn': null, 'aasimar': null,
+};
+
+function _renderRaceCards(selectedBase = '') {
+    const grid = document.getElementById('cb-race-grid');
+    if (!grid) return;
+    const lang = getLang();
+    grid.innerHTML = _RACE_CARDS.map(r =>
+        `<div class="cb-class-card${r.value === selectedBase ? ' selected' : ''}"
+              data-value="${r.value}" onclick="window._selectRaceCard('${r.value}')">
+            <span class="cb-class-card-icon">${r.icon}</span>
+            <span class="cb-class-card-name">${t('race_' + r.value.replace('-','_')) || r.value}</span>
+            <span class="cb-card-tagline">${lang === 'he' ? r.he : r.en}</span>
+        </div>`
+    ).join('');
+    // Show/hide subrace grid
+    _renderSubraceCards(selectedBase);
+}
+
+function _renderSubraceCards(baseRace) {
+    const grid = document.getElementById('cb-subrace-grid');
+    const preview = document.getElementById('cb-race-traits-preview');
+    if (!grid) return;
+    const subs = _RACE_SUBRACES[baseRace];
+    if (!subs) {
+        grid.style.display = 'none';
+        // No subraces — set the hidden select directly to the base race slug
+        const sel = document.getElementById('cb-race');
+        if (sel && baseRace) { sel.value = baseRace; sel.dispatchEvent(new Event('change')); }
+        _showRaceTraits(baseRace);
+        return;
+    }
+    grid.style.display = '';
+    const lang = getLang();
+    const currentRace = document.getElementById('cb-race')?.value || '';
+    grid.innerHTML = `<div style="font-size:11px;color:#aaa;margin-bottom:4px;" data-i18n="cb_subrace_label">${t('cb_subrace_label')}</div>` +
+        subs.map(s =>
+        `<div class="cb-class-card${s.slug === currentRace ? ' selected' : ''}"
+              data-value="${s.slug}" onclick="window._selectSubrace('${s.slug}')">
+            <span class="cb-class-card-icon"><img src="/assets/icons/race/${s.icon}.png" alt="${t(s.key)}" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy"></span>
+            <span class="cb-class-card-name">${t(s.key) || s.slug}</span>
+            <span class="cb-card-tagline">${lang === 'he' ? s.he : s.en}</span>
+        </div>`
+    ).join('');
+}
+
+function _showRaceTraits(raceSlug) {
+    const preview = document.getElementById('cb-race-traits-preview');
+    if (!preview) return;
+    if (!raceSlug || !RACE_MECHANICS?.[raceSlug]) { preview.style.display = 'none'; return; }
+    const mech = RACE_MECHANICS[raceSlug];
+    const traits = (mech.traits || []).map(tr => t('trait_' + tr) || tr).join(' · ');
+    const bonuses = Object.entries(mech.abilBonus || {}).map(([ab, v]) => `+${v} ${t('ab_' + ab)}`).join(', ');
+    const speed = mech.speed || 30;
+    preview.style.display = '';
+    preview.innerHTML = `<div style="font-size:11px;color:#2ecc71;margin-top:6px;">${bonuses ? bonuses + ' · ' : ''}${t('cb_speed')}: ${speed}</div>` +
+        (traits ? `<div style="font-size:10px;color:#888;margin-top:3px;">${traits}</div>` : '');
+}
+
+window._selectRaceCard = function(baseRace) {
+    document.querySelectorAll('#cb-race-grid .cb-class-card').forEach(el =>
+        el.classList.toggle('selected', el.dataset.value === baseRace)
+    );
+    const subs = _RACE_SUBRACES[baseRace];
+    if (!subs) {
+        // No subraces — set directly
+        const sel = document.getElementById('cb-race');
+        if (sel) { sel.value = baseRace; sel.dispatchEvent(new Event('change')); }
+    }
+    _renderSubraceCards(baseRace);
+};
+
+window._selectSubrace = function(slug) {
+    document.querySelectorAll('#cb-subrace-grid .cb-class-card').forEach(el =>
+        el.classList.toggle('selected', el.dataset.value === slug)
+    );
+    const sel = document.getElementById('cb-race');
+    if (sel) { sel.value = slug; sel.dispatchEvent(new Event('change')); }
+    _showRaceTraits(slug);
+    _applySmartDefaults();
+};
+
+// Init race grid
+_renderRaceCards('');
+
+// ── Name Generator ────────────────────────────────────────────────────
+const _RACE_NAME_MAP = {
+    'human':'Human', 'variant-human':'Human',
+    'high-elf':'Elf', 'wood-elf':'Elf', 'dark-elf':'Elf',
+    'hill-dwarf':'Dwarf', 'mountain-dwarf':'Dwarf',
+    'lightfoot-halfling':'Halfling', 'stout-halfling':'Halfling',
+    'half-elf':'Elf', 'half-orc':'Orc',
+    'tiefling':'Tiefling', 'dragonborn':'Dragonborn',
+    'forest-gnome':'Gnome', 'rock-gnome':'Gnome',
+    'aasimar':'Human',
+};
+
+document.getElementById('cb-name-gen-btn')?.addEventListener('click', () => {
+    const raceSlug = document.getElementById('cb-race')?.value || '';
+    const gender = document.getElementById('cb-gender')?.value || 'male';
+    const fakerRace = _RACE_NAME_MAP[raceSlug] || 'Human';
+    const g = gender === 'nonbinary' ? (Math.random() > 0.5 ? 'male' : 'female') : gender;
+    const name = generateNPCName(fakerRace, g, getLang());
+    const nameEl = document.getElementById('cb-name');
+    if (nameEl && name) nameEl.value = name;
+});
+
+// ── Belief System ─────────────────────────────────────────────────────
+const _BELIEF_CARDS = [
+    { value: 'agnostic', icon: 'toolbar/agnostic', nameKey: 'cb_belief_agnostic', tagKey: 'cb_belief_agnostic_tag' },
+    { value: 'believer', icon: 'toolbar/believer', nameKey: 'cb_belief_believer', tagKey: 'cb_belief_believer_tag' },
+    { value: 'atheist',  icon: 'toolbar/atheist', nameKey: 'cb_belief_atheist', tagKey: 'cb_belief_atheist_tag' },
+];
+
+function _renderBeliefCards(selectedBelief = '') {
+    const grid = document.getElementById('cb-belief-grid');
+    if (!grid) return;
+    grid.innerHTML = _BELIEF_CARDS.map(b =>
+        `<div class="cb-class-card${b.value === selectedBelief ? ' selected' : ''}" data-belief="${b.value}">
+            <span class="cb-class-card-icon"><img src="/assets/icons/${b.icon}.png" alt="${t(b.nameKey)}" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy"></span>
+            <span class="cb-class-card-name">${t(b.nameKey)}</span>
+            <span class="cb-card-tagline">${t(b.tagKey)}</span>
+        </div>`
+    ).join('');
+}
+_renderBeliefCards();
+
+document.getElementById('cb-belief-grid')?.addEventListener('click', (e) => {
+    const card = e.target.closest('[data-belief]');
+    if (!card) return;
+    document.querySelectorAll('#cb-belief-grid [data-belief]').forEach(el =>
+        el.classList.toggle('selected', el === card)
+    );
+    const belief = card.dataset.belief;
+    const deitySection = document.getElementById('cb-deity-section');
+    if (deitySection) deitySection.style.display = belief === 'believer' ? '' : 'none';
+    _updateDeityFlavor();
+});
+
+// Show holy symbol picker for cleric/paladin, update flavor text
+function _updateDeityFlavor() {
+    const cls = (document.getElementById('cb-class')?.value || '').toLowerCase();
+    const holySection = document.getElementById('cb-holy-symbol-section');
+    const flavorEl = document.getElementById('cb-deity-flavor');
+    const isDivine = ['cleric', 'paladin'].includes(cls);
+    if (holySection) holySection.style.display = isDivine ? '' : 'none';
+
+    if (!flavorEl) return;
+    const deity = document.getElementById('cb-deity')?.value?.trim();
+    const charName = document.getElementById('cb-name')?.value?.trim() || '???';
+    if (!deity) { flavorEl.textContent = ''; return; }
+
+    const symbolSel = document.getElementById('cb-holy-symbol');
+    const symbolVal = symbolSel?.value;
+    const symbolName = symbolVal ? t(`holy_${symbolVal}`) : '';
+
+    let key = 'cb_deity_flavor_other';
+    if (cls === 'cleric') key = 'cb_deity_flavor_cleric';
+    else if (cls === 'paladin') key = 'cb_deity_flavor_paladin';
+
+    let text = t(key);
+    text = text.replace('{name}', charName).replace('{deity}', deity).replace('{symbol}', symbolName);
+    flavorEl.textContent = text;
+}
+
+document.getElementById('cb-deity')?.addEventListener('input', _updateDeityFlavor);
+document.getElementById('cb-holy-symbol')?.addEventListener('change', _updateDeityFlavor);
+
+document.getElementById('cb-holy-symbol-grid')?.addEventListener('click', (e) => {
+    const sym = e.target.closest('.holy-symbol-btn');
+    if (!sym) return;
+    document.querySelectorAll('.holy-symbol-btn').forEach(el => el.classList.remove('selected'));
+    sym.classList.add('selected');
+});
+
+// ── Level Up Modal (subscription upgrade) ──────────────────────────
+function _showLevelUpModal() {
+    const modal = document.getElementById('level-up-modal');
+    if (modal) modal.style.display = 'flex';
+}
+window._closeLevelUpModal = function() {
+    const modal = document.getElementById('level-up-modal');
+    if (modal) modal.style.display = 'none';
+};
+// Wix Pricing Plan IDs (created via Wix API)
+const _WIX_PLAN_IDS = {
+    monthly:  'fa255208-eb22-4cca-aa0e-bfc143e6b1c3',
+    yearly:   'f5ff7be1-1467-476c-b97f-064790d819f1',
+    lifetime: '4a2d50ef-684f-4ebc-bf6d-d5620299f6c2',
+};
+// Wix site pricing page — update this with your actual Wix site URL
+const _WIX_PRICING_URL = 'https://www.danielrigbi.co.il/pricing-plans';
+
+window._startCheckout = function(plan) {
+    const planId = _WIX_PLAN_IDS[plan];
+    if (!planId) return;
+    // Redirect to Wix pricing page — Wix handles payment, receipts, and subscription management
+    window.open(`${_WIX_PRICING_URL}?planSlug=${plan === 'monthly' ? 'paradice-dm-hwdsy' : plan === 'yearly' ? 'paradice-dm-snty' : 'paradice-founder-pack-hbylt-myysdym'}`, '_blank');
+};
+
+// ── Sync visible gender/size selects to hidden originals ──
+document.getElementById('cb-gender-visible')?.addEventListener('change', (e) => {
+    const hidden = document.getElementById('cb-gender');
+    if (hidden) { hidden.value = e.target.value; hidden.dispatchEvent(new Event('change')); }
+});
+document.getElementById('cb-size-visible')?.addEventListener('change', (e) => {
+    const hidden = document.getElementById('cb-size');
+    if (hidden) { hidden.value = e.target.value; hidden.dispatchEvent(new Event('change')); }
+});
+
+// ── Off-hand → Shield sync ────────────────────────────────────────────
+document.getElementById('cb-offhand')?.addEventListener('change', (e) => {
+    const shield = document.getElementById('cb-shield');
+    if (shield) shield.checked = (e.target.value === 'shield');
+    _applySmartDefaults();
+});
+
+// ── Dice Color Picker ─────────────────────────────────────────────────
+function _updateD20Preview(color) {
+    ['cb-d20-shape','cb-d20-inner','cb-d20-text'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.setAttribute('stroke', color); el.setAttribute('fill', id === 'cb-d20-text' ? color : 'none'); }
+    });
+}
+
+document.getElementById('cb-color-swatches')?.addEventListener('click', (e) => {
+    const swatch = e.target.closest('.color-swatch');
+    if (!swatch) return;
+    const color = swatch.dataset.color;
+    if (color === 'custom') {
+        const picker = document.getElementById('cb-color');
+        if (picker) { picker.click(); }
+        return;
+    }
+    document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('selected'));
+    swatch.classList.add('selected');
+    const picker = document.getElementById('cb-color');
+    if (picker) picker.value = color;
+    _updateD20Preview(color);
+});
+
+document.getElementById('cb-color')?.addEventListener('input', (e) => {
+    const color = e.target.value;
+    document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('selected'));
+    _updateD20Preview(color);
+});
+
 // ── Class Card Grid ────────────────────────────────────────────────────
 const _CLASS_CARDS = [
-    { value:'Barbarian', icon:'barbarian' }, { value:'Bard',     icon:'bard' },
-    { value:'Cleric',    icon:'cleric' },    { value:'Druid',    icon:'druid' },
-    { value:'Fighter',   icon:'fighter' },   { value:'Monk',     icon:'monk' },
-    { value:'Paladin',   icon:'paladin' },   { value:'Ranger',   icon:'ranger' },
-    { value:'Rogue',     icon:'rogue' },     { value:'Sorcerer', icon:'sorcerer' },
-    { value:'Warlock',   icon:'warlock' },   { value:'Wizard',   icon:'wizard' },
+    { value:'Barbarian', icon:'barbarian', he:'צועק, שובר, לא מתנצל — הזעם הוא הדלק', en:'Scream, smash, no apologies — rage is fuel' },
+    { value:'Bard', icon:'bard', he:'שיר אחד מרפא, השני הורג — תלוי במצב הרוח', en:'One song heals, the next kills — depends on the mood' },
+    { value:'Cleric', icon:'cleric', he:'האלים שולחים כוח — ואני מחליט איפה הוא פוגע', en:'The gods send power — I decide where it lands' },
+    { value:'Druid', icon:'druid', he:'היום עץ, מחר דוב — הטבע לא מתנצל', en:'A tree today, a bear tomorrow — nature doesn\'t apologize' },
+    { value:'Fighter', icon:'fighter', he:'כל נשק, כל מצב — אני מוכן', en:'Any weapon, any situation — I\'m ready' },
+    { value:'Monk', icon:'monk', he:'אין צורך בנשק כשהגוף שלך הוא הנשק', en:'No weapon needed when your body IS the weapon' },
+    { value:'Paladin', icon:'paladin', he:'שבועה, חרב וריפוי — צדק בגוף ראשון', en:'Oath, blade, and healing — justice in person' },
+    { value:'Ranger', icon:'ranger', he:'מוצא אותך לפני שאתה יודע שהוא שם', en:'Finds you before you know they\'re there' },
+    { value:'Rogue', icon:'rogue', he:'דקירה אחת בגב ובורח לפני שנופלים', en:'One backstab and gone before they hit the floor' },
+    { value:'Sorcerer', icon:'sorcerer', he:'הקסם בדם — לא למדתי, נולדתי ככה', en:'Magic in the blood — not learned, born this way' },
+    { value:'Warlock', icon:'warlock', he:'חתמתי עסקה עם ישות עתיקה — מה הגרוע שיקרה?', en:'Pact with an ancient being — what\'s the worst that could happen?' },
+    { value:'Wizard', icon:'wizard', he:'כל לחש שקיים נמצא בספר שלי', en:'Every spell ever cast is in my book' },
 ];
 
 function _renderClassCards(selectedValue = '') {
     const grid = document.getElementById('cb-class-grid');
     if (!grid) return;
-    grid.innerHTML = _CLASS_CARDS.map(c =>
-        `<div class="cb-class-card${c.value === selectedValue ? ' selected' : ''}"
+    const lang = getLang();
+    grid.innerHTML = _CLASS_CARDS.map(c => {
+        const name = t('class_' + c.value.toLowerCase()) || c.value;
+        const tagline = lang === 'he' ? c.he : c.en;
+        return `<div class="cb-class-card${c.value === selectedValue ? ' selected' : ''}"
               data-value="${c.value}" onclick="window._selectClassCard('${c.value}')">
-            <span class="cb-class-card-icon"><img src="/assets/icons/class/${c.icon}.png" alt="${c.value}" class="custom-icon" style="width:32px;height:32px;"></span>
-            <span class="cb-class-card-name">${c.value}</span>
-        </div>`
-    ).join('');
+            <span class="cb-class-card-icon"><img src="/assets/icons/class/${c.icon}.png" alt="${c.value}" class="custom-icon" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" loading="lazy"></span>
+            <span class="cb-class-card-name">${name}</span>
+            <span class="cb-card-tagline">${tagline}</span>
+        </div>`;
+    }).join('');
 }
 
 window._selectClassCard = function(value) {
@@ -402,7 +852,7 @@ function _updateBackgroundSkillsPreview() {
     if (!preview) return;
     const skills = BACKGROUND_MECHANICS[bgKey]?.skills || [];
     preview.textContent = skills.length
-        ? `✓ Auto-grants: ${skills.map(s => s.replace(/_/g,' ')).join(', ')}`
+        ? `${t('cb_background_skills_auto')} ${skills.map(s => t('skill_' + s) || s.replace(/_/g,' ')).join(', ')}`
         : '';
 }
 
@@ -425,10 +875,10 @@ function _updateSubclassChoicesUI(slug, existing = {}) {
 
     if (slug === 'battle-master') {
         const selected = existing.maneuvers || [];
-        el.innerHTML = `<div style="font-size:10px;color:#e67e22;font-weight:bold;margin-bottom:4px;">⚔️ Choose maneuvers (3):</div>
+        el.innerHTML = `<div style="font-size:10px;color:#e67e22;font-weight:bold;margin-bottom:4px;"><img src="/assets/icons/action/melee.png" alt="" class="custom-icon" style="width:14px;height:14px;vertical-align:middle;" loading="lazy"> ${t('cb_maneuver_pick')} (3):</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">
                 ${_MANEUVER_SLUGS.map(s => {
-                    const name = s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+                    const name = t('maneuver_' + s) || s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
                     return `<label style="font-size:10px;color:#ccc;display:flex;align-items:center;gap:3px;">
                         <input type="checkbox" value="${s}" ${selected.includes(s)?'checked':''} onchange="window._bmManeuverChange(this)"> ${name}
                     </label>`;
@@ -442,35 +892,35 @@ function _updateSubclassChoicesUI(slug, existing = {}) {
         save();
     } else if (slug === 'totem-warrior') {
         const chosen = existing.totem || '';
-        el.innerHTML = `<div style="font-size:10px;color:#e67e22;font-weight:bold;margin-bottom:4px;">🐻 Totem Animal:</div>
+        el.innerHTML = `<div style="font-size:10px;color:#e67e22;font-weight:bold;margin-bottom:4px;"><img src="/assets/icons/action/nature.png" alt="" class="custom-icon" style="width:14px;height:14px;vertical-align:middle;" loading="lazy"> ${t('cb_totem_pick')}:</div>
             <div style="display:flex;gap:8px;">
-                ${['bear','eagle','wolf'].map(t => `<label style="font-size:11px;color:#ccc;display:flex;align-items:center;gap:3px;">
-                    <input type="radio" name="totem-choice" value="${t}" ${chosen===t?'checked':''} onchange="document.getElementById('cb-subclass-choices').dataset.choices=JSON.stringify({totem:'${t}'})">
-                    ${t.charAt(0).toUpperCase()+t.slice(1)}
+                ${['bear','eagle','wolf'].map(a => `<label style="font-size:11px;color:#ccc;display:flex;align-items:center;gap:3px;">
+                    <input type="radio" name="totem-choice" value="${a}" ${chosen===a?'checked':''} onchange="document.getElementById('cb-subclass-choices').dataset.choices=JSON.stringify({totem:'${a}'})">
+                    ${t('totem_' + a) || a.charAt(0).toUpperCase()+a.slice(1)}
                 </label>`).join('')}
             </div>`;
     } else if (slug === 'draconic') {
         const chosen = existing.dragonAncestry || '';
-        el.innerHTML = `<div style="font-size:10px;color:#e67e22;font-weight:bold;margin-bottom:4px;">🐲 Dragon Ancestry:</div>
+        el.innerHTML = `<div style="font-size:10px;color:#e67e22;font-weight:bold;margin-bottom:4px;"><img src="/assets/icons/action/fire.png" alt="" class="custom-icon" style="width:14px;height:14px;vertical-align:middle;" loading="lazy"> ${t('cb_dragon_ancestry')}:</div>
             <select style="background:#2c3e50;color:white;border:1px solid #555;border-radius:4px;padding:3px 6px;font-size:11px;" onchange="document.getElementById('cb-subclass-choices').dataset.choices=JSON.stringify({dragonAncestry:this.value})">
-                <option value="">Choose…</option>
+                <option value="">${t('cb_choose') || 'Choose…'}</option>
                 ${['acid','cold','fire','lightning','poison'].map(d =>
-                    `<option value="${d}" ${chosen===d?'selected':''}>${d.charAt(0).toUpperCase()+d.slice(1)}</option>`
+                    `<option value="${d}" ${chosen===d?'selected':''}>${t('dmg_' + d) || d.charAt(0).toUpperCase()+d.slice(1)}</option>`
                 ).join('')}
             </select>`;
     } else if (slug === 'hunter') {
         const chosen = existing.hunterChoice || '';
-        el.innerHTML = `<div style="font-size:10px;color:#e67e22;font-weight:bold;margin-bottom:4px;">🏹 Hunter's Prey:</div>
+        el.innerHTML = `<div style="font-size:10px;color:#e67e22;font-weight:bold;margin-bottom:4px;"><img src="/assets/icons/action/ranged.png" alt="" class="custom-icon" style="width:14px;height:14px;vertical-align:middle;" loading="lazy"> ${t('cb_hunter_prey')}:</div>
             <div style="display:flex;flex-direction:column;gap:3px;">
-                ${[['colossus_slayer','Colossus Slayer'],['giant_killer','Giant Killer'],['horde_breaker','Horde Breaker']].map(([v,n]) =>
+                ${[['colossus_slayer','cb_colossus_slayer'],['giant_killer','cb_giant_killer'],['horde_breaker','cb_horde_breaker']].map(([v,k]) =>
                     `<label style="font-size:11px;color:#ccc;display:flex;align-items:center;gap:3px;">
                         <input type="radio" name="hunter-choice" value="${v}" ${chosen===v?'checked':''} onchange="document.getElementById('cb-subclass-choices').dataset.choices=JSON.stringify({hunterChoice:'${v}'})">
-                        ${n}
+                        ${t(k)}
                     </label>`
                 ).join('')}
             </div>`;
     } else if (slug === 'divination') {
-        el.innerHTML = `<div style="font-size:10px;color:#9b59b6;font-style:italic;">🎲 Portent dice are rolled automatically on long rest.</div>`;
+        el.innerHTML = `<div style="font-size:10px;color:#9b59b6;font-style:italic;"><img src="/assets/icons/toolbar/dice.png" alt="" class="custom-icon" style="width:14px;height:14px;vertical-align:middle;" loading="lazy"> ${t('cb_portent_note')}</div>`;
         el.dataset.choices = '{}';
     } else {
         el.dataset.choices = JSON.stringify(existing);
@@ -517,7 +967,7 @@ function _updateAcPreview() {
         ac = 10 + dexMod;
     }
     if (shieldOn) ac += 2;
-    preview.textContent = `⚡ ${t('cb_ac_preview') || 'Computed AC'}: ${ac}`;
+    preview.textContent = `${t('cb_ac_preview')}: ${ac}`;
 }
 
 /** Open the feat picker modal and render the list. */
@@ -538,18 +988,28 @@ function _renderFeatList(query) {
         .filter(slug => !q || slug.includes(q))
         .sort();
     list.innerHTML = entries.map(slug => {
-        const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        const nameKey = `feat_${slug}`;
+        const translated = t(nameKey);
+        const name = (translated !== nameKey) ? translated : slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         const fm = FEAT_MECHANICS[slug];
         const effects = [];
-        if (fm.initiative)          effects.push(`+${fm.initiative} initiative`);
-        if (fm.max_hp_bonus?.perLevel) effects.push(`+${fm.max_hp_bonus.perLevel} HP/level`);
-        if (fm.speed)               effects.push(`+${fm.speed} ft speed`);
+        if (fm.initiative)          effects.push(`+${fm.initiative} ${t('cb_init_label') || 'initiative'}`);
+        if (fm.max_hp_bonus?.perLevel) effects.push(`+${fm.max_hp_bonus.perLevel} HP/${t('cb_level') || 'level'}`);
+        if (fm.speed)               effects.push(`+${fm.speed} ft ${t('cb_speed') || 'speed'}`);
         if (fm.abilBonus)           effects.push(Object.entries(fm.abilBonus).map(([a,v]) => `+${v} ${a.toUpperCase()}`).join(', '));
         const desc = effects.length ? `<span style="font-size:10px;color:#aaa;"> — ${effects.join(', ')}</span>` : '';
-        return `<button type="button" onclick="window._addFeatChip('${slug}')"
-            style="text-align:left;background:rgba(155,89,182,0.1);border:1px solid rgba(155,89,182,0.3);color:#d7bde2;border-radius:5px;padding:5px 8px;cursor:pointer;font-size:12px;">
+        return `<button type="button" data-feat-slug="${slug}"
+            style="text-align:${getLang()==='he'?'right':'left'};background:rgba(155,89,182,0.1);border:1px solid rgba(155,89,182,0.3);color:#d7bde2;border-radius:5px;padding:5px 8px;cursor:pointer;font-size:12px;">
             ${name}${desc}</button>`;
     }).join('');
+    // Event delegation for feat buttons
+    setTimeout(() => {
+        const list = document.getElementById('feat-picker-list');
+        if (list) list.addEventListener('click', e => {
+            const btn = e.target.closest('[data-feat-slug]');
+            if (btn) window._addFeatChip(btn.dataset.featSlug);
+        });
+    }, 0);
 }
 
 /** Add a feat chip to the feat chips container. */
@@ -558,12 +1018,20 @@ window._addFeatChip = function(slug) {
     if (!chips) return;
     const feats = JSON.parse(chips.dataset.feats || '[]');
     if (feats.find(f => f.name === slug)) return; // no dupes
-    const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const nameKey = `feat_${slug}`;
+    const translated = t(nameKey);
+    const name = (translated !== nameKey) ? translated : slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     feats.push({ name: slug });
     chips.dataset.feats = JSON.stringify(feats);
     const chip = document.createElement('span');
     chip.className = 'feat-chip';
-    chip.innerHTML = `${name} <button type="button" onclick="window._removeFeatChip('${slug}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;padding:0 2px;font-size:13px;">×</button>`;
+    chip.textContent = name + ' ';
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    Object.assign(removeBtn.style, { background:'none', border:'none', color:'#e74c3c', cursor:'pointer', padding:'0 2px', fontSize:'13px' });
+    removeBtn.addEventListener('click', () => window._removeFeatChip(slug));
+    chip.appendChild(removeBtn);
     chips.appendChild(chip);
     document.getElementById('feat-picker-modal').style.display = 'none';
     _updateAcPreview();
@@ -634,28 +1102,28 @@ function _buildActionRow(data) {
     row.className = 'action-row';
     row.innerHTML = `
         <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
-            <input type="text" class="builder-input act-name" value="${d.name||''}" placeholder="Action name" style="flex:2; min-width:100px; padding:5px; font-size:12px;">
+            <input type="text" class="builder-input act-name" value="${d.name||''}" placeholder="${t('cb_action_name_ph')}" style="flex:2; min-width:100px; padding:5px; font-size:12px;">
             <select class="builder-input act-hit-type" style="flex:1.5; min-width:95px; padding:5px; font-size:11px;">
-                <option value="melee">⚔️ Melee</option>
-                <option value="ranged">🏹 Ranged</option>
-                <option value="spell">✨ Spell</option>
-                <option value="always">🎯 Always Hit</option>
-                <option value="none">— No Roll</option>
+                <option value="melee">${t('cb_action_melee')}</option>
+                <option value="ranged">${t('cb_action_ranged')}</option>
+                <option value="spell">${t('cb_action_spell')}</option>
+                <option value="always">${t('cb_action_always_hit')}</option>
+                <option value="none">— ${t('cb_action_no_roll')}</option>
             </select>
             <input type="number" class="builder-input act-hit-mod" value="${parseInt(d.hitMod)||0}" min="0" max="15"
-                   style="width:50px; padding:5px; font-size:12px; text-align:center;" title="Hit bonus (+0 to +15)">
-            <span style="font-size:9px; color:#aaa; white-space:nowrap;">+hit</span>
+                   style="width:50px; padding:5px; font-size:12px; text-align:center;" title="${t('cb_hit_bonus_title')}">
+            <span style="font-size:9px; color:#aaa; white-space:nowrap;">${t('cb_hit_bonus')}</span>
         </div>
         <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-top:5px;">
             <select class="builder-input act-dmg-dice" style="flex:1.5; min-width:95px; padding:5px; font-size:11px;">
-                ${DAMAGE_DICE_OPTIONS.map(opt => `<option value="${opt}">${opt || '— No Dmg'}</option>`).join('')}
+                ${DAMAGE_DICE_OPTIONS.map(opt => `<option value="${opt}">${opt || ('— ' + t('cb_action_no_dmg'))}</option>`).join('')}
             </select>
             <span style="font-size:10px; color:#888;">×</span>
             <input type="number" class="builder-input act-dmg-mult" value="${parseInt(d.damageMult)||1}" min="1" max="15"
-                   style="width:45px; padding:5px; font-size:12px; text-align:center;" title="Dice count multiplier (1–15)">
-            <select class="builder-input act-action-type" style="width:90px; padding:5px; font-size:11px;" title="Damage or Heal">
-                <option value="damage">⚔️ Damage</option>
-                <option value="heal">💚 Heal</option>
+                   style="width:45px; padding:5px; font-size:12px; text-align:center;" title="${t('cb_dice_mult_title')}">
+            <select class="builder-input act-action-type" style="width:90px; padding:5px; font-size:11px;" title="${t('cb_action_dmg_or_heal')}">
+                <option value="damage">${t('cb_action_damage')}</option>
+                <option value="heal">${t('cb_action_heal')}</option>
             </select>
             <input type="hidden" class="act-icon" value="${selectedIcon}">
             <button type="button" class="delete-atk-btn" onclick="this.closest('.action-row').remove()" aria-label="Delete action">✕</button>
@@ -678,11 +1146,12 @@ function _buildActionRow(data) {
     // Build icon gallery
     const gallery = row.querySelector('.act-icon-gallery');
     const hiddenIcon = row.querySelector('.act-icon');
+    gallery.setAttribute('data-label', t('cb_pick_icon') || 'בחר איור');
     ACTION_ICONS.forEach(ic => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'act-icon-btn' + (ic === selectedIcon ? ' selected' : '');
-        btn.innerHTML = `<img src="/assets/icons/action/${ic}.png" alt="${ic}" class="custom-icon" style="width:20px;height:20px;">`;
+        btn.innerHTML = `<img src="/assets/icons/action/${ic}.png" alt="${ic}" class="custom-icon" loading="lazy">`;
         btn.onclick = () => {
             hiddenIcon.value = ic;
             gallery.querySelectorAll('.act-icon-btn').forEach(b => b.classList.remove('selected'));
@@ -777,7 +1246,7 @@ async function _tavernEntrance() {
     }
 }
 
-db.listenToAuthState((user) => {
+db.listenToAuthState(async (user) => {
     if (user) {
         currentUserUid = user.uid;
         setUid(user.uid);
@@ -785,16 +1254,44 @@ db.listenToAuthState((user) => {
         if(userDisplayName) userDisplayName.innerText = user.displayName || "Player";
         if(userEmail) userEmail.innerText = user.email || "";
         if (user.photoURL && userAvatar) userAvatar.src = user.photoURL;
+        // Store email + displayName in RTDB so webhook can match Wix buyer → Firebase user
+        db.patchUser(user.uid, { email: user.email || '', displayName: user.displayName || '' });
         db.listenToUserCharacters(user.uid, renderVault);
+
+        // Init account dashboard
+        initDashboard(user.uid, user);
+
+        // Init subscription listener — MUST await so tier is resolved before UI interactions
+        await listenToSubscription(user.uid, (sub) => {
+            window._currentTier = sub.tier;
+            // Show trial/grace banners
+            const banner = document.getElementById('sub-banner');
+            if (banner) {
+                if (sub.inTrial) {
+                    banner.textContent = t('sub_trial_days_left').replace('{n}', sub.daysLeft);
+                    banner.style.display = '';
+                } else if (sub.inGrace) {
+                    banner.textContent = t('sub_payment_crit_miss');
+                    banner.style.display = '';
+                    banner.style.background = 'rgba(231,76,60,0.2)';
+                } else {
+                    banner.style.display = 'none';
+                }
+            }
+        });
 
         // Init campaign tab
         initCampaigns(user.uid, user.displayName || 'Player', (role, charData, campaignId, isCampaign) => {
             langToggleBtn.style.display = 'none';
             if (lobbyScreen) lobbyScreen.style.display = 'none';
-            showSpinner('Joining campaign…');
+            showSpinner(t('campaign_session_loading'));
             startGame(role, charData, campaignId, isCampaign);
             if (role === 'dm' && currentUserUid) db.setDmUid(campaignId, currentUserUid);
         });
+
+        // Init community hub tab
+        initCommunityHub(user.uid, user.displayName || 'Player');
+        ensureProfile(user.uid, user.displayName || 'Player', user.photoURL || '');
     } else {
         currentUserUid = null;
         if(lobbyScreen) lobbyScreen.style.display = 'none';
@@ -879,6 +1376,10 @@ function openBuilderForEdit(charId) {
     document.getElementById('cb-class').value  = c.class  || "";
     document.getElementById('cb-gender').value = c.gender || 'male';
     document.getElementById('cb-size').value   = c.size   || 'Medium';
+    const genderVis = document.getElementById('cb-gender-visible');
+    if (genderVis) genderVis.value = c.gender || 'male';
+    const sizeVis = document.getElementById('cb-size-visible');
+    if (sizeVis) sizeVis.value = c.size || 'Medium';
     document.getElementById('cb-ac').value = c.ac || "";
     document.getElementById('cb-speed').value = c.speed || "";
     document.getElementById('cb-level').value = c.level || "1";
@@ -1018,7 +1519,13 @@ function openBuilderForEdit(charId) {
             const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
             const chip = document.createElement('span');
             chip.className = 'feat-chip';
-            chip.innerHTML = `${name} <button type="button" onclick="window._removeFeatChip('${slug}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;padding:0 2px;font-size:13px;">×</button>`;
+            chip.textContent = name + ' ';
+            const rmBtn = document.createElement('button');
+            rmBtn.type = 'button';
+            rmBtn.textContent = '×';
+            Object.assign(rmBtn.style, { background:'none', border:'none', color:'#e74c3c', cursor:'pointer', padding:'0 2px', fontSize:'13px' });
+            rmBtn.addEventListener('click', () => window._removeFeatChip(slug));
+            chip.appendChild(rmBtn);
             featsEl2.appendChild(chip);
         });
     }
@@ -1031,7 +1538,16 @@ function openBuilderForEdit(charId) {
 
     _updateAcPreview();
 
-    // Wizard: render class cards, go to step 1, run smart defaults, clear manual-edit flags
+    // Wizard: render race & class cards, go to step 1, run smart defaults, clear manual-edit flags
+    // Determine base race from subrace slug for race card selection
+    const _baseRaceFromSlug = (slug) => {
+        for (const [base, subs] of Object.entries(_RACE_SUBRACES)) {
+            if (subs && subs.some(s => s.slug === slug)) return base;
+            if (!subs && base === slug) return base;
+        }
+        return slug;
+    };
+    _renderRaceCards(_baseRaceFromSlug(c.race || ''));
     _renderClassCards(c.class || '');
     ['cb-init','cb-pp','cb-darkvision','cb-speed'].forEach(id => {
         const el = document.getElementById(id);
@@ -1043,6 +1559,12 @@ function openBuilderForEdit(charId) {
 
 if(newCharBtn) {
     newCharBtn.onclick = () => {
+        // Tier gate: check character limit
+        const charCount = Object.keys(currentVaultCharacters || {}).length;
+        if (!checkCanCreateCharacter(charCount)) {
+            _showLevelUpModal();
+            return;
+        }
         currentEditCharId = null;
         if(builderModal) builderModal.style.display = 'flex';
         document.getElementById('cb-main-title').innerText = t('cb_title');
@@ -1066,6 +1588,7 @@ if(newCharBtn) {
         if (acPreview) acPreview.textContent = '';
         _populateSubclassDropdown();
         // Wizard reset
+        _renderRaceCards('');
         _renderClassCards('');
         ['cb-init','cb-pp','cb-darkvision','cb-speed'].forEach(id => {
             const el = document.getElementById(id);
@@ -1118,6 +1641,7 @@ if(saveCharBtn) {
         form.onsubmit = async (e) => {
             e.preventDefault();
             if (!currentUserUid) return;
+            if (!_validateSave()) return;
             const name = document.getElementById('cb-name')?.value.trim();
             const charRace   = document.getElementById('cb-race')?.value;
             const charClass  = document.getElementById('cb-class')?.value;
@@ -1235,12 +1759,11 @@ if(saveCharBtn) {
 
             // Hit Dice and short-rest fields (required by openShortRest + charEngine)
             const conMod = Math.floor(((_con || 10) - 10) / 2);
-            const hdRemainingInput = parseInt(document.getElementById('cb-hd-remaining')?.value);
             charData.hdMax       = charLevel;
-            charData.hdLeft      = isNaN(hdRemainingInput) ? charLevel : hdRemainingInput;
-            charData.hdRemaining = isNaN(hdRemainingInput) ? charLevel : hdRemainingInput;
+            charData.hdLeft      = charLevel;
+            charData.hdRemaining = charLevel;
             charData.conMod      = conMod;
-            charData.tempHp      = parseInt(document.getElementById('cb-temp-hp')?.value) || 0;
+            charData.tempHp      = 0;
 
             // Background, subclass, equipment, feats
             const bg = document.getElementById('cb-background')?.value || '';
@@ -1256,12 +1779,14 @@ if(saveCharBtn) {
             const mainHandVal = document.getElementById('cb-main-hand')?.value;
             const rangedWeaponVal = document.getElementById('cb-ranged-weapon')?.value;
             const shieldOn = document.getElementById('cb-shield')?.checked;
+            const offhandVal = document.getElementById('cb-offhand')?.value || '';
+            const offHandData = offhandVal === 'shield' ? null : _parseEquipSlot(offhandVal);
             const equipment = {
                 armor:   armorVal   ? _parseEquipSlot(armorVal)   : null,
                 shield:  shieldOn   ? { name: 'Shield', acBonus: 2 }  : null,
                 mainHand: mainHandVal ? _parseEquipSlot(mainHandVal) : null,
                 ranged:  rangedWeaponVal ? _parseEquipSlot(rangedWeaponVal) : null,
-                offHand: null,
+                offHand: offHandData,
                 items:   [],
             };
             charData.equipment = equipment;
@@ -1280,6 +1805,21 @@ if(saveCharBtn) {
             if (immunities) charData.damageImmunities = immunities;
             const loot = document.getElementById('cb-loot')?.value.trim();
             if (loot) charData.loot = loot;
+
+            // Belief system
+            const beliefCard = document.querySelector('#cb-belief-grid [data-belief].selected');
+            if (beliefCard) {
+                charData.belief = beliefCard.dataset.belief;
+                if (charData.belief === 'believer') {
+                    const deityName = document.getElementById('cb-deity')?.value.trim();
+                    const holySym = document.querySelector('.holy-symbol-btn.selected');
+                    if (deityName || holySym) {
+                        charData.deity = { name: deityName || '', symbol: holySym?.textContent.trim() || '' };
+                    }
+                }
+            }
+            const story = document.getElementById('cb-story')?.value.trim();
+            if (story) charData.personalStory = story;
 
             // Spell slots (only include levels with > 0 max)
             const spellMax = {};
@@ -1344,6 +1884,11 @@ function showRoomCodeModal(code, onEnter) {
 const createRoomBtn = document.getElementById('create-room-btn');
 if(createRoomBtn) {
     createRoomBtn.onclick = () => {
+        // Tier gate: only DM/Founder can create rooms
+        if (!checkCanCreateRoom()) {
+            _showLevelUpModal();
+            return;
+        }
         // 6-character alphanumeric room code (36^6 ≈ 2.2 billion combinations)
         const _chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1 to avoid confusion
         const randomCode = Array.from({length:6}, () => _chars[Math.floor(Math.random()*_chars.length)]).join('');

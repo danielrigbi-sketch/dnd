@@ -1,4 +1,5 @@
 // accountDashboard.js — Account Dashboard (Profile, Settings, Billing, Mechanics)
+import { escapeHtml } from './core/sanitize.js';
 import { t, setLanguage, getLang, updateDOM } from './i18n.js';
 import { iconImg } from './iconMap.js';
 import {
@@ -86,6 +87,7 @@ export function initDashboard(uid, user) {
     document.getElementById('acct-close-btn')?.addEventListener('click', closeDashboard);
     document.getElementById('acct-logout-btn')?.addEventListener('click', async () => {
         closeDashboard();
+        window.dispatchEvent(new CustomEvent('paradice:logout'));
         await logoutUser();
     });
 
@@ -185,11 +187,11 @@ function _renderProfile() {
     container.innerHTML = `
         <div class="acct-stat-row">
             <span class="acct-stat-label">${t('acct_display_name')}</span>
-            <span class="acct-stat-value">${_escHtml(_user?.displayName || '—')}</span>
+            <span class="acct-stat-value">${escapeHtml(_user?.displayName || '—')}</span>
         </div>
         <div class="acct-stat-row">
             <span class="acct-stat-label">${t('acct_email')}</span>
-            <span class="acct-stat-value">${_escHtml(_user?.email || '—')}</span>
+            <span class="acct-stat-value">${escapeHtml(_user?.email || '—')}</span>
         </div>
         <div class="acct-stat-row">
             <span class="acct-stat-label">${t('acct_member_since')}</span>
@@ -486,12 +488,6 @@ function _planLabel() {
     if (!plan) return t('acct_plan_free');
     const planKeys = { monthly: 'acct_plan_monthly', yearly: 'acct_plan_yearly', lifetime: 'acct_plan_lifetime' };
     return t(planKeys[plan] || 'acct_plan_free');
-}
-
-function _escHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
 }
 
 function _debounce(fn, ms) {

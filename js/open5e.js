@@ -39,6 +39,15 @@ function _lsGet(k) {
 function _lsEvict() {
   Object.keys(localStorage).filter(k => k.startsWith(LS_PREFIX)).forEach(k => localStorage.removeItem(k));
 }
+// Sweep expired entries on module load
+try {
+  Object.keys(localStorage).filter(k => k.startsWith(LS_PREFIX)).forEach(k => {
+    try {
+      const { ts } = JSON.parse(localStorage.getItem(k));
+      if (Date.now() - ts > CACHE_TTL) localStorage.removeItem(k);
+    } catch { localStorage.removeItem(k); }
+  });
+} catch {}
 function _lsSet(k, data) {
   try { localStorage.setItem(LS_PREFIX + k, JSON.stringify({ ts: Date.now(), data })); }
   catch (e) {
@@ -207,7 +216,7 @@ export function parseSpellcastingDesc(specialAbilities) {
 
 /**
  * Fetch all spells from a monster's Spellcasting ability.
- * Returns a spellbook object { [slug]: entry } in CritRoll format.
+ * Returns a spellbook object { [slug]: entry } in ParaDice format.
  */
 export async function fetchSpellcastingSpellbook(specialAbilities) {
   const parsed = parseSpellcastingDesc(specialAbilities);
@@ -253,7 +262,7 @@ export async function fetchSpellcastingSpellbook(specialAbilities) {
 }
 
 /**
- * Map Open5e monster data → CritRoll player record shape
+ * Map Open5e monster data → ParaDice player record shape
  * (used when spawning from Open5e picker)
  */
 export function open5eToNPC(m) {
@@ -406,7 +415,7 @@ export function open5eToNPC(m) {
   };
 }
 
-/** Return the CritRoll typeColor key for an Open5e type string */
+/** Return the ParaDice typeColor key for an Open5e type string */
 export function normaliseType(rawType) {
   if (!rawType) return 'Humanoid';
   const t = rawType.toLowerCase();

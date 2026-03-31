@@ -1,6 +1,11 @@
 // campaign.js — Campaign lobby tab, create/join/manage flow
 import * as db from './firebaseService.js';
 import { t, getLang } from './i18n.js';
+import { checkCanCreateCampaign, getCurrentSub, checkCanCreateListing } from './subscriptionService.js';
+import { openListingEditor, unpublishListing } from './listingEditor.js';
+import { getListing } from './firebaseService.js';
+import { iconImg } from './iconMap.js';
+import { escapeHtml } from './core/sanitize.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 let _uid        = null;
@@ -97,6 +102,18 @@ async function _createCampaign() {
     const name = nameInput.value.trim();
     if (!name) { nameInput.focus(); return; }
 
+    // Tier gate: check campaign limit
+    const sub = getCurrentSub();
+    if (!sub.limits.canCreateRoom) {
+        _showToast(t('campaign_err_no_dm') || 'DM subscription required', 'warning');
+        return;
+    }
+    const existingCampaigns = document.querySelectorAll('#campaign-dm-list .campaign-card').length;
+    if (!checkCanCreateCampaign(existingCampaigns)) {
+        _showToast(t('campaign_limit_reached') || `Campaign limit reached (${sub.limits.maxCampaigns})`, 'warning');
+        return;
+    }
+
     const campaignId = _genCode();
     const btn = document.getElementById('campaign-create-confirm-btn');
     btn.disabled = true;
@@ -131,11 +148,21 @@ async function _requestAccess() {
 
     try {
         // Check if already approved
+        // Check ban first
+        const isBanned = await db.isBannedFromCampaign(code, _uid);
+        if (isBanned) {
+            _showToast(t('campaign_banned_blocked'), 'error');
+            return;
+        }
+
         const isApproved = await db.isCampaignPlayer(code, _uid);
         if (isApproved) {
             // Ensure their playerCampaigns index exists (repairs accounts approved before the fix)
             try { await db.savePlayerCampaignIndex(code, _uid); } catch(e) { console.warn('[Campaign] savePlayerCampaignIndex repair failed:', e); }
-            _showToast(t('campaign_already_approved'), 'info');
+            _showToast(t('campaign_already_approved'), 'success');
+            // Already approved — go straight to vault picker
+            const approvedData = await db.getCampaignPlayerData(code, _uid);
+            _openVaultForCampaign(code, approvedData?.charName || '');
             return;
         }
 
@@ -164,7 +191,7 @@ function _showRequestDialog(campaignId, campaignName, dmName) {
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:4000;display:flex;align-items:center;justify-content:center;';
     modal.innerHTML = `
         <div style="background:#1a1a2e;border:2px solid #3498db;border-radius:14px;padding:28px;max-width:360px;width:90%;text-align:center;">
-            <div style="font-size:32px;margin-bottom:8px;">⚔️</div>
+            <div style="margin-bottom:8px;">${iconImg('⚔️','32px')}</div>
             <h3 style="color:#f1c40f;margin:0 0 6px;">${campaignName}</h3>
             <div style="color:#aaa;font-size:13px;margin-bottom:16px;">DM: ${dmName}</div>
             <input type="text" id="request-char-name" class="input-padded" placeholder="${t('campaign_char_ph')}" style="width:100%;margin-bottom:12px;" maxlength="40">
@@ -208,9 +235,9 @@ function _showWaitingScreen(campaignId, campaignName, dmName, charName) {
     modal.innerHTML = `
         <div style="background:#1a1a2e;border:2px solid #f1c40f;border-radius:14px;padding:32px;max-width:360px;width:90%;text-align:center;">
             <div class="waiting-spinner" style="font-size:36px;margin-bottom:12px;">⏳</div>
-            <h3 style="color:#f1c40f;margin:0 0 8px;">${_esc(campaignName)}</h3>
+            <h3 style="color:#f1c40f;margin:0 0 8px;">${escapeHtml(campaignName)}</h3>
             <div style="color:#ccc;font-size:14px;margin-bottom:6px;">${t('campaign_waiting_dm')}</div>
-            <div style="color:#888;font-size:12px;margin-bottom:20px;">DM: ${_esc(dmName)} · ${_esc(charName)}</div>
+            <div style="color:#888;font-size:12px;margin-bottom:20px;">DM: ${escapeHtml(dmName)} · ${escapeHtml(charName)}</div>
             <div style="color:#666;font-size:11px;margin-bottom:16px;">${t('campaign_will_proceed')}</div>
             <button id="waiting-cancel-btn" class="hover-btn" style="background:#444;color:#ccc;padding:8px 20px;border-radius:6px;font-size:12px;">${t('campaign_cancel')}</button>
         </div>
@@ -236,7 +263,7 @@ function _showWaitingScreen(campaignId, campaignName, dmName, charName) {
 }
 
 // ── DM Campaign Cards ─────────────────────────────────────────────────────────
-function _renderDMCampaigns(campaigns) {
+async function _renderDMCampaigns(campaigns) {
     const list = document.getElementById('dm-campaign-list');
     if (!list) return;
 
@@ -245,18 +272,42 @@ function _renderDMCampaigns(campaigns) {
         return;
     }
 
+    // Check which campaigns have public listings (non-blocking — never crash campaign list)
+    let listingMap = {};
+    let canPublish = false;
+    try {
+        const listingChecks = await Promise.all(
+            Object.keys(campaigns).map(async id => {
+                try { return [id, await getListing(id)]; }
+                catch { return [id, null]; }
+            })
+        );
+        listingMap = Object.fromEntries(listingChecks);
+        canPublish = checkCanCreateListing();
+    } catch (e) {
+        console.warn('[Campaign] listing check failed, skipping publish buttons:', e.message);
+    }
+
     list.innerHTML = Object.entries(campaigns).map(([id, c]) => {
         const meta = c.meta || {};
         const playerCount = Object.keys(c.allowedPlayers || {}).length;
         const lastPlayed  = meta.lastSession ? _relativeTime(meta.lastSession) : t('campaign_never');
+        const hasListing = !!listingMap[id];
+        const publishBtn = canPublish
+            ? (hasListing
+                ? `<button class="hover-btn" onclick="window.__campaignUnpublish('${id}')" style="background:rgba(155,89,182,0.3);color:#d7bde2;padding:4px 8px;border-radius:6px;font-size:11px;">${t('hub_unpublish')}</button>`
+                : `<button class="hover-btn" onclick="window.__campaignPublish('${id}')" style="background:rgba(46,204,113,0.3);color:#82e0aa;padding:4px 8px;border-radius:6px;font-size:11px;">${t('hub_publish_community')}</button>`)
+            : '';
+        const publicBadge = hasListing ? `<span style="background:rgba(46,204,113,0.2);color:#82e0aa;font-size:9px;padding:1px 6px;border-radius:8px;margin-inline-start:6px;">${t('hub_published_badge')}</span>` : '';
         return `
             <div class="campaign-card" data-id="${id}">
-                <div class="campaign-card-title">🗺️ ${_esc(meta.name || id)}</div>
+                <div class="campaign-card-title">${iconImg('🗺','14px')} ${escapeHtml(meta.name || id)}${publicBadge}</div>
                 <div class="campaign-card-meta"><strong>${id}</strong> · ${playerCount} · ${lastPlayed}</div>
                 <div class="campaign-card-actions">
                     <button class="hover-btn campaign-resume-btn" onclick="window.__campaignResume('${id}')">${t('campaign_resume')}</button>
                     <button class="hover-btn campaign-manage-btn" onclick="window.__campaignManage('${id}')">${t('campaign_manage')}</button>
                     <button class="hover-btn campaign-invite-btn" onclick="window.__campaignInvite('${id}')" title="${t('campaign_invite_copied')}">🔗</button>
+                    ${publishBtn}
                     <button class="hover-btn" onclick="window.__campaignDelete('${id}')" style="background:#c0392b;color:white;padding:4px 8px;border-radius:6px;font-size:11px;">${t('campaign_delete_btn')}</button>
                 </div>
             </div>`;
@@ -264,7 +315,7 @@ function _renderDMCampaigns(campaigns) {
 }
 
 // ── Player Campaign Cards ─────────────────────────────────────────────────────
-function _renderPlayerCampaigns(campaigns) {
+async function _renderPlayerCampaigns(campaigns) {
     const list = document.getElementById('player-campaign-list');
     if (!list) return;
 
@@ -274,16 +325,18 @@ function _renderPlayerCampaigns(campaigns) {
     }
 
     list.innerHTML = Object.entries(campaigns).map(([id, c]) => {
-        const meta    = c.meta || {};
-        const myInfo  = c.allowedPlayers?.[_uid] || {};
-        const lastPlayed = meta.lastSession ? _relativeTime(meta.lastSession) : t('campaign_never');
+        // playerCampaigns index is flat: { name, dmName, charName, lastSession }
+        const campaignName = c.name || c.meta?.name || id;
+        const dmName = c.dmName || c.meta?.dmName || '?';
+        const charName = c.charName || c.allowedPlayers?.[_uid]?.charName || '?';
+        const lastPlayed = (c.lastSession || c.meta?.lastSession) ? _relativeTime(c.lastSession || c.meta?.lastSession) : t('campaign_never');
         return `
             <div class="campaign-card" data-id="${id}">
-                <div class="campaign-card-title">🗺️ ${_esc(meta.name || id)}</div>
-                <div class="campaign-card-meta">DM: ${_esc(meta.dmName || '?')} · ${_esc(myInfo.charName || '?')} · ${lastPlayed}</div>
+                <div class="campaign-card-title">${iconImg('🗺','14px')} ${escapeHtml(campaignName)}</div>
+                <div class="campaign-card-meta">DM: ${escapeHtml(dmName)} · ${escapeHtml(charName)} · ${lastPlayed}</div>
                 <div class="campaign-card-actions">
-                    <button class="hover-btn campaign-rejoin-btn" onclick="window.__campaignRejoin('${id}', '${_esc(myInfo.charName || '')}')">${t('campaign_rejoin')}</button>
-                    <button class="hover-btn" onclick="window.__campaignLeave('${id}')" style="background:#555;color:#ccc;padding:4px 8px;border-radius:6px;font-size:11px;">✕</button>
+                    <button class="hover-btn campaign-rejoin-btn" onclick="window.__campaignRejoin('${id}', '${escapeHtml(charName)}')">${t('campaign_rejoin')}</button>
+                    <button class="hover-btn" onclick="window.__campaignLeave('${id}')" style="background:#555;color:#ccc;padding:4px 8px;border-radius:6px;font-size:11px;">${iconImg('✕','12px')}</button>
                 </div>
             </div>`;
     }).join('');
@@ -345,10 +398,10 @@ function _openVaultForCampaign(campaignId, linkedCharName) {
             btn.className = 'hover-btn';
             btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;background:rgba(255,255,255,0.05);border:1px solid #444;border-radius:8px;width:100%;text-align:right;cursor:pointer;';
             btn.innerHTML = `
-                <img src="${c.portrait || 'assets/logo.png'}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid ${c.color || '#3498db'}">
+                <img src="${c.portrait || 'assets/logo.webp'}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid ${c.color || '#3498db'}">
                 <div>
-                    <div style="color:white;font-weight:bold;">${_esc(c.name)}</div>
-                    <div style="color:#aaa;font-size:12px;">${_esc(c.class || '')} ${_esc(c.race || '')} · HP ${c.hp || 0}/${c.maxHp || 0}</div>
+                    <div style="color:white;font-weight:bold;">${escapeHtml(c.name)}</div>
+                    <div style="color:#aaa;font-size:12px;">${escapeHtml(c.class || '')} ${escapeHtml(c.race || '')} · HP ${c.hp || 0}/${c.maxHp || 0}</div>
                 </div>
             `;
             btn.addEventListener('click', () => {
@@ -456,10 +509,13 @@ function _openManagePanel(campaignId) {
         container.innerHTML = Object.entries(players).map(([uid, p]) => `
             <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);padding:8px 10px;border-radius:6px;border:1px solid #333;">
                 <div>
-                    <span style="color:white;font-weight:bold;">${_esc(p.playerName || '?')}</span>
-                    <span style="color:#aaa;font-size:12px;margin-right:6px;">· ${_esc(p.charName || '?')}</span>
+                    <span style="color:white;font-weight:bold;">${escapeHtml(p.playerName || '?')}</span>
+                    <span style="color:#aaa;font-size:12px;margin-right:6px;">· ${escapeHtml(p.charName || '?')}</span>
                 </div>
-                <button class="hover-btn" onclick="window.__campaignKick('${campaignId}','${uid}')" style="background:#c0392b;color:white;padding:4px 10px;border-radius:4px;font-size:11px;">${t('campaign_kick')}</button>
+                <div style="display:flex;gap:4px;">
+                    <button class="hover-btn" onclick="window.__campaignKick('${campaignId}','${uid}')" style="background:#c0392b;color:white;padding:4px 10px;border-radius:4px;font-size:11px;">${t('campaign_kick')}</button>
+                    <button class="hover-btn" onclick="window.__campaignBan('${campaignId}','${uid}')" style="background:#8e44ad;color:white;padding:4px 10px;border-radius:4px;font-size:11px;">🚫 ${t('campaign_ban')}</button>
+                </div>
             </div>
         `).join('');
     });
@@ -477,8 +533,8 @@ function _openManagePanel(campaignId) {
         container.innerHTML = Object.entries(pending).map(([uid, r]) => `
             <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(241,196,15,0.06);padding:8px 10px;border-radius:6px;border:1px solid rgba(241,196,15,0.2);">
                 <div>
-                    <span style="color:#f1c40f;font-weight:bold;">${_esc(r.playerName || '?')}</span>
-                    <span style="color:#aaa;font-size:12px;margin-right:6px;">· ${_esc(r.charName || '?')}</span>
+                    <span style="color:#f1c40f;font-weight:bold;">${escapeHtml(r.playerName || '?')}</span>
+                    <span style="color:#aaa;font-size:12px;margin-right:6px;">· ${escapeHtml(r.charName || '?')}</span>
                 </div>
                 <div style="display:flex;gap:6px;">
                     <button class="hover-btn" onclick="window.__campaignApprove('${campaignId}','${uid}')" style="background:#27ae60;color:white;padding:4px 10px;border-radius:4px;font-size:11px;">${t('campaign_approve_btn')}</button>
@@ -506,7 +562,7 @@ function _openManagePanel(campaignId) {
                         <span style="color:#9b59b6;font-size:12px;font-weight:bold;">📅 ${new Date(s.ts).toLocaleDateString('he-IL', { day:'numeric', month:'short', year:'numeric' })}</span>
                         <span style="color:#666;font-size:10px;">${new Date(s.ts).toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' })}</span>
                     </div>
-                    ${s.notes ? `<div style="color:#ccc;font-size:11px;white-space:pre-wrap;">${_esc(s.notes)}</div>` : `<div style="color:#555;font-size:11px;font-style:italic;">${t('campaign_session_no_notes')}</div>`}
+                    ${s.notes ? `<div style="color:#ccc;font-size:11px;white-space:pre-wrap;">${escapeHtml(s.notes)}</div>` : `<div style="color:#555;font-size:11px;font-style:italic;">${t('campaign_session_no_notes')}</div>`}
                     ${s.rollCount ? `<div style="color:#666;font-size:10px;margin-top:3px;">${s.rollCount} ${t('campaign_session_rolls')}</div>` : ''}
                 </div>`).join('');
         });
@@ -523,9 +579,25 @@ window.__campaignApprove = async (campaignId, uid) => {
     await db.approveCampaignPlayer(campaignId, uid);
     _showToast(t('campaign_player_approved'), 'success');
 };
+window.__campaignPublish = (campaignId) => {
+    const meta = document.querySelector(`.campaign-card[data-id="${campaignId}"] .campaign-card-title`)?.textContent?.trim() || campaignId;
+    openListingEditor({
+        type: 'campaign',
+        roomCode: campaignId,
+        title: meta,
+        dmUid: _uid,
+        dmName: _userName,
+        listingId: campaignId
+    });
+};
+window.__campaignUnpublish = async (campaignId) => {
+    await unpublishListing(campaignId);
+};
 window.__campaignDelete = async (campaignId) => {
     if (!confirm(t('campaign_delete_confirm'))) return;
     try {
+        // Also remove from community hub if published
+        await unpublishListing(campaignId).catch(() => {});
         await db.deleteCampaign(campaignId, _uid);
         _showToast(t('campaign_deleted'), 'success');
     } catch(e) {
@@ -544,6 +616,11 @@ window.__campaignKick = async (campaignId, uid) => {
     if (!confirm(t('campaign_kick_confirm'))) return;
     await db.kickCampaignPlayer(campaignId, uid);
     _showToast(t('campaign_kicked'), 'info');
+};
+window.__campaignBan = async (campaignId, uid) => {
+    if (!confirm(t('campaign_ban_confirm'))) return;
+    await db.banCampaignPlayer(campaignId, uid);
+    _showToast(t('campaign_banned'), 'warning');
 };
 
 // ── In-game pending request notification (for DM while in game) ───────────────
@@ -573,7 +650,7 @@ function _showApprovalToast(campaignId, uid, req, onApprove, onDeny) {
     toast.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:9999;background:#1a1a2e;border:2px solid #f1c40f;border-radius:10px;padding:14px 16px;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,0.8);';
     toast.innerHTML = `
         <div style="color:#f1c40f;font-weight:bold;margin-bottom:6px;">${t('campaign_access_request_title')}</div>
-        <div style="color:#ccc;font-size:13px;margin-bottom:10px;"><strong>${_esc(req.playerName)}</strong> ${t('campaign_wants_to_join_as')} <strong>${_esc(req.charName)}</strong></div>
+        <div style="color:#ccc;font-size:13px;margin-bottom:10px;"><strong>${escapeHtml(req.playerName)}</strong> ${t('campaign_wants_to_join_as')} <strong>${escapeHtml(req.charName)}</strong></div>
         <div style="display:flex;gap:8px;">
             <button class="hover-btn" id="approve-${uid}" style="flex:1;background:#27ae60;color:white;padding:6px;border-radius:6px;font-size:12px;font-weight:bold;">${t('campaign_approve_btn')}</button>
             <button class="hover-btn" id="deny-${uid}" style="flex:1;background:#c0392b;color:white;padding:6px;border-radius:6px;font-size:12px;font-weight:bold;">${t('campaign_deny_btn')}</button>
@@ -614,9 +691,6 @@ function _relativeTime(ts) {
     return t('campaign_time_days').replace('{n}', d);
 }
 
-function _esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
 
 function _showToast(msg, type = 'info') {
     // Use global showToast if available, else fallback

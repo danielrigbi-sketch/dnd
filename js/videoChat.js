@@ -3,11 +3,14 @@ import * as db from './firebaseService.js';
 import { t } from './i18n.js';
 import { createVideoChatPanel, addVideoTile, removeVideoTile, updateTileMuteState, destroyVideoChatPanel, setLocalStream as uiSetLocalStream, showVCPanel, hideVCPanel, updateParticipantCount, setCameraOffPlaceholder } from './videoChatUI.js';
 
-// ── ICE configuration (free Google STUN) ────────────────────────────────
+// ── ICE configuration (STUN + TURN for NAT traversal) ──────────────────
 const ICE_CONFIG = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        // Free TURN relay — replace with paid service (Metered/Xirsys) for production reliability
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
     ]
 };
 
@@ -310,7 +313,8 @@ function _createPeerConnection(remoteUid, isOfferer) {
             const retryCount = _retries.get(remoteUid) || 0;
             if (retryCount < MAX_RETRIES) {
                 _retries.set(remoteUid, retryCount + 1);
-                setTimeout(() => _reconnectPeer(remoteUid), 3000);
+                const delay = Math.min(15000, 1000 * Math.pow(2, retryCount)); // 1s, 2s, 4s...
+                setTimeout(() => _reconnectPeer(remoteUid), delay);
             } else {
                 window.showToast?.(t('vc_connection_failed'), 'error');
             }
@@ -321,11 +325,12 @@ function _createPeerConnection(remoteUid, isOfferer) {
 
     // Listen for ICE candidates from the remote peer
     const unsubIce = db.listenToIceCandidates(_roomCode, remoteUid, _uid, async (candidate) => {
+        if (pc.signalingState === 'closed') return;
         try {
             if (pc.remoteDescription) {
                 await pc.addIceCandidate(new RTCIceCandidate(candidate));
             }
-        } catch (e) { console.warn('[VC] ICE candidate error:', e); }
+        } catch (e) { if (pc.signalingState !== 'closed') console.warn('[VC] ICE candidate error:', e); }
     });
     _unsubs.push(unsubIce);
 
@@ -334,7 +339,7 @@ function _createPeerConnection(remoteUid, isOfferer) {
     } else {
         // Listen for offer from the remote peer
         const unsubSignal = db.listenToSignal(_roomCode, remoteUid, _uid, async (signal) => {
-            if (!signal) return;
+            if (!signal || pc.signalingState === 'closed') return;
             try {
                 if (signal.type === 'offer') {
                     await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: signal.sdp }));
@@ -344,7 +349,7 @@ function _createPeerConnection(remoteUid, isOfferer) {
                 } else if (signal.type === 'answer') {
                     await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp }));
                 }
-            } catch (e) { console.warn('[VC] Signal handling error:', e); }
+            } catch (e) { if (pc.signalingState !== 'closed') console.warn('[VC] Signal handling error:', e); }
         });
         _unsubs.push(unsubSignal);
     }
@@ -358,10 +363,10 @@ async function _createOffer(pc, remoteUid) {
 
         // Listen for answer
         const unsubAnswer = db.listenToSignal(_roomCode, remoteUid, _uid, async (signal) => {
-            if (!signal || signal.type !== 'answer') return;
+            if (!signal || signal.type !== 'answer' || pc.signalingState === 'closed') return;
             try {
                 await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: signal.sdp }));
-            } catch (e) { console.warn('[VC] Answer error:', e); }
+            } catch (e) { if (pc.signalingState !== 'closed') console.warn('[VC] Answer error:', e); }
         });
         _unsubs.push(unsubAnswer);
     } catch (e) {
@@ -395,10 +400,16 @@ function _reconnectPeer(remoteUid) {
 
 function _checkQualityDegradation() {
     const count = _peers.size + 1; // +1 for self
-    if (count >= 6) {
-        window.showToast?.(t('vc_audio_only') + ' — 6+ ' + t('vc_participants'), 'info');
-    }
-    if (_localStream && count >= 4) {
+    if (_localStream && count >= 6) {
+        // Auto switch to audio-only at 6+ participants
+        const videoTrack = _localStream.getVideoTracks()[0];
+        if (videoTrack && videoTrack.enabled) {
+            videoTrack.enabled = false;
+            _videoMuted = true;
+            window.showToast?.(t('vc_auto_audio_only') || 'Switched to audio-only (6+ participants)', 'info');
+        }
+    } else if (_localStream && count >= 4) {
+        // Reduce video quality at 4-5 participants
         const videoTrack = _localStream.getVideoTracks()[0];
         if (videoTrack && typeof videoTrack.applyConstraints === 'function') {
             videoTrack.applyConstraints({ width: 320, height: 240 }).catch(() => {});

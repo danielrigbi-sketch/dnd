@@ -625,6 +625,26 @@ export const translations = {
         "feat_spell-sniper": "צלף כישופים", "feat_tavern-brawler": "קורע פונדק",
         "feat_tracker": "גשש", "feat_weapon-master": "אדון נשק",
         "feat_ability-score-improvement": "שיפור תכונה",
+
+        // Ability score & saving throw labels
+        "ability_str": "STR", "ability_dex": "DEX", "ability_con": "CON",
+        "ability_int": "INT", "ability_wis": "WIS", "ability_cha": "CHA",
+        "save_str": "STR", "save_dex": "DEX", "save_con": "CON",
+        "save_int": "INT", "save_wis": "WIS", "save_cha": "CHA",
+
+        // Scene wizard hardcoded strings
+        "wiz_generating": "⏳ מייצר…",
+        "wiz_click_to_place": "📍 לחץ על המפה כדי למקם את {name}",
+        "wiz_no_monsters_match": "אין מפלצות התואמות לסינון",
+        "wiz_showing_of": "מציג {shown} מתוך {total} — סנן בצורה מדויקת יותר",
+        "wiz_loading_srd": "⏳ טוען מפלצות SRD…",
+        "wiz_rooms_indexed": "✓ {count} חדרים מאונדקסים",
+        "wiz_organic_cave": "מערה אורגנית",
+        "wiz_rooms_label": "חדרים",
+
+        // Token system
+        "toast_not_your_turn": "!זה לא התור שלך",
+
         "cb_hd_remaining": "HD נותרים",
         "cb_temp_hp": "HP זמני",
         "class_monk": "נזיר",
@@ -835,6 +855,7 @@ export const translations = {
         "cb_val_pick_class": "יש לבחור מקצוע לפני שממשיכים",
         "cb_val_set_abilities": "יש להגדיר תכונות (STR לפחות 3)",
         "cb_val_missing": "שדות חסרים",
+        "connection_lost": "החיבור נותק — מתחבר מחדש…",
         "cb_pick_icon": "בחר איור",
         "cb_story_label": "סיפור אישי",
         "cb_story_ph": "סיפור רקע, תכונות אופי, אידיאלים, קשרים, חולשות…",
@@ -1761,6 +1782,46 @@ export const translations = {
         "cb_add_feat": "+ Add Feat",
         "cb_feat_picker_title": "<img src='/assets/icons/toolbar/abilities.png' alt='' class='custom-icon' style='width:14px;height:14px;vertical-align:middle;' loading='lazy'> Choose a Feat",
         "cb_feat_search": "Search feats…",
+        "feat_alert": "Alert", "feat_tough": "Tough", "feat_toughness": "Toughness",
+        "feat_lucky": "Lucky", "feat_war-caster": "War Caster", "feat_sentinel": "Sentinel",
+        "feat_great-weapon-master": "Great Weapon Master", "feat_sharpshooter": "Sharpshooter",
+        "feat_polearm-master": "Polearm Master", "feat_mage-slayer": "Mage Slayer",
+        "feat_mobile": "Mobile", "feat_resilient": "Resilient", "feat_skilled": "Skilled",
+        "feat_actor": "Actor", "feat_athlete": "Athlete", "feat_charger": "Charger",
+        "feat_crossbow-expert": "Crossbow Expert", "feat_defensive-duelist": "Defensive Duelist",
+        "feat_dual-wielder": "Dual Wielder", "feat_dungeon-delver": "Dungeon Delver",
+        "feat_durable": "Durable", "feat_elemental-adept": "Elemental Adept",
+        "feat_grappler": "Grappler", "feat_healer": "Healer",
+        "feat_heavily-armored": "Heavily Armored", "feat_heavy-armor-master": "Heavy Armor Master",
+        "feat_inspiring-leader": "Inspiring Leader", "feat_keen-mind": "Keen Mind",
+        "feat_linguist": "Linguist", "feat_lightly-armored": "Lightly Armored",
+        "feat_magic-initiate": "Magic Initiate", "feat_martial-adept": "Martial Adept",
+        "feat_moderately-armored": "Moderately Armored", "feat_mounted-combatant": "Mounted Combatant",
+        "feat_observant": "Observant", "feat_savage-attacker": "Savage Attacker",
+        "feat_shield-master": "Shield Master", "feat_skulker": "Skulker",
+        "feat_spell-sniper": "Spell Sniper", "feat_tavern-brawler": "Tavern Brawler",
+        "feat_tracker": "Tracker", "feat_weapon-master": "Weapon Master",
+        "feat_ability-score-improvement": "Ability Score Improvement",
+
+        // Ability score & saving throw labels
+        "ability_str": "STR", "ability_dex": "DEX", "ability_con": "CON",
+        "ability_int": "INT", "ability_wis": "WIS", "ability_cha": "CHA",
+        "save_str": "STR", "save_dex": "DEX", "save_con": "CON",
+        "save_int": "INT", "save_wis": "WIS", "save_cha": "CHA",
+
+        // Scene wizard hardcoded strings
+        "wiz_generating": "⏳ Generating…",
+        "wiz_click_to_place": "📍 Click map to place {name}",
+        "wiz_no_monsters_match": "No monsters match filters",
+        "wiz_showing_of": "Showing {shown} of {total} — refine filters to narrow",
+        "wiz_loading_srd": "⏳ Loading SRD monsters…",
+        "wiz_rooms_indexed": "✓ {count} rooms indexed",
+        "wiz_organic_cave": "organic cave",
+        "wiz_rooms_label": "rooms",
+
+        // Token system
+        "toast_not_your_turn": "It's not your turn!",
+
         "cb_hd_remaining": "HD Remaining",
         "cb_temp_hp": "Temp HP",
         "class_monk": "Monk",
@@ -1971,6 +2032,7 @@ export const translations = {
         "cb_val_pick_class": "Please pick a class before continuing",
         "cb_val_set_abilities": "Please set ability scores (STR at least 3)",
         "cb_val_missing": "Missing fields",
+        "connection_lost": "Connection lost — reconnecting...",
         "cb_pick_icon": "Pick icon",
         "cb_story_label": "Personal Story",
         "cb_story_ph": "Backstory, personality traits, ideals, bonds, flaws…",

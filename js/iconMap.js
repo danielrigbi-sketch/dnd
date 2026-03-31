@@ -36,6 +36,12 @@ export const TOOLBAR_ICONS = {
   '✕':  `${BASE}/toolbar/close.png`,
   '🔲': `${BASE}/toolbar/calibrate.png`,
   '🎬': `${BASE}/toolbar/video.png`,
+  '🗑️': `${BASE}/toolbar/trash.png`,
+  '🗑':  `${BASE}/toolbar/trash.png`,
+  '🏳️': `${BASE}/toolbar/surrender.png`,
+  '🏳':  `${BASE}/toolbar/surrender.png`,
+  '🚪': `${BASE}/toolbar/door.png`,
+  '♿': `${BASE}/toolbar/calibrate.png`,
 };
 
 /* ── D&D class icons (keyed by class name) ────────────────────────────── */
@@ -93,6 +99,29 @@ export const ACTION_ICONS = {
   '🩸': `${BASE}/action/blood.png`,
   '☀️': `${BASE}/action/holy.png`,
   '🌊': `${BASE}/action/water.png`,
+  '💚': `${BASE}/action/heal.png`,
+  '🏮': `${BASE}/action/lantern.png`,
+  '🕯️': `${BASE}/action/candle.png`,
+  '🕯':  `${BASE}/action/candle.png`,
+  '🧱': `${BASE}/action/wall.png`,
+  '🪨': `${BASE}/action/floor.png`,
+  '🗝️': `${BASE}/action/props.png`,
+  '🗝':  `${BASE}/action/props.png`,
+  '⚠️': `${BASE}/action/warning.png`,
+  '⚠':  `${BASE}/action/warning.png`,
+  '🌟': `${BASE}/action/reveal.png`,
+  '🌑': `${BASE}/action/hide.png`,
+  '📏': `${BASE}/action/ruler.png`,
+  '💥': `${BASE}/action/aoe.png`,
+  '🌩️': `${BASE}/action/weather.png`,
+  '🌩':  `${BASE}/action/weather.png`,
+  '🌫️': `${BASE}/action/fog.png`,
+  '🌫':  `${BASE}/action/fog.png`,
+  '⛈️': `${BASE}/action/rain.png`,
+  '⛈':  `${BASE}/action/rain.png`,
+  '🔻': `${BASE}/toolbar/prone.png`,
+  '😵': `${BASE}/toolbar/exhausted.png`,
+  '🙈': `${BASE}/toolbar/invisible.png`,
 };
 
 /* ── Class-ability button emojis → icon paths ─────────────────────────── */
@@ -102,6 +131,9 @@ export const ABILITY_ICONS = {
   '🤫': `${BASE}/action/dagger.png`,      // stealth → dagger
   '🐾': `${BASE}/action/nature.png`,      // wild shape → nature
   '🐺': `${BASE}/action/nature.png`,      // companion → nature
+  '🐻': `${BASE}/action/nature.png`,      // bear → nature
+  '🐆': `${BASE}/action/nature.png`,      // panther → nature
+  '🦅': `${BASE}/action/nature.png`,      // eagle → nature
   '🌀': `${BASE}/action/arcane.png`,      // tides of chaos → arcane
   '💥': `${BASE}/action/fire.png`,         // wild magic → fire
   '👻': `${BASE}/action/death.png`,        // misty escape → death
@@ -115,6 +147,7 @@ export const ABILITY_ICONS = {
   '🥊': `${BASE}/action/melee.png`,        // flurry → melee
   '🛡️': `${BASE}/action/shield.png`,
   '🎵': `${BASE}/toolbar/music.png`,       // bardic inspiration → music
+  '✝️': `${BASE}/action/holy.png`,          // turn undead → holy
   '🙏': `${BASE}/action/holy.png`,         // lay on hands → holy
   '👁️': `${BASE}/action/arcane.png`,       // divine sense → arcane
   '📚': `${BASE}/toolbar/monsters.png`,    // arcane recovery → book

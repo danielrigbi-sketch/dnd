@@ -883,3 +883,13 @@ export function listenToVideoChatMuteAll(roomCode, cb) {
     const mRef = ref(db, `rooms/${roomCode}/webrtc/muteAll`);
     return onValue(mRef, snap => cb(snap.val() ?? false));
 }
+
+// ── Connection Status Monitor ─────────────────────────────────────────
+/**
+ * Listen to Firebase connection state. Calls cb(isConnected: boolean).
+ * @returns {Function} unsubscribe
+ */
+export function listenToConnectionStatus(cb) {
+    const connRef = ref(db, '.info/connected');
+    return onValue(connRef, snap => cb(snap.val() === true));
+}

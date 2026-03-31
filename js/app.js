@@ -1,8 +1,24 @@
 // app.js v130  (S10-S16: foundation, data-health, UX, turn timer, portrait upload)
+
+// ── Global Error Boundary ─────────────────────────────────────────────────────
+// Catches unhandled promise rejections and runtime errors to prevent silent failures.
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('[ParaDice] Unhandled promise rejection:', e.reason);
+    if (typeof showToast === 'function') {
+        showToast('Unexpected error — check console', 'warning', 4000);
+    }
+});
+window.addEventListener('error', (e) => {
+    // Ignore ResizeObserver loop errors (benign, caused by browser internals)
+    if (e.message?.includes?.('ResizeObserver')) return;
+    console.error('[ParaDice] Runtime error:', e.message, e.filename, e.lineno);
+});
+
 import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js";
 import { getFlavorText } from "./messages.js";
 import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js";
-import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown, _esc } from "./ui.js";
+import { updateModeUI, updateInitiativeUI, addLogEntry, setDiceCooldown } from "./ui.js";
+import { escapeHtml } from "./core/sanitize.js";
 import * as db from "./firebaseService.js";
 import { pruneOrphanTokens } from "./firebaseService.js"; // S11: direct import prevents Rollup tree-shaking
 import { t } from "./i18n.js";
@@ -1069,6 +1085,11 @@ export function cleanupAppListeners() {
     videoChat.destroyVideoChat();
 }
 
+// Clean up on page close / navigation away / logout to prevent Firebase listener leaks
+window.addEventListener('beforeunload', cleanupAppListeners);
+window.addEventListener('pagehide', cleanupAppListeners);
+window.addEventListener('paradice:logout', cleanupAppListeners);
+
 
 // =====================================================================
 // SHORT REST MECHANIC (Sprint 16)
@@ -1154,6 +1175,22 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
     isCampaignMode = isCampaign;
     db.setRoom(roomCode);
     userRole = role;
+
+    // Monitor Firebase connection status
+    _appUnsubs.push(db.listenToConnectionStatus((isConnected) => {
+        let banner = document.getElementById('connection-banner');
+        if (!isConnected) {
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'connection-banner';
+                banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#e74c3c;color:#fff;text-align:center;padding:6px;font-size:13px;font-weight:bold;';
+                banner.textContent = t('connection_lost') || 'Connection lost — reconnecting...';
+                document.body.prepend(banner);
+            }
+        } else if (banner) {
+            banner.remove();
+        }
+    }));
     const lobbyWrapper = document.getElementById('lobby-wrapper');
     if (lobbyWrapper) lobbyWrapper.style.display = 'none';
     const gameScreen = document.getElementById('game-screen');
@@ -1166,7 +1203,7 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
     }
     const titleHeader = document.querySelector('#side-panel h3');
     const modeLabel   = isCampaign ? iconImg('⚔️', '18px', 'Campaign') + ' ' : '';
-    if (titleHeader) titleHeader.innerHTML = `${modeLabel}${_esc(t('party_title'))} (${_esc(roomCode)})`;
+    if (titleHeader) titleHeader.innerHTML = `${modeLabel}${escapeHtml(t('party_title'))} (${escapeHtml(roomCode)})`;
 
     // Init HUD roller identity
     const _hudName = document.getElementById('hud-roller-name');
@@ -2367,8 +2404,8 @@ function _updateTokenRoster() {
             <img src="${c.portrait||'assets/logo.webp'}" style="width:22px;height:22px;border-radius:50%;border:2px solid ${c.pColor||'#fff'}">
             <span style="flex:1;font-size:11px;color:white;">${c.name}</span>
             ${onMap
-                ? `<button onclick="window._mapEng?.removeToken('${_esc(c.name)}')" class="map-dash-btn danger">✕</button>`
-                : `<button onclick="window._mapEng?.startPlacing('${_esc(c.name)}')" class="map-dash-btn">📍</button>`
+                ? `<button onclick="window._mapEng?.removeToken('${escapeHtml(c.name)}')" class="map-dash-btn danger">✕</button>`
+                : `<button onclick="window._mapEng?.startPlacing('${escapeHtml(c.name)}')" class="map-dash-btn">📍</button>`
             }
         `;
         roster.appendChild(row);
@@ -3200,8 +3237,8 @@ function _renderDMNotesList(notes) {
         const item = document.createElement('div');
         item.className = 'dm-note-item' + (note.id === _dmActiveNoteId ? ' active' : '');
         item.innerHTML = `
-            <span class="dm-note-item-title">${_esc(note.title || t('dm_notes_placeholder') || 'Untitled')}</span>
-            <span class="dm-note-tag-badge">${_esc(note.tag || '')}</span>
+            <span class="dm-note-item-title">${escapeHtml(note.title || t('dm_notes_placeholder') || 'Untitled')}</span>
+            <span class="dm-note-tag-badge">${escapeHtml(note.tag || '')}</span>
             <button class="dm-note-delete-btn" title="Delete" onclick="window._dmDeleteNote('${note.id}', event)">✕</button>`;
         item.addEventListener('click', e => {
             if (e.target.classList.contains('dm-note-delete-btn')) return;

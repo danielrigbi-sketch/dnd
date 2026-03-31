@@ -5,13 +5,14 @@ import { attackFlavor, spellFlavor, healFlavor } from "./combatFlavor.js";
 import { SKILL_ABILITIES, skillMod } from "./engine/combatUtils.js";
 import { compute } from "./engine/charEngine.js";
 import { iconImg, classIconImg } from './iconMap.js';
+import { escapeHtml } from './core/sanitize.js';
+
+// Backward-compat re-export so app.js `import { _esc } from "./ui.js"` keeps working
+export { escapeHtml as _esc } from './core/sanitize.js';
 
 let expandedCardId = null;
 let _lastPlayersData = null;
 let _openCharPanelName = null;
-
-/** Escape a value for safe interpolation inside a single-quoted JS onclick argument */
-export const _esc = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
 window.toggleCardExpand = (name) => {
     expandedCardId = expandedCardId === name ? null : name;
@@ -129,7 +130,7 @@ function renderPortraitGallery(items, isDM, myCName, activeCombatantName) {
         const isDead    = _saves.dead || false;
         const hpPct     = (i.maxHp > 0) ? ((i.hp || 0) / i.maxHp * 100) : 100;
         const isActive  = (i.name === activeCombatantName);
-        const safeName  = _esc(i.name);
+        const safeName  = escapeHtml(i.name);
         const firstChar = (i.name || '?')[0].toUpperCase();
         const portraitEl = i.portrait
             ? `<img class="portrait-img" src="${i.portrait}" alt="${safeName}" loading="lazy">`
@@ -286,9 +287,9 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             const isNPC = i.userRole === 'npc';
             const isOpen = expandedCardId === i.name;
             const saves = _saves; // already computed above
-            const deleteBtn = isDM ? `<button onclick="window.removeNPC('${_esc(i.name)}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">${iconImg('🗑️','16px')}</button>` : '';
-            const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${_esc(i.name)}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? iconImg('🙈','16px') : iconImg('👁️','16px')}</button>` : '';
-            const impersonateBtn = isDM ? `<button onclick="window.impersonate('${_esc(i.name)}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">${iconImg('🎭','16px')}</button>` : '';
+            const deleteBtn = isDM ? `<button onclick="window.removeNPC('${escapeHtml(i.name)}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">${iconImg('🗑️','16px')}</button>` : '';
+            const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${escapeHtml(i.name)}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? iconImg('🙈','16px') : iconImg('👁️','16px')}</button>` : '';
+            const impersonateBtn = isDM ? `<button onclick="window.impersonate('${escapeHtml(i.name)}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">${iconImg('🎭','16px')}</button>` : '';
             // Only show status dot in campaign mode (when online field exists)
             const offlineDot = i.online === false ? `<span class="offline-dot" title="לא מחובר"></span>`
                              : i.online === true  ? `<span class="online-dot"  title="מחובר"></span>`
@@ -319,9 +320,9 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                     const hitBtn = atk.hitType === 'none' ? ''
                         : atk.hitType === 'always'
                             ? `<span style="font-size:10px; color:#7aff8a; padding:3px 8px; background:rgba(0,200,80,0.12); border:1px solid rgba(0,200,80,0.3); border-radius:5px;">${iconImg('🎯','14px')} Auto-hit</span>`
-                            : `<button class="macro-btn melee" onclick="window.rollMacro('${_esc(i.name)}', '${_esc(atk.name)}', ${parseInt(atk.hitMod)||0})">${icon} ${_esc(atk.name)}</button>`;
+                            : `<button class="macro-btn melee" onclick="window.rollMacro('${escapeHtml(i.name)}', '${escapeHtml(atk.name)}', ${parseInt(atk.hitMod)||0})">${icon} ${escapeHtml(atk.name)}</button>`;
                     const dmgBtn = dmgStr
-                        ? `<button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${_esc(i.name)}', '${_esc(atk.name)}', '${dmgStr}', 0)">${iconImg('🩸','14px')} ${dmgStr}</button>`
+                        ? `<button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${escapeHtml(i.name)}', '${escapeHtml(atk.name)}', '${dmgStr}', 0)">${iconImg('🩸','14px')} ${dmgStr}</button>`
                         : '';
                     return `<div style="display:flex; gap:5px; margin-top:5px; align-items:center;">${hitBtn}${dmgBtn}</div>`;
                 }).join('');
@@ -347,29 +348,29 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                 <div class="death-saves-block" style="margin-top:8px;">
                     ${isStable ? `
                         <div class="ds-stable-badge">${iconImg('💚','14px')} STABLE</div>
-                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${_esc(i.name)}')" class="ds-reset-btn">↺ Reset</button>` : ''}
+                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${escapeHtml(i.name)}')" class="ds-reset-btn">↺ Reset</button>` : ''}
                     ` : isDead ? `
                         <div class="ds-dead-badge">${iconImg('💀','14px')} DEAD</div>
-                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${_esc(i.name)}')" class="ds-reset-btn">↺ Reset</button>` : ''}
+                        ${(isDM||isOwner) ? `<button onclick="window.resetDeathSaves('${escapeHtml(i.name)}')" class="ds-reset-btn">↺ Reset</button>` : ''}
                     ` : `
                         <div style="font-size:10px; color:#ff7675; font-weight:bold; margin-bottom:5px;">${iconImg('💀','14px')} Death Saves</div>
                         <div style="display:flex; gap:8px; align-items:center; justify-content:space-between;">
                             <div style="display:flex; align-items:center; gap:3px;">
                                 <span style="font-size:9px; color:#2ecc71; margin-left:2px;">${iconImg('✔','12px')}</span>
                                 ${saves.successes.map((s,idx) => `
-                                    <button class="ds-btn ds-success ${s?'active':''}" onclick="window.toggleDeathSave('${_esc(i.name)}','successes',${idx})" ${isDM||isOwner?'':' disabled'}></button>
+                                    <button class="ds-btn ds-success ${s?'active':''}" onclick="window.toggleDeathSave('${escapeHtml(i.name)}','successes',${idx})" ${isDM||isOwner?'':' disabled'}></button>
                                 `).join('')}
                             </div>
                             <div style="display:flex; align-items:center; gap:3px;">
                                 <span style="font-size:9px; color:#e74c3c; margin-left:2px;">${iconImg('✖','12px')}</span>
                                 ${saves.failures.map((f,idx) => `
-                                    <button class="ds-btn ds-fail ${f?'active':''}" onclick="window.toggleDeathSave('${_esc(i.name)}','failures',${idx})" ${isDM||isOwner?'':' disabled'}></button>
+                                    <button class="ds-btn ds-fail ${f?'active':''}" onclick="window.toggleDeathSave('${escapeHtml(i.name)}','failures',${idx})" ${isDM||isOwner?'':' disabled'}></button>
                                 `).join('')}
                             </div>
                             ${(isDM||isOwner) ? `
                                 <div class="hp-controls">
                                     <input type="number" id="hp-input-${i.name}" class="hp-amount-input" value="1" min="1">
-                                    <button class="hp-edit-btn plus" onclick="window.changeHP('${_esc(i.name)}', true)" title="Heal">+</button>
+                                    <button class="hp-edit-btn plus" onclick="window.changeHP('${escapeHtml(i.name)}', true)" title="Heal">+</button>
                                 </div>
                             ` : ''}
                         </div>
@@ -384,8 +385,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                         ${(isDM||isOwner) ? `
                             <div class="hp-controls">
                                 <input type="number" id="hp-input-${i.name}" class="hp-amount-input" value="1" min="1">
-                                <button class="hp-edit-btn minus" onclick="window.changeHP('${_esc(i.name)}', false)">-</button>
-                                <button class="hp-edit-btn plus"  onclick="window.changeHP('${_esc(i.name)}', true)">+</button>
+                                <button class="hp-edit-btn minus" onclick="window.changeHP('${escapeHtml(i.name)}', false)">-</button>
+                                <button class="hp-edit-btn plus"  onclick="window.changeHP('${escapeHtml(i.name)}', true)">+</button>
                             </div>
                         ` : ''}
                     </div>
@@ -410,7 +411,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
                                 ${activeBadge}${concBadge}${critBadge}
                                 <span class="init-score">${i.score > 0 ? i.score : '--'}</span>
-                                <button id="expand-btn-${i.name}" class="expand-btn ${isOpen ? 'open' : ''}" onclick="window.toggleCardExpand('${_esc(i.name)}')">▼</button>
+                                <button id="expand-btn-${i.name}" class="expand-btn ${isOpen ? 'open' : ''}" onclick="window.toggleCardExpand('${escapeHtml(i.name)}')">▼</button>
                             </div>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
@@ -432,8 +433,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                         return `<span class="status-badge" title="${tip}" style="background:${col}22;border-color:${col}66;color:${col};display:inline-flex;align-items:center;gap:3px;">${displayIcon} ${s}</span>`;
                     }).join('')}
                     ${isDM ? `
-                        <button onclick="toggleStatusPicker('${_esc(i.name)}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">${iconImg('✨','14px')}+</button>
-                        <button onclick="window.toggleConcentration('${_esc(i.name)}')" title="Toggle Concentration" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; opacity:${i.concentrating?1:0.4};">${iconImg('🔮','14px')}</button>
+                        <button onclick="toggleStatusPicker('${escapeHtml(i.name)}')" style="background:none; border:none; color:#f1c40f; cursor:pointer; font-size:14px; padding:0;">${iconImg('✨','14px')}+</button>
+                        <button onclick="window.toggleConcentration('${escapeHtml(i.name)}')" title="Toggle Concentration" style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; opacity:${i.concentrating?1:0.4};">${iconImg('🔮','14px')}</button>
                     ` : ''}
                 </div>
                 <div id="status-picker-${i.name}" style="display:none; position:absolute; background:#2c3e50; border:1px solid #444; padding:5px; border-radius:8px; z-index:100; right:0; top:20px; box-shadow:0 5px 15px rgba(0,0,0,0.5);">
@@ -450,7 +451,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             {n:'Blessed',icon:iconImg('✨','14px'),c:'#f1c40f'},{n:'Concentrating',icon:iconImg('🔮','14px'),c:'#9b59b6'}
                         ].map(c => {
                             const active = (i.statuses||[]).includes(c.n);
-                            return `<button onclick="window.toggleStatus('${_esc(i.name)}', '${c.n}'); document.getElementById('status-picker-${i.name}').style.display='none';"
+                            return `<button onclick="window.toggleStatus('${escapeHtml(i.name)}', '${c.n}'); document.getElementById('status-picker-${i.name}').style.display='none';"
                               title="${c.n}" style="font-size:11px; padding:4px 6px; background:${active ? c.c : 'rgba(255,255,255,0.06)'}; color:white; border:1px solid ${active ? c.c : 'rgba(255,255,255,0.1)'}; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:3px; transition:all 0.15s;">
                               <span>${c.icon}</span><span style="font-size:9px;font-weight:${active?'700':'400'}">${c.n}</span></button>`;
                         }).join('')}
@@ -474,7 +475,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             ${[['ab_str',i._str,'STR'],['ab_dex',i._dex,'DEX'],['ab_con',i._con,'CON'],['ab_int',i._int,'INT'],['ab_wis',i._wis,'WIS'],['ab_cha',i._cha,'CHA']].map(([key,score,raw]) => {
                                 if (!score) return '';
                                 const mod = Math.floor((score - 10) / 2);
-                                return `<button class="ability-btn" onclick="window.rollAbilityCheck('${_esc(i.name)}','${raw}',${score})" title="${t(key)} check">
+                                return `<button class="ability-btn" onclick="window.rollAbilityCheck('${escapeHtml(i.name)}','${raw}',${score})" title="${t(key)} check">
                                     <span class="ab-name">${t(key)}</span>
                                     <span class="ab-score">${score}</span>
                                     <span class="ab-mod">${mod >= 0 ? '+'+mod : mod}</span>
@@ -493,7 +494,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                     const isProf = isExpert || typeof skillVal === 'number' || !!skillVal;
                                     const dispName = t('skill_' + keyU);
                                     return `<button class="skill-btn${isExpert ? ' expert' : isProf ? ' prof' : ''}"
-                                        onclick="window.rollSkillCheck('${_esc(i.name)}','${skill}')"
+                                        onclick="window.rollSkillCheck('${escapeHtml(i.name)}','${skill}')"
                                         title="${dispName} (${t('ab_' + abil)})">
                                         <span class="sk-name">${dispName}</span>
                                         <span class="sk-mod">${modStr}</span>
@@ -507,7 +508,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                 ${['str','dex','con','int','wis','cha'].map(ab => {
                                     const sVal = resolved.saves?.[ab] ?? Math.floor(((i['_'+ab]||10)-10)/2);
                                     const sProf = i.savingThrows?.[ab];
-                                    return `<button class="save-chip${sProf?' prof':''}" onclick="window.rollSaveCheck('${_esc(i.name)}','${ab.toUpperCase()}')" title="${ab.toUpperCase()} Save">${ab.toUpperCase()} ${sVal>=0?'+':''}${sVal}</button>`;
+                                    return `<button class="save-chip${sProf?' prof':''}" onclick="window.rollSaveCheck('${escapeHtml(i.name)}','${ab.toUpperCase()}')" title="${ab.toUpperCase()} Save">${ab.toUpperCase()} ${sVal>=0?'+':''}${sVal}</button>`;
                                 }).join('')}
                             </div>
                         </div>` : ''}
@@ -543,20 +544,20 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                             <div class="slot-pips">${pips}</div>
                                             <span class="slot-count">${remaining}/${max}</span>
                                             ${canViewStats ? `
-                                                <button class="slot-btn use" onclick="window.useSpellSlot('${_esc(i.name)}',${lv})" ${remaining<=0?'disabled':''} title="Use slot">–</button>
-                                                <button class="slot-btn restore" onclick="window.restoreSpellSlot('${_esc(i.name)}',${lv})" ${used<=0?'disabled':''} title="Restore slot">+</button>
+                                                <button class="slot-btn use" onclick="window.useSpellSlot('${escapeHtml(i.name)}',${lv})" ${remaining<=0?'disabled':''} title="Use slot">–</button>
+                                                <button class="slot-btn restore" onclick="window.restoreSpellSlot('${escapeHtml(i.name)}',${lv})" ${used<=0?'disabled':''} title="Restore slot">+</button>
                                             ` : ''}
                                         </div>
                                     `;
                                 }).join('')}
                             </div>
                             ${canViewStats ? `
-                                <button onclick="window.longRest('${_esc(i.name)}')" class="long-rest-btn">${iconImg('🌙','14px')} ${t('long_rest')}</button>
+                                <button onclick="window.longRest('${escapeHtml(i.name)}')" class="long-rest-btn">${iconImg('🌙','14px')} ${t('long_rest')}</button>
                             ` : ''}
                         </div>
                         ` : canViewStats ? `
                         <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1);">
-                            ${isDM ? `<button onclick="window.longRest('${_esc(i.name)}')" class="long-rest-btn">${iconImg('🌙','14px')} ${t('long_rest')}</button>` : ''}
+                            ${isDM ? `<button onclick="window.longRest('${escapeHtml(i.name)}')" class="long-rest-btn">${iconImg('🌙','14px')} ${t('long_rest')}</button>` : ''}
                         </div>
                         ` : ''}
                         ${(() => {
@@ -577,8 +578,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                             <div class="slot-pips">${pips}</div>
                                             <span class="slot-count">${rem}/${max}</span>
                                             ${canViewStats ? `
-                                                <button class="slot-btn use" onclick="window.useSubclassSpellSlot('${_esc(i.name)}',${lv})" ${rem<=0?'disabled':''} title="Use slot">–</button>
-                                                <button class="slot-btn restore" onclick="window.restoreSubclassSpellSlot('${_esc(i.name)}',${lv})" ${used<=0?'disabled':''} title="Restore slot">+</button>
+                                                <button class="slot-btn use" onclick="window.useSubclassSpellSlot('${escapeHtml(i.name)}',${lv})" ${rem<=0?'disabled':''} title="Use slot">–</button>
+                                                <button class="slot-btn restore" onclick="window.restoreSubclassSpellSlot('${escapeHtml(i.name)}',${lv})" ${used<=0?'disabled':''} title="Restore slot">+</button>
                                             ` : ''}
                                         </div>`;
                                     }).join('')}
@@ -594,7 +595,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                         <span style="font-size:10px; color:#9b59b6; font-weight:bold; min-width:14px;">${sp.level === 0 ? 'C' : sp.level}</span>
                                         <span style="font-size:11px; color:white; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${sp.name}">${sp.name}</span>
                                         <span style="font-size:9px; color:#888;">${sp.range || ''}</span>
-                                        ${(isDM || isOwner) ? `<button onclick="window.removeSpellFromBook('${_esc(i.name)}','${_esc(sp.slug)}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:11px;padding:0 2px;" title="Remove">${iconImg('✕','12px')}</button>` : ''}
+                                        ${(isDM || isOwner) ? `<button onclick="window.removeSpellFromBook('${escapeHtml(i.name)}','${escapeHtml(sp.slug)}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:11px;padding:0 2px;" title="Remove">${iconImg('✕','12px')}</button>` : ''}
                                     </div>
                                 `).join('')}
                             </div>
@@ -653,10 +654,6 @@ window.toggleStatusPicker = (name) => {
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 };
 
-function _escapeHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 // ── Resource pip row helper ───────────────────────────────────────────────────
 function _pipRow(label, current, max, colorClass = '') {
     if (!max) return '';
@@ -680,65 +677,65 @@ function _renderClassAbilities(player) {
     switch (cls) {
         case 'barbarian':
             if (cr.raging) {
-                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${_esc(cn)}','endRage')">${iconImg('🔥','14px')} End Rage</button>`);
+                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${escapeHtml(cn)}','endRage')">${iconImg('🔥','14px')} End Rage</button>`);
             } else {
-                btns.push(`<button class="class-ability-btn${(cr.rageUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','rage')" ${(cr.rageUses ?? 0) <= 0 ? 'disabled' : ''}>${iconImg('🔥','14px')} Rage (${cr.rageUses ?? 0})</button>`);
+                btns.push(`<button class="class-ability-btn${(cr.rageUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','rage')" ${(cr.rageUses ?? 0) <= 0 ? 'disabled' : ''}>${iconImg('🔥','14px')} Rage (${cr.rageUses ?? 0})</button>`);
             }
             break;
         case 'fighter':
-            btns.push(`<button class="class-ability-btn${(cr.secondWind ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','secondWind')" ${(cr.secondWind ?? 0) <= 0 ? 'disabled' : ''}>${iconImg('💨','14px')} Second Wind (${cr.secondWind ?? 0})</button>`);
-            if (lvl >= 2) btns.push(`<button class="class-ability-btn${(cr.actionSurge ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','actionSurge')" ${(cr.actionSurge ?? 0) <= 0 ? 'disabled' : ''}>${iconImg('⚡','14px')} Action Surge (${cr.actionSurge ?? 0})</button>`);
+            btns.push(`<button class="class-ability-btn${(cr.secondWind ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','secondWind')" ${(cr.secondWind ?? 0) <= 0 ? 'disabled' : ''}>${iconImg('💨','14px')} Second Wind (${cr.secondWind ?? 0})</button>`);
+            if (lvl >= 2) btns.push(`<button class="class-ability-btn${(cr.actionSurge ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','actionSurge')" ${(cr.actionSurge ?? 0) <= 0 ? 'disabled' : ''}>${iconImg('⚡','14px')} Action Surge (${cr.actionSurge ?? 0})</button>`);
             break;
         case 'rogue':
-            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${_esc(cn)}','hide')">${iconImg('🤫','14px')} Hide</button>`);
+            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${escapeHtml(cn)}','hide')">${iconImg('🤫','14px')} Hide</button>`);
             break;
         case 'druid':
             if (cr.wildShapeActive) {
-                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${_esc(cn)}','endWildShape')">${iconImg('🐾','14px')} End Wild Shape</button>`);
+                btns.push(`<button class="class-ability-btn active" onclick="window.useClassAbility('${escapeHtml(cn)}','endWildShape')">${iconImg('🐾','14px')} End Wild Shape</button>`);
             } else {
-                btns.push(`<button class="class-ability-btn${(cr.wildShapeUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','wildShape')" ${(cr.wildShapeUses ?? 0) <= 0 ? 'disabled' : ''}>${iconImg('🐾','14px')} Wild Shape (${cr.wildShapeUses ?? 0})</button>`);
+                btns.push(`<button class="class-ability-btn${(cr.wildShapeUses ?? 0) <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','wildShape')" ${(cr.wildShapeUses ?? 0) <= 0 ? 'disabled' : ''}>${iconImg('🐾','14px')} Wild Shape (${cr.wildShapeUses ?? 0})</button>`);
             }
-            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${_esc(cn)}','summonAnimal')">${iconImg('🐺','14px')} Summon Animal</button>`);
+            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${escapeHtml(cn)}','summonAnimal')">${iconImg('🐺','14px')} Summon Animal</button>`);
             break;
         case 'monk': {
             const ki = cr.kiPoints ?? 0;
             const kiMax = cr.maxKiPoints ?? lvl;
             btns.push(_pipRow(`${iconImg('🌀','14px')} Ki`, ki, kiMax));
             const noKi = ki <= 0;
-            btns.push(`<button class="class-ability-btn${noKi||ki<2?' disabled':''}" onclick="window.useClassAbility('${_esc(cn)}','flurryOfBlows')" ${noKi||ki<2?'disabled':''}>${iconImg('🥊','14px')} Flurry (2 ki)</button>`);
-            btns.push(`<button class="class-ability-btn${noKi?' disabled':''}" onclick="window.useClassAbility('${_esc(cn)}','patientDefense')" ${noKi?'disabled':''}>${iconImg('🛡️','14px')} Patient Defense (1 ki)</button>`);
-            btns.push(`<button class="class-ability-btn${noKi?' disabled':''}" onclick="window.useClassAbility('${_esc(cn)}','stepOfWind')" ${noKi?'disabled':''}>${iconImg('💨','14px')} Step of Wind (1 ki)</button>`);
-            if (lvl >= 5) btns.push(`<button class="class-ability-btn${noKi?' disabled':''}" onclick="window.useClassAbility('${_esc(cn)}','stunningStrike')" ${noKi?'disabled':''}>${iconImg('⚡','14px')} Stunning Strike (1 ki)</button>`);
+            btns.push(`<button class="class-ability-btn${noKi||ki<2?' disabled':''}" onclick="window.useClassAbility('${escapeHtml(cn)}','flurryOfBlows')" ${noKi||ki<2?'disabled':''}>${iconImg('🥊','14px')} Flurry (2 ki)</button>`);
+            btns.push(`<button class="class-ability-btn${noKi?' disabled':''}" onclick="window.useClassAbility('${escapeHtml(cn)}','patientDefense')" ${noKi?'disabled':''}>${iconImg('🛡️','14px')} Patient Defense (1 ki)</button>`);
+            btns.push(`<button class="class-ability-btn${noKi?' disabled':''}" onclick="window.useClassAbility('${escapeHtml(cn)}','stepOfWind')" ${noKi?'disabled':''}>${iconImg('💨','14px')} Step of Wind (1 ki)</button>`);
+            if (lvl >= 5) btns.push(`<button class="class-ability-btn${noKi?' disabled':''}" onclick="window.useClassAbility('${escapeHtml(cn)}','stunningStrike')" ${noKi?'disabled':''}>${iconImg('⚡','14px')} Stunning Strike (1 ki)</button>`);
             break;
         }
         case 'bard': {
             const bi = cr.bardicInspiration ?? 0;
             const biMax = cr.maxBardicInspiration ?? Math.max(1, Math.floor(((player._cha||10)-10)/2));
             btns.push(_pipRow(`${iconImg('🎵','14px')} Inspiration`, bi, biMax));
-            btns.push(`<button class="class-ability-btn${bi <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','bardicInspiration')" ${bi<=0?'disabled':''}>${iconImg('🎵','14px')} Give Inspiration</button>`);
+            btns.push(`<button class="class-ability-btn${bi <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','bardicInspiration')" ${bi<=0?'disabled':''}>${iconImg('🎵','14px')} Give Inspiration</button>`);
             break;
         }
         case 'cleric': {
             const cd = cr.channelDivinity ?? 0;
-            btns.push(`<button class="class-ability-btn${cd <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','channelDivinity')" ${cd<=0?'disabled':''}>${iconImg('✨','14px')} Channel Divinity (${cd})</button>`);
+            btns.push(`<button class="class-ability-btn${cd <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','channelDivinity')" ${cd<=0?'disabled':''}>${iconImg('✨','14px')} Channel Divinity (${cd})</button>`);
             break;
         }
         case 'paladin': {
             const loh = cr.layOnHandsHp ?? (lvl * 5);
             btns.push(`<div class="resource-row">${iconImg('🙏','14px')} Lay on Hands: ${loh} HP</div>`);
-            btns.push(`<button class="class-ability-btn${loh <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','layOnHands')" ${loh<=0?'disabled':''}>${iconImg('🙏','14px')} Lay on Hands</button>`);
+            btns.push(`<button class="class-ability-btn${loh <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','layOnHands')" ${loh<=0?'disabled':''}>${iconImg('🙏','14px')} Lay on Hands</button>`);
             const ds = cr.divineSense ?? (1 + Math.max(0, Math.floor(((player._cha||10)-10)/2)));
-            btns.push(`<button class="class-ability-btn${ds <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','divineSense')" ${ds<=0?'disabled':''}>${iconImg('👁️','14px')} Divine Sense (${ds})</button>`);
+            btns.push(`<button class="class-ability-btn${ds <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','divineSense')" ${ds<=0?'disabled':''}>${iconImg('👁️','14px')} Divine Sense (${ds})</button>`);
             break;
         }
         case 'ranger': {
             if (cr.huntersMark) btns.push(`<div class="resource-row">${iconImg('🎯','14px')} Hunter's Mark → ${cr.huntersMark}</div>`);
-            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${_esc(cn)}','huntersMark')">${iconImg('🎯','14px')} Hunter's Mark</button>`);
+            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${escapeHtml(cn)}','huntersMark')">${iconImg('🎯','14px')} Hunter's Mark</button>`);
             break;
         }
         case 'warlock': {
             if (cr.hexTarget) btns.push(`<div class="resource-row">${iconImg('🔮','14px')} Hex → ${cr.hexTarget}</div>`);
-            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${_esc(cn)}','hex')">${iconImg('🔮','14px')} Hex</button>`);
+            btns.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${escapeHtml(cn)}','hex')">${iconImg('🔮','14px')} Hex</button>`);
             break;
         }
         case 'sorcerer': {
@@ -750,7 +747,7 @@ function _renderClassAbilities(player) {
         case 'wizard': {
             if (lvl >= 2) {
                 const ar = cr.arcaneRecovery ?? 1;
-                btns.push(`<button class="class-ability-btn${ar <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','arcaneRecovery')" ${ar<=0?'disabled':''}>${iconImg('📚','14px')} Arcane Recovery (${ar})</button>`);
+                btns.push(`<button class="class-ability-btn${ar <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','arcaneRecovery')" ${ar<=0?'disabled':''}>${iconImg('📚','14px')} Arcane Recovery (${ar})</button>`);
             }
             break;
         }
@@ -792,7 +789,7 @@ function _renderSubclassResources(player, cr, resolved, lvl) {
         const used  = cr.portentDice.used || [];
         const diceHtml = rolls.map((r, idx) =>
             `<span class="portent-die${used.includes(idx) ? ' used' : ''}"
-             onclick="window.usePortentDie('${_esc(cn)}', ${idx})"
+             onclick="window.usePortentDie('${escapeHtml(cn)}', ${idx})"
              title="${used.includes(idx) ? 'Used' : 'Click to replace a roll with this value'}">[${r}]</span>`
         ).join(' ');
         lines.push(`<div class="resource-row">${iconImg('🎲','14px')} Portent: ${diceHtml}</div>`);
@@ -801,8 +798,8 @@ function _renderSubclassResources(player, cr, resolved, lvl) {
     // Tides of Chaos (Wild Magic Sorcerer)
     if (cr.tidesOfChaos != null) {
         const toc = cr.tidesOfChaos ?? 0;
-        lines.push(`<button class="class-ability-btn${toc <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${_esc(cn)}','tidesOfChaos')" ${toc<=0?'disabled':''}>${iconImg('🌀','14px')} Tides of Chaos (${toc})</button>`);
-        lines.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${_esc(cn)}','wildMagicSurge')">${iconImg('💥','14px')} Wild Magic Surge</button>`);
+        lines.push(`<button class="class-ability-btn${toc <= 0 ? ' disabled' : ''}" onclick="window.useClassAbility('${escapeHtml(cn)}','tidesOfChaos')" ${toc<=0?'disabled':''}>${iconImg('🌀','14px')} Tides of Chaos (${toc})</button>`);
+        lines.push(`<button class="class-ability-btn" onclick="window.useClassAbility('${escapeHtml(cn)}','wildMagicSurge')">${iconImg('💥','14px')} Wild Magic Surge</button>`);
     }
 
     // Arcane Ward HP (Abjuration Wizard)
@@ -831,27 +828,27 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
     if (data.type === "CHAT") {
         entry.className = 'log-item log-chat';
         entry.style.borderLeftColor = userColor;
-        entry.innerHTML = `${_hdr('', _escapeHtml(data.cName || 'Player'))}
-            <div class="log-item-body">${_escapeHtml(data.msg || '')}</div>`;
+        entry.innerHTML = `${_hdr('', escapeHtml(data.cName || 'Player'))}
+            <div class="log-item-body">${escapeHtml(data.msg || '')}</div>`;
 
     } else if (data.type === 'ATTACK') {
         const atkIcon = data.attackType === 'ranged' ? iconImg('🏹','14px') : iconImg('⚔️','14px');
         const advDisNote = data.advantage ? ' <span style="color:#27ae60;font-size:0.85em;">⬆ adv</span>' : data.disadvantage ? ' <span style="color:#e67e22;font-size:0.85em;">⬇ dis</span>' : '';
-        const condNote = data.condNote ? `<span style="color:#aaa;font-size:0.82em;">${_escapeHtml(data.condNote)}</span>` : '';
+        const condNote = data.condNote ? `<span style="color:#aaa;font-size:0.82em;">${escapeHtml(data.condNote)}</span>` : '';
         let resultLine;
         if (data.crit) {
-            const critModNote = data.dmgNote ? ` <span style="color:#aaa;font-size:0.85em;">(${_escapeHtml(data.dmgNote)})</span>` : '';
-            resultLine = `<span class="log-nat20">CRITICAL HIT!</span> ${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> strikes <strong>${_escapeHtml(data.target)}</strong> (${iconImg('🎲','14px')}${data.rawRoll}+${data.total - data.rawRoll} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${critModNote}`;
+            const critModNote = data.dmgNote ? ` <span style="color:#aaa;font-size:0.85em;">(${escapeHtml(data.dmgNote)})</span>` : '';
+            resultLine = `<span class="log-nat20">CRITICAL HIT!</span> ${atkIcon} <strong>${escapeHtml(data.cName)}</strong> strikes <strong>${escapeHtml(data.target)}</strong> (${iconImg('🎲','14px')}${data.rawRoll}+${data.total - data.rawRoll} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${critModNote}`;
         } else if (data.miss) {
-            resultLine = `${iconImg('💨','14px')} <strong>${_escapeHtml(data.cName)}</strong> fumbles against <strong>${_escapeHtml(data.target)}</strong> — automatic miss!`;
+            resultLine = `${iconImg('💨','14px')} <strong>${escapeHtml(data.cName)}</strong> fumbles against <strong>${escapeHtml(data.target)}</strong> — automatic miss!`;
         } else if (data.hit) {
-            const modNote = data.dmgNote ? ` <span style="color:#aaa;font-size:0.85em;">(${_escapeHtml(data.dmgNote)})</span>` : '';
-            resultLine = `${atkIcon} <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${advDisNote} for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${modNote} ${condNote}`;
+            const modNote = data.dmgNote ? ` <span style="color:#aaa;font-size:0.85em;">(${escapeHtml(data.dmgNote)})</span>` : '';
+            resultLine = `${atkIcon} <strong>${escapeHtml(data.cName)}</strong> hits <strong>${escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${advDisNote} for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!${modNote} ${condNote}`;
         } else {
-            resultLine = `${iconImg('💨','14px')} <strong>${_escapeHtml(data.cName)}</strong> misses <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${advDisNote} ${condNote}`;
+            resultLine = `${iconImg('💨','14px')} <strong>${escapeHtml(data.cName)}</strong> misses <strong>${escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})${advDisNote} ${condNote}`;
         }
         entry.className = `log-item ${data.crit ? 'log-atk-crit' : data.hit ? 'log-atk-hit' : 'log-atk-miss'}`;
-        entry.innerHTML = `${_hdr(atkIcon, data.actionName ? _escapeHtml(data.actionName) : 'Combat')}
+        entry.innerHTML = `${_hdr(atkIcon, data.actionName ? escapeHtml(data.actionName) : 'Combat')}
             <div class="log-item-body">${resultLine}</div>
             <div class="log-item-flavor">${data.flavor || attackFlavor(data)}</div>`;
 
@@ -862,13 +859,13 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
         let resultLine;
         if (data.savingThrow) {
             const saved = data.savedHalf;
-            resultLine = `${iconImg('🔮','14px')} <strong>${_escapeHtml(data.cName)}</strong> casts <em>${_escapeHtml(data.spellName)}</em> on <strong>${_escapeHtml(data.target)}</strong> — ${_escapeHtml(data.target)} ${saved ? `saves (${iconImg('🎲','14px')}${data.saveRoll} ≥ DC ${data.spellSaveDC}), takes <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> (half)` : `fails (${iconImg('🎲','14px')}${data.saveRoll} &lt; DC ${data.spellSaveDC}), takes <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`}`;
+            resultLine = `${iconImg('🔮','14px')} <strong>${escapeHtml(data.cName)}</strong> casts <em>${escapeHtml(data.spellName)}</em> on <strong>${escapeHtml(data.target)}</strong> — ${escapeHtml(data.target)} ${saved ? `saves (${iconImg('🎲','14px')}${data.saveRoll} ≥ DC ${data.spellSaveDC}), takes <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> (half)` : `fails (${iconImg('🎲','14px')}${data.saveRoll} &lt; DC ${data.spellSaveDC}), takes <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`}`;
         } else if (data.dmgDice) {
-            if (data.crit) resultLine = `<span class="log-nat20">CRITICAL!</span> ${iconImg('🔮','14px')} <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> with <em>${_escapeHtml(data.spellName)}</em> for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
-            else if (!data.hit) resultLine = `${iconImg('💨','14px')} <strong>${_escapeHtml(data.cName)}</strong>'s <em>${_escapeHtml(data.spellName)}</em> misses <strong>${_escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})`;
-            else resultLine = `${iconImg('🔮','14px')} <strong>${_escapeHtml(data.cName)}</strong> hits <strong>${_escapeHtml(data.target)}</strong> with <em>${_escapeHtml(data.spellName)}</em> (rolled ${data.total} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
+            if (data.crit) resultLine = `<span class="log-nat20">CRITICAL!</span> ${iconImg('🔮','14px')} <strong>${escapeHtml(data.cName)}</strong> hits <strong>${escapeHtml(data.target)}</strong> with <em>${escapeHtml(data.spellName)}</em> for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
+            else if (!data.hit) resultLine = `${iconImg('💨','14px')} <strong>${escapeHtml(data.cName)}</strong>'s <em>${escapeHtml(data.spellName)}</em> misses <strong>${escapeHtml(data.target)}</strong> (rolled ${data.total} vs AC ${data.ac})`;
+            else resultLine = `${iconImg('🔮','14px')} <strong>${escapeHtml(data.cName)}</strong> hits <strong>${escapeHtml(data.target)}</strong> with <em>${escapeHtml(data.spellName)}</em> (rolled ${data.total} vs AC ${data.ac}) for <span style="color:#e74c3c;font-weight:900;">${data.damage}</span> damage!`;
         } else {
-            resultLine = `${iconImg('🔮','14px')} <strong>${_escapeHtml(data.cName)}</strong> casts <em>${_escapeHtml(data.spellName)}</em> on <strong>${_escapeHtml(data.target)}</strong>`;
+            resultLine = `${iconImg('🔮','14px')} <strong>${escapeHtml(data.cName)}</strong> casts <em>${escapeHtml(data.spellName)}</em> on <strong>${escapeHtml(data.target)}</strong>`;
         }
         entry.className = `log-item log-spell${data.crit ? ' crit' : !data.hit && data.dmgDice ? ' miss' : ''}`;
         entry.innerHTML = `${_hdr(iconImg('🔮','14px'), lvlTag)}
@@ -882,14 +879,14 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
         entry.className = 'log-item log-conc';
         entry.style.borderLeftColor = data.saved ? '#2ecc71' : '#e74c3c';
         entry.innerHTML = `${_hdr(iconImg('🔮','14px'), 'Concentration')}
-            <div class="log-item-body"><strong>${_escapeHtml(data.cName)}</strong> CON save — ${savedText}</div>`;
+            <div class="log-item-body"><strong>${escapeHtml(data.cName)}</strong> CON save — ${savedText}</div>`;
 
     } else if (data.type === "DAMAGE" || data.type === "HEAL") {
         const isHeal = data.type === "HEAL";
         const hFlavorLine = data.flavor || (isHeal ? healFlavor(data.cName) : flavorText);
         const hResultLine = data.res != null
-            ? `${isHeal ? iconImg('💚','14px') : iconImg('💔','14px')} <strong>${_escapeHtml(data.cName)}</strong> ${isHeal ? 'healed' : 'took'} <span style="color:${isHeal?'#2ecc71':'#e74c3c'};font-weight:900;">${data.res}</span> HP${data.newHp != null ? ` → ${data.newHp}/${data.maxHp ?? '?'}` : ''}`
-            : `${isHeal ? iconImg('💚','14px') : iconImg('💔','14px')} <strong>${_escapeHtml(data.cName)}</strong>`;
+            ? `${isHeal ? iconImg('💚','14px') : iconImg('💔','14px')} <strong>${escapeHtml(data.cName)}</strong> ${isHeal ? 'healed' : 'took'} <span style="color:${isHeal?'#2ecc71':'#e74c3c'};font-weight:900;">${data.res}</span> HP${data.newHp != null ? ` → ${data.newHp}/${data.maxHp ?? '?'}` : ''}`
+            : `${isHeal ? iconImg('💚','14px') : iconImg('💔','14px')} <strong>${escapeHtml(data.cName)}</strong>`;
         entry.className = `log-item ${isHeal ? 'log-heal' : 'log-damage'}`;
         entry.innerHTML = `${_hdr('', isHeal ? iconImg('💚','14px') + ' Heal' : iconImg('💔','14px') + ' Damage')}
             <div class="log-item-body">${hResultLine}</div>
@@ -898,16 +895,16 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
     } else if (data.type === 'FALL') {
         entry.className = 'log-item log-fall';
         entry.innerHTML = `${_hdr(iconImg('💀','14px'), 'Unconscious')}
-            <div class="log-item-body"><strong>${_escapeHtml(data.cName)}</strong> falls unconscious!</div>`;
+            <div class="log-item-body"><strong>${escapeHtml(data.cName)}</strong> falls unconscious!</div>`;
 
     } else if (data.type === 'ABILITY_CHECK') {
         const total = data.total ?? (data.res + (data.mod || 0));
         const modStr = (data.mod || 0) >= 0 ? `+${data.mod||0}` : `${data.mod}`;
         const nat20 = data.res === 20, nat1 = data.res === 1;
         entry.className = 'log-item log-ability';
-        entry.innerHTML = `${_hdr(iconImg('🎲','14px'), `${_escapeHtml(data.ability)} Check`)}
+        entry.innerHTML = `${_hdr(iconImg('🎲','14px'), `${escapeHtml(data.ability)} Check`)}
             <div class="log-item-body">
-                <strong>${_escapeHtml(data.cName)}</strong> rolled
+                <strong>${escapeHtml(data.cName)}</strong> rolled
                 <span class="${nat20?'log-nat20':nat1?'log-nat1':''}" style="font-size:1.2em;font-weight:900;">${total}</span>
                 <small style="opacity:0.7;"> (${iconImg('🎲','14px')}${data.res}${modStr})</small>
             </div>`;
@@ -918,9 +915,9 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
         const nat20 = data.res === 20, nat1 = data.res === 1;
         const skillDisp = (data.skillName || '').replace(/(^|\s)\w/g, s => s.toUpperCase());
         entry.className = 'log-item log-skill';
-        entry.innerHTML = `${_hdr(iconImg('🎲','14px'), _escapeHtml(skillDisp))}
+        entry.innerHTML = `${_hdr(iconImg('🎲','14px'), escapeHtml(skillDisp))}
             <div class="log-item-body">
-                <strong>${_escapeHtml(data.cName)}</strong> rolled
+                <strong>${escapeHtml(data.cName)}</strong> rolled
                 <span class="${nat20?'log-nat20':nat1?'log-nat1':''}" style="font-size:1.2em;font-weight:900;">${total}</span>
                 <small style="opacity:0.7;"> (${iconImg('🎲','14px')}${data.res}${modStr})</small>
             </div>`;
@@ -932,26 +929,26 @@ export function addLogEntry(data, time, flavorText, isReplay = false) {
     } else if (data.type === 'WILD_MAGIC_SURGE') {
         entry.className = 'log-item log-wild-magic';
         entry.innerHTML = `${_hdr(iconImg('💥','14px'), t('wild_magic_surge_title') || 'Wild Magic Surge')}
-            <div class="log-item-body"><strong>${_escapeHtml(data.cName)}</strong>: <em>${_escapeHtml(data.surgeText || '')}</em></div>`;
+            <div class="log-item-body"><strong>${escapeHtml(data.cName)}</strong>: <em>${escapeHtml(data.surgeText || '')}</em></div>`;
 
     } else if (data.type === 'MANEUVER') {
         entry.className = 'log-item log-maneuver';
-        entry.innerHTML = `${_hdr(iconImg('⚔️','14px'), _escapeHtml(data.maneuverName || 'Maneuver'))}
+        entry.innerHTML = `${_hdr(iconImg('⚔️','14px'), escapeHtml(data.maneuverName || 'Maneuver'))}
             <div class="log-item-body">
                 ${data.saveDC ? `<span style="color:#f39c12;">Save DC ${data.saveDC}.</span> ` : ''}
                 ${data.extraDamage ? `+<strong>${data.extraDamage}</strong> extra damage. ` : ''}
-                ${data.note ? _escapeHtml(data.note) : ''}
+                ${data.note ? escapeHtml(data.note) : ''}
             </div>`;
 
     } else if (data.type === 'PORTENT') {
         entry.className = 'log-item log-portent';
         entry.innerHTML = `${_hdr(iconImg('🎲','14px'), t('portent_log_title') || 'Portent Used')}
-            <div class="log-item-body"><strong>${_escapeHtml(data.cName)}</strong> replaces a roll with portent die [<strong>${data.portentValue}</strong>]</div>`;
+            <div class="log-item-body"><strong>${escapeHtml(data.cName)}</strong> replaces a roll with portent die [<strong>${data.portentValue}</strong>]</div>`;
 
     } else if (data.type === 'RESOURCE') {
         entry.className = 'log-item log-resource';
-        entry.innerHTML = `${_hdr(iconImg('✨','14px'), _escapeHtml(data.resourceName || 'Ability Used'))}
-            <div class="log-item-body">${_escapeHtml(data.msg || '')}</div>`;
+        entry.innerHTML = `${_hdr(iconImg('✨','14px'), escapeHtml(data.resourceName || 'Ability Used'))}
+            <div class="log-item-body">${escapeHtml(data.msg || '')}</div>`;
 
     } else {
         const modeLabel = data.mode === 'adv'

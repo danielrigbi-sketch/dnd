@@ -1,4 +1,5 @@
 // communityHub.js — Community Hub browse & join for ParaDice VTT
+import { escapeHtml } from './core/sanitize.js';
 import { t } from './i18n.js';
 import { listenToListings, rsvpToListing, cancelRsvp, getAuthUid, requestCampaignAccess } from './firebaseService.js';
 import { openListingEditor } from './listingEditor.js';
@@ -12,8 +13,6 @@ let _filters = { search: '', style: '', experience: '', language: '', schedule: 
 let _sort = 'newest';
 let _unsubListings = null;
 let _unsubLFG = null;
-
-function _esc(s) { return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function _statusLabel(isFull, status) {
     if (isFull) return t('hub_full');
@@ -41,7 +40,7 @@ export function initCommunityHub(uid, userName) {
         <div class="hub-header-subtitle">${t('hub_subtitle')}</div>
 
         <div class="hub-filter-bar">
-            <input type="text" class="hub-search-input" id="hub-search" placeholder="${_esc(t('hub_search_ph'))}">
+            <input type="text" class="hub-search-input" id="hub-search" placeholder="${escapeHtml(t('hub_search_ph'))}">
             <select class="hub-filter-select" id="hub-filter-style">
                 <option value="">${t('hub_filter_style')}: ${t('hub_all')}</option>
                 <option value="roleplay">${t('hub_style_roleplay')}</option>
@@ -240,16 +239,16 @@ function _renderCard(id, l) {
     const styleLabel = primaryStyle ? t('hub_style_' + primaryStyle) : '';
 
     return `
-        <div class="hub-listing-card" data-id="${_esc(id)}">
+        <div class="hub-listing-card" data-id="${escapeHtml(id)}">
             <span class="hub-status-badge ${statusClass}">${_statusLabel(isFull, l.status)}</span>
             <div class="hub-listing-card-header">
-                <div class="hub-listing-card-title">${_esc(l.title)}</div>
+                <div class="hub-listing-card-title">${escapeHtml(l.title)}</div>
                 <span class="hub-listing-card-type ${l.type}">${l.type === 'campaign' ? t('hub_campaign_type') : t('hub_quick_room_type')}</span>
             </div>
             <div class="hub-listing-card-dm">
-                <span>${t('hub_dm_label')}: ${_esc(l.dmName)}</span>
+                <span>${t('hub_dm_label')}: ${escapeHtml(l.dmName)}</span>
             </div>
-            ${l.description ? `<div class="hub-listing-card-desc">${_esc(l.description)}</div>` : ''}
+            ${l.description ? `<div class="hub-listing-card-desc">${escapeHtml(l.description)}</div>` : ''}
             <div class="hub-listing-card-meta">
                 ${styleLabel ? `<span class="hub-badge style">${styleLabel}</span>` : ''}
                 <span class="hub-badge exp">${expLabel}</span>
@@ -299,11 +298,11 @@ function _openDetail(listingId) {
     modal.innerHTML = `
         <div class="modal-content listing-detail-modal" style="background:var(--pd-bg-dark,#1a1a2e);border:1px solid rgba(200,135,58,0.3);border-radius:12px;padding:24px;width:90%;max-width:520px;">
             <div class="listing-detail-header">
-                <h2>${_esc(l.title)}</h2>
+                <h2>${escapeHtml(l.title)}</h2>
                 <button id="detail-close-btn" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;">&times;</button>
             </div>
-            <div style="color:#999;font-size:12px;margin-bottom:12px;">${t('hub_dm_label')}: ${_esc(l.dmName)} · ${l.type === 'campaign' ? t('hub_campaign_type') : t('hub_quick_room_type')}</div>
-            ${l.description ? `<div class="listing-detail-description">${_esc(l.description)}</div>` : ''}
+            <div style="color:#999;font-size:12px;margin-bottom:12px;">${t('hub_dm_label')}: ${escapeHtml(l.dmName)} · ${l.type === 'campaign' ? t('hub_campaign_type') : t('hub_quick_room_type')}</div>
+            ${l.description ? `<div class="listing-detail-description">${escapeHtml(l.description)}</div>` : ''}
             <div class="listing-detail-meta-grid">
                 <div class="listing-detail-meta-item"><label>${t('hub_detail_players')}</label><span>${(l.currentPlayers || 0)}/${l.maxPlayers || 4}</span></div>
                 <div class="listing-detail-meta-item"><label>${t('hub_detail_style')}</label><span>${stylesStr}</span></div>
@@ -314,7 +313,7 @@ function _openDetail(listingId) {
                 <div class="listing-detail-meta-item"><label>${t('hub_detail_fee')}</label><span>${feeLabel}</span></div>
                 ${l.ageMin || l.ageMax ? `<div class="listing-detail-meta-item"><label>${t('hub_detail_age')}</label><span>${l.ageMin || 0}–${l.ageMax || '∞'}</span></div>` : ''}
             </div>
-            ${tagsStr !== '-' ? `<div style="color:#777;font-size:11px;margin-bottom:12px;">${t('hub_detail_tags')}: ${_esc(tagsStr)}</div>` : ''}
+            ${tagsStr !== '-' ? `<div style="color:#777;font-size:11px;margin-bottom:12px;">${t('hub_detail_tags')}: ${escapeHtml(tagsStr)}</div>` : ''}
             <div class="listing-detail-actions">
                 <button id="detail-cancel-btn" class="hover-btn" style="background:transparent;color:#ccc;border:1px solid #555;padding:8px 16px;border-radius:6px;">${t('editor_cancel')}</button>
                 ${!isFull ? `<button id="detail-join-btn" class="hover-btn" style="background:#e74c3c;color:white;padding:8px 20px;border-radius:6px;font-weight:bold;">${l.accessMode === 'approval' ? t('hub_request_btn') : t('hub_join_btn')}</button>` : ''}
@@ -413,10 +412,10 @@ function _renderLFG(players) {
         const stylesStr = (p.preferredStyles || []).map(s => t('hub_style_' + s)).join(', ') || '-';
         const expLabel = p.experienceLevel ? t('hub_' + p.experienceLevel) : '';
         return `
-            <div class="lfg-player-card" data-uid="${_esc(uid)}">
-                <img src="${_esc(p.avatar || '/assets/icons/toolbar/campaign.png')}" alt="">
+            <div class="lfg-player-card" data-uid="${escapeHtml(uid)}">
+                <img src="${escapeHtml(p.avatar || '/assets/icons/toolbar/campaign.png')}" alt="">
                 <div class="lfg-player-info">
-                    <div class="name">${_esc(p.displayName)}</div>
+                    <div class="name">${escapeHtml(p.displayName)}</div>
                     <div class="meta">${expLabel}${expLabel && stylesStr !== '-' ? ' · ' : ''}${stylesStr !== '-' ? stylesStr : ''}</div>
                 </div>
             </div>

@@ -11,7 +11,7 @@
 //   generateTavernName()           → string
 //   generateRumor()                → string
 
-import { faker } from '@faker-js/faker';
+// @faker-js/faker removed — only needed pick() and randInt(), both trivial
 
 // ── D&D Name Tables ────────────────────────────────────────────────────────────
 
@@ -102,6 +102,50 @@ const NAMES = {
              'Shautha','Sutha','Vola','Volen','Yevelda'],
     clan:   ['Doomcrusher','Eyegouger','Bonecruncher','Bloodspear','Foulspawn',
              'Ironaxe','Skullcleaver','Stonefist','Thunderfist','Warchief'],
+  },
+};
+
+// ── Hebrew D&D Name Tables ──────────────────────────────────────────────────
+const NAMES_HE = {
+  Human: {
+    male:   ['אלדריק','בראם','דוריאן','גארת','פין','סורן','אולריק','קאל','יורין','אידריס','ברן','קספיאן','מארן','אוסווין','טאבין','ריילן','קוויל','ונדר'],
+    female: ['אלארה','ברין','קורה','אלה','גוון','אילה','לירה','מירה','נסה','פטרה','סלה','זורה','אניה','דארה','רואן','וירה'],
+    family: ['אשפורד','בלקווד','קריין','ארבן חושך','פלקרסט','אלון-חזק','שדה-ערפל','אבן-כסף','יער-קוצני','גבעה-נמוכה','מערב-מסע'],
+  },
+  Elf: {
+    male:   ['ארניס','קלדור','ארוואן','גלינדן','אורים','סובליס','ואריס','אלאר','אדרן','ריארדון','פליאס','איממרל'],
+    female: ['אדריה','אנסטריאנה','קלין','דרוסיליה','אנה','קיילת','ליה','מיאלי','סריאל','ולנתה','שאנאירה'],
+    family: ['אמקיר','גלנודל','ליאדון','מליאמנה','סיאנודל','איבן-יער','כוכב-ירח','עלה-כסף'],
+  },
+  Dwarf: {
+    male:   ['אדריק','ברנד','ברוטור','דיין','פלינט','גארדין','הרבק','תורין','טורדק','אולפגר','רוריק','מורגרן'],
+    female: ['אמבר','אודהילד','דאגנל','אלדת','הליה','קטרה','ריסווין','טורבירה','וויסטרה'],
+    family: ['בלדרק','דנקיל','גורון','רומנהיים','טורון','סלע-אש','פטיש-ברזל','מגן-הר'],
+  },
+  Halfling: {
+    male:   ['אלטון','קייד','קורין','גארט','מריק','מילו','פרין','רוסקו','וולבי','לייל','רייד'],
+    female: ['ברי','קאלי','קורה','ג\'ילי','קיתרי','לידה','מרלה','פורטיה','שינה','ואני'],
+    family: ['מטאטא-ירוק','חבית-טובה','גבעה-גבוהה','עלה-תה','גפן-קוצנית','בקעה-שקטה'],
+  },
+  Tiefling: {
+    male:   ['אקמנוס','ברקס','דמקוס','איאדוס','קירון','מלך','מורדאי','סקאמוס'],
+    female: ['אנקיס','בריסאיס','דמאיה','קליסטה','נמיה','אוריאנה','פליה','ריטה'],
+    virtue: ['אומנות','תהילה','תקווה','מוזיקה','שירה','משאלה','עוז','נצח'],
+  },
+  Gnome: {
+    male:   ['אלווין','בודינוק','דימבל','פונקין','גרבו','גלים','קלן','ברוק','פרוג'],
+    female: ['ברינה','אלה','לילי','נייקס','אודה','רויווין','שאמיל','טאנה','קרמיפ'],
+    family: ['ברן','נקל','מורניג','שפן','טימברס','טורן','גלגל-שן','אור-פנס'],
+  },
+  Dragonborn: {
+    male:   ['ארג\'ן','בלסר','דונר','גש','חסקן','מדרש','נדר','רוגר','טורין','שמש'],
+    female: ['אקרה','בירי','פרידה','חווילר','קורין','נלה','סורינה','תאווה'],
+    clan:   ['דרדנדריאן','דלמירב','קפשקמוליק','נוריקסיוס','שסטנדליאת','יארג\'ריט'],
+  },
+  Orc: {
+    male:   ['דנץ\'','הנק','קרוסק','מהורן','רונט','תוק','פנג','גל'],
+    female: ['באגי','אנגונג','נגה','אובק','שאותה','וולה','ימן'],
+    clan:   ['מוחץ-גולגולות','שובר-עצמות','חנית-דם','אגרוף-ברזל','גרזן-ברק','ראש-מלחמה'],
   },
 };
 
@@ -228,7 +272,11 @@ function pick(arr) {
 }
 
 function pickFaker(arr) {
-  return faker.helpers.arrayElement(arr);
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function randInt(min, max) {
+  return min + Math.floor(Math.random() * (max - min + 1));
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────────
@@ -239,19 +287,21 @@ function pickFaker(arr) {
  * @param {string} [gender] — 'male' | 'female' | 'nonbinary'
  * @returns {string} full name
  */
-export function generateNPCName(race, gender) {
-  const r = (race && NAMES[race]) ? race : pickFaker(RACES);
+export function generateNPCName(race, gender, lang = 'en') {
+  const nameTable = (lang === 'he') ? NAMES_HE : NAMES;
+  const r = (race && nameTable[race]) ? race : pickFaker(Object.keys(nameTable));
   const g = (gender === 'male' || gender === 'female')
     ? gender
     : pickFaker(['male', 'female']);
 
-  const table  = NAMES[r];
+  const table  = nameTable[r];
+  if (!table) return lang === 'he' ? 'גיבור אלמוני' : 'Unknown Hero';
   const first  = pickFaker(table[g] || table.male || table.female);
   const family = table.family
     || table.clan
     || table.virtue;
 
-  if (!family) return first;   // some races (e.g. Tiefling virtue names) use first only
+  if (!family) return first;
   return `${first} ${pickFaker(family)}`;
 }
 
@@ -284,7 +334,7 @@ export function generateNPCDescription() {
  * @param {object} [opts]
  * @param {string} [opts.race]
  * @param {string} [opts.gender]
- * @param {string} [opts.type]   — CritRoll type string for token ring colour
+ * @param {string} [opts.type]   — ParaDice type string for token ring colour
  * @param {number} [opts.cr]
  * @returns {object} NPC record
  */
@@ -306,8 +356,8 @@ export function generateNPC(opts = {}) {
     // Randomised combat stats (CR 0 civilian)
     cr:   opts.cr   ?? '0',
     type: opts.type ?? 'Humanoid',
-    hp:   faker.number.int({ min: 4,  max: 12 }),
-    ac:   faker.number.int({ min: 10, max: 13 }),
+    hp:   randInt(4, 12),
+    ac:   randInt(10, 13),
   };
 }
 

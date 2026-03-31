@@ -1,5 +1,7 @@
 // js/sceneWizard.js — Scene Wizard v129 + Wave 1 (E1-B: Open5e monster gallery)
-// 6-step guided scene creation for CritRoll DM.
+import { iconImg } from './iconMap.js';
+import { escapeJSString } from './core/sanitize.js';
+// 6-step guided scene creation for ParaDice DM.
 //
 // FIXES v129 (Sprint SC):
 //   SC-1: Monster/NPC picker panel in Step 2 (search, CR filter, type chips)
@@ -208,7 +210,7 @@ export class SceneWizard {
 
   // ── Render ────────────────────────────────────────────────────────────
   _render() {
-    const ICONS  = ['🖼','🔲','⚔️','🌑','🌩','💾'];
+    const ICONS  = [iconImg('🖼️','16px'),iconImg('🔲','16px'),iconImg('⚔️','16px'),iconImg('🌑','16px'),iconImg('🌩','16px'),iconImg('💾','16px')];
     const LABELS = ['Image','Grid','World','Fog','Vibe','Save'];
     const TITLES = ['wiz_t0','wiz_t1','wiz_t2','wiz_t3','wiz_t4','wiz_t5'];
     const SUBS   = ['wiz_s0','wiz_s1','wiz_s2','wiz_s3','wiz_s4','wiz_s5'];
@@ -219,7 +221,7 @@ export class SceneWizard {
       pill.classList.toggle('done',   i < this._step);
     });
 
-    document.getElementById('wiz-step-title').textContent = `${ICONS[this._step]}  ${t(TITLES[this._step])}`;
+    document.getElementById('wiz-step-title').innerHTML = `${ICONS[this._step]}  ${t(TITLES[this._step])}`;
     document.getElementById('wiz-step-sub').textContent   = t(SUBS[this._step]);
     this._modal.dir = getLang() === 'he' ? 'rtl' : 'ltr';
 
@@ -410,10 +412,10 @@ export class SceneWizard {
               </div>`;
           }).join('');
           if (this._o5eTotal > this._o5eResults.length) {
-            monstersHTML += `<div class="wiz-mon-more">Showing ${this._o5eResults.length} of ${this._o5eTotal} — refine filters to narrow</div>`;
+            monstersHTML += `<div class="wiz-mon-more">${t('wiz_showing_of').replace('{shown}', this._o5eResults.length).replace('{total}', this._o5eTotal)}</div>`;
           }
         } else if (this._o5eResults !== null) {
-          monstersHTML = `<div style="font-size:10px;color:#555;text-align:center;padding:8px;">No monsters match filters</div>`;
+          monstersHTML = `<div style="font-size:10px;color:#555;text-align:center;padding:8px;">${t('wiz_no_monsters_match')}</div>`;
         } else {
           // Initial — show local fallback while fetching
           monstersHTML = Object.entries(npcDatabase).slice(0, 6).map(([key, m]) => {
@@ -427,13 +429,13 @@ export class SceneWizard {
                 </div>
                 <button class="wiz-mon-spawn-btn" data-key="${key}" title="Spawn on map">+</button>
               </div>`;
-          }).join('') + `<div class="wiz-mon-more" style="color:#f1c40f;">⏳ Loading SRD monsters…</div>`;
+          }).join('') + `<div class="wiz-mon-more" style="color:#f1c40f;">${t('wiz_loading_srd')}</div>`;
         }
 
         return `
           <div class="wiz-section">${t('wiz_l2_tool')}</div>
           <div class="wiz-tool-grid">
-            <button class="wiz-tool-btn" id="wt-obs"  data-mode="obstacle">🧱 ${t('wiz_l2_obstacle')}</button>
+            <button class="wiz-tool-btn" id="wt-obs"  data-mode="obstacle">${iconImg('🧱','14px')} ${t('wiz_l2_obstacle')}</button>
             <button class="wiz-tool-btn" id="wt-trig" data-mode="trigger">⚠️ ${t('wiz_l2_trap')}</button>
             <button class="wiz-tool-btn" id="wt-view" data-mode="view">👆 ${t('wiz_l2_select')}</button>
             <button class="wiz-tool-btn" id="wt-ruler" data-mode="ruler">📏 ${t('wiz_l2_ruler')}</button>
@@ -486,10 +488,10 @@ export class SceneWizard {
           <div id="wiz-token-list" style="display:flex;flex-direction:column;gap:3px;margin-top:4px;">
             ${Object.entries(this.players).filter(([,p])=>p.userRole!=='dm').map(([cn,p])=>`
               <div class="wiz-token-row">
-                <img src="${p.portrait||'assets/logo.png'}"
+                <img src="${p.portrait||'assets/logo.webp'}"
                   style="width:20px;height:20px;border-radius:50%;border:2px solid ${p.pColor||'#fff'};flex-shrink:0;">
                 <span style="flex:1;font-size:10px;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cn}</span>
-                <button onclick="window._wizard?.startPlacing('${cn}')" class="wiz-tiny-btn" title="Place on map">📍</button>
+                <button onclick="window._wizard?.startPlacing('${escapeJSString(cn)}')" class="wiz-tiny-btn" title="Place on map">📍</button>
               </div>
             `).join('') || `<div style="font-size:10px;color:#555;">${t('wiz_l2_no_players')}</div>`}
           </div>`;
@@ -513,8 +515,8 @@ export class SceneWizard {
         <select id="wiz-weather" class="wiz-select">
           <option value="none"       ${atm.weather==='none'?'selected':''}>☀️ ${t('wiz_w_clear')}</option>
           <option value="light_rain" ${atm.weather==='light_rain'?'selected':''}>🌦 ${t('wiz_w_rain')}</option>
-          <option value="heavy_rain" ${atm.weather==='heavy_rain'?'selected':''}>⛈ ${t('wiz_w_hrain')}</option>
-          <option value="fog"        ${atm.weather==='fog'?'selected':''}>🌫 ${t('wiz_w_fog')}</option>
+          <option value="heavy_rain" ${atm.weather==='heavy_rain'?'selected':''}>${iconImg('⛈','12px')} ${t('wiz_w_hrain')}</option>
+          <option value="fog"        ${atm.weather==='fog'?'selected':''}>${iconImg('🌫','12px')} ${t('wiz_w_fog')}</option>
           <option value="blizzard"   ${atm.weather==='blizzard'?'selected':''}>❄️ ${t('wiz_w_bliz')}</option>
           <option value="sandstorm"  ${atm.weather==='sandstorm'?'selected':''}>🌪 ${t('wiz_w_sand')}</option>
           <option value="darkness"   ${atm.weather==='darkness'?'selected':''}>🌑 ${t('wiz_w_dark')}</option>
@@ -522,7 +524,7 @@ export class SceneWizard {
         <div class="wiz-section" style="margin-top:12px;">${t('wiz_l4_light')}</div>
         <select id="wiz-light" class="wiz-select">
           <option value="bright" ${atm.ambientLight==='bright'?'selected':''}>☀️ ${t('wiz_l_bright')}</option>
-          <option value="dim"    ${atm.ambientLight==='dim'?'selected':''}>🕯 ${t('wiz_l_dim')}</option>
+          <option value="dim"    ${atm.ambientLight==='dim'?'selected':''}>${iconImg('🕯️','12px')} ${t('wiz_l_dim')}</option>
           <option value="dark"   ${atm.ambientLight==='dark'?'selected':''}>🌑 ${t('wiz_l_dark')}</option>
         </select>
         <div class="wiz-section" style="margin-top:12px;">${t('wiz_l4_dv')}</div>
@@ -566,7 +568,7 @@ export class SceneWizard {
             🗺 Watabou
           </button>
         </div>
-        ${this._dungeonData ? `<div class="wiz-ok-badge" style="margin-top:4px;">✓ ${this._dungeonData.rooms?.length||0} rooms indexed</div>` : ''}
+        ${this._dungeonData ? `<div class="wiz-ok-badge" style="margin-top:4px;">${t('wiz_rooms_indexed').replace('{count}', this._dungeonData.rooms?.length||0)}</div>` : ''}
         `;
 
       default: return '';
@@ -580,7 +582,7 @@ export class SceneWizard {
       { icon:'🎯', title:'Align Grid', body: t('wiz_tip1') },
       { icon:'🗺', title:'Build World', body: t('wiz_tip2') },
       { icon:'👁', title:'Fog of War', body: t('wiz_tip3') },
-      { icon:'🌩', title:'Atmosphere', body: t('wiz_tip4') },
+      { icon:iconImg('🌩','16px'), title:'Atmosphere', body: t('wiz_tip4') },
       { icon:'💾', title:'Ready to Save', body: t('wiz_tip5') },
     ];
     const c = cards[this._step] || cards[0];
@@ -605,7 +607,7 @@ export class SceneWizard {
     const seed  = this._roomCode ? (parseInt(this._roomCode, 36) % 2147483647) : undefined;
 
     const btn = document.getElementById('wiz-gen-dungeon');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+    if (btn) { btn.disabled = true; btn.textContent = t('wiz_generating'); }
 
     try {
       const dng = generateDungeon({ size, style, seed });
@@ -633,11 +635,11 @@ export class SceneWizard {
 
       this._dungeonGenerated = true;
       const roomCount = dng.rooms.length;
-      this._dungeonInfo = `${size} ${style} — ${roomCount > 0 ? roomCount + ' rooms' : 'organic cave'}`;
+      this._dungeonInfo = `${size} ${style} — ${roomCount > 0 ? roomCount + ' ' + t('wiz_rooms_label') : t('wiz_organic_cave')}`;
       this._render();
     } catch(e) {
       console.error('Dungeon gen error:', e);
-      if (btn) { btn.disabled = false; btn.textContent = '🎲 Generate Dungeon'; }
+      if (btn) { btn.disabled = false; btn.textContent = '🎲 ' + t('wiz_gen_dungeon_btn'); }
     }
   }
 
@@ -1021,7 +1023,7 @@ export class SceneWizard {
 
     this._leftPanel.innerHTML = this._buildLeft();
     this._wireStep();
-    this._toast(`📍 Click map to place ${finalName}`);
+    this._toast(t('wiz_click_to_place').replace('{name}', finalName));
   }
 
   // ── SC: Spawn NPC from wizard ──────────────────────────────────────────
@@ -1061,7 +1063,7 @@ export class SceneWizard {
     this._wireStep();
 
     // Visual feedback toast
-    this._toast(`📍 Click map to place ${finalName}`);
+    this._toast(t('wiz_click_to_place').replace('{name}', finalName));
   }
 
   _toast(msg) {

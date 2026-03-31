@@ -6,9 +6,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { typeColor } from '../monsters.js';
+import { escapeJSString } from '../core/sanitize.js';
+import { t } from '../i18n.js';
 import { getTileSize, getVisualScale, footprintsOverlap } from './sizeUtils.js';
 import { tileDistance, rollDice, parseSpellRangeFt, applyDamageModifiers, getConditionModifiers } from './combatUtils.js';
-import { getCombatActions, getAllyActions, getSelfActions, applyMeleeModifier } from './classAbilities.js';
+import { getCombatActions, getAllyActions, getSelfActions, applyMeleeModifier, onKill } from './classAbilities.js';
 
 const STS_ICON = {
   Poisoned: '☠', Charmed: '♥', Unconscious: '💤', Frightened: '😱',
@@ -239,7 +241,7 @@ export class TokenSystem {
       const inCombat = eng.L.sc?.length > 0 && eng.L.ati !== null;
       const ok = isDM || (tn === eng.cName && (!inCombat || this._isMyTurn(tn)));
       if (!ok && tn === eng.cName && inCombat && !this._isMyTurn(tn)) {
-        eng.bus.emit('ui:toast', { msg: "It's not your turn!", type: 'warning' });
+        eng.bus.emit('ui:toast', { msg: t('toast_not_your_turn'), type: 'warning' });
       }
       if (ok) {
         const tk = eng.S.tokens[tn];
@@ -254,7 +256,7 @@ export class TokenSystem {
     if (m === 'view' && !isDM && eng.cName) {
       const inCombat = eng.L.sc?.length > 0 && eng.L.ati !== null;
       if (inCombat && !this._isMyTurn(eng.cName)) {
-        eng.bus.emit('ui:toast', { msg: "It's not your turn!", type: 'warning' });
+        eng.bus.emit('ui:toast', { msg: t('toast_not_your_turn'), type: 'warning' });
         return;
       }
       const myTk = eng.S.tokens[eng.cName];
@@ -358,11 +360,15 @@ export class TokenSystem {
     const { sx, sy } = this._cp(e);
     const delta = e.deltaY < 0 ? 1.1 : 0.91;
     const eng = this.e;
-    // Minimum zoom: map must fill at least the canvas in both dimensions
+    // Minimum zoom: map fills the usable viewport (accounting for UI overlay insets)
     const { mapW = 30, mapH = 20, pps } = eng.S.cfg;
-    const vsMin = Math.min(
-      eng.cv.width  / Math.max(1, (mapW || 30) * pps),
-      eng.cv.height / Math.max(1, (mapH || 20) * pps)
+    const ins = eng._insets || { left: 0, top: 0, right: 0, bottom: 0 };
+    const usableW = Math.max(1, eng.cv.width  - ins.left - ins.right);
+    const usableH = Math.max(1, eng.cv.height - ins.top  - ins.bottom);
+    // Math.max = "cover" behaviour: min zoom is when the map fills the screen on its shorter axis
+    const vsMin = Math.max(
+      usableW / Math.max(1, (mapW || 30) * pps),
+      usableH / Math.max(1, (mapH || 20) * pps)
     );
     const ns = Math.min(4, Math.max(vsMin, eng.vs * delta));
     eng.vx = sx - (sx - eng.vx) * (ns / eng.vs);
@@ -400,11 +406,9 @@ export class TokenSystem {
       body.innerHTML = selfActions.map((a, i) =>
         `<button class="action-btn ${a.cls}" ${a.available && a.fn ? `data-idx="${i}"` : 'disabled'}>${a.label}</button>`
       ).join('');
-      body.querySelectorAll('.action-btn[data-idx]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          selfActions[parseInt(btn.dataset.idx)].fn?.(myCName, eng);
-          popup.style.display = 'none';
-        });
+      this._attachActionDelegation(body, (idx) => {
+        selfActions[idx].fn?.(myCName, eng);
+        popup.style.display = 'none';
       });
       const cc = document.getElementById('map-canvas-container');
       const rect = cc ? cc.getBoundingClientRect() : { left: 0, top: 0 };
@@ -687,11 +691,9 @@ export class TokenSystem {
     });
 
     body.innerHTML = html;
-    body.querySelectorAll('.action-btn[data-idx]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        actions[parseInt(btn.dataset.idx)].fn?.();
-        popup.style.display = 'none';
-      });
+    this._attachActionDelegation(body, (idx) => {
+      actions[idx].fn?.();
+      popup.style.display = 'none';
     });
 
     const cc = document.getElementById('map-canvas-container');
@@ -709,12 +711,24 @@ export class TokenSystem {
     setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
   }
 
+  _attachActionDelegation(container, callback) {
+    if (container._actionDelegate) {
+      container.removeEventListener('click', container._actionDelegate);
+    }
+    container._actionDelegate = (e) => {
+      const btn = e.target.closest('.action-btn[data-idx]');
+      if (!btn) return;
+      callback(parseInt(btn.dataset.idx));
+    };
+    container.addEventListener('click', container._actionDelegate);
+  }
+
   _doMeleeAttack(attackerCName, targetCName) {
     const eng = this.e;
     const attacker = eng.S.players[attackerCName] || {};
     const target   = eng.S.players[targetCName]   || {};
     const bonus    = attacker.melee ?? 0;
-    const ac       = target.ac ?? 10;
+    const ac       = target._resolved?.ac ?? target.ac ?? 10;
 
     // Condition modifiers + global adv/dis mode
     const atkTok = eng.S.tokens[attackerCName], tarTok = eng.S.tokens[targetCName];
@@ -730,7 +744,9 @@ export class TokenSystem {
     const r2 = (finalAdv || finalDis) ? Math.floor(Math.random() * 20) + 1 : r1;
     const rawRoll = conds.autoCrit ? 20 : (finalAdv ? Math.max(r1, r2) : finalDis ? Math.min(r1, r2) : r1);
     const total    = rawRoll + bonus;
-    const crit     = rawRoll === 20 || conds.autoCrit;
+    const critThreshold = attacker._resolved?.critThreshold ?? 20;
+    const crit     = rawRoll >= critThreshold || conds.autoCrit ||
+                     (attacker._resolved?.tags?.has('assassinate') && target.surprised);
     const miss     = rawRoll === 1 && !conds.autoCrit;
     const hit      = crit || (!miss && total >= ac);
     const condNote = conds.reasons.length ? ` (${conds.reasons.join(', ')})` : '';
@@ -771,6 +787,7 @@ export class TokenSystem {
       eng.db?.updatePlayerHPInDB(targetCName, newHp);
       _checkConcentration(eng, targetCName, target, damage);
       _applyUnconscious(eng, targetCName, target, newHp);
+      if (newHp <= 0) onKill(attackerCName, targetCName, eng);
     }
 
     eng.db?.saveRollToDB({
@@ -790,7 +807,7 @@ export class TokenSystem {
     const attacker = eng.S.players[attackerCName] || {};
     const target   = eng.S.players[targetCName]   || {};
     const bonus    = attacker.ranged ?? 0;
-    const ac       = target.ac ?? 10;
+    const ac       = target._resolved?.ac ?? target.ac ?? 10;
 
     // Condition modifiers + global adv/dis + point-blank disadvantage
     const atkTok2 = eng.S.tokens[attackerCName], tarTok2 = eng.S.tokens[targetCName];
@@ -806,7 +823,9 @@ export class TokenSystem {
     const r2 = (finalAdv2 || finalDis2) ? Math.floor(Math.random() * 20) + 1 : r1;
     const rawRoll = finalAdv2 ? Math.max(r1, r2) : finalDis2 ? Math.min(r1, r2) : r1;
     const total   = rawRoll + bonus;
-    const crit    = rawRoll === 20;
+    const critThreshold2 = attacker._resolved?.critThreshold ?? 20;
+    const crit    = rawRoll >= critThreshold2 ||
+                    (attacker._resolved?.tags?.has('assassinate') && target.surprised);
     const miss    = rawRoll === 1;
     const hit     = crit || (!miss && total >= ac);
     const condNote2 = conds2.reasons.length ? ` (${conds2.reasons.join(', ')})` : '';
@@ -835,6 +854,7 @@ export class TokenSystem {
       eng.db?.updatePlayerHPInDB(targetCName, newHp);
       _checkConcentration(eng, targetCName, target, damage);
       _applyUnconscious(eng, targetCName, target, newHp);
+      if (newHp <= 0) onKill(attackerCName, targetCName, eng);
     }
 
     eng.db?.saveRollToDB({
@@ -853,7 +873,7 @@ export class TokenSystem {
     const eng      = this.e;
     const attacker = eng.S.players[attackerCName] || {};
     const target   = eng.S.players[targetCName]   || {};
-    const ac       = target.ac ?? 10;
+    const ac       = target._resolved?.ac ?? target.ac ?? 10;
     const isRanged = _isRangedAction(action);
     const dmgDice  = _normActionDmg(action) || '1d6';
     const dmgType  = (action.damage_type || '').toLowerCase() || null;
@@ -876,7 +896,9 @@ export class TokenSystem {
       const r2 = (finalAdvM || finalDisM) ? Math.floor(Math.random() * 20) + 1 : r1;
       rawRoll = condsM.autoCrit ? 20 : (finalAdvM ? Math.max(r1, r2) : finalDisM ? Math.min(r1, r2) : r1);
       total   = rawRoll + bonus;
-      crit    = rawRoll === 20 || condsM.autoCrit;
+      const critThresholdM = attacker._resolved?.critThreshold ?? 20;
+      crit    = rawRoll >= critThresholdM || condsM.autoCrit ||
+                (attacker._resolved?.tags?.has('assassinate') && target.surprised);
       miss    = rawRoll === 1 && !condsM.autoCrit;
       hit     = crit || (!miss && total >= ac);
     }
@@ -1347,11 +1369,11 @@ export class TokenSystem {
       row.dataset.onmap = onMap ? '1' : '0';
       row.dataset.rendered = '1';
       row.innerHTML = `
-        <img src="${p?.portrait || 'assets/logo.png'}" style="width:24px;height:24px;border-radius:50%;border:2px solid ${p?.pColor || '#fff'}">
+        <img src="${p?.portrait || 'assets/logo.webp'}" style="width:24px;height:24px;border-radius:50%;border:2px solid ${p?.pColor || '#fff'}">
         <span style="flex:1;font-size:12px;color:white;">${cn}</span>
         ${onMap
-          ? `<button onclick="window._mapEng.removeToken('${cn}')" class="map-dash-btn" style="width:auto;padding:3px 7px;background:rgba(231,76,60,0.4);border-color:#e74c3c;">✕</button>`
-          : `<button onclick="window._mapEng.startPlacing('${cn}')" class="map-dash-btn" style="width:auto;padding:3px 7px;">📍</button>`
+          ? `<button onclick="window._mapEng.removeToken('${escapeJSString(cn)}')" class="map-dash-btn" style="width:auto;padding:3px 7px;background:rgba(231,76,60,0.4);border-color:#e74c3c;">✕</button>`
+          : `<button onclick="window._mapEng.startPlacing('${escapeJSString(cn)}')" class="map-dash-btn" style="width:auto;padding:3px 7px;">📍</button>`
         }
       `;
     });
