@@ -319,12 +319,12 @@
             <div class="cb-step-indicator">
                 <div class="cb-step-dot active" data-step="1">
                     <span class="cb-step-num">1</span>
-                    <span class="cb-step-label" data-i18n="wizard_step1_label">Race</span>
+                    <span class="cb-step-label" data-i18n="wizard_step1_label">Identity</span>
                 </div>
                 <div class="cb-step-connector"></div>
                 <div class="cb-step-dot" data-step="2">
                     <span class="cb-step-num">2</span>
-                    <span class="cb-step-label" data-i18n="wizard_step2_label">Identity</span>
+                    <span class="cb-step-label" data-i18n="wizard_step2_label">Race</span>
                 </div>
                 <div class="cb-step-connector"></div>
                 <div class="cb-step-dot" data-step="3">
@@ -359,10 +359,10 @@
             </div>
 
             <!-- ══════════════════════════════════════════════════════
-                 STEP 1 — RACE
+                 STEP 2 — RACE
                  Race visual picker · Subrace · Race traits
             ══════════════════════════════════════════════════════ -->
-            <div class="cb-wizard-step active" data-step="1">
+            <div class="cb-wizard-step" data-step="2">
 
                 <!-- Race visual card grid (populated by JS) -->
                 <div>
@@ -424,10 +424,10 @@
             </div>
 
             <!-- ══════════════════════════════════════════════════════
-                 STEP 2 — IDENTITY
-                 Gender · Name · Size (auto from race)
+                 STEP 1 — IDENTITY
+                 Gender · Name · Level · Size (auto from race)
             ══════════════════════════════════════════════════════ -->
-            <div class="cb-wizard-step" data-step="2">
+            <div class="cb-wizard-step active" data-step="1">
 
                 <!-- Gender -->
                 <div>
@@ -446,6 +446,12 @@
                         <input type="text" id="cb-name" class="builder-input" style="flex:1;" data-i18n-placeholder="cb_name_ph" autocomplete="off" aria-label="Character name">
                         <button type="button" id="cb-name-gen-btn" class="cb-autocalc-btn" title="Random Name" data-i18n="cb_name_generate">&#x1F3B2;</button>
                     </div>
+                </div>
+
+                <!-- Level (affects subclass, feats, spell slots, HP) -->
+                <div>
+                    <label style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;" data-i18n="cb_level">Level</label>
+                    <input type="number" id="cb-level-step1" class="builder-input" min="1" max="20" value="1" aria-label="Character level">
                 </div>
 
                 <!-- Size (auto-filled from race, editable) -->
@@ -806,6 +812,7 @@
                             <option value='{"name":"Hand Crossbow","damage":"1d6","type":"piercing","props":["ranged","light"],"range":"30/120"}' data-i18n="wpn_hand_crossbow">Hand Crossbow 1d6 (30/120)</option>
                             <option value='{"name":"Dart","damage":"1d4","type":"piercing","props":["ranged","finesse","thrown"],"range":"20/60"}' data-i18n="wpn_dart">Dart 1d4 (20/60)</option>
                             <option value='{"name":"Sling","damage":"1d4","type":"bludgeoning","props":["ranged"],"range":"30/120"}' data-i18n="wpn_sling">Sling 1d4 (30/120)</option>
+                            <option value='{"name":"Javelin","damage":"1d6","type":"piercing","props":["thrown"],"range":"30/120"}' data-i18n="wpn_javelin">Javelin 1d6 (30/120)</option>
                         </select>
                     </div>
                 </div>

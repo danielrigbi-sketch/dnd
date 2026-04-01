@@ -203,21 +203,37 @@ function _gotoStep(n) {
 }
 
 function _validateStep(n) {
+    // Step 1 = Identity (name required)
     if (n === 1) {
-        const race = document.getElementById('cb-race')?.value;
-        if (!race) { _shakeAndFocus('cb-race-grid'); showToast(t('cb_val_pick_race'), 'warning'); return false; }
-    }
-    if (n === 2) {
         const name = document.getElementById('cb-name')?.value.trim();
         if (!name) { _shakeAndFocus('cb-name'); showToast(t('cb_val_enter_name'), 'warning'); return false; }
     }
+    // Step 2 = Race (race required)
+    if (n === 2) {
+        const race = document.getElementById('cb-race')?.value;
+        if (!race) { _shakeAndFocus('cb-race-grid'); showToast(t('cb_val_pick_race'), 'warning'); return false; }
+    }
+    // Step 3 = Class (class required)
     if (n === 3) {
         const cls = document.getElementById('cb-class')?.value;
         if (!cls) { _shakeAndFocus('cb-class-grid'); showToast(t('cb_val_pick_class'), 'warning'); return false; }
     }
+    // Step 4 = Abilities (all 6 scores ≥ 3)
     if (n === 4) {
-        const str = +(document.getElementById('cb-str')?.value);
-        if (!str || str < 3) { _shakeAndFocus('cb-str'); showToast(t('cb_val_set_abilities'), 'warning'); return false; }
+        const ids = ['cb-str','cb-dex','cb-con','cb-int','cb-wis','cb-cha'];
+        for (const id of ids) {
+            const v = +(document.getElementById(id)?.value);
+            if (!v || v < 3) { _shakeAndFocus(id); showToast(t('cb_val_set_abilities'), 'warning'); return false; }
+        }
+    }
+    // Step 6 = Belief (must pick one)
+    if (n === 6) {
+        const beliefCard = document.querySelector('#cb-belief-grid [data-belief].selected');
+        if (!beliefCard) { showToast(t('cb_val_pick_belief') || 'Pick a belief stance', 'warning'); return false; }
+    }
+    // Step 8 = Portrait (must have one before save)
+    if (n === 8) {
+        if (!selectedPortrait) { showToast(t('cb_val_pick_portrait') || 'Pick a portrait', 'warning'); return false; }
     }
     return true;
 }
@@ -356,13 +372,12 @@ function _applySmartDefaults() {
         racePreview.textContent = race ? `${t('cb_speed')}: ${sp}ft${dv ? ` · ${t('cb_darkvision')}: ${dv}ft` : ''}` : '';
     }
 
-    // Auto-check class saving throw profs — only if ALL saves currently unchecked
+    // Auto-set class saving throw profs whenever class changes
     const saves = ['str','dex','con','int','wis','cha'];
-    const anySaveChecked = saves.some(ab => document.getElementById(`cb-save-${ab}`)?.checked);
-    if (!anySaveChecked && _CLASS_SAVE_PROFS[cls]) {
-        _CLASS_SAVE_PROFS[cls].forEach(ab => {
+    if (_CLASS_SAVE_PROFS[cls]) {
+        saves.forEach(ab => {
             const el = document.getElementById(`cb-save-${ab}`);
-            if (el) el.checked = true;
+            if (el) el.checked = _CLASS_SAVE_PROFS[cls].includes(ab);
         });
     }
 
@@ -450,6 +465,21 @@ document.getElementById('cb-hp-auto-btn')?.addEventListener('click', () => {
 
 // ── Ability Score Methods ──────────────────────────────────────────────
 const _STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
+// Class-optimized standard arrays: [STR, DEX, CON, INT, WIS, CHA]
+const _CLASS_STANDARD_ARRAYS = {
+    barbarian: [15, 14, 13, 10, 12, 8],  // STR > DEX > CON
+    fighter:   [15, 14, 13, 10, 12, 8],  // STR > DEX > CON
+    paladin:   [15, 10, 13, 8, 12, 14],  // STR > CON > CHA
+    ranger:    [10, 15, 13, 8, 14, 12],  // DEX > WIS > CON
+    rogue:     [10, 15, 13, 12, 14, 8],  // DEX > WIS > CON
+    monk:      [10, 15, 13, 8, 14, 12],  // DEX > WIS > CON
+    bard:      [8, 14, 13, 10, 12, 15],  // CHA > DEX > CON
+    cleric:    [10, 12, 14, 8, 15, 13],  // WIS > CON > CHA
+    druid:     [10, 12, 14, 8, 15, 13],  // WIS > CON > CHA
+    sorcerer:  [8, 14, 13, 10, 12, 15],  // CHA > DEX > CON
+    warlock:   [8, 14, 13, 10, 12, 15],  // CHA > DEX > CON
+    wizard:    [8, 14, 13, 15, 12, 10],  // INT > CON > WIS
+};
 const _ABILITY_IDS = ['cb-str', 'cb-dex', 'cb-con', 'cb-int', 'cb-wis', 'cb-cha'];
 let _abilityMethod = 'standard';
 
@@ -467,11 +497,13 @@ document.getElementById('cb-ability-method')?.addEventListener('click', (e) => {
     });
 });
 
-// Standard Array: apply 15,14,13,12,10,8 sequentially to STR,DEX,CON,INT,WIS,CHA
+// Standard Array: apply class-optimized array (or generic if no class selected)
 window._applyStandardArray = function() {
+    const cls = (document.getElementById('cb-class')?.value || '').toLowerCase();
+    const arr = _CLASS_STANDARD_ARRAYS[cls] || _STANDARD_ARRAY;
     _ABILITY_IDS.forEach((id, i) => {
         const el = document.getElementById(id);
-        if (el) el.value = _STANDARD_ARRAY[i];
+        if (el) el.value = arr[i];
     });
     _applySmartDefaults();
 };
@@ -534,7 +566,19 @@ const _RACE_SUBRACES = {
                  { slug:'stout-halfling', key:'race_stout_halfling', icon:'halfling', he:'שותה גמדים מתחת לשולחן ועדיין עומד', en:'Drinks dwarves under the table and still stands' }],
     'gnome':    [{ slug:'forest-gnome', key:'race_forest_gnome', icon:'gnome', he:'מדבר עם חיות ויוצר אשליות — ביום רגיל', en:'Talks to animals and creates illusions — on a normal day' },
                  { slug:'rock-gnome', key:'race_rock_gnome', icon:'gnome', he:'אם זה לא עובד, תן לננס — יתקן ויוסיף כנפיים', en:'Broken? Give it to the gnome — fixed with wings added' }],
-    'half-elf':  null, 'half-orc': null, 'tiefling': null, 'dragonborn': null, 'aasimar': null,
+    'dragonborn':[
+        { slug:'dragonborn-black',  key:'race_dragonborn_black',  icon:'dragonborn', he:'חומצה — קו 5×30 רגל (הצלה DEX)', en:'Acid — 5×30 ft line (DEX save)' },
+        { slug:'dragonborn-blue',   key:'race_dragonborn_blue',   icon:'dragonborn', he:'ברק — קו 5×30 רגל (הצלה DEX)', en:'Lightning — 5×30 ft line (DEX save)' },
+        { slug:'dragonborn-brass',  key:'race_dragonborn_brass',  icon:'dragonborn', he:'אש — קו 5×30 רגל (הצלה DEX)', en:'Fire — 5×30 ft line (DEX save)' },
+        { slug:'dragonborn-bronze', key:'race_dragonborn_bronze', icon:'dragonborn', he:'ברק — קו 5×30 רגל (הצלה DEX)', en:'Lightning — 5×30 ft line (DEX save)' },
+        { slug:'dragonborn-copper', key:'race_dragonborn_copper', icon:'dragonborn', he:'חומצה — קו 5×30 רגל (הצלה DEX)', en:'Acid — 5×30 ft line (DEX save)' },
+        { slug:'dragonborn-gold',   key:'race_dragonborn_gold',   icon:'dragonborn', he:'אש — חרוט 15 רגל (הצלה DEX)', en:'Fire — 15 ft cone (DEX save)' },
+        { slug:'dragonborn-green',  key:'race_dragonborn_green',  icon:'dragonborn', he:'רעל — חרוט 15 רגל (הצלה CON)', en:'Poison — 15 ft cone (CON save)' },
+        { slug:'dragonborn-red',    key:'race_dragonborn_red',    icon:'dragonborn', he:'אש — חרוט 15 רגל (הצלה DEX)', en:'Fire — 15 ft cone (DEX save)' },
+        { slug:'dragonborn-silver', key:'race_dragonborn_silver', icon:'dragonborn', he:'קור — חרוט 15 רגל (הצלה CON)', en:'Cold — 15 ft cone (CON save)' },
+        { slug:'dragonborn-white',  key:'race_dragonborn_white',  icon:'dragonborn', he:'קור — חרוט 15 רגל (הצלה CON)', en:'Cold — 15 ft cone (CON save)' },
+    ],
+    'half-elf':  null, 'half-orc': null, 'tiefling': null, 'aasimar': null,
 };
 
 function _renderRaceCards(selectedBase = '') {
@@ -742,6 +786,16 @@ document.getElementById('cb-gender-visible')?.addEventListener('change', (e) => 
 document.getElementById('cb-size-visible')?.addEventListener('change', (e) => {
     const hidden = document.getElementById('cb-size');
     if (hidden) { hidden.value = e.target.value; hidden.dispatchEvent(new Event('change')); }
+});
+
+// ── Level picker sync (Step 1 level-step1 ↔ Step 3 cb-level) ──────────
+document.getElementById('cb-level-step1')?.addEventListener('input', (e) => {
+    const cbLevel = document.getElementById('cb-level');
+    if (cbLevel) { cbLevel.value = e.target.value; cbLevel.dispatchEvent(new Event('change')); }
+});
+document.getElementById('cb-level')?.addEventListener('input', (e) => {
+    const step1 = document.getElementById('cb-level-step1');
+    if (step1) step1.value = e.target.value;
 });
 
 // ── Off-hand → Shield sync ────────────────────────────────────────────
@@ -1538,6 +1592,33 @@ function openBuilderForEdit(charId) {
 
     _updateAcPreview();
 
+    // Belief system restore
+    if (c.belief) {
+        _renderBeliefCards(c.belief);
+        const deitySection = document.getElementById('cb-deity-section');
+        if (deitySection) deitySection.style.display = c.belief === 'believer' ? '' : 'none';
+    }
+    // Deity & holy symbol
+    const deityEl = document.getElementById('cb-deity');
+    if (deityEl) deityEl.value = c.deity?.name || '';
+    const holySymEl = document.getElementById('cb-holy-symbol');
+    if (holySymEl) holySymEl.value = c.deity?.symbol || '';
+    // Off-hand weapon
+    const offhandEl = document.getElementById('cb-offhand');
+    if (offhandEl && c.equipment?.shield) {
+        offhandEl.value = 'shield';
+    } else if (offhandEl && c.equipment?.offHand) {
+        Array.from(offhandEl.options).forEach(opt => {
+            try { if (JSON.parse(opt.value)?.name === c.equipment.offHand.name) offhandEl.value = opt.value; } catch {}
+        });
+    }
+    // Personal story
+    const storyEl = document.getElementById('cb-story');
+    if (storyEl) storyEl.value = c.personalStory || '';
+    // Level in step 1
+    const levelStep1 = document.getElementById('cb-level-step1');
+    if (levelStep1) levelStep1.value = c.level || 1;
+
     // Wizard: render race & class cards, go to step 1, run smart defaults, clear manual-edit flags
     // Determine base race from subrace slug for race card selection
     const _baseRaceFromSlug = (slug) => {
@@ -1547,7 +1628,12 @@ function openBuilderForEdit(charId) {
         }
         return slug;
     };
-    _renderRaceCards(_baseRaceFromSlug(c.race || ''));
+    const baseRace = _baseRaceFromSlug(c.race || '');
+    _renderRaceCards(baseRace);
+    // Auto-select subrace if applicable
+    if (baseRace !== c.race && c.race) {
+        window._selectSubrace?.(c.race);
+    }
     _renderClassCards(c.class || '');
     ['cb-init','cb-pp','cb-darkvision','cb-speed'].forEach(id => {
         const el = document.getElementById(id);
@@ -1812,9 +1898,9 @@ if(saveCharBtn) {
                 charData.belief = beliefCard.dataset.belief;
                 if (charData.belief === 'believer') {
                     const deityName = document.getElementById('cb-deity')?.value.trim();
-                    const holySym = document.querySelector('.holy-symbol-btn.selected');
+                    const holySym = document.getElementById('cb-holy-symbol')?.value || '';
                     if (deityName || holySym) {
-                        charData.deity = { name: deityName || '', symbol: holySym?.textContent.trim() || '' };
+                        charData.deity = { name: deityName || '', symbol: holySym };
                     }
                 }
             }
