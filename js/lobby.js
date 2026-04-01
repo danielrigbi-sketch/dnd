@@ -14,7 +14,7 @@ import "./bugReport.js";
 import "./a11y.js";
 import { CLASS_ICONS, classIconImg, iconImg } from './iconMap.js';
 import { PREMADE_CHARACTERS } from '../data/premade-characters.js';
-import { roll3DDice, clearDice } from './diceEngine.js';
+import { roll3DDice, clearDice, updateDiceColor } from './diceEngine.js';
 import { initDashboard, openDashboard } from './accountDashboard.js';
 import { initCommunityHub } from './communityHub.js';
 import { ensureProfile } from './userProfile.js';
@@ -828,6 +828,11 @@ document.getElementById('cb-color-swatches')?.addEventListener('click', (e) => {
     const picker = document.getElementById('cb-color');
     if (picker) picker.value = color;
     _updateD20Preview(color);
+    // Preview roll with selected color using dice engine
+    try {
+        updateDiceColor(color);
+        roll3DDice('1d20').then(() => clearDice()).catch(() => {});
+    } catch {}
 });
 
 document.getElementById('cb-color')?.addEventListener('input', (e) => {
