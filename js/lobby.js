@@ -13,6 +13,7 @@ import { listenToSubscription, checkCanCreateCharacter, checkCanCreateRoom, getC
 import "./bugReport.js";
 import "./a11y.js";
 import { CLASS_ICONS, classIconImg, iconImg } from './iconMap.js';
+import { PREMADE_CHARACTERS } from '../data/premade-characters.js';
 import { roll3DDice, clearDice } from './diceEngine.js';
 import { initDashboard, openDashboard } from './accountDashboard.js';
 import { initCommunityHub } from './communityHub.js';
@@ -1223,6 +1224,68 @@ if (addAttackBtn) {
     };
 }
 
+// ── Auto-generate weapon actions from equipment ──────────────────────
+const _WPN_NAME_HE = {
+    'Dagger':'פגיון','Handaxe':'גרזן יד','Quarterstaff':'מקל הליכה','Mace':'אלה','Greatclub':'אלת ענק',
+    'Spear':'חנית','Longsword':'חרב ארוכה','Shortsword':'חרב קצרה','Rapier':'רפיירה','Battleaxe':'גרזן קרב',
+    'Warhammer':'פטיש מלחמה','Greatsword':'חרב ענק','Greataxe':'גרזן ענק','Maul':'פטיש ענק',
+    'Glaive':'גלייב','Halberd':'הלברד','Pike':'חנית ארוכה','Flail':'שוט כדורי','Morningstar':'כוכב בוקר',
+    'Shortbow':'קשת קצרה','Longbow':'קשת ארוכה','Light Crossbow':'קשתון קל','Heavy Crossbow':'קשתון כבד',
+    'Hand Crossbow':'קשתון יד','Dart':'חץ','Sling':'קלע','Javelin':'כידון','Scimitar':'סימיטר',
+};
+
+function _autoPopulateWeaponActions() {
+    if (!attacksList) return;
+    // Remove existing auto-generated actions
+    attacksList.querySelectorAll('.action-row[data-auto="weapon"]').forEach(r => r.remove());
+
+    const lang = getLang();
+    const strMod = _abMod(document.getElementById('cb-str')?.value);
+    const dexMod = _abMod(document.getElementById('cb-dex')?.value);
+    const level = +(document.getElementById('cb-level')?.value || document.getElementById('cb-level-step1')?.value) || 1;
+    const pb = Math.ceil(level / 4) + 1;
+
+    function addWeaponAction(wpnJson, isOffhand = false) {
+        if (!wpnJson) return;
+        try {
+            const wpn = typeof wpnJson === 'string' ? JSON.parse(wpnJson) : wpnJson;
+            if (!wpn?.name) return;
+            const isFinesse = wpn.props?.includes('finesse');
+            const isRanged = wpn.props?.includes('ranged') || wpn.props?.includes('thrown');
+            const isTwoHanded = wpn.props?.includes('two-handed');
+            const abilMod = isRanged ? dexMod : (isFinesse ? Math.max(strMod, dexMod) : strMod);
+            const hitMod = abilMod + pb;
+            const heName = _WPN_NAME_HE[wpn.name] || wpn.name;
+            let actionName = lang === 'he'
+                ? (isTwoHanded ? `מכת ${heName} אדירה` : isOffhand ? `מכת ${heName} (יד שנייה)` : `מכת ${heName}`)
+                : (isTwoHanded ? `${wpn.name} Strike (Two-Handed)` : isOffhand ? `${wpn.name} Strike (Off-hand)` : `${wpn.name} Strike`);
+            const row = _buildActionRow({
+                name: actionName,
+                hitType: isRanged ? 'ranged' : 'melee',
+                hitMod: hitMod,
+                damageDice: wpn.damage || '1d4',
+                damageMult: 1,
+                actionType: 'damage',
+                icon: isRanged ? 'ranged' : 'melee',
+            });
+            row.dataset.auto = 'weapon';
+            attacksList.prepend(row);
+        } catch {}
+    }
+
+    const mainVal = document.getElementById('cb-main-hand')?.value;
+    if (mainVal) addWeaponAction(mainVal);
+    const offVal = document.getElementById('cb-offhand')?.value;
+    if (offVal && offVal !== 'shield') addWeaponAction(offVal, true);
+    const rangedVal = document.getElementById('cb-ranged-weapon')?.value;
+    if (rangedVal) addWeaponAction(rangedVal);
+}
+
+// Trigger auto-populate when weapons change
+['cb-main-hand', 'cb-offhand', 'cb-ranged-weapon'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', _autoPopulateWeaponActions);
+});
+
 let currentUserUid = null;
 let currentVaultCharacters = {};
 
@@ -1639,6 +1702,106 @@ function openBuilderForEdit(charId) {
         const el = document.getElementById(id);
         if (el) delete el.dataset.manuallyEdited;
     });
+    _gotoStep(1);
+    _applySmartDefaults();
+}
+
+// ── Premade Character Picker ──────────────────────────────────────────
+document.getElementById('premade-char-btn')?.addEventListener('click', () => {
+    const charCount = Object.keys(currentVaultCharacters || {}).length;
+    if (!checkCanCreateCharacter(charCount)) { _showLevelUpModal(); return; }
+
+    const lang = getLang();
+    const modal = document.createElement('div');
+    modal.className = 'cr-modal-overlay';
+    Object.assign(modal.style, { position:'fixed', top:'0', left:'0', right:'0', bottom:'0', background:'rgba(0,0,0,0.85)', zIndex:'10001', display:'flex', alignItems:'center', justifyContent:'center' });
+    const inner = document.createElement('div');
+    Object.assign(inner.style, { background:'#1a1a2e', border:'1px solid #c8873a', borderRadius:'12px', padding:'16px', maxWidth:'500px', width:'90%', maxHeight:'80vh', overflowY:'auto' });
+
+    const title = document.createElement('h3');
+    Object.assign(title.style, { color:'#f1c40f', textAlign:'center', margin:'0 0 12px' });
+    title.textContent = t('premade_title') || 'דמויות מוכנות';
+    inner.appendChild(title);
+
+    const grid = document.createElement('div');
+    Object.assign(grid.style, { display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' });
+    PREMADE_CHARACTERS.forEach((pc) => {
+        const card = document.createElement('div');
+        Object.assign(card.style, { background:'rgba(255,255,255,0.05)', border:'1px solid rgba(200,135,58,0.3)', borderRadius:'8px', padding:'8px', cursor:'pointer', textAlign:'center', transition:'all 0.15s' });
+        const img = document.createElement('img');
+        img.src = pc.portrait;
+        Object.assign(img.style, { width:'48px', height:'48px', borderRadius:'50%', objectFit:'cover', border:'2px solid #c8873a' });
+        img.loading = 'lazy';
+        img.onerror = () => { img.style.display = 'none'; };
+        card.appendChild(img);
+
+        const nameDiv = document.createElement('div');
+        Object.assign(nameDiv.style, { fontSize:'12px', fontWeight:'bold', color:'#f1c40f', marginTop:'4px' });
+        nameDiv.textContent = lang === 'he' ? pc.nameHe : pc.name;
+        card.appendChild(nameDiv);
+
+        const classDiv = document.createElement('div');
+        Object.assign(classDiv.style, { fontSize:'10px', color:'#aaa' });
+        classDiv.textContent = t('class_' + pc.class.toLowerCase()) || pc.class;
+        card.appendChild(classDiv);
+
+        const tagDiv = document.createElement('div');
+        Object.assign(tagDiv.style, { fontSize:'9px', color:'#888', marginTop:'2px' });
+        tagDiv.textContent = lang === 'he' ? pc.tagHe : pc.tagEn;
+        card.appendChild(tagDiv);
+
+        card.onmouseover = () => { card.style.borderColor = '#f1c40f'; card.style.transform = 'scale(1.03)'; };
+        card.onmouseout = () => { card.style.borderColor = 'rgba(200,135,58,0.3)'; card.style.transform = ''; };
+        card.onclick = () => { modal.remove(); _loadPremadeCharacter(pc); };
+        grid.appendChild(card);
+    });
+    inner.appendChild(grid);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    Object.assign(closeBtn.style, { marginTop:'12px', width:'100%', padding:'8px', background:'#333', color:'#ccc', border:'1px solid #555', borderRadius:'6px', cursor:'pointer' });
+    closeBtn.textContent = t('close') || 'סגור';
+    closeBtn.onclick = () => modal.remove();
+    inner.appendChild(closeBtn);
+
+    modal.appendChild(inner);
+    document.body.appendChild(modal);
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+});
+
+function _loadPremadeCharacter(pc) {
+    currentEditCharId = null;
+    if (builderModal) builderModal.style.display = 'flex';
+    document.getElementById('cb-main-title').textContent = t('cb_title');
+    document.getElementById('cb-name').value = getLang() === 'he' ? pc.nameHe : pc.name;
+    document.getElementById('cb-gender').value = pc.gender;
+    const genderVis = document.getElementById('cb-gender-visible');
+    if (genderVis) genderVis.value = pc.gender;
+    document.getElementById('cb-race').value = pc.race;
+    document.getElementById('cb-class').value = pc.class;
+    document.getElementById('cb-str').value = pc._str;
+    document.getElementById('cb-dex').value = pc._dex;
+    document.getElementById('cb-con').value = pc._con;
+    document.getElementById('cb-int').value = pc._int;
+    document.getElementById('cb-wis').value = pc._wis;
+    document.getElementById('cb-cha').value = pc._cha;
+    document.getElementById('cb-level').value = 1;
+    const levelStep1 = document.getElementById('cb-level-step1');
+    if (levelStep1) levelStep1.value = 1;
+    document.getElementById('cb-color').value = '#c0392b';
+    _setPreview(pc.portrait);
+    const _baseRaceFromSlug2 = (slug) => {
+        for (const [base, subs] of Object.entries(_RACE_SUBRACES)) {
+            if (subs && subs.some(s => s.slug === slug)) return base;
+            if (!subs && base === slug) return base;
+        }
+        return slug;
+    };
+    _renderRaceCards(_baseRaceFromSlug2(pc.race));
+    if (_baseRaceFromSlug2(pc.race) !== pc.race) window._selectSubrace?.(pc.race);
+    _renderClassCards(pc.class);
+    _populateSubclassDropdown();
+    if (attacksList) attacksList.textContent = '';
     _gotoStep(1);
     _applySmartDefaults();
 }
