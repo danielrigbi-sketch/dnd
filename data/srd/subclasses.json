@@ -2,201 +2,238 @@
   {
     "slug": "champion",
     "name": "Champion",
-    "class": "fighter"
+    "class": "fighter",
+    "features": [
+      { "level": 3, "name": "Improved Critical", "desc": "Your weapon attacks score a critical hit on a roll of 19 or 20." },
+      { "level": 7, "name": "Remarkable Athlete", "desc": "Add half your proficiency bonus to any STR, DEX, or CON check that doesn't already use your proficiency bonus." },
+      { "level": 10, "name": "Additional Fighting Style", "desc": "You can choose a second option from the Fighting Style class feature." },
+      { "level": 15, "name": "Superior Critical", "desc": "Your weapon attacks score a critical hit on a roll of 18-20." },
+      { "level": 18, "name": "Survivor", "desc": "At the start of each of your turns, you regain HP equal to 5 + CON modifier if you have no more than half your HP." }
+    ]
   },
   {
     "slug": "battle-master",
     "name": "Battle Master",
-    "class": "fighter"
+    "class": "fighter",
+    "features": [
+      { "level": 3, "name": "Combat Superiority", "desc": "You learn three maneuvers and gain four superiority dice (d8). You regain all on short or long rest." },
+      { "level": 7, "name": "Know Your Enemy", "desc": "Spend 1 minute observing a creature to learn if it is equal, superior, or inferior to you in two characteristics." },
+      { "level": 10, "name": "Improved Combat Superiority", "desc": "Your superiority dice become d10." },
+      { "level": 15, "name": "Relentless", "desc": "When you roll initiative and have no superiority dice remaining, you regain one." }
+    ]
   },
   {
     "slug": "eldritch-knight",
     "name": "Eldritch Knight",
-    "class": "fighter"
+    "class": "fighter",
+    "features": [
+      { "level": 3, "name": "Spellcasting", "desc": "You learn two wizard cantrips and three 1st-level wizard spells (abjuration or evocation)." },
+      { "level": 7, "name": "War Magic", "desc": "When you use your action to cast a cantrip, you can make one weapon attack as a bonus action." },
+      { "level": 10, "name": "Eldritch Strike", "desc": "When you hit a creature with a weapon attack, it has disadvantage on its next saving throw against a spell you cast." },
+      { "level": 15, "name": "Arcane Charge", "desc": "When you use Action Surge, you can teleport up to 30 feet to an unoccupied space." }
+    ]
   },
   {
     "slug": "berserker",
     "name": "Berserker",
-    "class": "barbarian"
+    "class": "barbarian",
+    "features": [
+      { "level": 3, "name": "Frenzy", "desc": "While raging, you can make a single melee weapon attack as a bonus action on each of your turns. When your rage ends, you suffer one level of exhaustion." },
+      { "level": 6, "name": "Mindless Rage", "desc": "You can't be charmed or frightened while raging." },
+      { "level": 10, "name": "Intimidating Presence", "desc": "You can use your action to frighten someone with your menacing presence." },
+      { "level": 14, "name": "Retaliation", "desc": "When you take damage from a creature within 5 feet of you, you can use your reaction to make a melee weapon attack." }
+    ]
   },
   {
     "slug": "totem-warrior",
     "name": "Totem Warrior",
-    "class": "barbarian"
+    "class": "barbarian",
+    "features": [
+      { "level": 3, "name": "Totem Spirit", "desc": "Choose Bear (resistance to all damage except psychic while raging), Eagle (disadvantage on opportunity attacks against you), or Wolf (allies have advantage on melee attacks against hostile creatures within 5 feet of you)." },
+      { "level": 6, "name": "Aspect of the Beast", "desc": "Gain a magical benefit based on your totem animal." },
+      { "level": 10, "name": "Spirit Walker", "desc": "You can cast Commune with Nature as a ritual." },
+      { "level": 14, "name": "Totemic Attunement", "desc": "Gain a powerful feature based on your totem animal." }
+    ]
   },
   {
     "slug": "thief",
     "name": "Thief",
-    "class": "rogue"
+    "class": "rogue",
+    "features": [
+      { "level": 3, "name": "Fast Hands", "desc": "You can use the bonus action granted by Cunning Action to make a Sleight of Hand check, use thieves' tools, or take the Use an Object action." },
+      { "level": 3, "name": "Second-Story Work", "desc": "Climbing doesn't cost extra movement, and your running jump distance increases by your DEX modifier in feet." },
+      { "level": 9, "name": "Supreme Sneak", "desc": "You have advantage on Stealth checks if you move no more than half your speed on the same turn." },
+      { "level": 13, "name": "Use Magic Device", "desc": "You can use any magic item, ignoring all class, race, and level requirements." }
+    ]
   },
   {
     "slug": "assassin",
     "name": "Assassin",
-    "class": "rogue"
+    "class": "rogue",
+    "features": [
+      { "level": 3, "name": "Assassinate", "desc": "You have advantage on attack rolls against any creature that hasn't taken a turn yet. Any hit you score against a surprised creature is a critical hit." },
+      { "level": 9, "name": "Infiltration Expertise", "desc": "You can create a false identity, including documentation, established acquaintances, and disguises." },
+      { "level": 13, "name": "Impostor", "desc": "You can unerringly mimic another person's speech, writing, and behavior." }
+    ]
   },
   {
     "slug": "arcane-trickster",
     "name": "Arcane Trickster",
-    "class": "rogue"
+    "class": "rogue",
+    "features": [
+      { "level": 3, "name": "Spellcasting", "desc": "You learn Mage Hand and two other wizard cantrips plus three 1st-level wizard spells (enchantment or illusion)." },
+      { "level": 9, "name": "Magical Ambush", "desc": "If you are hidden from a creature when you cast a spell on it, the creature has disadvantage on any saving throw it makes against the spell." },
+      { "level": 13, "name": "Versatile Trickster", "desc": "You can use Mage Hand to distract a creature, giving you advantage on attack rolls against it." }
+    ]
   },
   {
     "slug": "life",
-    "name": "Life",
-    "class": "cleric"
+    "name": "Life Domain",
+    "class": "cleric",
+    "features": [
+      { "level": 1, "name": "Disciple of Life", "desc": "Your healing spells are more effective. Whenever you cast a healing spell, the creature regains additional HP equal to 2 + the spell's level." },
+      { "level": 2, "name": "Preserve Life", "desc": "Channel Divinity: Restore HP equal to 5x your cleric level, divided among any creatures within 30 feet." },
+      { "level": 6, "name": "Blessed Healer", "desc": "When you cast a healing spell on another creature, you also regain HP equal to 2 + the spell's level." },
+      { "level": 8, "name": "Divine Strike", "desc": "Once per turn, deal an extra 1d8 radiant damage with weapon attacks." }
+    ]
   },
   {
     "slug": "light",
-    "name": "Light",
-    "class": "cleric"
+    "name": "Light Domain",
+    "class": "cleric",
+    "features": [
+      { "level": 1, "name": "Warding Flare", "desc": "When attacked by a creature you can see within 30 feet, impose disadvantage on the attack roll." },
+      { "level": 2, "name": "Radiance of the Dawn", "desc": "Channel Divinity: Dispel magical darkness within 30 feet; each hostile creature takes 2d10 + cleric level radiant damage (CON save halves)." },
+      { "level": 6, "name": "Improved Flare", "desc": "You can use Warding Flare when an ally within 30 feet is attacked." }
+    ]
   },
-  {
-    "slug": "tempest",
-    "name": "Tempest",
-    "class": "cleric"
-  },
-  {
-    "slug": "war",
-    "name": "War",
-    "class": "cleric"
-  },
-  {
-    "slug": "knowledge",
-    "name": "Knowledge",
-    "class": "cleric"
-  },
-  {
-    "slug": "nature",
-    "name": "Nature",
-    "class": "cleric"
-  },
-  {
-    "slug": "trickery",
-    "name": "Trickery",
-    "class": "cleric"
-  },
-  {
-    "slug": "land",
-    "name": "Land",
-    "class": "druid"
-  },
-  {
-    "slug": "moon",
-    "name": "Moon",
-    "class": "druid"
-  },
-  {
-    "slug": "devotion",
-    "name": "Devotion",
-    "class": "paladin"
-  },
-  {
-    "slug": "ancients",
-    "name": "Ancients",
-    "class": "paladin"
-  },
-  {
-    "slug": "vengeance",
-    "name": "Vengeance",
-    "class": "paladin"
-  },
-  {
-    "slug": "hunter",
-    "name": "Hunter",
-    "class": "ranger"
-  },
-  {
-    "slug": "beast-master",
-    "name": "Beast Master",
-    "class": "ranger"
-  },
-  {
-    "slug": "open-hand",
-    "name": "Open Hand",
-    "class": "monk"
-  },
-  {
-    "slug": "shadow",
-    "name": "Shadow",
-    "class": "monk"
-  },
-  {
-    "slug": "four-elements",
-    "name": "Four Elements",
-    "class": "monk"
-  },
-  {
-    "slug": "lore",
-    "name": "Lore",
-    "class": "bard"
-  },
-  {
-    "slug": "valor",
-    "name": "Valor",
-    "class": "bard"
-  },
-  {
-    "slug": "draconic",
-    "name": "Draconic",
-    "class": "sorcerer"
-  },
-  {
-    "slug": "wild-magic",
-    "name": "Wild Magic",
-    "class": "sorcerer"
-  },
-  {
-    "slug": "archfey",
-    "name": "Archfey",
-    "class": "warlock"
-  },
-  {
-    "slug": "fiend",
-    "name": "Fiend",
-    "class": "warlock"
-  },
-  {
-    "slug": "great-old-one",
-    "name": "Great Old One",
-    "class": "warlock"
-  },
-  {
-    "slug": "evocation",
-    "name": "Evocation",
-    "class": "wizard"
-  },
-  {
-    "slug": "divination",
-    "name": "Divination",
-    "class": "wizard"
-  },
-  {
-    "slug": "abjuration",
-    "name": "Abjuration",
-    "class": "wizard"
-  },
-  {
-    "slug": "necromancy",
-    "name": "Necromancy",
-    "class": "wizard"
-  },
-  {
-    "slug": "illusion",
-    "name": "Illusion",
-    "class": "wizard"
-  },
-  {
-    "slug": "enchantment",
-    "name": "Enchantment",
-    "class": "wizard"
-  },
-  {
-    "slug": "conjuration",
-    "name": "Conjuration",
-    "class": "wizard"
-  },
-  {
-    "slug": "transmutation",
-    "name": "Transmutation",
-    "class": "wizard"
-  }
+  { "slug": "tempest", "name": "Tempest Domain", "class": "cleric", "features": [
+      { "level": 1, "name": "Wrath of the Storm", "desc": "When a creature within 5 feet hits you, you can use your reaction to deal 2d8 lightning or thunder damage (DEX save halves)." },
+      { "level": 2, "name": "Destructive Wrath", "desc": "Channel Divinity: Maximize lightning or thunder damage instead of rolling." },
+      { "level": 6, "name": "Thunderbolt Strike", "desc": "When you deal lightning damage to a Large or smaller creature, you can push it up to 10 feet away." }
+  ]},
+  { "slug": "war", "name": "War Domain", "class": "cleric", "features": [
+      { "level": 1, "name": "War Priest", "desc": "Make one weapon attack as a bonus action (WIS modifier times per long rest)." },
+      { "level": 2, "name": "Guided Strike", "desc": "Channel Divinity: +10 to an attack roll." },
+      { "level": 6, "name": "War God's Blessing", "desc": "When an ally within 30 feet makes an attack roll, you can grant them +10 (Channel Divinity)." }
+  ]},
+  { "slug": "knowledge", "name": "Knowledge Domain", "class": "cleric", "features": [
+      { "level": 1, "name": "Blessings of Knowledge", "desc": "Proficiency in two skills from Arcana, History, Nature, or Religion (double proficiency bonus)." },
+      { "level": 2, "name": "Knowledge of the Ages", "desc": "Channel Divinity: Gain proficiency with any skill or tool for 10 minutes." }
+  ]},
+  { "slug": "nature", "name": "Nature Domain", "class": "cleric", "features": [
+      { "level": 1, "name": "Acolyte of Nature", "desc": "Learn one druid cantrip and gain proficiency in one of: Animal Handling, Nature, or Survival." },
+      { "level": 2, "name": "Charm Animals and Plants", "desc": "Channel Divinity: Charm all beasts and plants within 30 feet." }
+  ]},
+  { "slug": "trickery", "name": "Trickery Domain", "class": "cleric", "features": [
+      { "level": 1, "name": "Blessing of the Trickster", "desc": "Touch a willing creature to give it advantage on Stealth checks for 1 hour." },
+      { "level": 2, "name": "Invoke Duplicity", "desc": "Channel Divinity: Create an illusory duplicate of yourself within 30 feet for 1 minute." }
+  ]},
+  { "slug": "land", "name": "Circle of the Land", "class": "druid", "features": [
+      { "level": 2, "name": "Natural Recovery", "desc": "During a short rest, recover spell slots with a combined level equal to half your druid level (rounded up)." },
+      { "level": 3, "name": "Circle Spells", "desc": "Choose a land type (arctic, coast, desert, forest, grassland, mountain, swamp, or Underdark) to gain additional prepared spells." },
+      { "level": 6, "name": "Land's Stride", "desc": "Moving through nonmagical difficult terrain costs no extra movement." }
+  ]},
+  { "slug": "moon", "name": "Circle of the Moon", "class": "druid", "features": [
+      { "level": 2, "name": "Combat Wild Shape", "desc": "Use Wild Shape as a bonus action; can transform into beasts with CR as high as 1." },
+      { "level": 6, "name": "Primal Strike", "desc": "Your attacks in beast form count as magical for overcoming resistance." },
+      { "level": 10, "name": "Elemental Wild Shape", "desc": "Expend two uses of Wild Shape to transform into an air, earth, fire, or water elemental." }
+  ]},
+  { "slug": "devotion", "name": "Oath of Devotion", "class": "paladin", "features": [
+      { "level": 3, "name": "Sacred Weapon", "desc": "Channel Divinity: Add CHA modifier to attack rolls for 1 minute." },
+      { "level": 3, "name": "Turn the Unholy", "desc": "Channel Divinity: Each fiend or undead within 30 feet must make a WIS save or be turned for 1 minute." },
+      { "level": 7, "name": "Aura of Devotion", "desc": "You and allies within 10 feet can't be charmed." }
+  ]},
+  { "slug": "ancients", "name": "Oath of the Ancients", "class": "paladin", "features": [
+      { "level": 3, "name": "Nature's Wrath", "desc": "Channel Divinity: Restrain a creature with spectral vines (STR/DEX save)." },
+      { "level": 7, "name": "Aura of Warding", "desc": "You and allies within 10 feet have resistance to damage from spells." }
+  ]},
+  { "slug": "vengeance", "name": "Oath of Vengeance", "class": "paladin", "features": [
+      { "level": 3, "name": "Vow of Enmity", "desc": "Channel Divinity: Gain advantage on attack rolls against one creature for 1 minute." },
+      { "level": 7, "name": "Relentless Avenger", "desc": "When you hit with an opportunity attack, you can move up to half your speed immediately after." }
+  ]},
+  { "slug": "hunter", "name": "Hunter", "class": "ranger", "features": [
+      { "level": 3, "name": "Hunter's Prey", "desc": "Choose Colossus Slayer (+1d8 damage on wounded targets), Giant Killer (reaction attack when Large+ creature misses), or Horde Breaker (attack a second creature within 5 feet)." },
+      { "level": 7, "name": "Defensive Tactics", "desc": "Choose Escape the Horde, Multiattack Defense, or Steel Will." }
+  ]},
+  { "slug": "beast-master", "name": "Beast Master", "class": "ranger", "features": [
+      { "level": 3, "name": "Ranger's Companion", "desc": "Gain a beast companion with CR 1/4 or lower. It obeys your commands and acts on your turn." },
+      { "level": 7, "name": "Exceptional Training", "desc": "Your companion can Dash, Disengage, or Help as a bonus action on its turn." }
+  ]},
+  { "slug": "open-hand", "name": "Way of the Open Hand", "class": "monk", "features": [
+      { "level": 3, "name": "Open Hand Technique", "desc": "When you hit with a Flurry of Blows attack, you can knock the target prone, push it 15 feet, or prevent it from taking reactions." },
+      { "level": 6, "name": "Wholeness of Body", "desc": "As an action, regain HP equal to 3x your monk level. Once per long rest." },
+      { "level": 11, "name": "Tranquility", "desc": "At the end of a long rest, gain the effect of a Sanctuary spell until your next long rest." }
+  ]},
+  { "slug": "shadow", "name": "Way of Shadow", "class": "monk", "features": [
+      { "level": 3, "name": "Shadow Arts", "desc": "Spend 2 ki to cast Darkness, Darkvision, Pass without Trace, or Silence." },
+      { "level": 6, "name": "Shadow Step", "desc": "Teleport up to 60 feet from one area of dim light/darkness to another, gaining advantage on your first melee attack." }
+  ]},
+  { "slug": "four-elements", "name": "Way of the Four Elements", "class": "monk", "features": [
+      { "level": 3, "name": "Disciple of the Elements", "desc": "Learn elemental disciplines that let you spend ki to cast spells (Burning Hands, Thunderwave, etc.)." },
+      { "level": 6, "name": "Elemental Attunement", "desc": "Use an action to create minor elemental effects (harmless tremor, instant fire, brief wind gust, or mist)." }
+  ]},
+  { "slug": "lore", "name": "College of Lore", "class": "bard", "features": [
+      { "level": 3, "name": "Cutting Words", "desc": "Use Bardic Inspiration to subtract the die roll from an enemy's attack roll, ability check, or damage roll." },
+      { "level": 3, "name": "Bonus Proficiencies", "desc": "Gain proficiency in any three skills of your choice." },
+      { "level": 6, "name": "Additional Magical Secrets", "desc": "Learn two spells from any class." }
+  ]},
+  { "slug": "valor", "name": "College of Valor", "class": "bard", "features": [
+      { "level": 3, "name": "Combat Inspiration", "desc": "Bardic Inspiration die can be added to a weapon damage roll or to AC against one attack." },
+      { "level": 6, "name": "Extra Attack", "desc": "You can attack twice when you take the Attack action." }
+  ]},
+  { "slug": "draconic", "name": "Draconic Bloodline", "class": "sorcerer", "features": [
+      { "level": 1, "name": "Draconic Resilience", "desc": "Your HP maximum increases by 1 per level. When unarmored, your AC equals 13 + DEX modifier." },
+      { "level": 6, "name": "Elemental Affinity", "desc": "When you cast a spell that deals damage of your dragon ancestry type, add CHA modifier to one damage roll." }
+  ]},
+  { "slug": "wild-magic", "name": "Wild Magic", "class": "sorcerer", "features": [
+      { "level": 1, "name": "Wild Magic Surge", "desc": "After casting a sorcerer spell of 1st level or higher, roll a d20. On a 1, roll on the Wild Magic Surge table." },
+      { "level": 1, "name": "Tides of Chaos", "desc": "Gain advantage on one attack roll, ability check, or saving throw. Recharges on long rest or Wild Magic Surge." },
+      { "level": 6, "name": "Bend Luck", "desc": "Spend 2 sorcery points to add or subtract 1d4 from another creature's attack roll, ability check, or saving throw." }
+  ]},
+  { "slug": "archfey", "name": "The Archfey", "class": "warlock", "features": [
+      { "level": 1, "name": "Fey Presence", "desc": "As an action, each creature in a 10-foot cube must make a WIS save or be charmed or frightened for 1 turn." },
+      { "level": 6, "name": "Misty Escape", "desc": "When you take damage, you can use your reaction to turn invisible and teleport up to 60 feet." }
+  ]},
+  { "slug": "fiend", "name": "The Fiend", "class": "warlock", "features": [
+      { "level": 1, "name": "Dark One's Blessing", "desc": "When you reduce a hostile creature to 0 HP, you gain temporary HP equal to CHA modifier + warlock level." },
+      { "level": 6, "name": "Dark One's Own Luck", "desc": "When you make an ability check or saving throw, add a d10 to the roll. Once per short or long rest." }
+  ]},
+  { "slug": "great-old-one", "name": "The Great Old One", "class": "warlock", "features": [
+      { "level": 1, "name": "Awakened Mind", "desc": "You can communicate telepathically with any creature within 30 feet that can understand at least one language." },
+      { "level": 6, "name": "Entropic Ward", "desc": "When a creature makes an attack roll against you, impose disadvantage. If the attack misses, your next attack against the creature has advantage." }
+  ]},
+  { "slug": "evocation", "name": "School of Evocation", "class": "wizard", "features": [
+      { "level": 2, "name": "Sculpt Spells", "desc": "When you cast an evocation spell, choose a number of creatures equal to 1 + the spell's level. Those creatures automatically succeed on their saving throw and take no damage." },
+      { "level": 6, "name": "Potent Cantrip", "desc": "When a creature succeeds on a saving throw against your cantrip, it still takes half the cantrip's damage." },
+      { "level": 10, "name": "Empowered Evocation", "desc": "Add your INT modifier to one damage roll of any wizard evocation spell you cast." }
+  ]},
+  { "slug": "divination", "name": "School of Divination", "class": "wizard", "features": [
+      { "level": 2, "name": "Portent", "desc": "After a long rest, roll two d20s and record the numbers. You can replace any attack roll, saving throw, or ability check by you or a creature you can see with one of these rolls." },
+      { "level": 6, "name": "Expert Divination", "desc": "When you cast a divination spell of 2nd level or higher, you regain one expended spell slot of a lower level." }
+  ]},
+  { "slug": "abjuration", "name": "School of Abjuration", "class": "wizard", "features": [
+      { "level": 2, "name": "Arcane Ward", "desc": "When you cast an abjuration spell of 1st level or higher, create a magical ward with HP equal to twice your wizard level + INT modifier." },
+      { "level": 6, "name": "Projected Ward", "desc": "When an ally within 30 feet takes damage, you can use your reaction to have your Arcane Ward absorb the damage instead." }
+  ]},
+  { "slug": "necromancy", "name": "School of Necromancy", "class": "wizard", "features": [
+      { "level": 2, "name": "Grim Harvest", "desc": "When you kill a creature with a spell of 1st level or higher, you regain HP equal to twice the spell's level (3x for necromancy spells)." },
+      { "level": 6, "name": "Undead Thralls", "desc": "When you cast Animate Dead, you can target one additional corpse or pile of bones, and undead you create have extra HP and damage." }
+  ]},
+  { "slug": "illusion", "name": "School of Illusion", "class": "wizard", "features": [
+      { "level": 2, "name": "Improved Minor Illusion", "desc": "You learn the Minor Illusion cantrip and can create both a sound and an image with a single casting." },
+      { "level": 6, "name": "Malleable Illusions", "desc": "When you cast an illusion spell with a duration of 1 minute or longer, you can use your action to change the nature of that illusion." }
+  ]},
+  { "slug": "enchantment", "name": "School of Enchantment", "class": "wizard", "features": [
+      { "level": 2, "name": "Hypnotic Gaze", "desc": "As an action, charm a creature within 5 feet (WIS save). While charmed, the creature is incapacitated and its speed is 0." },
+      { "level": 6, "name": "Instinctive Charm", "desc": "When an attacker you can see within 30 feet attacks you, redirect the attack to another creature (WIS save negates)." }
+  ]},
+  { "slug": "conjuration", "name": "School of Conjuration", "class": "wizard", "features": [
+      { "level": 2, "name": "Minor Conjuration", "desc": "As an action, conjure an inanimate object no larger than 3 feet on a side and no more than 10 pounds." },
+      { "level": 6, "name": "Benign Transposition", "desc": "Teleport up to 30 feet to an unoccupied space, or swap places with a willing Small or Medium creature." }
+  ]},
+  { "slug": "transmutation", "name": "School of Transmutation", "class": "wizard", "features": [
+      { "level": 2, "name": "Minor Alchemy", "desc": "Temporarily transform one nonmagical object from one substance to another (wood to stone, metal to silver, etc.)." },
+      { "level": 6, "name": "Transmuter's Stone", "desc": "Create a stone that grants darkvision 60 ft, +10 ft speed, proficiency in CON saves, or resistance to one damage type." }
+  ]}
 ]

@@ -1799,10 +1799,16 @@ window.changeHP = async (targetCName, isPlus) => {
     }
     const newHp = Math.max(0, Math.min(p.maxHp, (p.hp || 0) + delta));
     db.updatePlayerHPInDB(targetCName, newHp);
-    // Auto-break concentration on damage
+    // Concentration check on damage (D&D 5e: CON save DC = max(10, damage/2))
     if (!isPlus && p.concentrating) {
-        db.updateConcentrationInDB(targetCName, false);
-        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: t('combat_lost_concentration').replace('{name}', targetCName), ts: Date.now() });
+        if (newHp <= 0) {
+            // Auto-break at 0 HP
+            db.updateConcentrationInDB(targetCName, false);
+            db.saveRollToDB({ cName: targetCName, type: "STATUS", status: t('combat_lost_concentration').replace('{name}', targetCName), ts: Date.now() });
+        } else {
+            const concDC = Math.max(10, Math.floor(amount / 2));
+            db.saveRollToDB({ cName: targetCName, type: "STATUS", status: (t('combat_conc_save') || '{name} must make a CON save DC {dc} to maintain concentration!').replace('{name}', targetCName).replace('{dc}', concDC), ts: Date.now() });
+        }
     }
     // Auto-apply Unconscious on 0 HP (4C)
     if (newHp <= 0 && !(p.statuses || []).includes('Unconscious')) {
@@ -1821,6 +1827,25 @@ window.toggleStatus = async (targetCName, status) => {
     if (statuses.includes(status)) statuses = statuses.filter(s => s !== status);
     else { statuses.push(status); db.saveRollToDB({ cName: targetCName, type: "STATUS", status, ts: Date.now() }); }
     db.updatePlayerStatusesInDB(targetCName, statuses);
+};
+
+// ── Exhaustion (levels 1-6) ──────────────────────────────────────────────
+window.setExhaustion = async (targetCName, level) => {
+    if (userRole !== 'dm') return;
+    const clamped = Math.max(0, Math.min(6, parseInt(level) || 0));
+    db.patchPlayerInDB(targetCName, { exhaustion: clamped });
+    if (clamped > 0) {
+        db.saveRollToDB({ cName: targetCName, type: "STATUS", status: (t('combat_exhaustion') || '{name} has exhaustion level {level}').replace('{name}', targetCName).replace('{level}', clamped), ts: Date.now() });
+    }
+};
+
+// ── Inspiration (DM grants, player spends for advantage) ────────────────
+window.toggleInspiration = async (targetCName) => {
+    const p = await db.getPlayerData(targetCName);
+    if (!p) return;
+    const newVal = !p.inspiration;
+    db.patchPlayerInDB(targetCName, { inspiration: newVal });
+    db.saveRollToDB({ cName: targetCName, type: "STATUS", status: newVal ? (t('combat_inspiration_gained') || '{name} gained inspiration!').replace('{name}', targetCName) : (t('combat_inspiration_used') || '{name} used inspiration.').replace('{name}', targetCName), ts: Date.now() });
 };
 
 window.removeNPC = async (targetCName) => {

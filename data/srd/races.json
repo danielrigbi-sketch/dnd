@@ -1,173 +1,40 @@
 [
   {
-    "slug": "alseid",
-    "name": "Alseid",
-    "speed": 40,
-    "abilBonus": {},
-    "traits": [],
+    "slug": "human",
+    "name": "Human",
+    "speed": 30,
+    "darkvision": 0,
+    "size": "Medium",
+    "abilBonus": { "str": 1, "dex": 1, "con": 1, "int": 1, "wis": 1, "cha": 1 },
+    "traits": ["Extra Language", "Extra Skill Proficiency"],
     "subraces": []
   },
   {
-    "slug": "catfolk",
-    "name": "Catfolk",
+    "slug": "elf",
+    "name": "Elf",
     "speed": 30,
-    "abilBonus": {},
-    "traits": [],
+    "darkvision": 60,
+    "size": "Medium",
+    "abilBonus": { "dex": 2 },
+    "traits": ["Darkvision", "Keen Senses", "Fey Ancestry", "Trance"],
     "subraces": [
       {
-        "slug": "malkin",
-        "name": "Malkin",
-        "abilBonus": {},
-        "traits": []
+        "slug": "high-elf",
+        "name": "High Elf",
+        "abilBonus": { "int": 1 },
+        "traits": ["Elf Weapon Training", "Cantrip", "Extra Language"]
       },
       {
-        "slug": "pantheran",
-        "name": "Pantheran",
-        "abilBonus": {},
-        "traits": []
-      }
-    ]
-  },
-  {
-    "slug": "darakhul",
-    "name": "Darakhul",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": [
-      {
-        "slug": "derro-heritage",
-        "name": "Derro Heritage",
-        "abilBonus": {},
-        "traits": []
+        "slug": "wood-elf",
+        "name": "Wood Elf",
+        "abilBonus": { "wis": 1 },
+        "traits": ["Elf Weapon Training", "Fleet of Foot", "Mask of the Wild"]
       },
       {
-        "slug": "dragonborn-heritage",
-        "name": "Dragonborn Heritage",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "drow-heritage",
-        "name": "Drow Heritage",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "dwarf-heritage",
-        "name": "Dwarf Heritage",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "elfshadow-fey-heritage",
-        "name": "Elf/Shadow Fey Heritage",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "gnome-heritage",
-        "name": "Gnome Heritage",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "halfling-heritage",
-        "name": "Halfling Heritage",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "humanhalf-elf-heritage",
-        "name": "Human/Half-Elf Heritage",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "kobold-heritage",
-        "name": "Kobold Heritage",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "ravenfolk",
-        "name": "Ravenfolk",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "tiefling-heritage",
-        "name": "Tiefling Heritage",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "trollkin-heritage",
-        "name": "Trollkin Heritage",
-        "abilBonus": {},
-        "traits": []
-      }
-    ]
-  },
-  {
-    "slug": "derro",
-    "name": "Derro",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": [
-      {
-        "slug": "far-touched",
-        "name": "Far-Touched",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "mutated",
-        "name": "Mutated",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "uncorrupted",
-        "name": "Uncorrupted",
-        "abilBonus": {},
-        "traits": []
-      }
-    ]
-  },
-  {
-    "slug": "dragonborn",
-    "name": "Dragonborn",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": []
-  },
-  {
-    "slug": "drow",
-    "name": "Drow",
-    "speed": 25,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": [
-      {
-        "slug": "delver",
-        "name": "Delver",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "fever-bit",
-        "name": "Fever-Bit",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "purified",
-        "name": "Purified",
-        "abilBonus": {},
-        "traits": []
+        "slug": "dark-elf",
+        "name": "Dark Elf (Drow)",
+        "abilBonus": { "cha": 1 },
+        "traits": ["Superior Darkvision", "Sunlight Sensitivity", "Drow Magic", "Drow Weapon Training"]
       }
     ]
   },
@@ -175,70 +42,45 @@
     "slug": "dwarf",
     "name": "Dwarf",
     "speed": 25,
-    "abilBonus": {},
-    "traits": [],
+    "darkvision": 60,
+    "size": "Medium",
+    "abilBonus": { "con": 2 },
+    "traits": ["Darkvision", "Dwarven Resilience", "Dwarven Combat Training", "Stonecunning"],
     "subraces": [
       {
         "slug": "hill-dwarf",
         "name": "Hill Dwarf",
-        "abilBonus": {},
-        "traits": []
-      }
-    ]
-  },
-  {
-    "slug": "elf",
-    "name": "Elf",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": [
+        "abilBonus": { "wis": 1 },
+        "traits": ["Dwarven Toughness"]
+      },
       {
-        "slug": "high-elf",
-        "name": "High Elf",
-        "abilBonus": {},
-        "traits": []
+        "slug": "mountain-dwarf",
+        "name": "Mountain Dwarf",
+        "abilBonus": { "str": 2 },
+        "traits": ["Dwarven Armor Training"]
       }
     ]
   },
   {
-    "slug": "erina",
-    "name": "Erina",
+    "slug": "halfling",
+    "name": "Halfling",
     "speed": 25,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": []
-  },
-  {
-    "slug": "gearforged",
-    "name": "Gearforged",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
+    "darkvision": 0,
+    "size": "Small",
+    "abilBonus": { "dex": 2 },
+    "traits": ["Lucky", "Brave", "Halfling Nimbleness"],
     "subraces": [
       {
-        "slug": "dwarf-chassis",
-        "name": "Dwarf Chassis",
-        "abilBonus": {},
-        "traits": []
+        "slug": "lightfoot",
+        "name": "Lightfoot",
+        "abilBonus": { "cha": 1 },
+        "traits": ["Naturally Stealthy"]
       },
       {
-        "slug": "gnome-chassis",
-        "name": "Gnome Chassis",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "human-chassis",
-        "name": "Human Chassis",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "kobold-chassis",
-        "name": "Kobold Chassis",
-        "abilBonus": {},
-        "traits": []
+        "slug": "stout",
+        "name": "Stout",
+        "abilBonus": { "con": 1 },
+        "traits": ["Stout Resilience"]
       }
     ]
   },
@@ -246,14 +88,22 @@
     "slug": "gnome",
     "name": "Gnome",
     "speed": 25,
-    "abilBonus": {},
-    "traits": [],
+    "darkvision": 60,
+    "size": "Small",
+    "abilBonus": { "int": 2 },
+    "traits": ["Darkvision", "Gnome Cunning"],
     "subraces": [
+      {
+        "slug": "forest-gnome",
+        "name": "Forest Gnome",
+        "abilBonus": { "dex": 1 },
+        "traits": ["Natural Illusionist", "Speak with Small Beasts"]
+      },
       {
         "slug": "rock-gnome",
         "name": "Rock Gnome",
-        "abilBonus": {},
-        "traits": []
+        "abilBonus": { "con": 1 },
+        "traits": ["Artificer's Lore", "Tinker"]
       }
     ]
   },
@@ -261,117 +111,50 @@
     "slug": "half-elf",
     "name": "Half-Elf",
     "speed": 30,
-    "abilBonus": {},
-    "traits": [],
+    "darkvision": 60,
+    "size": "Medium",
+    "abilBonus": { "cha": 2 },
+    "traits": ["Darkvision", "Fey Ancestry", "Skill Versatility", "Two Ability Score Increase"],
     "subraces": []
   },
   {
     "slug": "half-orc",
     "name": "Half-Orc",
     "speed": 30,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": []
-  },
-  {
-    "slug": "halfling",
-    "name": "Halfling",
-    "speed": 25,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": [
-      {
-        "slug": "lightfoot",
-        "name": "Lightfoot",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "stoor-halfling",
-        "name": "Stoor Halfling",
-        "abilBonus": {},
-        "traits": []
-      }
-    ]
-  },
-  {
-    "slug": "human",
-    "name": "Human",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": []
-  },
-  {
-    "slug": "minotaur",
-    "name": "Minotaur",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": [
-      {
-        "slug": "bhain-kwai",
-        "name": "Bhain Kwai",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "boghaid",
-        "name": "Boghaid",
-        "abilBonus": {},
-        "traits": []
-      }
-    ]
-  },
-  {
-    "slug": "mushroomfolk",
-    "name": "Mushroomfolk",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": [
-      {
-        "slug": "acid-cap",
-        "name": "Acid Cap",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "favored",
-        "name": "Favored",
-        "abilBonus": {},
-        "traits": []
-      },
-      {
-        "slug": "morel",
-        "name": "Morel",
-        "abilBonus": {},
-        "traits": []
-      }
-    ]
-  },
-  {
-    "slug": "satarre",
-    "name": "Satarre",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
-    "subraces": []
-  },
-  {
-    "slug": "shade",
-    "name": "Shade",
-    "speed": 30,
-    "abilBonus": {},
-    "traits": [],
+    "darkvision": 60,
+    "size": "Medium",
+    "abilBonus": { "str": 2, "con": 1 },
+    "traits": ["Darkvision", "Menacing", "Relentless Endurance", "Savage Attacks"],
     "subraces": []
   },
   {
     "slug": "tiefling",
     "name": "Tiefling",
     "speed": 30,
-    "abilBonus": {},
-    "traits": [],
+    "darkvision": 60,
+    "size": "Medium",
+    "abilBonus": { "cha": 2, "int": 1 },
+    "traits": ["Darkvision", "Hellish Resistance", "Infernal Legacy"],
+    "subraces": []
+  },
+  {
+    "slug": "dragonborn",
+    "name": "Dragonborn",
+    "speed": 30,
+    "darkvision": 0,
+    "size": "Medium",
+    "abilBonus": { "str": 2, "cha": 1 },
+    "traits": ["Draconic Ancestry", "Breath Weapon", "Damage Resistance"],
+    "subraces": []
+  },
+  {
+    "slug": "aasimar",
+    "name": "Aasimar",
+    "speed": 30,
+    "darkvision": 60,
+    "size": "Medium",
+    "abilBonus": { "cha": 2 },
+    "traits": ["Darkvision", "Celestial Resistance", "Healing Hands", "Light Bearer"],
     "subraces": []
   }
 ]
