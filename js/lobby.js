@@ -131,7 +131,8 @@ function _refreshTmtTab() {
     const cls    = document.getElementById('cb-class')?.value  || '';
     const race   = document.getElementById('cb-race')?.value   || '';
     const gender = document.getElementById('cb-gender')?.value || 'male';
-    const urls   = tmt2mtPlayerTokens(cls, race, gender);
+    const allUrls = tmt2mtPlayerTokens(cls, race, gender);
+    const urls = allUrls.slice(0, 5); // Show only 5 most relevant tokens
     if (!urls.length) return;
 
     // Replace the dynamic section inside areaTmt (keep attribution header)
@@ -438,7 +439,7 @@ function _applySmartDefaults() {
 }
 
 // Prevent auto-overwrite when user manually edits these fields
-['cb-init','cb-pp','cb-darkvision','cb-speed','cb-melee','cb-ranged','cb-spell-atk'].forEach(id => {
+['cb-init','cb-pp','cb-darkvision','cb-speed','cb-melee','cb-ranged','cb-spell-atk','cb-languages','cb-resistances'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', function () {
         this.dataset.manuallyEdited = '1';
         const badge = document.getElementById(`${id}-auto-badge`);
@@ -625,17 +626,82 @@ function _renderSubraceCards(baseRace) {
     ).join('');
 }
 
+// Race → language mapping
+const _RACE_LANGUAGES = {
+    'human':'Common','variant-human':'Common',
+    'high-elf':'Common, Elvish','wood-elf':'Common, Elvish','dark-elf':'Common, Elvish',
+    'hill-dwarf':'Common, Dwarvish','mountain-dwarf':'Common, Dwarvish',
+    'lightfoot-halfling':'Common, Halfling','stout-halfling':'Common, Halfling',
+    'half-elf':'Common, Elvish','half-orc':'Common, Orc',
+    'tiefling':'Common, Infernal','dragonborn':'Common, Draconic',
+    'forest-gnome':'Common, Gnomish','rock-gnome':'Common, Gnomish',
+    'aasimar':'Common, Celestial',
+};
+const _RACE_LANGUAGES_HE = {
+    'human':'משותפת','variant-human':'משותפת',
+    'high-elf':'משותפת, אלפית','wood-elf':'משותפת, אלפית','dark-elf':'משותפת, אלפית',
+    'hill-dwarf':'משותפת, גמדית','mountain-dwarf':'משותפת, גמדית',
+    'lightfoot-halfling':'משותפת, חציאורך','stout-halfling':'משותפת, חציאורך',
+    'half-elf':'משותפת, אלפית','half-orc':'משותפת, אורקית',
+    'tiefling':'משותפת, תופתית','dragonborn':'משותפת, דרקונית',
+    'forest-gnome':'משותפת, ננסית','rock-gnome':'משותפת, ננסית',
+    'aasimar':'משותפת, שמימית',
+};
+// Race → resistance mapping
+const _RACE_RESISTANCES = {
+    'tiefling': 'Fire',
+    'hill-dwarf': 'Poison (advantage on saves)',
+    'mountain-dwarf': 'Poison (advantage on saves)',
+    'stout-halfling': 'Poison (advantage on saves)',
+    'dragonborn': 'Varies by ancestry',
+    'aasimar': 'Radiant, Necrotic',
+};
+const _RACE_RESISTANCES_HE = {
+    'tiefling': 'אש',
+    'hill-dwarf': 'רעל (יתרון על הצלות)',
+    'mountain-dwarf': 'רעל (יתרון על הצלות)',
+    'stout-halfling': 'רעל (יתרון על הצלות)',
+    'dragonborn': 'משתנה לפי מוצא',
+    'aasimar': 'קורן, נקרוטי',
+};
+
 function _showRaceTraits(raceSlug) {
     const preview = document.getElementById('cb-race-traits-preview');
     if (!preview) return;
     if (!raceSlug || !RACE_MECHANICS?.[raceSlug]) { preview.style.display = 'none'; return; }
     const mech = RACE_MECHANICS[raceSlug];
-    const traits = (mech.traits || []).map(tr => t('trait_' + tr) || tr).join(' · ');
+    const lang = getLang();
+    const traits = (mech.traits || []).map(tr => t('trait_' + tr) || tr.replace(/_/g, ' ')).join(' · ');
     const bonuses = Object.entries(mech.abilBonus || {}).map(([ab, v]) => `+${v} ${t('ab_' + ab)}`).join(', ');
     const speed = mech.speed || 30;
     preview.style.display = '';
-    preview.innerHTML = `<div style="font-size:11px;color:#2ecc71;margin-top:6px;">${bonuses ? bonuses + ' · ' : ''}${t('cb_speed')}: ${speed}</div>` +
-        (traits ? `<div style="font-size:10px;color:#888;margin-top:3px;">${traits}</div>` : '');
+
+    // Build preview sections using DOM
+    preview.textContent = '';
+    const bonusDiv = document.createElement('div');
+    Object.assign(bonusDiv.style, { fontSize:'11px', color:'#2ecc71', marginTop:'6px' });
+    bonusDiv.textContent = (bonuses ? bonuses + ' · ' : '') + t('cb_speed') + ': ' + speed;
+    preview.appendChild(bonusDiv);
+
+    if (traits) {
+        const traitDiv = document.createElement('div');
+        Object.assign(traitDiv.style, { fontSize:'10px', color:'#c8873a', marginTop:'3px' });
+        traitDiv.textContent = traits;
+        preview.appendChild(traitDiv);
+    }
+
+    // Auto-fill languages
+    const langEl = document.getElementById('cb-languages');
+    if (langEl && !langEl.dataset.manuallyEdited) {
+        langEl.value = lang === 'he' ? (_RACE_LANGUAGES_HE[raceSlug] || 'משותפת') : (_RACE_LANGUAGES[raceSlug] || 'Common');
+    }
+    // Auto-fill resistances
+    const resEl = document.getElementById('cb-resistances');
+    if (resEl && !resEl.dataset.manuallyEdited) {
+        resEl.value = _RACE_RESISTANCES[raceSlug]
+            ? (lang === 'he' ? _RACE_RESISTANCES_HE[raceSlug] : _RACE_RESISTANCES[raceSlug])
+            : '';
+    }
 }
 
 window._selectRaceCard = function(baseRace) {
@@ -894,10 +960,21 @@ function _populateSubclassDropdown() {
     // Clear and add placeholder
     sel.innerHTML = `<option value="" data-i18n="cb_subclass_ph">${t('cb_subclass_ph') || 'Subclass…'}</option>`;
     if (!cls) return;
+    const level = +(document.getElementById('cb-level')?.value || document.getElementById('cb-level-step1')?.value) || 1;
+    if (level < 3) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = t('cb_subclass_level3') || (getLang() === 'he' ? 'התמחות נפתחת ברמה 3' : 'Unlocks at level 3');
+        opt.disabled = true;
+        sel.appendChild(opt);
+        return;
+    }
     Object.entries(SUBCLASS_MECHANICS)
         .filter(([, mech]) => mech.class === cls)
         .forEach(([slug, ]) => {
-            const name = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            const nameKey = `subclass_${slug}`;
+            const translated = t(nameKey);
+            const name = (translated !== nameKey) ? translated : slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
             const opt = document.createElement('option');
             opt.value = slug;
             opt.textContent = name;
