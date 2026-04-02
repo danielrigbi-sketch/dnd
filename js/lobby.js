@@ -383,6 +383,20 @@ function _applySmartDefaults() {
         });
     }
 
+    // ── Skill count indicator ──
+    const _CLASS_SKILL_COUNTS = { barbarian:2, bard:3, cleric:2, druid:2, fighter:2, monk:2, paladin:2, ranger:3, rogue:4, sorcerer:2, warlock:2, wizard:2 };
+    const skillCountEl = document.getElementById('cb-skill-count-hint');
+    if (skillCountEl && cls) {
+        const max = _CLASS_SKILL_COUNTS[cls] || 2;
+        const picked = document.querySelectorAll('[id^="cb-skill-"] option:checked[value="prof"], [id^="cb-skill-"] option:checked[value="expert"]').length;
+        let allSkills = 0;
+        document.querySelectorAll('[id^="cb-skill-"]').forEach(sel => {
+            if (sel.id.startsWith('cb-skill-') && sel.value && sel.value !== '') allSkills++;
+        });
+        skillCountEl.textContent = `${t('cb_skill_count') || 'Skill proficiencies'}: ${allSkills} / ${max}`;
+        skillCountEl.style.color = allSkills > max ? '#e74c3c' : '#2ecc71';
+    }
+
     // ── Auto-calculate AC from armor + DEX + shield ──
     const armorVal = document.getElementById('cb-armor')?.value;
     const shieldChecked = document.getElementById('cb-shield')?.checked;
@@ -2051,8 +2065,10 @@ async function _openLevelUpWizard(charId) {
         avgBtn.disabled = true; rollBtn.disabled = true;
     };
 
-    // ASI section
+    // ASI / Feat section
     let asiChoice = null;
+    let asiChoice2 = null; // for +1/+1
+    let asiMode = null; // 'plus2' | 'plus1x2' | 'feat'
     if (isASI) {
         const asiSection = document.createElement('div');
         Object.assign(asiSection.style, { background:'rgba(0,0,0,0.3)', padding:'10px', borderRadius:'8px', marginBottom:'10px' });
@@ -2061,28 +2077,140 @@ async function _openLevelUpWizard(charId) {
         asiTitle.textContent = t('levelup_asi') || 'Ability Score Improvement';
         asiSection.appendChild(asiTitle);
 
-        const asiDesc = document.createElement('div');
-        Object.assign(asiDesc.style, { fontSize:'10px', color:'#aaa', marginBottom:'8px' });
-        asiDesc.textContent = t('levelup_asi_desc') || '+2 to one ability OR +1 to two abilities';
-        asiSection.appendChild(asiDesc);
-
-        const asiSelect = document.createElement('select');
-        asiSelect.className = 'builder-input';
-        Object.assign(asiSelect.style, { width:'100%', fontSize:'11px' });
+        // Mode buttons
+        const modeBtns = document.createElement('div');
+        Object.assign(modeBtns.style, { display:'flex', gap:'4px', marginBottom:'8px' });
         const abilities = [['str','כוח','STR'],['dex','זריזות','DEX'],['con','סיבולת','CON'],['int','אינטליגנציה','INT'],['wis','חוכמה','WIS'],['cha','כריזמה','CHA']];
-        const opt0 = document.createElement('option');
-        opt0.value = '';
-        opt0.textContent = t('cb_choose') || '-- Choose --';
-        asiSelect.appendChild(opt0);
-        abilities.forEach(([ab, he, en]) => {
-            const opt = document.createElement('option');
-            opt.value = `${ab}+2`;
-            opt.textContent = `+2 ${lang === 'he' ? he : en} (${(c['_'+ab] || 10)} → ${(c['_'+ab] || 10) + 2})`;
-            asiSelect.appendChild(opt);
+
+        const modeData = [
+            { key: 'plus2', label: '+2 → 1', labelHe: '+2 לתכונה אחת' },
+            { key: 'plus1x2', label: '+1 → 2', labelHe: '+1 לשתי תכונות' },
+            { key: 'feat', label: lang === 'he' ? 'כישרון' : 'Feat', labelHe: 'כישרון' },
+        ];
+        const asiContent = document.createElement('div');
+
+        modeData.forEach(m => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            Object.assign(btn.style, { flex:'1', padding:'6px', background:'rgba(255,255,255,0.08)', color:'#ccc', border:'1px solid #555', borderRadius:'6px', cursor:'pointer', fontSize:'11px' });
+            btn.textContent = lang === 'he' ? m.labelHe : m.label;
+            btn.onclick = () => {
+                asiMode = m.key;
+                asiChoice = null; asiChoice2 = null;
+                modeBtns.querySelectorAll('button').forEach(b => { b.style.background = 'rgba(255,255,255,0.08)'; b.style.borderColor = '#555'; });
+                btn.style.background = 'rgba(200,135,58,0.3)'; btn.style.borderColor = '#c8873a';
+                asiContent.textContent = '';
+
+                if (m.key === 'plus2') {
+                    const sel = document.createElement('select');
+                    sel.className = 'builder-input';
+                    Object.assign(sel.style, { width:'100%', fontSize:'11px', marginTop:'6px' });
+                    const o0 = document.createElement('option'); o0.value = ''; o0.textContent = t('cb_choose') || '-- Choose --'; sel.appendChild(o0);
+                    abilities.forEach(([ab, he, en]) => {
+                        const o = document.createElement('option'); o.value = ab;
+                        o.textContent = `+2 ${lang === 'he' ? he : en} (${c['_'+ab]||10} → ${(c['_'+ab]||10)+2})`;
+                        sel.appendChild(o);
+                    });
+                    sel.onchange = () => { asiChoice = sel.value ? `${sel.value}+2` : null; };
+                    asiContent.appendChild(sel);
+                } else if (m.key === 'plus1x2') {
+                    const row = document.createElement('div');
+                    Object.assign(row.style, { display:'flex', gap:'4px', marginTop:'6px' });
+                    [0, 1].forEach(idx => {
+                        const sel = document.createElement('select');
+                        sel.className = 'builder-input';
+                        Object.assign(sel.style, { flex:'1', fontSize:'11px' });
+                        const o0 = document.createElement('option'); o0.value = ''; o0.textContent = `#${idx+1}`; sel.appendChild(o0);
+                        abilities.forEach(([ab, he, en]) => {
+                            const o = document.createElement('option'); o.value = ab;
+                            o.textContent = `+1 ${lang === 'he' ? he : en} (${c['_'+ab]||10} → ${(c['_'+ab]||10)+1})`;
+                            sel.appendChild(o);
+                        });
+                        sel.onchange = () => {
+                            if (idx === 0) asiChoice = sel.value ? `${sel.value}+1` : null;
+                            else asiChoice2 = sel.value ? `${sel.value}+1` : null;
+                        };
+                        row.appendChild(sel);
+                    });
+                    asiContent.appendChild(row);
+                } else if (m.key === 'feat') {
+                    const featList = document.createElement('div');
+                    Object.assign(featList.style, { maxHeight:'120px', overflowY:'auto', marginTop:'6px' });
+                    Object.keys(FEAT_MECHANICS).sort().forEach(slug => {
+                        const nameKey = `feat_${slug}`;
+                        const translated = t(nameKey);
+                        const name = (translated !== nameKey) ? translated : slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                        const fm = FEAT_MECHANICS[slug];
+                        const effects = [];
+                        if (fm.initiative) effects.push(`+${fm.initiative} ${t('cb_init') || 'Init'}`);
+                        if (fm.max_hp_bonus?.perLevel) effects.push(`+${fm.max_hp_bonus.perLevel} HP/${t('cb_level') || 'lvl'}`);
+                        if (fm.speed) effects.push(`+${fm.speed}ft`);
+                        if (fm.abilBonus) effects.push(Object.entries(fm.abilBonus).map(([a,v]) => `+${v} ${a.toUpperCase()}`).join(', '));
+
+                        const btn2 = document.createElement('button');
+                        btn2.type = 'button';
+                        Object.assign(btn2.style, { display:'block', width:'100%', textAlign: lang==='he'?'right':'left', background:'rgba(155,89,182,0.1)', border:'1px solid rgba(155,89,182,0.2)', color:'#d7bde2', borderRadius:'4px', padding:'4px 8px', cursor:'pointer', fontSize:'11px', marginBottom:'3px' });
+                        btn2.textContent = name + (effects.length ? ` — ${effects.join(', ')}` : '');
+                        btn2.onclick = () => {
+                            asiChoice = `feat:${slug}`;
+                            featList.querySelectorAll('button').forEach(b => { b.style.background = 'rgba(155,89,182,0.1)'; b.style.borderColor = 'rgba(155,89,182,0.2)'; });
+                            btn2.style.background = 'rgba(155,89,182,0.3)'; btn2.style.borderColor = '#8e44ad';
+                        };
+                        featList.appendChild(btn2);
+                    });
+                    asiContent.appendChild(featList);
+                }
+            };
+            modeBtns.appendChild(btn);
         });
-        asiSelect.onchange = () => { asiChoice = asiSelect.value; };
-        asiSection.appendChild(asiSelect);
+        asiSection.appendChild(modeBtns);
+        asiSection.appendChild(asiContent);
         inner.appendChild(asiSection);
+    }
+
+    // Subclass choice at level 3
+    let subclassChoice = null;
+    if (isSubclass) {
+        const subSection = document.createElement('div');
+        Object.assign(subSection.style, { background:'rgba(0,0,0,0.3)', padding:'10px', borderRadius:'8px', marginBottom:'10px' });
+        const subTitle = document.createElement('div');
+        Object.assign(subTitle.style, { fontSize:'12px', color:'#8e44ad', fontWeight:'bold', marginBottom:'6px' });
+        subTitle.textContent = t('levelup_subclass') || (lang === 'he' ? 'בחר התמחות' : 'Choose Subclass');
+        subSection.appendChild(subTitle);
+        const subSel = document.createElement('select');
+        subSel.className = 'builder-input';
+        Object.assign(subSel.style, { width:'100%', fontSize:'11px' });
+        const so0 = document.createElement('option'); so0.value = ''; so0.textContent = t('cb_choose') || '-- Choose --'; subSel.appendChild(so0);
+        Object.entries(SUBCLASS_MECHANICS).filter(([, m]) => m.class === cls).forEach(([slug]) => {
+            const nk = `subclass_${slug}`;
+            const tr = t(nk);
+            const o = document.createElement('option'); o.value = slug;
+            o.textContent = (tr !== nk) ? tr : slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            subSel.appendChild(o);
+        });
+        subSel.onchange = () => { subclassChoice = subSel.value; };
+        subSection.appendChild(subSel);
+        inner.appendChild(subSection);
+    }
+
+    // Spell slot info for casters
+    if (_CASTER_CLASSES.has(cls)) {
+        const spellSection = document.createElement('div');
+        Object.assign(spellSection.style, { background:'rgba(0,0,0,0.3)', padding:'10px', borderRadius:'8px', marginBottom:'10px' });
+        const spellTitle = document.createElement('div');
+        Object.assign(spellTitle.style, { fontSize:'12px', color:'#3498db', fontWeight:'bold', marginBottom:'4px' });
+        spellTitle.textContent = t('levelup_spells') || (lang === 'he' ? 'משבצות לחשים מעודכנות' : 'Updated Spell Slots');
+        spellSection.appendChild(spellTitle);
+        const _HALF_CASTERS = new Set(['paladin','ranger']);
+        const _SPELL_SLOTS = {1:[2],2:[3],3:[4,2],4:[4,3],5:[4,3,2],6:[4,3,3],7:[4,3,3,1],8:[4,3,3,2],9:[4,3,3,3,1],10:[4,3,3,3,2],11:[4,3,3,3,2,1],12:[4,3,3,3,2,1],13:[4,3,3,3,2,1,1],14:[4,3,3,3,2,1,1],15:[4,3,3,3,2,1,1,1],16:[4,3,3,3,2,1,1,1],17:[4,3,3,3,2,1,1,1,1],18:[4,3,3,3,3,1,1,1,1],19:[4,3,3,3,3,2,1,1,1],20:[4,3,3,3,3,2,2,1,1]};
+        const effLevel = _HALF_CASTERS.has(cls) ? Math.max(1, Math.floor(newLevel / 2)) : newLevel;
+        const slots = _SPELL_SLOTS[effLevel] || [];
+        const slotText = slots.map((s, i) => `L${i+1}: ${s}`).join('  ');
+        const slotDiv = document.createElement('div');
+        Object.assign(slotDiv.style, { fontSize:'11px', color:'#aaa' });
+        slotDiv.textContent = slotText;
+        spellSection.appendChild(slotDiv);
+        inner.appendChild(spellSection);
     }
 
     // Confirm button
@@ -2092,7 +2220,9 @@ async function _openLevelUpWizard(charId) {
     confirmBtn.textContent = `${t('levelup_confirm') || 'Confirm Level Up'} → ${newLevel}`;
     confirmBtn.onclick = async () => {
         if (!hpGain) { showToast(t('levelup_pick_hp') || 'Choose HP increase first', 'warning'); return; }
-        if (isASI && !asiChoice) { showToast(t('levelup_pick_asi') || 'Choose ability improvement', 'warning'); return; }
+        if (isASI && !asiChoice && !asiMode) { showToast(t('levelup_pick_asi') || 'Choose ability improvement or feat', 'warning'); return; }
+        if (isASI && asiMode === 'plus1x2' && (!asiChoice || !asiChoice2)) { showToast(t('levelup_pick_asi') || 'Choose both abilities', 'warning'); return; }
+        if (isSubclass && !subclassChoice) { showToast(t('levelup_pick_subclass') || 'Choose a subclass', 'warning'); return; }
 
         // Apply changes
         const updates = {
@@ -2104,9 +2234,33 @@ async function _openLevelUpWizard(charId) {
             hdRemaining: newLevel,
         };
 
-        if (asiChoice) {
+        // ASI handling
+        if (asiChoice && asiMode === 'plus2') {
             const [ab, bonus] = asiChoice.split('+');
-            updates['_' + ab] = (c['_' + ab] || 10) + parseInt(bonus);
+            updates['_' + ab] = Math.min(20, (c['_' + ab] || 10) + parseInt(bonus));
+        } else if (asiMode === 'plus1x2') {
+            if (asiChoice) { const [ab] = asiChoice.split('+'); updates['_' + ab] = Math.min(20, (c['_' + ab] || 10) + 1); }
+            if (asiChoice2) { const [ab] = asiChoice2.split('+'); updates['_' + ab] = Math.min(20, (updates['_' + ab] || c['_' + ab] || 10) + 1); }
+        } else if (asiMode === 'feat' && asiChoice?.startsWith('feat:')) {
+            const featSlug = asiChoice.replace('feat:', '');
+            const existingFeats = c.feats || [];
+            if (!existingFeats.find(f => f.name === featSlug)) {
+                updates.feats = [...existingFeats, { name: featSlug }];
+            }
+        }
+
+        // Subclass
+        if (subclassChoice) updates.subclass = subclassChoice;
+
+        // Spell slots for casters
+        if (_CASTER_CLASSES.has(cls)) {
+            const _HALF_CASTERS2 = new Set(['paladin','ranger']);
+            const _SPELL_SLOTS2 = {1:[2],2:[3],3:[4,2],4:[4,3],5:[4,3,2],6:[4,3,3],7:[4,3,3,1],8:[4,3,3,2],9:[4,3,3,3,1],10:[4,3,3,3,2],11:[4,3,3,3,2,1],12:[4,3,3,3,2,1],13:[4,3,3,3,2,1,1],14:[4,3,3,3,2,1,1],15:[4,3,3,3,2,1,1,1],16:[4,3,3,3,2,1,1,1],17:[4,3,3,3,2,1,1,1,1],18:[4,3,3,3,3,1,1,1,1],19:[4,3,3,3,3,2,1,1,1],20:[4,3,3,3,3,2,2,1,1]};
+            const effLevel = _HALF_CASTERS2.has(cls) ? Math.max(1, Math.floor(newLevel / 2)) : newLevel;
+            const slots = _SPELL_SLOTS2[effLevel] || [];
+            const max = {};
+            for (let i = 0; i < slots.length; i++) { if (slots[i] > 0) max[i + 1] = slots[i]; }
+            if (Object.keys(max).length) updates.spellSlots = { max, used: c.spellSlots?.used || {} };
         }
 
         // Recalc proficiency-dependent fields
