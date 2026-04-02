@@ -1368,6 +1368,82 @@ function _autoPopulateWeaponActions() {
     document.getElementById(id)?.addEventListener('change', _autoPopulateWeaponActions);
 });
 
+// ── Auto-populate class/subclass actions ─────────────────────────────
+const _CLASS_ACTIONS = {
+    barbarian: [
+        { name: 'Rage', nameHe: 'זעם', icon: 'melee', actionType: 'buff', desc: 'Advantage on STR checks/saves, +2 damage, resistance to physical damage' },
+        { name: 'Reckless Attack', nameHe: 'התקפה פזיזה', icon: 'melee', actionType: 'damage', desc: 'Advantage on melee attacks this turn, attacks against you have advantage' },
+    ],
+    fighter: [
+        { name: 'Second Wind', nameHe: 'נשימה שנייה', icon: 'heal', actionType: 'heal', desc: '1d10 + fighter level HP (1/short rest)' },
+        { name: 'Action Surge', nameHe: 'פרץ פעולה', icon: 'lightning', actionType: 'buff', desc: 'Take one additional action this turn (1/short rest)' },
+    ],
+    rogue: [
+        { name: 'Sneak Attack', nameHe: 'התקפת פתע', icon: 'dagger', actionType: 'damage', desc: 'Extra damage when you have advantage or ally within 5ft of target' },
+        { name: 'Cunning Action', nameHe: 'פעולה ערמומית', icon: 'hide', actionType: 'buff', desc: 'Dash, Disengage, or Hide as bonus action' },
+    ],
+    monk: [
+        { name: 'Flurry of Blows', nameHe: 'סופת מהלומות', icon: 'melee', actionType: 'damage', desc: 'After Attack action, 2 unarmed strikes as bonus action (1 ki)' },
+        { name: 'Patient Defense', nameHe: 'הגנה סבלנית', icon: 'shield', actionType: 'buff', desc: 'Dodge as bonus action (1 ki)' },
+    ],
+    paladin: [
+        { name: 'Divine Smite', nameHe: 'מכת אלוהים', icon: 'holy', actionType: 'damage', desc: 'On hit: expend spell slot for +2d8 radiant damage (+1d8/slot level)' },
+        { name: 'Lay on Hands', nameHe: 'הנחת ידיים', icon: 'heal', actionType: 'heal', desc: 'Heal up to 5×paladin level HP total (or cure disease/poison for 5 HP)' },
+    ],
+    ranger: [
+        { name: "Hunter's Mark", nameHe: 'סימן הצייד', icon: 'ranged', actionType: 'damage', desc: '+1d6 damage to marked target, advantage on tracking (concentration)' },
+    ],
+    cleric: [
+        { name: 'Turn Undead', nameHe: 'סילוק מתים חיים', icon: 'holy', actionType: 'buff', desc: 'Channel Divinity: undead within 30ft must flee (WIS save)' },
+    ],
+    bard: [
+        { name: 'Bardic Inspiration', nameHe: 'השראה ברדית', icon: 'wand', actionType: 'buff', desc: 'Give ally a d6 to add to ability check, attack roll, or saving throw' },
+    ],
+    sorcerer: [
+        { name: 'Sorcery Points', nameHe: 'נקודות כישוף', icon: 'arcane', actionType: 'buff', desc: 'Convert spell slots ↔ sorcery points, fuel Metamagic' },
+    ],
+    warlock: [
+        { name: 'Eldritch Blast', nameHe: 'פיצוץ אלדריצ\'י', icon: 'arcane', actionType: 'damage', desc: '1d10 force damage ranged spell attack (120ft)' },
+    ],
+    wizard: [
+        { name: 'Arcane Recovery', nameHe: 'שחזור ארקני', icon: 'wand', actionType: 'buff', desc: 'Once per day after short rest, recover spell slots (total ≤ half wizard level)' },
+    ],
+    druid: [
+        { name: 'Wild Shape', nameHe: 'שינוי צורה', icon: 'nature', actionType: 'buff', desc: 'Transform into a beast you\'ve seen (2/short rest, CR limit by level)' },
+    ],
+};
+
+function _autoPopulateClassActions() {
+    if (!attacksList) return;
+    // Remove existing auto-generated class actions
+    attacksList.querySelectorAll('.action-row[data-auto="class"]').forEach(r => r.remove());
+
+    const cls = (document.getElementById('cb-class')?.value || '').toLowerCase();
+    const lang = getLang();
+    const actions = _CLASS_ACTIONS[cls] || [];
+
+    actions.forEach(act => {
+        const row = _buildActionRow({
+            name: lang === 'he' ? act.nameHe : act.name,
+            hitType: act.actionType === 'damage' ? 'melee' : 'always',
+            hitMod: 0,
+            damageDice: '',
+            damageMult: 1,
+            actionType: act.actionType,
+            icon: act.icon,
+        });
+        row.dataset.auto = 'class';
+        row.title = act.desc;
+        attacksList.appendChild(row);
+    });
+}
+
+// Trigger when class changes
+document.getElementById('cb-class')?.addEventListener('change', () => {
+    _autoPopulateClassActions();
+    _autoPopulateWeaponActions();
+});
+
 let currentUserUid = null;
 let currentVaultCharacters = {};
 
@@ -1519,6 +1595,7 @@ function renderVault(characters) {
         if (classStr) { let translated = t("class_" + classStr.toLowerCase()); displayClass = translated !== "class_" + classStr.toLowerCase() ? translated : classStr; }
         card.innerHTML = `
             <div class="vault-card-actions">
+                <button class="vault-action-btn levelup" data-action="levelup" data-id="${charId}" title="${t('levelup_btn') || 'Level Up'}">⬆️</button>
                 <button class="vault-action-btn edit" data-action="edit" data-id="${charId}" title="ערוך">✏️</button>
                 <button class="vault-action-btn delete" data-action="delete" data-id="${charId}" data-name="${c.name}" title="מחק">🗑️</button>
             </div>
@@ -1543,6 +1620,7 @@ function renderVault(characters) {
             if (action === 'delete') {
                 if(confirm(`${t('delete_confirm')} (${charName})`)) { await db.deleteCharacterFromVault(currentUserUid, charId); }
             } else if (action === 'edit') { openBuilderForEdit(charId); }
+            else if (action === 'levelup') { _openLevelUpWizard(charId); }
         };
     });
     document.querySelectorAll('.vault-select-btn').forEach(btn => {
@@ -1886,6 +1964,181 @@ function _loadPremadeCharacter(pc) {
     if (attacksList) attacksList.textContent = '';
     _gotoStep(1);
     _applySmartDefaults();
+}
+
+// ── Level-Up Wizard ──────────────────────────────────────────────────
+async function _openLevelUpWizard(charId) {
+    const c = currentVaultCharacters[charId];
+    if (!c) return;
+    const currentLevel = c.level || 1;
+    if (currentLevel >= 20) { showToast(t('levelup_max') || 'Already at max level (20)!', 'warning'); return; }
+
+    const newLevel = currentLevel + 1;
+    const cls = (c.class || '').toLowerCase();
+    const hd = _CLASS_HIT_DIE[cls] || 8;
+    const conMod = Math.floor(((c._con || 10) - 10) / 2);
+    const avgHpGain = Math.floor(hd / 2) + 1 + conMod;
+    const pb = Math.ceil(newLevel / 4) + 1;
+    const isASI = [4, 8, 12, 16, 19].includes(newLevel);
+    const isSubclass = newLevel === 3 && !c.subclass;
+    const lang = getLang();
+
+    // Build modal using DOM
+    const modal = document.createElement('div');
+    Object.assign(modal.style, { position:'fixed', top:'0', left:'0', right:'0', bottom:'0', background:'rgba(0,0,0,0.88)', zIndex:'10001', display:'flex', alignItems:'center', justifyContent:'center' });
+
+    const inner = document.createElement('div');
+    Object.assign(inner.style, { background:'#1a1a2e', border:'1px solid #c8873a', borderRadius:'12px', padding:'20px', maxWidth:'420px', width:'90%', maxHeight:'80vh', overflowY:'auto' });
+
+    const title = document.createElement('h3');
+    Object.assign(title.style, { color:'#f1c40f', textAlign:'center', margin:'0 0 12px' });
+    title.textContent = `${t('levelup_title') || 'Level Up!'} — ${c.name}`;
+    inner.appendChild(title);
+
+    const levelInfo = document.createElement('div');
+    Object.assign(levelInfo.style, { textAlign:'center', fontSize:'18px', color:'#2ecc71', fontWeight:'bold', margin:'8px 0' });
+    levelInfo.textContent = `${t('cb_level') || 'Level'} ${currentLevel} → ${newLevel}`;
+    inner.appendChild(levelInfo);
+
+    const pbInfo = document.createElement('div');
+    Object.assign(pbInfo.style, { textAlign:'center', fontSize:'12px', color:'#aaa', marginBottom:'12px' });
+    pbInfo.textContent = `${t('cb_prof_bonus') || 'Proficiency Bonus'}: +${pb}`;
+    inner.appendChild(pbInfo);
+
+    // HP section
+    const hpSection = document.createElement('div');
+    Object.assign(hpSection.style, { background:'rgba(0,0,0,0.3)', padding:'10px', borderRadius:'8px', marginBottom:'10px' });
+    const hpTitle = document.createElement('div');
+    Object.assign(hpTitle.style, { fontSize:'12px', color:'#e74c3c', fontWeight:'bold', marginBottom:'6px' });
+    hpTitle.textContent = `HP: +${avgHpGain} (${lang === 'he' ? 'ק' : 'd'}${hd} + CON(${conMod >= 0 ? '+' : ''}${conMod}))`;
+    hpSection.appendChild(hpTitle);
+
+    const hpBtns = document.createElement('div');
+    Object.assign(hpBtns.style, { display:'flex', gap:'8px' });
+    const avgBtn = document.createElement('button');
+    avgBtn.type = 'button';
+    Object.assign(avgBtn.style, { flex:'1', padding:'8px', background:'#27ae60', color:'#fff', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'bold' });
+    avgBtn.textContent = `${t('levelup_avg') || 'Average'}: +${avgHpGain}`;
+
+    const rollBtn = document.createElement('button');
+    rollBtn.type = 'button';
+    Object.assign(rollBtn.style, { flex:'1', padding:'8px', background:'#e67e22', color:'#fff', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'bold' });
+    rollBtn.textContent = `${t('levelup_roll') || 'Roll'} ${lang === 'he' ? 'ק' : 'd'}${hd}`;
+    hpBtns.appendChild(avgBtn);
+    hpBtns.appendChild(rollBtn);
+    hpSection.appendChild(hpBtns);
+
+    const hpResult = document.createElement('div');
+    Object.assign(hpResult.style, { textAlign:'center', fontSize:'14px', color:'#2ecc71', marginTop:'6px', display:'none' });
+    hpSection.appendChild(hpResult);
+    inner.appendChild(hpSection);
+
+    let hpGain = 0;
+    avgBtn.onclick = () => { hpGain = avgHpGain; hpResult.textContent = `+${hpGain} HP`; hpResult.style.display = ''; avgBtn.disabled = true; rollBtn.disabled = true; };
+    rollBtn.onclick = async () => {
+        try {
+            const result = await roll3DDice(`1d${hd}`);
+            const rolled = result && Array.isArray(result) ? result.reduce((s, r) => s + r.value, 0) : (Math.floor(Math.random() * hd) + 1);
+            hpGain = Math.max(1, rolled + conMod);
+            hpResult.textContent = `${t('levelup_rolled') || 'Rolled'}: ${rolled} + CON(${conMod}) = +${hpGain} HP`;
+            hpResult.style.display = '';
+            clearDice();
+        } catch {
+            hpGain = avgHpGain;
+            hpResult.textContent = `+${hpGain} HP (${t('levelup_avg') || 'average'})`;
+            hpResult.style.display = '';
+        }
+        avgBtn.disabled = true; rollBtn.disabled = true;
+    };
+
+    // ASI section
+    let asiChoice = null;
+    if (isASI) {
+        const asiSection = document.createElement('div');
+        Object.assign(asiSection.style, { background:'rgba(0,0,0,0.3)', padding:'10px', borderRadius:'8px', marginBottom:'10px' });
+        const asiTitle = document.createElement('div');
+        Object.assign(asiTitle.style, { fontSize:'12px', color:'#f1c40f', fontWeight:'bold', marginBottom:'6px' });
+        asiTitle.textContent = t('levelup_asi') || 'Ability Score Improvement';
+        asiSection.appendChild(asiTitle);
+
+        const asiDesc = document.createElement('div');
+        Object.assign(asiDesc.style, { fontSize:'10px', color:'#aaa', marginBottom:'8px' });
+        asiDesc.textContent = t('levelup_asi_desc') || '+2 to one ability OR +1 to two abilities';
+        asiSection.appendChild(asiDesc);
+
+        const asiSelect = document.createElement('select');
+        asiSelect.className = 'builder-input';
+        Object.assign(asiSelect.style, { width:'100%', fontSize:'11px' });
+        const abilities = [['str','כוח','STR'],['dex','זריזות','DEX'],['con','סיבולת','CON'],['int','אינטליגנציה','INT'],['wis','חוכמה','WIS'],['cha','כריזמה','CHA']];
+        const opt0 = document.createElement('option');
+        opt0.value = '';
+        opt0.textContent = t('cb_choose') || '-- Choose --';
+        asiSelect.appendChild(opt0);
+        abilities.forEach(([ab, he, en]) => {
+            const opt = document.createElement('option');
+            opt.value = `${ab}+2`;
+            opt.textContent = `+2 ${lang === 'he' ? he : en} (${(c['_'+ab] || 10)} → ${(c['_'+ab] || 10) + 2})`;
+            asiSelect.appendChild(opt);
+        });
+        asiSelect.onchange = () => { asiChoice = asiSelect.value; };
+        asiSection.appendChild(asiSelect);
+        inner.appendChild(asiSection);
+    }
+
+    // Confirm button
+    const confirmBtn = document.createElement('button');
+    confirmBtn.type = 'button';
+    Object.assign(confirmBtn.style, { width:'100%', padding:'10px', background:'#27ae60', color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', fontSize:'14px', marginTop:'8px' });
+    confirmBtn.textContent = `${t('levelup_confirm') || 'Confirm Level Up'} → ${newLevel}`;
+    confirmBtn.onclick = async () => {
+        if (!hpGain) { showToast(t('levelup_pick_hp') || 'Choose HP increase first', 'warning'); return; }
+        if (isASI && !asiChoice) { showToast(t('levelup_pick_asi') || 'Choose ability improvement', 'warning'); return; }
+
+        // Apply changes
+        const updates = {
+            level: newLevel,
+            maxHp: (c.maxHp || 10) + hpGain,
+            hp: (c.maxHp || 10) + hpGain,
+            hdMax: newLevel,
+            hdLeft: newLevel,
+            hdRemaining: newLevel,
+        };
+
+        if (asiChoice) {
+            const [ab, bonus] = asiChoice.split('+');
+            updates['_' + ab] = (c['_' + ab] || 10) + parseInt(bonus);
+        }
+
+        // Recalc proficiency-dependent fields
+        const profB = pb;
+        const strMod = Math.floor(((updates._str || c._str || 10) - 10) / 2);
+        const dexMod = Math.floor(((updates._dex || c._dex || 10) - 10) / 2);
+        updates.initBonus = dexMod;
+        updates.melee = strMod + profB;
+        updates.ranged = dexMod + profB;
+
+        try {
+            await db.updateCharacterInVault(currentUserUid, charId, { ...c, ...updates });
+            modal.remove();
+            showToast(`${c.name} → ${t('cb_level') || 'Level'} ${newLevel}!`, 'success');
+        } catch (err) {
+            console.error(err);
+            showToast(t('alert_save_err') || 'Save failed', 'warning');
+        }
+    };
+    inner.appendChild(confirmBtn);
+
+    // Cancel button
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    Object.assign(cancelBtn.style, { width:'100%', padding:'8px', background:'#333', color:'#ccc', border:'1px solid #555', borderRadius:'6px', cursor:'pointer', marginTop:'6px' });
+    cancelBtn.textContent = t('confirm_cancel') || 'Cancel';
+    cancelBtn.onclick = () => modal.remove();
+    inner.appendChild(cancelBtn);
+
+    modal.appendChild(inner);
+    document.body.appendChild(modal);
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 }
 
 if(newCharBtn) {
