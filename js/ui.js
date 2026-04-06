@@ -876,7 +876,7 @@ function _renderWeaponActions(player) {
         const dmg = eq.mainHand.damageDice || '1d6';
         rows.push(`<div style="display:flex;gap:4px;">
             <button class="class-ability-btn" onclick="window.rollMacro('${cn}','${escapeHtml(eq.mainHand.name)}',${hit})">${iconImg('⚔️','12px')} ${escapeHtml(eq.mainHand.name)} +${hit}</button>
-            <button class="class-ability-btn" onclick="window.rollDamageMacro('${cn}','${escapeHtml(eq.mainHand.name)}','${dmg}',${mod})">${iconImg('💥','12px')} ${dmg}+${mod}</button>
+            <button class="class-ability-btn" onclick="window.rollDamageMacro('${cn}','${escapeHtml(eq.mainHand.name)}','${dmg}',${mod})">${iconImg('💥','12px')} ${t('weapon_dmg')} ${dmg}+${mod}</button>
         </div>`);
     }
     if (eq.ranged?.name) {
@@ -884,7 +884,7 @@ function _renderWeaponActions(player) {
         const dmg = eq.ranged.damageDice || '1d6';
         rows.push(`<div style="display:flex;gap:4px;">
             <button class="class-ability-btn" onclick="window.rollMacro('${cn}','${escapeHtml(eq.ranged.name)}',${hit})">${iconImg('🏹','12px')} ${escapeHtml(eq.ranged.name)} +${hit}</button>
-            <button class="class-ability-btn" onclick="window.rollDamageMacro('${cn}','${escapeHtml(eq.ranged.name)}','${dmg}',${dexMod})">${iconImg('💥','12px')} ${dmg}+${dexMod}</button>
+            <button class="class-ability-btn" onclick="window.rollDamageMacro('${cn}','${escapeHtml(eq.ranged.name)}','${dmg}',${dexMod})">${iconImg('💥','12px')} ${t('weapon_dmg')} ${dmg}+${dexMod}</button>
         </div>`);
     }
     if (!rows.length) return '';

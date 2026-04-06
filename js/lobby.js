@@ -450,10 +450,23 @@ function _applySmartDefaults() {
     if (spellAtkEl && !spellAtkEl.dataset.manuallyEdited && _SPELL_AB[cls]) {
         spellAtkEl.value = _abMod(document.getElementById(`cb-${_SPELL_AB[cls]}`)?.value) + pb;
     }
+
+    // ── Auto-calculate damage modifiers ──
+    // Melee dmg mod = STR (or DEX if finesse weapon selected — simplified to STR for now)
+    const meleeDmgModEl = document.getElementById('cb-melee-dmg-mod');
+    if (meleeDmgModEl && !meleeDmgModEl.dataset.manuallyEdited) meleeDmgModEl.value = strMod;
+    // Ranged dmg mod = DEX
+    const rangedDmgModEl = document.getElementById('cb-ranged-dmg-mod');
+    if (rangedDmgModEl && !rangedDmgModEl.dataset.manuallyEdited) rangedDmgModEl.value = dexMod2;
+    // Spell save DC = 8 + proficiency + spell ability mod
+    const dcEl = document.getElementById('cb-dc');
+    if (dcEl && !dcEl.dataset.manuallyEdited && _SPELL_AB[cls]) {
+        dcEl.value = 8 + pb + _abMod(document.getElementById(`cb-${_SPELL_AB[cls]}`)?.value);
+    }
 }
 
 // Prevent auto-overwrite when user manually edits these fields
-['cb-init','cb-pp','cb-darkvision','cb-speed','cb-melee','cb-ranged','cb-spell-atk','cb-languages','cb-resistances'].forEach(id => {
+['cb-init','cb-pp','cb-darkvision','cb-speed','cb-melee','cb-ranged','cb-spell-atk','cb-melee-dmg-mod','cb-ranged-dmg-mod','cb-dc','cb-languages','cb-resistances'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', function () {
         this.dataset.manuallyEdited = '1';
         const badge = document.getElementById(`${id}-auto-badge`);

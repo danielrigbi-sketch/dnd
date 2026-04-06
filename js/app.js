@@ -3508,5 +3508,25 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById(id)?.addEventListener('input', _dmScheduleNoteSave);
         document.getElementById(id)?.addEventListener('change', _dmScheduleNoteSave);
     });
+
+    // ── Make action popup draggable via header ────────────────────────
+    const popupHeader = document.getElementById('action-popup-header');
+    const popup = document.getElementById('action-popup');
+    if (popupHeader && popup) {
+        let _dx = 0, _dy = 0, _dragging = false;
+        popupHeader.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            _dragging = true;
+            _dx = e.clientX - popup.offsetLeft;
+            _dy = e.clientY - popup.offsetTop;
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!_dragging) return;
+            popup.style.left = Math.max(0, e.clientX - _dx) + 'px';
+            popup.style.top  = Math.max(0, e.clientY - _dy) + 'px';
+        });
+        document.addEventListener('mouseup', () => { _dragging = false; });
+    }
 });
 

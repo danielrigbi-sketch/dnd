@@ -8,6 +8,7 @@ import { rollDice, profBonus } from './combatUtils.js';
 import { statusFlavor } from '../combatFlavor.js';
 import { getResolved } from './charEngine.js';
 import { iconImg } from '../iconMap.js';
+import { t } from '../i18n.js';
 
 // ── Wild Magic Surge Table (20-entry simplified) ──────────────────────────────
 export const WILD_MAGIC_SURGES = [
@@ -108,12 +109,12 @@ export function getSelfActions(player) {
       const hitBonus = pb + mod;
       const dmg = eq.mainHand.damageDice || '1d6';
       actions.push({
-        label: `${iconImg('⚔️','14px')} ${eq.mainHand.name} — Hit +${hitBonus}`,
+        label: `${iconImg('⚔️','14px')} ${eq.mainHand.name} — ${t('weapon_hit')} +${hitBonus}`,
         cls: 'attack', available: true,
         fn: (cn) => window.rollMacro?.(cn, eq.mainHand.name, hitBonus)
       });
       actions.push({
-        label: `${iconImg('💥','14px')} ${eq.mainHand.name} — Dmg ${dmg}+${mod}`,
+        label: `${iconImg('💥','14px')} ${eq.mainHand.name} — ${t('weapon_dmg')} ${dmg}+${mod}`,
         cls: 'attack damage', available: true,
         fn: (cn) => window.rollDamageMacro?.(cn, eq.mainHand.name, dmg, mod)
       });
@@ -122,12 +123,12 @@ export function getSelfActions(player) {
       const hitBonus = pb + dexMod;
       const dmg = eq.ranged.damageDice || '1d6';
       actions.push({
-        label: `${iconImg('🏹','14px')} ${eq.ranged.name} — Hit +${hitBonus}`,
+        label: `${iconImg('🏹','14px')} ${eq.ranged.name} — ${t('weapon_hit')} +${hitBonus}`,
         cls: 'attack', available: true,
         fn: (cn) => window.rollMacro?.(cn, eq.ranged.name, hitBonus)
       });
       actions.push({
-        label: `${iconImg('💥','14px')} ${eq.ranged.name} — Dmg ${dmg}+${dexMod}`,
+        label: `${iconImg('💥','14px')} ${eq.ranged.name} — ${t('weapon_dmg')} ${dmg}+${dexMod}`,
         cls: 'attack damage', available: true,
         fn: (cn) => window.rollDamageMacro?.(cn, eq.ranged.name, dmg, dexMod)
       });
@@ -138,12 +139,12 @@ export function getSelfActions(player) {
       const hitBonus = pb + mod;
       const dmg = eq.offHand.damageDice || '1d6';
       actions.push({
-        label: `${iconImg('🗡️','14px')} ${eq.offHand.name} (off) — Hit +${hitBonus}`,
+        label: `${iconImg('🗡️','14px')} ${eq.offHand.name} (${t('weapon_off')}) — ${t('weapon_hit')} +${hitBonus}`,
         cls: 'attack bonus', available: true,
         fn: (cn) => window.rollMacro?.(cn, eq.offHand.name, hitBonus)
       });
       actions.push({
-        label: `${iconImg('💥','14px')} ${eq.offHand.name} (off) — Dmg ${dmg}+${mod}`,
+        label: `${iconImg('💥','14px')} ${eq.offHand.name} (${t('weapon_off')}) — ${t('weapon_dmg')} ${dmg}+${mod}`,
         cls: 'attack damage bonus', available: true,
         fn: (cn) => window.rollDamageMacro?.(cn, eq.offHand.name, dmg, mod)
       });
