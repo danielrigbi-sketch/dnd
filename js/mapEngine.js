@@ -724,13 +724,19 @@ export class MapEngine {
     const mW = (mapW ?? MAP_W_DEFAULT) * pps * this.vs;
     const mH = (mapH ?? MAP_H_DEFAULT) * pps * this.vs;
     const oxS = ox * this.vs, oyS = oy * this.vs;
-    // Allow panning so the map edge can reach just inside the usable (non-overlay) area
+    const usableW = W - ins.left - ins.right;
+    const usableH = H - ins.top  - ins.bottom;
+
     const vxMax = -oxS + ins.left;
     const vxMin = (W - ins.right) - oxS - mW;
+    // If map fits within viewport on this axis → center; otherwise → clamp to edges
+    this.vx = (mW < usableW) ? ins.left + (usableW - mW) / 2 - oxS
+                              : Math.min(vxMax, Math.max(vxMin, this.vx));
+
     const vyMax = -oyS + ins.top;
     const vyMin = (H - ins.bottom) - oyS - mH;
-    this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
-    this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
+    this.vy = (mH < usableH) ? ins.top + (usableH - mH) / 2 - oyS
+                              : Math.min(vyMax, Math.max(vyMin, this.vy));
   }
 
   /** Pan the map to center on a specific token. */

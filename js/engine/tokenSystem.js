@@ -370,7 +370,9 @@ export class TokenSystem {
       usableW / Math.max(1, (mapW ?? 30) * pps),
       usableH / Math.max(1, (mapH ?? 20) * pps)
     );
-    const ns = Math.min(4, Math.max(vsMin, eng.vs * delta));
+    const safeVsMin = (isFinite(vsMin) && vsMin > 0) ? vsMin : 0.2;
+    const ns = Math.min(4, Math.max(safeVsMin, eng.vs * delta));
+    if (!isFinite(ns) || ns <= 0) return; // guard against NaN/0
     eng.vx = sx - (sx - eng.vx) * (ns / eng.vs);
     eng.vy = sy - (sy - eng.vy) * (ns / eng.vs);
     eng.vs = ns;
