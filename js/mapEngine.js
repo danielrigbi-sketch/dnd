@@ -308,15 +308,7 @@ export class MapEngine {
 
     ctx.restore();
 
-    // DEBUG: zoom info overlay (TEMP — remove after debugging)
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(10, 10, 340, 22);
-    ctx.fillStyle = '#0f0';
-    ctx.font = '13px monospace';
-    const { mapW: _mw, mapH: _mh, pps: _pp } = this.S.cfg;
-    ctx.fillText(`vs=${this.vs.toFixed(3)} vx=${this.vx.toFixed(0)} vy=${this.vy.toFixed(0)} map=${_mw}x${_mh} pps=${_pp}`, 14, 26);
-    ctx.restore();
+    // (debug overlay removed)
 
     // Sync video iframe transform to match canvas world transform (runs in screen space)
     if (this._video?.isActive()) {
@@ -726,7 +718,8 @@ export class MapEngine {
   }
 
   /** Clamp vx/vy so the map never slides fully outside the usable (non-overlay) area.
-   *  Insets allow the edge of the map to reach the inner edge of the overlay. */
+   *  Insets allow the edge of the map to reach the inner edge of the overlay.
+   *  When map fits inside viewport on an axis, skip clamping (let zoom formula position freely). */
   _clampPan() {
     const ins = this._insets;
     const W = this.cv.width, H = this.cv.height;
@@ -734,17 +727,21 @@ export class MapEngine {
     const mW = (mapW ?? MAP_W_DEFAULT) * pps * this.vs;
     const mH = (mapH ?? MAP_H_DEFAULT) * pps * this.vs;
     const oxS = ox * this.vs, oyS = oy * this.vs;
+    const usableW = W - ins.left - ins.right;
+    const usableH = H - ins.top  - ins.bottom;
 
-    let vxMax = -oxS + ins.left;
-    let vxMin = (W - ins.right) - oxS - mW;
-    // When map fits inside viewport, bounds invert — swap so clamp still works
-    if (vxMin > vxMax) { const t = vxMin; vxMin = vxMax; vxMax = t; }
-    this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
+    // Only clamp when the map is larger than the usable viewport
+    if (mW > usableW) {
+      const vxMax = -oxS + ins.left;
+      const vxMin = (W - ins.right) - oxS - mW;
+      this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
+    }
 
-    let vyMax = -oyS + ins.top;
-    let vyMin = (H - ins.bottom) - oyS - mH;
-    if (vyMin > vyMax) { const t = vyMin; vyMin = vyMax; vyMax = t; }
-    this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
+    if (mH > usableH) {
+      const vyMax = -oyS + ins.top;
+      const vyMin = (H - ins.bottom) - oyS - mH;
+      this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
+    }
   }
 
   /** Pan the map to center on a specific token. */
