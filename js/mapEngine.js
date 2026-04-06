@@ -812,5 +812,30 @@ export class MapEngine {
   cancelPlacing()  { this.L.placing = null; this._dirty(); }
   resize(w, h)     { this.cv.width = w; this.cv.height = h; this.fw.width = w; this.fw.height = h; this._dirty(); }
 
+  /** Zoom by a multiplier, anchored to the center of the usable viewport.
+   *  @param {number} factor — >1 zooms in, <1 zooms out */
+  zoomBy(factor) {
+    const ins = this._insets;
+    const W = this.cv.width, H = this.cv.height;
+    const { mapW, mapH, pps } = this.S.cfg;
+    const usableW = Math.max(1, W - ins.left - ins.right);
+    const usableH = Math.max(1, H - ins.top  - ins.bottom);
+    const vsMin = Math.max(
+      usableW / Math.max(1, (mapW ?? MAP_W_DEFAULT) * pps),
+      usableH / Math.max(1, (mapH ?? MAP_H_DEFAULT) * pps)
+    );
+    const ns = Math.min(4, Math.max(vsMin, this.vs * factor));
+    if (Math.abs(ns - this.vs) < 0.0001) return;
+    // Anchor to center of usable viewport
+    const cx = ins.left + usableW / 2;
+    const cy = ins.top  + usableH / 2;
+    const ratio = ns / this.vs;
+    this.vx = cx - (cx - this.vx) * ratio;
+    this.vy = cy - (cy - this.vy) * ratio;
+    this.vs = ns;
+    this._clampPan();
+    this._dirty();
+  }
+
   _updateDashTokenList() { this.tokens.updateDashTokenList(); }
 }

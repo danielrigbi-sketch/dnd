@@ -2169,6 +2169,9 @@ function initMap() {
     // Forward ui:toast bus events to showToast
     mapEngine.bus.on('ui:toast', ({ msg, type }) => showToast(msg, type || 'info'));
 
+    // ── Floating zoom controls ───────────────────────────────────────
+    _createZoomControls(container, mapEngine);
+
     // ── Opportunity Attack detection (3B) ──────────────────────────────
     mapEngine.bus.on('token:moved', ({ cName: moverCName, gx, gy, prevGx, prevGy }) => {
       if (userRole !== 'dm') return;
@@ -3440,3 +3443,35 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById(id)?.addEventListener('change', _dmScheduleNoteSave);
     });
 });
+
+// ── Floating Zoom Controls ───────────────────────────────────────────
+function _createZoomControls(container, eng) {
+    // Remove old controls if they exist (e.g., re-init)
+    container.querySelector('.zoom-controls')?.remove();
+
+    const wrap = document.createElement('div');
+    wrap.className = 'zoom-controls';
+
+    const btnIn = document.createElement('button');
+    btnIn.className = 'zoom-btn';
+    btnIn.textContent = '+';
+    btnIn.title = 'Zoom In';
+    btnIn.addEventListener('click', () => eng.zoomBy(1.25));
+
+    const btnFit = document.createElement('button');
+    btnFit.className = 'zoom-btn zoom-btn-fit';
+    btnFit.textContent = '⊡';
+    btnFit.title = 'Fit to Screen';
+    btnFit.addEventListener('click', () => eng.fitToView());
+
+    const btnOut = document.createElement('button');
+    btnOut.className = 'zoom-btn';
+    btnOut.textContent = '−';
+    btnOut.title = 'Zoom Out';
+    btnOut.addEventListener('click', () => eng.zoomBy(0.8));
+
+    wrap.appendChild(btnIn);
+    wrap.appendChild(btnFit);
+    wrap.appendChild(btnOut);
+    container.appendChild(wrap);
+}

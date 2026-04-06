@@ -357,26 +357,8 @@ export class TokenSystem {
 
   _mw(e) {
     e.preventDefault();
-    const { sx, sy } = this._cp(e);
-    const delta = e.deltaY < 0 ? 1.1 : 0.91;
-    const eng = this.e;
-    const { mapW = 30, mapH = 20, pps } = eng.S.cfg;
-    const ins = eng._insets || { left: 0, top: 0, right: 0, bottom: 0 };
-    const usableW = Math.max(1, eng.cv.width  - ins.left - ins.right);
-    const usableH = Math.max(1, eng.cv.height - ins.top  - ins.bottom);
-    const vsMin = Math.max(
-      usableW / Math.max(1, (mapW ?? 30) * pps),
-      usableH / Math.max(1, (mapH ?? 20) * pps)
-    );
-    const ns = Math.min(4, Math.max(vsMin, eng.vs * delta));
-    // If zoom didn't change (already at min/max), skip position recalc
-    if (ns === eng.vs) return;
-    const ratio = ns / eng.vs;
-    eng.vx = sx - (sx - eng.vx) * ratio;
-    eng.vy = sy - (sy - eng.vy) * ratio;
-    eng.vs = ns;
-    eng._clampPan();
-    eng._dirty();
+    const factor = e.deltaY < 0 ? 1.1 : 0.91;
+    this.e.zoomBy(factor);
   }
 
   _ts(e) { e.preventDefault(); this._md({ ...e, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, button: 0 }); }
