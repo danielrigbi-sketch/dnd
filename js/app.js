@@ -14,6 +14,12 @@ window.addEventListener('error', (e) => {
     console.error('[ParaDice] Runtime error:', e.message, e.filename, e.lineno);
 });
 
+// Prevent browser zoom (Ctrl+scroll / Ctrl+plus/minus) — map has its own zoom
+document.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) e.preventDefault();
+});
+
 import { initDiceEngine, updateDiceColor, roll3DDice } from "./diceEngine.js";
 import { getFlavorText } from "./messages.js";
 import { unlockAudio, playRollSound, stopAllSounds, playStartRollSound, playHealSound, playDamageSound, playYourTurnSound } from "./audio.js";

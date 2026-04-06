@@ -5,6 +5,7 @@
 #map-canvas-container {
     position: absolute; inset: 0; z-index: 0;
     pointer-events: none; transition: opacity 0.4s;
+    touch-action: none;  /* prevent browser pinch-zoom on map */
 }
 #map-canvas-container.map-bg-hidden { opacity: 0; pointer-events: none; }
 #map-canvas-container.map-bg-active { opacity: 1; pointer-events: auto; }
