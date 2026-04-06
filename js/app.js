@@ -2169,8 +2169,9 @@ function initMap() {
     // Forward ui:toast bus events to showToast
     mapEngine.bus.on('ui:toast', ({ msg, type }) => showToast(msg, type || 'info'));
 
-    // ── Floating zoom controls ───────────────────────────────────────
-    _createZoomControls(container, mapEngine);
+    // ── Floating zoom controls (attached to dice-arena, not map-container, to avoid pointer-events:none) ──
+    const arena = document.getElementById('dice-arena');
+    if (arena) _createZoomControls(arena, mapEngine);
 
     // ── Opportunity Attack detection (3B) ──────────────────────────────
     mapEngine.bus.on('token:moved', ({ cName: moverCName, gx, gy, prevGx, prevGy }) => {
