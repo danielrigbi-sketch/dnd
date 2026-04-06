@@ -724,12 +724,16 @@ export class MapEngine {
     const mW = (mapW ?? MAP_W_DEFAULT) * pps * this.vs;
     const mH = (mapH ?? MAP_H_DEFAULT) * pps * this.vs;
     const oxS = ox * this.vs, oyS = oy * this.vs;
-    // Allow panning so the map edge can reach just inside the usable (non-overlay) area
-    const vxMax = -oxS + ins.left;
-    const vxMin = (W - ins.right) - oxS - mW;
-    const vyMax = -oyS + ins.top;
-    const vyMin = (H - ins.bottom) - oyS - mH;
+
+    let vxMax = -oxS + ins.left;
+    let vxMin = (W - ins.right) - oxS - mW;
+    // When map fits inside viewport, bounds invert — swap so clamp still works
+    if (vxMin > vxMax) { const t = vxMin; vxMin = vxMax; vxMax = t; }
     this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
+
+    let vyMax = -oyS + ins.top;
+    let vyMin = (H - ins.bottom) - oyS - mH;
+    if (vyMin > vyMax) { const t = vyMin; vyMin = vyMax; vyMax = t; }
     this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
   }
 
