@@ -216,9 +216,9 @@ export class FowSystem {
     const cols = Math.max(1, Math.floor(fit.w / pps));
     const rows = Math.max(1, Math.floor(fit.h / pps));
 
-    // Keep mapW/mapH in sync
-    e.S.cfg.mapW = cols;
-    e.S.cfg.mapH = rows;
+    // Store computed phantom dims locally (not in S.cfg — avoid render-loop mutation)
+    e.L._phantomCols = cols;
+    e.L._phantomRows = rows;
 
     // Tint over image
     ctx.fillStyle = 'rgba(0,0,0,0.18)';

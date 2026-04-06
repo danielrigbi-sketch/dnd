@@ -23,7 +23,13 @@ window.toggleCardExpand = (name) => {
         const btnObj = document.getElementById(`expand-btn-${name}`);
         if (detailsObj) detailsObj.classList.add('open');
         if (btnObj) btnObj.classList.add('open');
+        // Highlight token on map
+        window._mapEng?.pixi?.highlightToken(name);
     }
+};
+// Double-click tracker item → pan map to that token
+window.panToToken = (name) => {
+    window._mapEng?.panToToken?.(name);
 };
 
 export function updateModeUI(activeMode) {
@@ -188,6 +194,8 @@ window.openCharPanel = function(name) {
     panel.classList.remove('char-quick-panel--hidden');
     panel.classList.add('char-quick-panel--open');
     _openCharPanelName = name;
+    // Highlight token on map when card is opened
+    window._mapEng?.pixi?.highlightToken(name);
     document.querySelectorAll('.portrait-slot').forEach(el => el.classList.remove('portrait-slot--selected'));
     const slot = document.querySelector(`.portrait-slot[onclick*="${CSS.escape(name)}"]`);
     if (slot) slot.classList.add('portrait-slot--selected');
@@ -236,8 +244,16 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
     const activeCombatantName = (activeTurnIndex !== null && sortedCombatants[activeTurnIndex])
         ? sortedCombatants[activeTurnIndex].name : null;
 
-    items.sort((a, b) => (b.score || 0) - (a.score || 0)).forEach((i, index) => {
+    // Sort: DM always first, then by initiative score descending
+    items.sort((a, b) => {
+        if (a.userRole === 'dm') return -1;
+        if (b.userRole === 'dm') return 1;
+        return (b.score || 0) - (a.score || 0);
+    });
+    let combatPos = 0;
+    items.forEach((i, index) => {
         if (i.isHidden && !isDM && i.name !== myCName) return;
+        if (i.score > 0 && i.userRole !== 'dm') combatPos++;
 
         const isActiveTurn = (i.name === activeCombatantName);
         const div = document.createElement('div');
@@ -290,6 +306,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             const deleteBtn = isDM ? `<button onclick="window.removeNPC('${escapeHtml(i.name)}')" style="background:none; border:none; color:#ff7675; cursor:pointer; font-size:16px; padding:0 3px;">${iconImg('🗑️','16px')}</button>` : '';
             const visibilityBtn = isDM ? `<button onclick="window.toggleVisibility('${escapeHtml(i.name)}', ${!!i.isHidden})" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0 3px;">${i.isHidden ? iconImg('🙈','16px') : iconImg('👁️','16px')}</button>` : '';
             const impersonateBtn = isDM ? `<button onclick="window.impersonate('${escapeHtml(i.name)}')" style="background:none; border:none; color:#9b59b6; cursor:pointer; font-size:16px; padding:0 3px;">${iconImg('🎭','16px')}</button>` : '';
+            const editNpcBtn = (isDM && isNPC) ? `<button onclick="window.editNPC('${escapeHtml(i.name)}')" title="Edit" style="background:none;border:none;color:#f39c12;cursor:pointer;font-size:16px;padding:0 3px;">${iconImg('✎','16px')}</button>` : '';
+            const dupeNpcBtn = (isDM && isNPC) ? `<button onclick="window.duplicateNPC('${escapeHtml(i.name)}')" title="Duplicate" style="background:none;border:none;color:#3498db;cursor:pointer;font-size:16px;padding:0 3px;">${iconImg('📋','16px')}</button>` : '';
             // Only show status dot in campaign mode (when online field exists)
             const offlineDot = i.online === false ? `<span class="offline-dot" title="לא מחובר"></span>`
                              : i.online === true  ? `<span class="online-dot"  title="מחובר"></span>`
@@ -306,8 +324,10 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             // Build custom actions buttons for the card
             let customAttacksHTML = '';
             const actions = i.customActions || (i.customAttacks?.map(a => ({
-                name: a.name, hitType: 'melee', hitMod: a.bonus || 0,
-                damageDice: (a.dmg||'').replace(/[+\-]\d+$/, ''), damageMult: 1, icon: iconImg('⚔️','14px')
+                name: a.name, hitType: a.hitType || 'melee', hitMod: a.bonus || 0,
+                damageDice: (a.dmg||'').replace(/[+\-]\d+$/, ''), damageMult: 1,
+                icon: a.hitType === 'always' ? iconImg('🎯','14px') : iconImg('⚔️','14px'),
+                dc: a.dc || 0
             })) || []);
             if (actions.length > 0) {
                 const hitIcons = { melee:iconImg('⚔️','14px'), ranged:iconImg('🏹','14px'), spell:iconImg('✨','14px'), always:iconImg('🎯','14px'), none:'—' };
@@ -319,7 +339,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                     const icon = atk.icon || hitIcons[atk.hitType||'melee'] || iconImg('⚔️','14px');
                     const hitBtn = atk.hitType === 'none' ? ''
                         : atk.hitType === 'always'
-                            ? `<span style="font-size:10px; color:#7aff8a; padding:3px 8px; background:rgba(0,200,80,0.12); border:1px solid rgba(0,200,80,0.3); border-radius:5px;">${iconImg('🎯','14px')} Auto-hit</span>`
+                            ? `<span style="font-size:10px; color:#7aff8a; padding:3px 8px; background:rgba(0,200,80,0.12); border:1px solid rgba(0,200,80,0.3); border-radius:5px;">${iconImg('🎯','14px')} ${atk.dc ? `DC ${atk.dc}` : 'Auto-hit'} ${escapeHtml(atk.name)}</span>`
                             : `<button class="macro-btn melee" onclick="window.rollMacro('${escapeHtml(i.name)}', '${escapeHtml(atk.name)}', ${parseInt(atk.hitMod)||0})">${icon} ${escapeHtml(atk.name)}</button>`;
                     const dmgBtn = dmgStr
                         ? `<button class="macro-btn" style="background:rgba(192,57,43,0.4); border-color:#c0392b;" onclick="window.rollDamageMacro('${escapeHtml(i.name)}', '${escapeHtml(atk.name)}', '${dmgStr}', 0)">${iconImg('🩸','14px')} ${dmgStr}</button>`
@@ -380,7 +400,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                 <div style="margin-top:8px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                         <span style="font-size:10px; font-weight:bold; color:${hpPercent > 30 ? '#2ecc71' : '#ff7675'}">
-                            ${iconImg('❤️','14px')} ${i.hp}/${resolvedMaxHp}${resolved.tempHp > 0 ? ` <span style="color:#3498db; font-size:9px;">+${resolved.tempHp} tmp</span>` : ''}
+                            ${iconImg('❤️','14px')} ${i.hp}/${resolvedMaxHp}${resolved.tempHp > 0 ? ` <span style="color:#3498db; font-size:9px;">+${resolved.tempHp} tmp</span>` : ''}${isDM ? `<button onclick="window.editMaxHp('${escapeHtml(i.name)}',${resolvedMaxHp||0})" title="Edit Max HP" style="background:none;border:none;color:#888;cursor:pointer;font-size:9px;padding:0 2px;vertical-align:middle;">✎</button>` : ''}
                         </span>
                         ${(isDM||isOwner) ? `
                             <div class="hp-controls">
@@ -406,7 +426,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                     <div style="flex:1; min-width:0;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:4px;">
                             <span class="char-name-label" style="font-weight:900; color:white; font-size:1.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                ${i.score > 0 ? (index + 1) + '. ' : ''}${i.name}${isOffline ? ' <span style="color:#777;font-size:10px;font-weight:normal;">(לא מחובר)</span>' : ''}
+                                ${i.score > 0 && i.userRole !== 'dm' ? combatPos + '. ' : ''}${i.name}${isOffline ? ' <span style="color:#777;font-size:10px;font-weight:normal;">(לא מחובר)</span>' : ''}
                             </span>
                             <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
                                 ${activeBadge}${concBadge}${critBadge}
@@ -416,7 +436,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
                             <div style="font-size:0.7em; color:#f3e5ab; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${subtext}</div>
-                            <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">${impersonateBtn}${visibilityBtn}${deleteBtn}</div>
+                            <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">${editNpcBtn}${dupeNpcBtn}${impersonateBtn}${visibilityBtn}${deleteBtn}</div>
                         </div>
                     </div>
                 </div>
@@ -526,6 +546,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             <div style="display:flex; flex-direction:column; gap:4px;">
                                 ${customAttacksHTML}
                             </div>
+                            ${_renderMonsterActions(i, isDM)}
                         </div>
                         ${i.spellSlots && Object.keys(i.spellSlots.max || {}).length > 0 ? `
                         <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1);">
@@ -552,12 +573,18 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                 }).join('')}
                             </div>
                             ${canViewStats ? `
-                                <button onclick="window.longRest('${escapeHtml(i.name)}')" class="long-rest-btn">${iconImg('🌙','14px')} ${t('long_rest')}</button>
+                                <div style="display:flex;gap:4px;margin-top:4px;">
+                                    <button onclick="window.longRest('${escapeHtml(i.name)}')" class="long-rest-btn">${iconImg('🌙','14px')} ${t('long_rest')}</button>
+                                    ${isDM ? `<button onclick="window.editSpellSlots('${escapeHtml(i.name)}')" style="background:rgba(155,89,182,0.15);border:1px solid rgba(155,89,182,0.3);color:#9b59b6;cursor:pointer;font-size:10px;padding:4px 8px;border-radius:5px;">✎ Slots</button>` : ''}
+                                </div>
                             ` : ''}
                         </div>
                         ` : canViewStats ? `
                         <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1);">
-                            ${isDM ? `<button onclick="window.longRest('${escapeHtml(i.name)}')" class="long-rest-btn">${iconImg('🌙','14px')} ${t('long_rest')}</button>` : ''}
+                            <div style="display:flex;gap:4px;">
+                                ${isDM ? `<button onclick="window.longRest('${escapeHtml(i.name)}')" class="long-rest-btn">${iconImg('🌙','14px')} ${t('long_rest')}</button>` : ''}
+                                ${isDM ? `<button onclick="window.editSpellSlots('${escapeHtml(i.name)}')" style="background:rgba(155,89,182,0.15);border:1px solid rgba(155,89,182,0.3);color:#9b59b6;cursor:pointer;font-size:10px;padding:4px 8px;border-radius:5px;">✎ Slots</button>` : ''}
+                            </div>
                         </div>
                         ` : ''}
                         ${(() => {
@@ -586,21 +613,41 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                 </div>
                             </div>`;
                         })()}
-                        ${canViewStats && i.spellbook && Object.keys(i.spellbook).length > 0 ? `
-                        <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(155,89,182,0.3);">
-                            <div style="font-size:10px; color:#9b59b6; font-weight:bold; margin-bottom:6px;">${iconImg('📖','14px')} Spellbook (${Object.keys(i.spellbook).length})</div>
-                            <div style="display:flex; flex-direction:column; gap:3px;">
-                                ${Object.values(i.spellbook).sort((a,b) => (a.level||0)-(b.level||0)).map(sp => `
-                                    <div style="display:flex; align-items:center; gap:5px; padding:3px 5px; background:rgba(155,89,182,0.08); border-radius:5px; border:1px solid rgba(155,89,182,0.2);">
-                                        <span style="font-size:10px; color:#9b59b6; font-weight:bold; min-width:14px;">${sp.level === 0 ? 'C' : sp.level}</span>
-                                        <span style="font-size:11px; color:white; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${sp.name}">${sp.name}</span>
-                                        <span style="font-size:9px; color:#888;">${sp.range || ''}</span>
-                                        ${(isDM || isOwner) ? `<button onclick="window.removeSpellFromBook('${escapeHtml(i.name)}','${escapeHtml(sp.slug)}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:11px;padding:0 2px;" title="Remove">${iconImg('✕','12px')}</button>` : ''}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        ` : ''}
+                        ${canViewStats ? (() => {
+                            const spells = i.spellbook ? Object.values(i.spellbook) : [];
+                            const hasSpells = spells.length > 0;
+                            const addBtn = (isDM || isOwner) ? `<button onclick="window._spellAddTarget='${escapeHtml(i.name)}';window.openSpellPanel();" style="background:rgba(155,89,182,0.15);border:1px solid rgba(155,89,182,0.3);color:#9b59b6;cursor:pointer;font-size:10px;padding:3px 8px;border-radius:5px;margin-top:4px;">+ ${t('add_spell') || 'Add Spell'}</button>` : '';
+                            if (!hasSpells) return addBtn ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(155,89,182,0.3);"><div style="font-size:10px;color:#9b59b6;font-weight:bold;margin-bottom:4px;">${iconImg('📖','14px')} Spellbook</div><div style="font-size:10px;color:#777;font-style:italic;margin-bottom:4px;">${t('no_spells') || 'No spells yet'}</div>${addBtn}</div>` : '';
+                            return `<div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(155,89,182,0.3);">
+                                <div style="font-size:10px; color:#9b59b6; font-weight:bold; margin-bottom:6px;">${iconImg('📖','14px')} Spellbook (${spells.length})</div>
+                                <div style="display:flex; flex-direction:column; gap:3px;">
+                                    ${spells.sort((a,b) => (a.level||0)-(b.level||0)).map(sp => `
+                                        <div style="display:flex; align-items:center; gap:5px; padding:3px 5px; background:rgba(155,89,182,0.08); border-radius:5px; border:1px solid rgba(155,89,182,0.2);">
+                                            <span style="font-size:10px; color:#9b59b6; font-weight:bold; min-width:14px;">${sp.level === 0 ? 'C' : sp.level}</span>
+                                            <span style="font-size:11px; color:white; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${sp.name}">${t('spell_' + (sp.slug || '').replace(/[^a-z0-9-]/g, '-')) || sp.name}</span>
+                                            <span style="font-size:9px; color:#888;">${sp.range || ''}</span>
+                                            ${(isDM || isOwner) ? `<button onclick="window.removeSpellFromBook('${escapeHtml(i.name)}','${escapeHtml(sp.slug)}')" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:11px;padding:0 2px;" title="Remove">${iconImg('✕','12px')}</button>` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                ${addBtn}
+                            </div>`;
+                        })() : ''}
+                        ${canViewStats && i.equipment ? (() => {
+                            const eq = i.equipment;
+                            const rows = [];
+                            if (eq.armor) rows.push(`<div style="display:flex;align-items:center;gap:5px;padding:3px 5px;background:rgba(52,152,219,0.08);border-radius:5px;border:1px solid rgba(52,152,219,0.15);">${iconImg('🛡️','12px')} <span style="font-size:11px;color:white;flex:1;">${escapeHtml(eq.armor.name || t('card_armor'))}</span><span style="font-size:10px;color:#3498db;">AC ${eq.armor.baseAC || '?'}</span></div>`);
+                            if (eq.shield) rows.push(`<div style="display:flex;align-items:center;gap:5px;padding:3px 5px;background:rgba(52,152,219,0.08);border-radius:5px;border:1px solid rgba(52,152,219,0.15);">${iconImg('🛡️','12px')} <span style="font-size:11px;color:white;flex:1;">${t('card_shield') || 'Shield'}</span><span style="font-size:10px;color:#3498db;">+${eq.shield.acBonus ?? 2}</span></div>`);
+                            if (eq.mainHand) rows.push(`<div style="display:flex;align-items:center;gap:5px;padding:3px 5px;background:rgba(231,76,60,0.08);border-radius:5px;border:1px solid rgba(231,76,60,0.15);">${iconImg('⚔️','12px')} <span style="font-size:11px;color:white;">${escapeHtml(eq.mainHand.name || 'Weapon')}</span></div>`);
+                            if (eq.ranged) rows.push(`<div style="display:flex;align-items:center;gap:5px;padding:3px 5px;background:rgba(231,76,60,0.08);border-radius:5px;border:1px solid rgba(231,76,60,0.15);">${iconImg('🏹','12px')} <span style="font-size:11px;color:white;">${escapeHtml(eq.ranged.name || 'Ranged')}</span></div>`);
+                            if (eq.offHand && !eq.shield) rows.push(`<div style="display:flex;align-items:center;gap:5px;padding:3px 5px;background:rgba(231,76,60,0.08);border-radius:5px;border:1px solid rgba(231,76,60,0.15);">${iconImg('🗡️','12px')} <span style="font-size:11px;color:white;">${escapeHtml(eq.offHand.name || 'Off-hand')}</span></div>`);
+                            if (!rows.length) return '';
+                            return `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(52,152,219,0.3);">
+                                <div style="font-size:10px;color:#3498db;font-weight:bold;margin-bottom:6px;">${iconImg('🎒','14px')} ${t('card_equipment') || 'Equipment'}</div>
+                                <div style="display:flex;flex-direction:column;gap:3px;">${rows.join('')}</div>
+                                ${i.loot ? `<div style="margin-top:4px;font-size:10px;color:#f1c40f;">${iconImg('💰','12px')} ${escapeHtml(String(i.loot))}</div>` : ''}
+                            </div>`;
+                        })() : ''}
                         ${canViewStats && isOwner ? _renderClassAbilities(i) : ''}
                     ` : `
                         <div style="text-align:center; padding:10px 0; color:#888; font-style:italic; font-size:11px;">${t('hidden_data')}</div>
@@ -644,6 +691,14 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
         });
     }
 
+    // Double-click any tracker item → pan map to that token
+    list.querySelectorAll('.tracker-item').forEach(row => {
+        row.addEventListener('dblclick', () => {
+            const cn = row.dataset.cname;
+            if (cn) window.panToToken(cn);
+        });
+    });
+
     // Render portrait gallery from same sorted items
     const sortedItems = items.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
     renderPortraitGallery(sortedItems, isDM, myCName, activeCombatantName);
@@ -653,6 +708,36 @@ window.toggleStatusPicker = (name) => {
     const el = document.getElementById(`status-picker-${name}`);
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
 };
+
+// ── Monster full action lists (Open5e data) ─────────────────────────────────
+function _renderMonsterActions(player, isDM) {
+    if (!isDM) return '';
+    const sections = [
+        { key: 'actions',          label: 'Actions',           color: '#e74c3c' },
+        { key: 'bonusActions',     label: 'Bonus Actions',     color: '#f39c12' },
+        { key: 'reactions',        label: 'Reactions',         color: '#3498db' },
+        { key: 'legendaryActions', label: 'Legendary Actions', color: '#9b59b6' },
+        { key: 'specialAbilities', label: 'Special Abilities', color: '#2ecc71' },
+    ];
+    let html = '';
+    for (const sec of sections) {
+        const list = player[sec.key];
+        if (!list || !list.length) continue;
+        html += `<div style="margin-top:8px;">
+            <div style="font-size:9px;font-weight:bold;color:${sec.color};margin-bottom:3px;cursor:pointer;"
+                 onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+                ${sec.label} (${list.length}) ▾
+            </div>
+            <div style="display:none;font-size:10px;color:#ccc;">
+                ${list.map(a => `<div style="margin-bottom:4px;padding:3px 5px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:2px solid ${sec.color};">
+                    <b style="color:white;">${escapeHtml(a.name)}</b>${a.attack_bonus != null ? ` <span style="color:${sec.color};">+${a.attack_bonus}</span>` : ''}${a.damage_dice ? ` <span style="color:#e67e22;">${a.damage_dice}</span>` : ''}
+                    <div style="color:#999;font-size:9px;margin-top:1px;">${escapeHtml((a.desc || '').slice(0, 150))}${(a.desc || '').length > 150 ? '...' : ''}</div>
+                </div>`).join('')}
+            </div>
+        </div>`;
+    }
+    return html;
+}
 
 // ── Resource pip row helper ───────────────────────────────────────────────────
 function _pipRow(label, current, max, colorClass = '') {

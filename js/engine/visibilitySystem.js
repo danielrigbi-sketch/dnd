@@ -21,7 +21,10 @@ export class VisibilitySystem {
   visionRadius(cn) {
     const pl = this.e.S.players[cn] || {};
     const dvFt = Number(pl.darkvision) || 0;
-    if (dvFt > 0) return Math.ceil(dvFt / FT_PER_SQ);
+    // Scene-wide global darkvision (set in wizard atmosphere step)
+    const globalDv = Number(this.e.S.atmosphere?.globalDarkvision) || 0;
+    const effective = Math.max(dvFt, globalDv);
+    if (effective > 0) return Math.ceil(effective / FT_PER_SQ);
     return Math.ceil(30 / FT_PER_SQ);
   }
 

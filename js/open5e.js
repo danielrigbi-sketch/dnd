@@ -318,9 +318,14 @@ export function open5eToNPC(m) {
 
   // Build customAttacks for the initiative-tracker card macro buttons
   // (one entry per attack action so players see named buttons like "Bite", "Claw")
+  // Also include save-DC actions (breath weapons, etc.) as "always" type
   const customAttacks = (m.actions || [])
-    .filter(a => a.attack_bonus != null && (a.name || '').toLowerCase() !== 'multiattack')
-    .map(a => ({ name: a.name, bonus: a.attack_bonus, dmg: normDmg(a) || '' }));
+    .filter(a => (a.attack_bonus != null || a.desc?.match(/DC\s+\d+/i)) && (a.name || '').toLowerCase() !== 'multiattack')
+    .map(a => {
+      if (a.attack_bonus != null) return { name: a.name, bonus: a.attack_bonus, dmg: normDmg(a) || '' };
+      const dcMatch = a.desc?.match(/DC\s+(\d+)/i);
+      return { name: a.name, bonus: 0, dmg: normDmg(a) || '', hitType: 'always', dc: dcMatch ? parseInt(dcMatch[1]) : 0 };
+    });
 
   // Parse legendaryMax from legendary_desc (e.g. "can take 3 legendary actions")
   const legendaryMax = (() => {

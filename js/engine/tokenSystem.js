@@ -1354,9 +1354,19 @@ export class TokenSystem {
       if (!players[row.dataset.cn]) row.remove();
     });
 
-    desired.forEach(cn => {
+    // Sort: DM first, then by initiative score
+    const sorted = desired.slice().sort((a, b) => {
+      const pa = players[a], pb = players[b];
+      if (pa?.userRole === 'dm') return -1;
+      if (pb?.userRole === 'dm') return 1;
+      return (pb?.score || 0) - (pa?.score || 0);
+    });
+    let initPos = 0;
+    sorted.forEach(cn => {
       const p = players[cn];
       const onMap = !!tokens[cn];
+      const hasInit = (p?.score || 0) > 0;
+      if (hasInit) initPos++;
       let row = list.querySelector(`[data-cn="${CSS.escape(cn)}"]`);
       if (!row) {
         row = document.createElement('div');
@@ -1364,12 +1374,16 @@ export class TokenSystem {
         row.dataset.cn = cn;
         list.appendChild(row);
       }
+      // Re-order DOM to match sorted order
+      list.appendChild(row);
       const prevOnMap = row.dataset.onmap === '1';
       if (prevOnMap === onMap && row.dataset.rendered === '1') return;
       row.dataset.onmap = onMap ? '1' : '0';
       row.dataset.rendered = '1';
+      const initBadge = hasInit ? `<span style="font-size:10px;color:#f1c40f;font-weight:bold;min-width:16px;">${initPos}.</span>` : '';
       row.innerHTML = `
         <img src="${p?.portrait || 'assets/logo.webp'}" style="width:24px;height:24px;border-radius:50%;border:2px solid ${p?.pColor || '#fff'}">
+        ${initBadge}
         <span style="flex:1;font-size:12px;color:white;">${cn}</span>
         ${onMap
           ? `<button onclick="window._mapEng.removeToken('${escapeJSString(cn)}')" class="map-dash-btn" style="width:auto;padding:3px 7px;background:rgba(231,76,60,0.4);border-color:#e74c3c;">✕</button>`

@@ -531,8 +531,11 @@ export function setActiveScene(room, sceneId) {
     set(ref(db, `rooms/${room}/map/activeScene`), sceneId);
 }
 export function saveScene(room, sceneId, data) {
-    set(ref(db, `rooms/${room}/scenes/${sceneId}/meta`), { name: data.name, ts: Date.now() });
-    if (data.config) set(ref(db, `rooms/${room}/scenes/${sceneId}/config`), data.config);
+    // Atomic write — single update prevents multiple onValue triggers
+    const updates = {};
+    updates[`rooms/${room}/scenes/${sceneId}/meta`] = { name: data.name, ts: Date.now() };
+    if (data.config) updates[`rooms/${room}/scenes/${sceneId}/config`] = data.config;
+    update(ref(db), updates);
 }
 export function listenScenes(room, cb) {
     return onValue(ref(db, `rooms/${room}/scenes`), s => cb(s.val()));

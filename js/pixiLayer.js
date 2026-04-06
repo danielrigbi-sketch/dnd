@@ -99,6 +99,14 @@ export class PixiLayer {
     this._ready = false;
   }
 
+  /** Highlight a token with a pulsing cyan ring (auto-clears after 3s). */
+  highlightToken(cn) {
+    this._highlightName = cn;
+    if (this._dirtyFn) this._dirtyFn();
+    clearTimeout(this._hlTimer);
+    this._hlTimer = setTimeout(() => { this._highlightName = null; if (this._dirtyFn) this._dirtyFn(); }, 3000);
+  }
+
   // ── Sync API (called each frame by mapEngine) ──────────────────────
 
   /**
@@ -172,7 +180,22 @@ export class PixiLayer {
       // Bias toward straight-down so label stays below when no neighbours
       fdy += 0.6;
       const len = Math.hypot(fdx, fdy) || 1;
-      _labelOffsets[cn] = { dx: fdx / len, dy: fdy / len };
+      _labelOffsets[cn] = { dx: fdx / len, dy: fdy / len, extra: 0 };
+    }
+
+    // Pass 2b: push overlapping labels further apart
+    const names = Object.keys(tokens);
+    for (let a = 0; a < names.length; a++) {
+      for (let b = a + 1; b < names.length; b++) {
+        const ca = _centres[names[a]], cb = _centres[names[b]];
+        if (!ca || !cb) continue;
+        const dist = Math.hypot(ca.cx - cb.cx, ca.cy - cb.cy);
+        if (dist < pps * 1.5) {
+          // Labels likely overlap — nudge both further out
+          _labelOffsets[names[a]].extra = Math.max(_labelOffsets[names[a]].extra, 12 / vs);
+          _labelOffsets[names[b]].extra = Math.max(_labelOffsets[names[b]].extra, 12 / vs);
+        }
+      }
     }
 
     // Pass 3: create or update each token sprite
@@ -356,7 +379,15 @@ export class PixiLayer {
 
     // ── Glow ring — stroke width is constant screen-pixels ──
     glow.clear();
-    if (isActive) {
+    const isHighlighted = this._highlightName === cn;
+    if (isHighlighted) {
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+      const r = size * 0.46 + 8 / vs;
+      glow.circle(size / 2, size / 2, r)
+          .fill({ color: 0x00e5ff, alpha: 0.15 + pulse * 0.15 });
+      glow.circle(size / 2, size / 2, r)
+          .stroke({ color: 0x00e5ff, alpha: 0.9, width: 4 / vs });
+    } else if (isActive) {
       const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
       const r = size * 0.44 + 6 / vs;
       glow.circle(size / 2, size / 2, r)
@@ -459,13 +490,16 @@ export class PixiLayer {
     }
 
     // ── Name badge — font size and pill are constant screen-pixels ──
-    const label = cn.length > 12 ? cn.slice(0, 11) + '…' : cn;
+    const label = cn.length > 16 ? cn.slice(0, 15) + '…' : cn;
     if (nameText.text !== label) nameText.text = label;
-    // Clamp to half-pixels to minimise PixiJS text re-cache
-    const nameFontSz = Math.round((13 / vs) * 2) / 2;
-    if (Math.abs(nameText.style.fontSize - nameFontSz) > 0.4) nameText.style.fontSize = nameFontSz;
-    // Label placement: disc-edge + constant screen gap
-    const labelRadius = size * 0.5 + 26 / vs;
+    // Use integer font sizes for crisp rendering (avoid sub-pixel blur)
+    const nameFontSz = Math.max(11, Math.round(13 / vs));
+    if (Math.abs(nameText.style.fontSize - nameFontSz) > 0.4) {
+      nameText.style.fontSize = nameFontSz;
+      nameText.style.strokeThickness = Math.max(3, Math.round(4 / vs));
+    }
+    // Label placement: disc-edge + constant screen gap + overlap nudge
+    const labelRadius = size * 0.5 + 26 / vs + (labelOffset.extra || 0);
     const hpNudge     = pl.maxHp ? (10 / vs) : 0;
     const lx = size / 2 + labelOffset.dx * labelRadius;
     const ly = size / 2 + labelOffset.dy * labelRadius + hpNudge;

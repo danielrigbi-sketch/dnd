@@ -199,6 +199,9 @@ export class SceneWizard {
   _syncFromEngine() {
     if (!this._engine) return;
     this._data.config    = { ...this._engine.S.cfg };
+    // Use phantom grid dimensions if available (computed from bg image, not mutated in S.cfg)
+    if (this._engine.L._phantomCols != null) this._data.config.mapW = this._engine.L._phantomCols;
+    if (this._engine.L._phantomRows != null) this._data.config.mapH = this._engine.L._phantomRows;
     this._data.obstacles = { ...this._engine.S.obstacles };
     this._data.triggers  = { ...this._engine.S.triggers };
     this._data.fog       = { ...this._engine.S.fog };
@@ -210,10 +213,10 @@ export class SceneWizard {
 
   // ── Render ────────────────────────────────────────────────────────────
   _render() {
-    const ICONS  = [iconImg('🖼️','16px'),iconImg('🔲','16px'),iconImg('⚔️','16px'),iconImg('🌑','16px'),iconImg('🌩','16px'),iconImg('💾','16px')];
-    const LABELS = ['Image','Grid','World','Fog','Vibe','Save'];
-    const TITLES = ['wiz_t0','wiz_t1','wiz_t2','wiz_t3','wiz_t4','wiz_t5'];
-    const SUBS   = ['wiz_s0','wiz_s1','wiz_s2','wiz_s3','wiz_s4','wiz_s5'];
+    const ICONS  = [iconImg('🖼️','16px'),iconImg('🔲','16px'),iconImg('⚔️','16px'),iconImg('🌩','16px'),iconImg('🌑','16px'),iconImg('💾','16px')];
+    const LABELS = ['Image','Grid','World','Vibe','Fog','Save'];
+    const TITLES = ['wiz_t0','wiz_t1','wiz_t2','wiz_t4','wiz_t3','wiz_t5'];
+    const SUBS   = ['wiz_s0','wiz_s1','wiz_s2','wiz_s4','wiz_s3','wiz_s5'];
 
     // SB-2: Update pill bar instead of dots
     document.querySelectorAll('.wiz-pill').forEach((pill, i) => {
@@ -235,7 +238,7 @@ export class SceneWizard {
     this._wireStep();
 
     // Engine mode per step
-    const modes = ['view', 'phantom', 'obstacle', 'wizFog', 'view', 'view'];
+    const modes = ['view', 'phantom', 'obstacle', 'view', 'wizFog', 'view'];
     this._engine?.setMode(modes[this._step] || 'view');
     // E1-B: auto-fetch when step 2 is rendered and no results yet
     if (this._step === 2 && this._o5eResults === null && !this._o5eLoading) {
@@ -497,20 +500,8 @@ export class SceneWizard {
           </div>`;
       }
 
-      // ──── Step 3: Fog of War ──────────────────────────────────────────
+      // ──── Step 3: Atmosphere (FOW toggle + vision rules — set BEFORE painting fog) ──
       case 3: return `
-        <div class="wiz-section">${t('wiz_l3_brush')}</div>
-        <div class="wiz-tool-grid">
-          <button class="wiz-tool-btn" id="wt-reveal" data-mode="wizFog">🌟 ${t('wiz_l3_reveal')}</button>
-          <button class="wiz-tool-btn active" id="wt-fogHide" data-mode="wizFogHide">🌑 ${t('wiz_l3_hide')}</button>
-        </div>
-        <div class="wiz-section" style="margin-top:14px;">${t('wiz_l3_quick')}</div>
-        <button id="wiz-reveal-all" class="wiz-btn gold" style="margin-top:5px;">🌅 ${t('wiz_l3_reveal_all')}</button>
-        <button id="wiz-hide-all"   class="wiz-btn danger" style="margin-top:5px;">🌑 ${t('wiz_l3_hide_all')}</button>
-        <div class="wiz-tip" style="margin-top:12px;">${t('wiz_l3_tip')}</div>`;
-
-      // ──── Step 4: Atmosphere ──────────────────────────────────────────
-      case 4: return `
         <div class="wiz-section">${t('wiz_l4_weather')}</div>
         <select id="wiz-weather" class="wiz-select">
           <option value="none"       ${atm.weather==='none'?'selected':''}>☀️ ${t('wiz_w_clear')}</option>
@@ -547,6 +538,18 @@ export class SceneWizard {
         </label>
         <div class="wiz-tip" style="margin-top:6px;">Off by default — tokens can freely share spaces. Enable for strict D&amp;D 5e positioning where creatures block passage.</div>`;
 
+      // ──── Step 4: Fog of War (paint fog after enabling it in step 3) ──
+      case 4: return `
+        <div class="wiz-section">${t('wiz_l3_brush')}</div>
+        <div class="wiz-tool-grid">
+          <button class="wiz-tool-btn" id="wt-reveal" data-mode="wizFog">🌟 ${t('wiz_l3_reveal')}</button>
+          <button class="wiz-tool-btn active" id="wt-fogHide" data-mode="wizFogHide">🌑 ${t('wiz_l3_hide')}</button>
+        </div>
+        <div class="wiz-section" style="margin-top:14px;">${t('wiz_l3_quick')}</div>
+        <button id="wiz-reveal-all" class="wiz-btn gold" style="margin-top:5px;">🌅 ${t('wiz_l3_reveal_all')}</button>
+        <button id="wiz-hide-all"   class="wiz-btn danger" style="margin-top:5px;">🌑 ${t('wiz_l3_hide_all')}</button>
+        <div class="wiz-tip" style="margin-top:12px;">${t('wiz_l3_tip')}</div>`;
+
       // ──── Step 5: Save ────────────────────────────────────────────────
       case 5: return `
         <div class="wiz-section">${t('wiz_l5_name')}</div>
@@ -581,8 +584,8 @@ export class SceneWizard {
       { icon:'💡', title:'Tips', body: t('wiz_tip0') },
       { icon:'🎯', title:'Align Grid', body: t('wiz_tip1') },
       { icon:'🗺', title:'Build World', body: t('wiz_tip2') },
-      { icon:'👁', title:'Fog of War', body: t('wiz_tip3') },
       { icon:iconImg('🌩','16px'), title:'Atmosphere', body: t('wiz_tip4') },
+      { icon:'👁', title:'Fog of War', body: t('wiz_tip3') },
       { icon:'💾', title:'Ready to Save', body: t('wiz_tip5') },
     ];
     const c = cards[this._step] || cards[0];
@@ -913,20 +916,7 @@ export class SceneWizard {
       });
     });
 
-    // ── Step 3: Fog ───────────────────────────────────────────────────────
-    document.getElementById('wiz-reveal-all')?.addEventListener('click', () => {
-      const { mapW:mw, mapH:mh } = cfg;
-      const fog = {};
-      for (let x=0; x<(mw||30); x++) for (let y=0; y<(mh||20); y++) fog[`${x}_${y}`] = true;
-      this._data.fog = fog;
-      if (eng) { eng.S.fog = { ...fog }; eng._dirty(); }
-    });
-    document.getElementById('wiz-hide-all')?.addEventListener('click', () => {
-      this._data.fog = {};
-      if (eng) { eng.S.fog = {}; eng._dirty(); }
-    });
-
-    // ── Step 4: Atmosphere (live preview) ────────────────────────────────
+    // ── Step 3: Atmosphere (live preview) ──────────────────────────────
     document.getElementById('wiz-weather')?.addEventListener('change', e => {
       atm.weather = e.target.value;
       eng?.setAtmosphere({ ...atm });
@@ -947,6 +937,19 @@ export class SceneWizard {
     document.getElementById('wiz-collision-enabled')?.addEventListener('change', e => {
       this._data.config = { ...this._data.config, collisionEnabled: e.target.checked };
       if (eng) { eng.S.cfg.collisionEnabled = e.target.checked; }
+    });
+
+    // ── Step 4: Fog ─────────────────────────────────────────────────────
+    document.getElementById('wiz-reveal-all')?.addEventListener('click', () => {
+      const { mapW:mw, mapH:mh } = cfg;
+      const fog = {};
+      for (let x=0; x<(mw??30); x++) for (let y=0; y<(mh??20); y++) fog[`${x}_${y}`] = true;
+      this._data.fog = fog;
+      if (eng) { eng.S.fog = { ...fog }; eng._dirty(); }
+    });
+    document.getElementById('wiz-hide-all')?.addEventListener('click', () => {
+      this._data.fog = {};
+      if (eng) { eng.S.fog = {}; eng._dirty(); }
     });
 
     // ── Step 5: Save ──────────────────────────────────────────────────────

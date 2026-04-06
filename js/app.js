@@ -149,8 +149,9 @@ window.restoreSpellSlot = async (targetCName, level) => {
 };
 
 window.onSpellAdd = (spell) => {
-    const target = cName || (userRole === 'dm' && activeRoller?.cName);
+    const target = window._spellAddTarget || cName || (userRole === 'dm' && activeRoller?.cName);
     if (!target) return;
+    window._spellAddTarget = null; // one-shot override
     db.addSpellToBook(target, {
         slug:         spell.slug || spell.name,
         name:         spell.name,
@@ -169,6 +170,31 @@ window.onSpellAdd = (spell) => {
 
 window.removeSpellFromBook = (targetCName, slug) => {
     db.removeSpellFromBook(targetCName, slug);
+};
+
+// ── DM Spell Slot Editor ─────────────────────────────────────────────────────
+window.editSpellSlots = async (targetCName) => {
+    const p = await db.getPlayerData(targetCName);
+    const current = p?.spellSlots?.max || {};
+    const input = prompt(
+        'Set max spell slots per level (1-9):\n' +
+        'Format: level:max, level:max\n' +
+        'Example: 1:4, 2:3, 3:2\n\n' +
+        'Current: ' + (Object.entries(current).length
+            ? Object.entries(current).sort(([a],[b])=>a-b).map(([l,m])=>`L${l}:${m}`).join(', ')
+            : 'none'),
+        Object.entries(current).sort(([a],[b])=>a-b).map(([l,m])=>`${l}:${m}`).join(', ')
+    );
+    if (!input) return;
+    const max = {};
+    input.split(',').forEach(part => {
+        const [lv, slots] = part.trim().split(':').map(v => parseInt(v.trim()));
+        if (lv >= 1 && lv <= 9 && slots > 0) max[lv] = slots;
+    });
+    if (!Object.keys(max).length) return;
+    const used = p?.spellSlots?.used || {};
+    db.updateSpellSlotsInDB(targetCName, { max, used });
+    showToast(`${targetCName} spell slots updated`, 'success');
 };
 
 // ── Class Resources ────────────────────────────────────────────────────────────
@@ -685,7 +711,12 @@ let _confirmResolve = null;
 
 // Show a non-blocking toast notification
 // type: 'success' | 'error' | 'info' | 'warning'
+let _lastToastMsg = '', _lastToastTime = 0;
 export function showToast(msg, type='info', durationMs=3000) {
+    // Deduplicate identical toasts within 2 seconds
+    const now = Date.now();
+    if (msg === _lastToastMsg && now - _lastToastTime < 2000) return;
+    _lastToastMsg = msg; _lastToastTime = now;
     const container = document.getElementById('toast-container');
     if (!container) return;
     const icons = { success:'/assets/icons/toolbar/advantage.png', error:'/assets/icons/toolbar/disadvantage.png', info:'/assets/icons/toolbar/spells.png', warning:'/assets/icons/toolbar/combat.png' };
@@ -1780,6 +1811,13 @@ window.rollSkillCheck = async (targetCName, skillName) => {
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
+window.editMaxHp = async (name, current) => {
+    const newMax = parseInt(prompt(t('edit_max_hp_prompt') || 'New Max HP:', current || 10));
+    if (!newMax || newMax < 1) return;
+    db.updatePlayerField(name, 'maxHp', newMax);
+    showToast(`${name} Max HP → ${newMax}`, 'info');
+};
+
 window.changeHP = async (targetCName, isPlus) => {
     const inputField = document.getElementById(`hp-input-${targetCName}`);
     const amount = parseInt(inputField?.value) || 1;
@@ -2005,6 +2043,59 @@ window.addNPCFromWizard = (name, color, portrait, init, stats) => {
 };
 
 window.roll3DDice = roll3DDice;
+
+// ── Edit NPC stats (DM only) ─────────────────────────────────────────────────
+window.editNPC = async (name) => {
+    if (userRole !== 'dm') return;
+    const p = await db.getPlayerData(name);
+    if (!p) return;
+    const fields = [
+        { key: 'maxHp',  label: 'Max HP',  val: p.maxHp ?? 10 },
+        { key: 'ac',     label: 'AC',      val: p.ac ?? 10 },
+        { key: 'speed',  label: 'Speed',   val: p.speed ?? 30 },
+        { key: 'melee',  label: 'Melee +', val: p.melee ?? 0 },
+        { key: 'ranged', label: 'Ranged +', val: p.ranged ?? 0 },
+        { key: 'pp',     label: 'Pass. Perception', val: p.pp ?? 10 },
+    ];
+    const input = prompt(
+        fields.map(f => `${f.label}: ${f.val}`).join('\n') +
+        '\n\nEdit as: maxHp,ac,speed,melee,ranged,pp',
+        fields.map(f => f.val).join(',')
+    );
+    if (!input) return;
+    const vals = input.split(',').map(v => parseInt(v.trim()));
+    const updates = {};
+    fields.forEach((f, idx) => {
+        const v = vals[idx];
+        if (!isNaN(v)) updates[f.key] = v;
+    });
+    if (updates.maxHp && (!p.hp || p.hp > updates.maxHp)) updates.hp = updates.maxHp;
+    Object.entries(updates).forEach(([k, v]) => db.updatePlayerField(name, k, v));
+    showToast(`${name} updated`, 'success');
+};
+
+// ── Duplicate NPC (DM only) ──────────────────────────────────────────────────
+window.duplicateNPC = async (name) => {
+    if (userRole !== 'dm') return;
+    const p = await db.getPlayerData(name);
+    if (!p) return;
+    // Generate unique name with incrementing suffix
+    const baseName = name.replace(/\s*\d+$/, '').trim();
+    const existing = Object.keys(sortedCombatants.reduce((a,c)=>{a[c.name]=1;return a;},{}));
+    let num = 2;
+    while (existing.includes(`${baseName} ${num}`)) num++;
+    const newName = `${baseName} ${num}`;
+    const init = Math.floor(Math.random()*20)+1 + (p.initBonus||0);
+    const stats = { ...p };
+    // Reset HP to max, remove transient state
+    stats.hp = stats.maxHp || stats.hp;
+    delete stats.score; delete stats.statuses; delete stats.deathSaves;
+    delete stats.concentrating; delete stats.online;
+    db.joinPlayerToDB(newName, "DM", p.pColor || "#c0392b", "npc", p.portrait, stats);
+    db.setPlayerInitiativeInDB(newName, "DM", init, p.pColor || "#c0392b");
+    db.saveRollToDB({ cName:"DM", type:"STATUS", status:`${t('log_added')} ${newName} [${t('log_init')} ${init}]`, ts:Date.now() });
+    showToast(`${newName} created`, 'success');
+};
 
 // ── Refresh all Open5e NPCs in current room ───────────────────────────────────
 // Re-fetches each NPC with _open5eSlug from Open5e API (bypasses LS cache),
@@ -2466,9 +2557,23 @@ window.activateScene = async (sceneId) => {
     const s = scenes?.[sceneId];
     if (!s) return;
     activeSceneId = sceneId;
-    db.setMapCfg(db.getActiveRoom(), { ...s.config, bgUrl: s.bgUrl||'' });
-    if (s.atmosphere) db.setAtmosphere(db.getActiveRoom(), s.atmosphere);
-    db.setActiveScene(db.getActiveRoom(), sceneId);
+    const room = db.getActiveRoom();
+    // Propagate all background fields (matching wizard goLive logic)
+    db.setMapCfg(room, {
+        ...s.config,
+        bgUrl:      s.bgVideoUrl ? '' : (s.bgUrl || ''),
+        bgVideoUrl: s.bgVideoUrl || '',
+        bgBase64:   s.bgVideoUrl ? '' : (s.bgBase64 || ''),
+    });
+    if (s.atmosphere) db.setAtmosphere(room, s.atmosphere);
+    // Write fog, obstacles, and triggers from saved scene
+    if (s.fog && Object.keys(s.fog).length)
+        db.revealFogCells(room, sceneId, s.fog);
+    if (s.obstacles)
+        Object.keys(s.obstacles).forEach(k => db.setObstacle(room, sceneId, k, true));
+    if (s.triggers)
+        Object.keys(s.triggers).forEach(k => db.setTrigger(room, sceneId, k, s.triggers[k]));
+    db.setActiveScene(room, sceneId);
     _activateMapCanvas(s);
     document.querySelectorAll('.scene-gallery-card').forEach(c => c.classList.remove('active'));
     document.getElementById('sgc-'+sceneId)?.classList.add('active');

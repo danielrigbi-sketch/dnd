@@ -74,6 +74,12 @@ export class MapEngine {
     // View transform
     this.vx = 0; this.vy = 0; this.vs = 1;
 
+    // UI overlay insets — usable viewport excludes these pixel widths
+    this._insets = { top: 0, left: 0, bottom: 0, right: 0 };
+
+    // Auto-fit flag: fit-to-view on first config load per scene, reset on scene switch
+    this._hasFitted = false;
+
     // ── Shared state (Firebase-synced) ────────────────────────────────
     this.S = {
       cfg:        { bgUrl: '', bgVideoUrl: '', bgBase64: '', pps: DEF_PPS, ox: 0, oy: 0, locked: false, mapW: 30, mapH: 20, fowEnabled: false, collisionEnabled: false },
@@ -224,6 +230,8 @@ export class MapEngine {
           else if (this.S.cfg.bgUrl) this._loadBg(this.S.cfg.bgUrl);
         }
         this._dirty();
+        // Auto-fit the map to the usable viewport on first config receive per scene
+        if (!this._hasFitted) { this._hasFitted = true; this.fitToView(); }
       }),
       db.listenMapTokens(r, tks => {
         this.S.tokens = tks || {};
@@ -254,6 +262,7 @@ export class MapEngine {
     this.S.activeScene = sid;
     this.S.fog = {}; this.S.obstacles = {}; this.S.triggers = {}; this.S.lights = {};
     this.L.firedLocal.clear();
+    this._hasFitted = false; // re-fit when new scene config arrives
     if (this.db) this.setupFirebase(this.db);
     this.bus.emit('scene:switched', { sceneId: sid });
     this._dirty();
@@ -302,7 +311,7 @@ export class MapEngine {
     // Sync video iframe transform to match canvas world transform (runs in screen space)
     if (this._video?.isActive()) {
       const { pps, ox, oy, mapW, mapH } = this.S.cfg;
-      this._video.syncTransform(this.vx, this.vy, this.vs, ox, oy, pps, mapW || MAP_W_DEFAULT, mapH || MAP_H_DEFAULT);
+      this._video.syncTransform(this.vx, this.vy, this.vs, ox, oy, pps, mapW ?? MAP_W_DEFAULT, mapH ?? MAP_H_DEFAULT);
     }
 
     if (this.tileEngine?.ready) {
@@ -338,13 +347,13 @@ export class MapEngine {
       if (this.L.bg) ctx.drawImage(this.L.bg, ox, oy, fit.w, fit.h);
       return;
     }
-    for (let gx = 0; gx < (mw || MAP_W_DEFAULT); gx++) {
-      for (let gy = 0; gy < (mh || MAP_H_DEFAULT); gy++) {
+    for (let gx = 0; gx < (mw ?? MAP_W_DEFAULT); gx++) {
+      for (let gy = 0; gy < (mh ?? MAP_H_DEFAULT); gy++) {
         ctx.fillStyle = (gx + gy) % 2 === 0 ? '#1e1b3a' : '#2a2550';
         ctx.fillRect(ox + gx * pps, oy + gy * pps, pps, pps);
       }
     }
-    if (this.L.bg) ctx.drawImage(this.L.bg, ox, oy, (mw || MAP_W_DEFAULT) * pps, (mh || MAP_H_DEFAULT) * pps);
+    if (this.L.bg) ctx.drawImage(this.L.bg, ox, oy, (mw ?? MAP_W_DEFAULT) * pps, (mh ?? MAP_H_DEFAULT) * pps);
   }
 
   _rGrid() {
@@ -355,18 +364,18 @@ export class MapEngine {
     ctx.strokeStyle = m === 'calibrate' ? GRID_CALIB : locked ? GRID_LOCKED : GRID_NORMAL;
     ctx.lineWidth = (m === 'calibrate' ? 1.5 : 0.6) / this.vs;
     ctx.beginPath();
-    for (let x = 0; x <= (mw || MAP_W_DEFAULT); x++) {
-      const px = ox + x * pps; ctx.moveTo(px, oy); ctx.lineTo(px, oy + (mh || MAP_H_DEFAULT) * pps);
+    for (let x = 0; x <= (mw ?? MAP_W_DEFAULT); x++) {
+      const px = ox + x * pps; ctx.moveTo(px, oy); ctx.lineTo(px, oy + (mh ?? MAP_H_DEFAULT) * pps);
     }
-    for (let y = 0; y <= (mh || MAP_H_DEFAULT); y++) {
-      const py = oy + y * pps; ctx.moveTo(ox, py); ctx.lineTo(ox + (mw || MAP_W_DEFAULT) * pps, py);
+    for (let y = 0; y <= (mh ?? MAP_H_DEFAULT); y++) {
+      const py = oy + y * pps; ctx.moveTo(ox, py); ctx.lineTo(ox + (mw ?? MAP_W_DEFAULT) * pps, py);
     }
     ctx.stroke();
     if (m === 'calibrate') {
       // Dot markers at every 5th grid intersection
       ctx.fillStyle = GRID_CALIB;
-      for (let x = 0; x <= (mw || MAP_W_DEFAULT); x += 5) {
-        for (let y = 0; y <= (mh || MAP_H_DEFAULT); y += 5) {
+      for (let x = 0; x <= (mw ?? MAP_W_DEFAULT); x += 5) {
+        for (let y = 0; y <= (mh ?? MAP_H_DEFAULT); y += 5) {
           ctx.fillRect(ox + x * pps - 3 / this.vs, oy + y * pps - 3 / this.vs, 6 / this.vs, 6 / this.vs);
         }
       }
@@ -625,7 +634,7 @@ export class MapEngine {
     if (!this.db) return;
     const { mapW: mw, mapH: mh } = this.S.cfg;
     const cells = {};
-    for (let gx = 0; gx < (mw || MAP_W_DEFAULT); gx++) for (let gy = 0; gy < (mh || MAP_H_DEFAULT); gy++) cells[ck(gx, gy)] = true;
+    for (let gx = 0; gx < (mw ?? MAP_W_DEFAULT); gx++) for (let gy = 0; gy < (mh ?? MAP_H_DEFAULT); gy++) cells[ck(gx, gy)] = true;
     this.db.revealFogCells(this.activeRoom, this.S.activeScene, cells);
   }
 
@@ -677,23 +686,64 @@ export class MapEngine {
 
   loadBgFile(file){ const r = new FileReader(); r.onload = e => { const img = new Image(); img.onload = () => { this.L.bg = img; this._dirty(); }; img.src = e.target.result; }; r.readAsDataURL(file); }
 
-  /** Clamp vx/vy so the map never slides fully off-canvas.
-   *  At minimum zoom the map fills the canvas exactly; zoomed in, we prevent
-   *  panning past the map's own edges. */
-  _clampPan() {
+  /** Allow callers (e.g. player UI) to declare pixel insets for overlay panels,
+   *  so the map's min-zoom and pan limits respect the truly visible area. */
+  setViewportInsets(insets) {
+    this._insets = { ...this._insets, ...insets };
+    this._dirty();
+  }
+
+  /** Zoom and center the map so it fills the usable viewport exactly (max zoom-out view). */
+  fitToView() {
+    const ins = this._insets;
     const W = this.cv.width, H = this.cv.height;
     const { ox, oy, pps, mapW, mapH } = this.S.cfg;
-    const mW = (mapW || MAP_W_DEFAULT) * pps * this.vs;
-    const mH = (mapH || MAP_H_DEFAULT) * pps * this.vs;
+    const usableW = Math.max(1, W - ins.left - ins.right);
+    const usableH = Math.max(1, H - ins.top  - ins.bottom);
+    // Math.max = "cover" behaviour: whichever axis fills the usable area, the map fills the screen.
+    const vsFill = Math.max(
+      usableW / Math.max(1, (mapW ?? MAP_W_DEFAULT) * pps),
+      usableH / Math.max(1, (mapH ?? MAP_H_DEFAULT) * pps)
+    );
+    this.vs = vsFill;
+    const mW  = (mapW  || MAP_W_DEFAULT) * pps * this.vs;
+    const mH  = (mapH  || MAP_H_DEFAULT) * pps * this.vs;
     const oxS = ox * this.vs, oyS = oy * this.vs;
-    // Map screen bounds: left = vx+oxS, right = vx+oxS+mW, top = vy+oyS, bottom = vy+oyS+mH
-    // Keep: left ≤ 0 AND right ≥ W (map always covers canvas width)
-    const vxMax = -oxS;
-    const vxMin = W - oxS - mW;
-    const vyMax = -oyS;
-    const vyMin = H - oyS - mH;
+    // Center within usable area (excess will be off-screen, pannable)
+    this.vx = ins.left + (usableW - mW) / 2 - oxS;
+    this.vy = ins.top  + (usableH - mH) / 2 - oyS;
+    this._dirty();
+  }
+
+  /** Clamp vx/vy so the map never slides fully outside the usable (non-overlay) area.
+   *  Insets allow the edge of the map to reach the inner edge of the overlay. */
+  _clampPan() {
+    const ins = this._insets;
+    const W = this.cv.width, H = this.cv.height;
+    const { ox, oy, pps, mapW, mapH } = this.S.cfg;
+    const mW = (mapW ?? MAP_W_DEFAULT) * pps * this.vs;
+    const mH = (mapH ?? MAP_H_DEFAULT) * pps * this.vs;
+    const oxS = ox * this.vs, oyS = oy * this.vs;
+    // Allow panning so the map edge can reach just inside the usable (non-overlay) area
+    const vxMax = -oxS + ins.left;
+    const vxMin = (W - ins.right) - oxS - mW;
+    const vyMax = -oyS + ins.top;
+    const vyMin = (H - ins.bottom) - oyS - mH;
     this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
     this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
+  }
+
+  /** Pan the map to center on a specific token. */
+  panToToken(cn) {
+    const tk = this.S.tokens?.[cn];
+    if (!tk) return;
+    const { pps, ox, oy } = this.S.cfg;
+    const cx = ox + (tk.gx + 0.5) * pps;
+    const cy = oy + (tk.gy + 0.5) * pps;
+    this.vx = this.cv.width / 2 - cx * this.vs;
+    this.vy = this.cv.height / 2 - cy * this.vs;
+    this._clampPan();
+    this._dirty();
   }
 
   nudgeGrid(dpps, dox, doy) {
