@@ -88,6 +88,8 @@ export async function joinPlayerToDB(cName, pName, pColor, userRole, charPortrai
             preservedStatuses = existing.val().statuses ?? null;
         }
         const data = { pName, pColor, userRole, portrait: charPortrait, score: 0, authUid, ...stats };
+        // Auto-set faction: players are allies, NPCs/DM are foe by default (DM can change)
+        if (!data.faction) data.faction = (userRole === 'player') ? 'ally' : (userRole === 'npc' ? 'foe' : 'ally');
         if (preservedHp       !== null) data.hp       = preservedHp;
         if (preservedStatuses !== null) data.statuses = preservedStatuses;
         if (isCampaign) data.online = true;
@@ -807,6 +809,31 @@ export function uploadPortrait(uid, file, onProgress) {
             async () => resolve(await getDownloadURL(task.snapshot.ref))
         );
     });
+}
+
+// ==========================================
+// Faction & Conditions
+// ==========================================
+export function setFaction(cName, faction) {
+    cName = sanitizeCName(cName);
+    update(ref(db, `rooms/${activeRoom}/players/${cName}`), { faction });
+}
+
+export async function addStatus(cName, status) {
+    cName = sanitizeCName(cName);
+    const snap = await get(ref(db, `rooms/${activeRoom}/players/${cName}/statuses`));
+    const statuses = snap.val() || [];
+    if (!statuses.includes(status)) {
+        statuses.push(status);
+        set(ref(db, `rooms/${activeRoom}/players/${cName}/statuses`), statuses);
+    }
+}
+
+export async function removeStatus(cName, status) {
+    cName = sanitizeCName(cName);
+    const snap = await get(ref(db, `rooms/${activeRoom}/players/${cName}/statuses`));
+    const statuses = (snap.val() || []).filter(s => s !== status);
+    set(ref(db, `rooms/${activeRoom}/players/${cName}/statuses`), statuses);
 }
 
 // ==========================================

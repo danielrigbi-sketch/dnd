@@ -207,7 +207,16 @@ function _renderNPCCard(npc) {
       <div class="npc-actions">
         <button class="npc-act-btn" onclick="window._copyNPC()" title="Copy as markdown">📋 Copy</button>
         <button class="npc-act-btn" onclick="window._genNPC()" title="Regenerate">🔄 Reroll</button>
-        ${_canSpawn() ? `<button class="npc-act-btn primary" onclick="window._spawnNPC()">⚔ Spawn in Scene</button>` : ''}
+        ${_canSpawn() ? `
+          <div class="npc-faction-pick" style="display:flex;gap:4px;margin-top:6px;">
+            <label style="color:#aaa;font-size:11px;align-self:center;">Faction:</label>
+            <select id="npc-faction-select" style="flex:1;padding:3px 6px;border-radius:4px;background:#1a0e04;color:#c8803a;border:1px solid #c8803a;">
+              <option value="foe" selected>🔴 Foe</option>
+              <option value="neutral">🟡 Neutral</option>
+              <option value="ally">🟢 Ally</option>
+            </select>
+          </div>
+          <button class="npc-act-btn primary" onclick="window._spawnNPC()">⚔ Spawn in Scene</button>` : ''}
       </div>
     </div>`;
 }
@@ -287,7 +296,9 @@ window._copyNPC = function() {
 
 window._spawnNPC = function() {
   if (!_currentNPC || !window._spawnNPCToken) return;
-  window._spawnNPCToken(_currentNPC);
+  const factionEl = document.getElementById('npc-faction-select');
+  const faction = factionEl?.value || 'foe';
+  window._spawnNPCToken({ ..._currentNPC, faction });
 };
 
 function _canSpawn() {

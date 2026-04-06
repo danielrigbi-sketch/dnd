@@ -15,8 +15,11 @@ import { getCombatActions, getAllyActions, getSelfActions, applyMeleeModifier, o
 const STS_ICON = {
   Poisoned: '☠', Charmed: '♥', Unconscious: '💤', Frightened: '😱',
   Paralyzed: '⚡', Restrained: '⛓', Blinded: '🚫', Prone: '⬇', Stunned: '💫',
+  Incapacitated: '🚷', Petrified: '🗿', Deafened: '🔇', Grappled: '🤝',
   Concentrating: '🔮',
 };
+
+const ALL_CONDITIONS = ['Poisoned','Charmed','Unconscious','Frightened','Paralyzed','Restrained','Blinded','Prone','Stunned','Incapacitated','Petrified','Deafened','Grappled'];
 
 function ck(gx, gy) { return `${Math.floor(gx)}_${Math.floor(gy)}`; }
 function cheb(ax, ay, bx, by) { return Math.max(Math.abs(ax - bx), Math.abs(ay - by)); }
@@ -629,6 +632,31 @@ export class TokenSystem {
         eng.db?.saveRollToDB({ cName: targetCName, type: 'HEAL', res: roll, newHp,
           color: '#2ecc71', flavor: `DM heals ${targetCName} for ${roll} HP`, ts: Date.now() });
       }});
+      // ── Faction toggle (DM only) ────────────────────────────────
+      const curFaction = target.faction || 'foe';
+      const nextFaction = curFaction === 'ally' ? 'neutral' : curFaction === 'neutral' ? 'foe' : 'ally';
+      const factionEmoji = { ally: '🟢', neutral: '🟡', foe: '🔴' };
+      actions.push({
+        label: `${factionEmoji[curFaction]} Faction: ${curFaction} → ${factionEmoji[nextFaction]} ${nextFaction}`,
+        cls: 'utility',
+        fn: () => eng.db?.setFaction(targetCName, nextFaction)
+      });
+
+      // ── Conditions quick-toggle (DM only) ───────────────────────
+      actions.push({ label: '── ⚠ Conditions ──', cls: 'disabled', fn: null });
+      const curStatuses = target.statuses || [];
+      ALL_CONDITIONS.forEach(cond => {
+        const has = curStatuses.includes(cond);
+        const icon = STS_ICON[cond] || '⚠';
+        actions.push({
+          label: `${icon} ${has ? '✓ ' : ''}${cond}`,
+          cls: has ? 'utility active' : 'utility',
+          fn: () => {
+            if (has) eng.db?.removeStatus(targetCName, cond);
+            else eng.db?.addStatus(targetCName, cond);
+          }
+        });
+      });
     }
 
     if (!actions.length) return;

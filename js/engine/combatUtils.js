@@ -49,13 +49,19 @@ export function getConditionModifiers(attacker, target, isMelee = true, distFt =
   const reasons = [];
 
   // Attacker conditions → disadvantage
-  if (aSts.includes('Poisoned'))   { disadvantage = true; reasons.push('poisoned');   }
-  if (aSts.includes('Frightened')) { disadvantage = true; reasons.push('frightened'); }
-  if (aSts.includes('Blinded'))    { disadvantage = true; reasons.push('blinded');    }
-  if (aSts.includes('Restrained')) { disadvantage = true; reasons.push('restrained'); }
+  if (aSts.includes('Poisoned'))      { disadvantage = true; reasons.push('poisoned');      }
+  if (aSts.includes('Frightened'))    { disadvantage = true; reasons.push('frightened');    }
+  if (aSts.includes('Blinded'))       { disadvantage = true; reasons.push('blinded');       }
+  if (aSts.includes('Restrained'))    { disadvantage = true; reasons.push('restrained');    }
+  if (aSts.includes('Prone'))         { disadvantage = true; reasons.push('prone');         }
+  // Exhaustion level 3+ → disadvantage on attack rolls
+  if ((attacker.exhaustion || 0) >= 3){ disadvantage = true; reasons.push('exhaustion 3+'); }
 
-  // Prone attacker: disadvantage on all attacks
-  if (aSts.includes('Prone'))      { disadvantage = true; reasons.push('prone');      }
+  // Incapacitated/Stunned/Unconscious/Petrified → cannot attack (treat as auto-miss via disadvantage flag + reason)
+  if (aSts.includes('Incapacitated')){ disadvantage = true; reasons.push('incapacitated (cannot act)'); }
+  if (aSts.includes('Stunned'))      { disadvantage = true; reasons.push('stunned (cannot act)');       }
+  if (aSts.includes('Unconscious'))  { disadvantage = true; reasons.push('unconscious (cannot act)');   }
+  if (aSts.includes('Petrified'))    { disadvantage = true; reasons.push('petrified (cannot act)');     }
 
   // Target conditions
   if (tSts.includes('Prone')) {
@@ -67,6 +73,15 @@ export function getConditionModifiers(attacker, target, isMelee = true, distFt =
   if (tSts.includes('Paralyzed') && isMelee && distFt <= 5) {
     autoCrit = true; advantage = true; reasons.push('target paralyzed');
   }
+  // Stunned target → advantage on attacks against
+  if (tSts.includes('Stunned'))    { advantage = true; reasons.push('target stunned');    }
+  // Unconscious target → advantage + auto-crit if melee within 5ft
+  if (tSts.includes('Unconscious')) {
+    advantage = true; reasons.push('target unconscious');
+    if (isMelee && distFt <= 5) { autoCrit = true; reasons.push('auto-crit (unconscious melee)'); }
+  }
+  // Petrified target → advantage on attacks against
+  if (tSts.includes('Petrified'))  { advantage = true; reasons.push('target petrified'); }
 
   // Invisible attacker → advantage
   if (aSts.includes('Invisible'))  { advantage = true; reasons.push('invisible'); }
@@ -75,6 +90,35 @@ export function getConditionModifiers(attacker, target, isMelee = true, distFt =
   if (advantage && disadvantage) { advantage = false; disadvantage = false; }
 
   return { advantage, disadvantage, autoCrit, reasons };
+}
+
+/**
+ * Get saving throw modifiers from conditions.
+ * @param {object} saver — the character making the save
+ * @param {string} ability — 'str'|'dex'|'con'|'int'|'wis'|'cha'
+ * @returns {{ advantage: boolean, disadvantage: boolean, autoFail: boolean, reasons: string[] }}
+ */
+export function getSaveModifiers(saver, ability) {
+  const sts = saver.statuses || [];
+  let advantage = false, disadvantage = false, autoFail = false;
+  const reasons = [];
+
+  // Poisoned → disadvantage on ability checks (not saves, but often confused; included for completeness)
+  // Restrained → disadvantage on DEX saves
+  if (sts.includes('Restrained') && ability === 'dex')  { disadvantage = true; reasons.push('restrained → DEX save disadvantage'); }
+  // Paralyzed → auto-fail STR and DEX saves
+  if (sts.includes('Paralyzed') && (ability === 'str' || ability === 'dex')) { autoFail = true; reasons.push('paralyzed → auto-fail STR/DEX'); }
+  // Stunned → auto-fail STR and DEX saves
+  if (sts.includes('Stunned') && (ability === 'str' || ability === 'dex')) { autoFail = true; reasons.push('stunned → auto-fail STR/DEX'); }
+  // Unconscious → auto-fail STR and DEX saves
+  if (sts.includes('Unconscious') && (ability === 'str' || ability === 'dex')) { autoFail = true; reasons.push('unconscious → auto-fail STR/DEX'); }
+  // Petrified → auto-fail STR and DEX saves, resistance to all damage
+  if (sts.includes('Petrified') && (ability === 'str' || ability === 'dex')) { autoFail = true; reasons.push('petrified → auto-fail STR/DEX'); }
+  // Exhaustion level 3+ → disadvantage on saving throws
+  if ((saver.exhaustion || 0) >= 3) { disadvantage = true; reasons.push('exhaustion 3+ → save disadvantage'); }
+
+  if (advantage && disadvantage) { advantage = false; disadvantage = false; }
+  return { advantage, disadvantage, autoFail, reasons };
 }
 
 /** Chebyshev tile distance between two tokens (diagonal counts as 1). */

@@ -143,6 +143,7 @@ function renderPortraitGallery(items, isDM, myCName, activeCombatantName) {
             : `<div class="portrait-img portrait-img--placeholder">${firstChar}</div>`;
         const statuses  = (i.statuses || []).slice(0, 2);
         const badges    = statuses.map(s => `<span class="portrait-status-badge">${s}</span>`).join('');
+        const factionDot = { ally: '🟢', neutral: '🟡', foe: '🔴' }[i.faction] || '';
         const slotClass = [
             'portrait-slot',
             isActive  ? 'portrait-slot--active' : '',
@@ -151,7 +152,7 @@ function renderPortraitGallery(items, isDM, myCName, activeCombatantName) {
         html += `<div class="${slotClass}" onclick="window.openCharPanel('${safeName}')">
   <div class="portrait-ring">${portraitEl}</div>
   <div class="portrait-orb-wrap">${buildHPOrb(isDead ? 0 : hpPct, i.name)}</div>
-  <div class="portrait-name">${(i.name || '').split(' ')[0]}</div>
+  <div class="portrait-name">${factionDot} ${(i.name || '').split(' ')[0]}</div>
   ${badges}
 </div>`;
     });
@@ -395,6 +396,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                 </div>
                             ` : ''}
                         </div>
+                        ${(isDM||isOwner) ? `<button onclick="window.rollDeathSave('${escapeHtml(i.name)}')" style="margin-top:4px;width:100%;padding:4px;border-radius:4px;background:rgba(231,76,60,0.2);border:1px solid #e74c3c;color:#e74c3c;cursor:pointer;font-size:11px;">🎲 Roll Death Save</button>` : ''}
                     `}
                 </div>
             ` : `

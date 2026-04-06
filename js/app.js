@@ -82,6 +82,7 @@ window._spawnNPCToken = function(npc) {
     ranged:   0,
     rangedDmg:'1d4',
     isHidden: true,
+    faction:  npc.faction || 'foe',
     img:      `https://api.dicebear.com/8.x/bottts/png?seed=${encodeURIComponent(npc.name)}&backgroundColor=7f8c8d`,
   };
   window._sceneWizardInstance._spawnToken?.(token);
@@ -120,6 +121,56 @@ window.toggleDeathSave = async (targetCName, type, index) => {
 
 window.resetDeathSaves = async (targetCName) => {
     db.updateDeathSavesInDB(targetCName, { successes: [false,false,false], failures: [false,false,false], stable: false, dead: false });
+};
+
+// ── Automated death save roll (D&D 5e rules) ────────────────────────────────
+window.rollDeathSave = async (targetCName) => {
+    if (isCooldown || !isDiceBoxReady) return;
+    const p = await db.getPlayerData(targetCName);
+    if (!p) return;
+    const saves = p.deathSaves || { successes: [false,false,false], failures: [false,false,false] };
+    if (saves.stable || saves.dead) return;
+
+    isCooldown = true; setDiceCooldown(true); playStartRollSound(isMuted);
+    await updateDiceColor(p.pColor || '#e74c3c');
+    let roll;
+    try { roll = (await roll3DDice('1d20'))[0].value; }
+    catch { isCooldown = false; setDiceCooldown(false); return; }
+
+    let flavor = '';
+    if (roll === 20) {
+        // Nat 20: regain 1 HP, consciousness restored
+        saves.successes = [false, false, false];
+        saves.failures = [false, false, false];
+        saves.stable = false;
+        saves.dead = false;
+        db.updatePlayerHPInDB(targetCName, 1);
+        db.removeStatus(targetCName, 'Unconscious');
+        flavor = `🎉 ${targetCName} ${t('death_save_nat20') || 'rolled a natural 20 — regains 1 HP!'}`;
+    } else if (roll === 1) {
+        // Nat 1: 2 failures
+        let added = 0;
+        for (let i = 0; i < 3 && added < 2; i++) { if (!saves.failures[i]) { saves.failures[i] = true; added++; } }
+        flavor = `💀 ${targetCName} ${t('death_save_nat1') || 'rolled a natural 1 — 2 death save failures!'}`;
+    } else if (roll >= 10) {
+        // Success
+        for (let i = 0; i < 3; i++) { if (!saves.successes[i]) { saves.successes[i] = true; break; } }
+        flavor = `✅ ${targetCName} ${t('death_save_success') || 'succeeds a death save'} (${roll})`;
+    } else {
+        // Failure
+        for (let i = 0; i < 3; i++) { if (!saves.failures[i]) { saves.failures[i] = true; break; } }
+        flavor = `❌ ${targetCName} ${t('death_save_fail') || 'fails a death save'} (${roll})`;
+    }
+
+    // Check win/lose after roll
+    const wins  = saves.successes.filter(Boolean).length;
+    const fails = saves.failures.filter(Boolean).length;
+    if (wins >= 3) { saves.stable = true; flavor += ` — ${t('combat_stable')?.replace('{name}', targetCName) || 'stabilized!'}`; }
+    if (fails >= 3) { saves.dead = true; flavor += ` — ${t('combat_died')?.replace('{name}', targetCName) || 'dead!'}`; }
+
+    db.updateDeathSavesInDB(targetCName, saves);
+    db.saveRollToDB({ cName: targetCName, type: 'DEATH_SAVE', res: roll, color: p.pColor, flavor, ts: Date.now() });
+    setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
 window.toggleConcentration = async (targetCName) => {
@@ -1551,9 +1602,13 @@ window.nextTurn = () => {
     if (endingName && mapEngine) {
         const p = mapEngine.S.players[endingName] || {};
         const patch = {};
+        if (p.actionUsed)       patch.actionUsed       = false;
         if (p.bonusActionUsed)  patch.bonusActionUsed  = false;
+        if (p.reactionUsed)     patch.reactionUsed     = false;
         // Legendary resets at start of that creature's OWN next turn
         if (p.legendaryMax > 0) patch.legendaryUsed = 0;
+        // Reset sneak attack per-turn flag
+        if (p.classResources?.sneakUsedThisTurn) patch['classResources/sneakUsedThisTurn'] = false;
         if (Object.keys(patch).length) db.patchPlayerInDB?.(endingName, patch);
     }
 
@@ -2189,10 +2244,10 @@ function initMap() {
         if (cName === moverCName) return;
         const p = players[cName];
         if (!p) return;
-        // Hostile check: one is NPC (dm) and the other is player
-        const moverIsNPC = mover.userRole === 'dm';
-        const cNameIsNPC = p.userRole    === 'dm';
-        if (moverIsNPC === cNameIsNPC) return;
+        // Hostile check: different factions (ally vs foe, or either vs neutral moving away from foe)
+        const moverFaction = mover.faction || (mover.userRole === 'npc' ? 'foe' : 'ally');
+        const threaterFaction = p.faction || (p.userRole === 'npc' ? 'foe' : 'ally');
+        if (moverFaction === threaterFaction) return; // same faction = no OA
         // Threatening creature must not be incapacitated
         const sts = p.statuses || [];
         if (sts.some(s => ['Unconscious','Paralyzed','Stunned','Incapacitated'].includes(s))) return;
@@ -2201,7 +2256,10 @@ function initMap() {
         const wasAdj = cheb(prevGx, prevGy, tok.gx, tok.gy) <= 1;
         const isAdj  = cheb(gx,     gy,     tok.gx, tok.gy) <= 1;
         if (wasAdj && !isAdj) {
+          // Skip if reaction already used this round
+          if (p.reactionUsed) return;
           _showOAPrompt(cName, moverCName, () => {
+            db.patchPlayerInDB?.(cName, { reactionUsed: true });
             mapEngine.tokens._doMeleeAttack(cName, moverCName);
           });
         }

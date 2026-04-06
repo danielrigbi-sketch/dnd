@@ -209,6 +209,10 @@ export function compute(raw) {
     const fm  = FEAT_MECHANICS[key];
     if (fm?.speed) r.speed += fm.speed;
   });
+  // Exhaustion effects on speed
+  const exhaustion = raw.exhaustion || 0;
+  if (exhaustion >= 5) r.speed = 0;
+  else if (exhaustion >= 2) r.speed = Math.floor(r.speed / 2);
 
   // ── 8. Initiative ───────────────────────────────────────────────────────────
   r.initiative = r.mods.dex;
@@ -250,6 +254,8 @@ export function compute(raw) {
   // Backward compat: if character has no ability scores filled in yet, use stored maxHp
   const hasAbilityScores = raw._str || raw._con || raw._dex;
   r.maxHp = hasAbilityScores ? maxHp : (raw.maxHp ?? maxHp);
+  // Exhaustion level 4+: HP maximum halved
+  if (exhaustion >= 4) r.maxHp = Math.floor(r.maxHp / 2);
 
   // ── 10. Hit Dice ────────────────────────────────────────────────────────────
   r.hd = {

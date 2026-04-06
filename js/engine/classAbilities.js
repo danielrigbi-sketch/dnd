@@ -96,6 +96,45 @@ export function getSelfActions(player) {
   const lvl  = player.level || 1;
   const actions = [];
 
+  // ── Weapon attack actions (auto-generated from equipment) ──────────
+  const eq = player.equipment;
+  if (eq) {
+    const pb = Math.ceil(lvl / 4) + 1; // proficiency bonus
+    const strMod = Math.floor(((player._str || 10) - 10) / 2);
+    const dexMod = Math.floor(((player._dex || 10) - 10) / 2);
+    if (eq.mainHand?.name) {
+      const isFinesse = (eq.mainHand.properties || '').toLowerCase().includes('finesse');
+      const mod = isFinesse ? Math.max(strMod, dexMod) : strMod;
+      const hitBonus = pb + mod;
+      const dmg = eq.mainHand.damageDice || '1d6';
+      actions.push({
+        label: `${iconImg('⚔️','14px')} ${eq.mainHand.name} (+${hitBonus}, ${dmg}+${mod})`,
+        cls: 'attack', available: true,
+        fn: (cn) => window.rollMacro?.(cn, eq.mainHand.name, hitBonus)
+      });
+    }
+    if (eq.ranged?.name) {
+      const hitBonus = pb + dexMod;
+      const dmg = eq.ranged.damageDice || '1d6';
+      actions.push({
+        label: `${iconImg('🏹','14px')} ${eq.ranged.name} (+${hitBonus}, ${dmg}+${dexMod})`,
+        cls: 'attack', available: true,
+        fn: (cn) => window.rollMacro?.(cn, eq.ranged.name, hitBonus)
+      });
+    }
+    if (eq.offHand?.name && !eq.shield) {
+      const isFinesse = (eq.offHand.properties || '').toLowerCase().includes('finesse');
+      const mod = isFinesse ? Math.max(strMod, dexMod) : strMod;
+      const hitBonus = pb + mod;
+      actions.push({
+        label: `${iconImg('🗡️','14px')} ${eq.offHand.name} (off, +${hitBonus})`,
+        cls: 'attack bonus', available: true,
+        fn: (cn) => window.rollMacro?.(cn, eq.offHand.name, hitBonus)
+      });
+    }
+    if (actions.length > 0) actions.push({ label: '──────────────', cls: 'disabled', available: false, fn: null });
+  }
+
   switch (cls) {
     case 'barbarian': {
       if (cr.raging) {

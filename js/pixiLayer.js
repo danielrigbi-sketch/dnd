@@ -18,6 +18,7 @@ import { getTileSize, getVisualScale, footprintsOverlap } from './engine/sizeUti
 
 // ── Constants ────────────────────────────────────────────────────────
 const GLOW_COLOR    = 0xf1c40f;
+const FACTION_COLORS = { ally: 0x2ecc71, neutral: 0xf39c12, foe: 0xe74c3c };
 const DEAD_TINT     = 0x442222;
 const GHOST_ALPHA   = 0.45;
 const PARTICLE_LIFE = 900;   // ms
@@ -403,9 +404,9 @@ export class PixiLayer {
       glow.circle(size / 2, size / 2, r)
           .stroke({ color: GLOW_COLOR, alpha: 0.9, width: 3 / vs });
     } else {
-      const col = _hexColor(pl.pColor || '#3498db');
+      const factionCol = FACTION_COLORS[pl.faction] || _hexColor(pl.pColor || '#3498db');
       glow.circle(size / 2, size / 2, size * 0.44)
-          .stroke({ color: isDying ? 0xe74c3c : col, alpha: 1, width: 3 / vs });
+          .stroke({ color: isDying ? 0xe74c3c : factionCol, alpha: 1, width: 3 / vs });
     }
 
     // ── Portrait texture ──
