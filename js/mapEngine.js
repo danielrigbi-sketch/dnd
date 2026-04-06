@@ -308,6 +308,16 @@ export class MapEngine {
 
     ctx.restore();
 
+    // DEBUG: zoom info overlay (TEMP — remove after debugging)
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(10, 10, 340, 22);
+    ctx.fillStyle = '#0f0';
+    ctx.font = '13px monospace';
+    const { mapW: _mw, mapH: _mh, pps: _pp } = this.S.cfg;
+    ctx.fillText(`vs=${this.vs.toFixed(3)} vx=${this.vx.toFixed(0)} vy=${this.vy.toFixed(0)} map=${_mw}x${_mh} pps=${_pp}`, 14, 26);
+    ctx.restore();
+
     // Sync video iframe transform to match canvas world transform (runs in screen space)
     if (this._video?.isActive()) {
       const { pps, ox, oy, mapW, mapH } = this.S.cfg;
