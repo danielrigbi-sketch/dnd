@@ -718,6 +718,10 @@ export class MapEngine {
   /** Clamp vx/vy so the map never slides fully outside the usable (non-overlay) area.
    *  Insets allow the edge of the map to reach the inner edge of the overlay. */
   _clampPan() {
+    // Recovery: if vx/vy/vs are corrupt, reset
+    if (!isFinite(this.vx) || !isFinite(this.vy) || !isFinite(this.vs) || this.vs <= 0) {
+      this.vs = 1; this.vx = 0; this.vy = 0; this.fitToView(); return;
+    }
     const ins = this._insets;
     const W = this.cv.width, H = this.cv.height;
     const { ox, oy, pps, mapW, mapH } = this.S.cfg;
