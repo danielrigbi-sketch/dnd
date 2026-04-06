@@ -180,7 +180,22 @@ export class PixiLayer {
       // Bias toward straight-down so label stays below when no neighbours
       fdy += 0.6;
       const len = Math.hypot(fdx, fdy) || 1;
-      _labelOffsets[cn] = { dx: fdx / len, dy: fdy / len };
+      _labelOffsets[cn] = { dx: fdx / len, dy: fdy / len, push: 0 };
+    }
+
+    // Pass 2b: push overlapping labels further apart
+    const cnames = Object.keys(tokens);
+    for (let a = 0; a < cnames.length; a++) {
+      for (let b = a + 1; b < cnames.length; b++) {
+        const ca = _centres[cnames[a]], cb = _centres[cnames[b]];
+        if (!ca || !cb) continue;
+        const dist = Math.hypot(ca.cx - cb.cx, ca.cy - cb.cy);
+        if (dist < pps * 1.5) {
+          const nudge = pps * 0.25;
+          _labelOffsets[cnames[a]].push = Math.max(_labelOffsets[cnames[a]].push, nudge);
+          _labelOffsets[cnames[b]].push = Math.max(_labelOffsets[cnames[b]].push, nudge);
+        }
+      }
     }
 
     // Pass 3: create or update each token sprite
@@ -328,6 +343,7 @@ export class PixiLayer {
       fontWeight: 'bold', fill: 0xffffff,
       stroke: { color: 0x000000, width: 4 },
     })});
+    nameText.resolution = 2;  // 2x resolution for crisp text at all zoom levels
     nameText.anchor.set(0.5, 0.5);
     nameText.x = size / 2;
     nameText.y = size + 28;
@@ -480,8 +496,8 @@ export class PixiLayer {
     // Clamp to half-pixels to minimise PixiJS text re-cache
     const nameFontSz = Math.round((13 / vs) * 2) / 2;
     if (Math.abs(nameText.style.fontSize - nameFontSz) > 0.4) nameText.style.fontSize = nameFontSz;
-    // Label placement: disc-edge + constant screen gap
-    const labelRadius = size * 0.5 + 26 / vs;
+    // Label placement: disc-edge + constant screen gap + overlap push
+    const labelRadius = size * 0.5 + 26 / vs + (labelOffset.push || 0);
     const hpNudge     = pl.maxHp ? (10 / vs) : 0;
     const lx = size / 2 + labelOffset.dx * labelRadius;
     const ly = size / 2 + labelOffset.dy * labelRadius + hpNudge;

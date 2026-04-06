@@ -367,10 +367,10 @@ export class TokenSystem {
     const usableH = Math.max(1, eng.cv.height - ins.top  - ins.bottom);
     // Math.max = "cover" behaviour: min zoom is when the map fills the screen on its shorter axis
     const vsMin = Math.max(
-      usableW / Math.max(1, (mapW || 30) * pps),
-      usableH / Math.max(1, (mapH || 20) * pps)
+      usableW / Math.max(1, (mapW ?? 30) * pps),
+      usableH / Math.max(1, (mapH ?? 20) * pps)
     );
-    const ns = Math.min(4, Math.max(vsMin, eng.vs * delta));
+    const ns = Math.min(4, Math.max(Math.max(vsMin, 0.08), eng.vs * delta));
     eng.vx = sx - (sx - eng.vx) * (ns / eng.vs);
     eng.vy = sy - (sy - eng.vy) * (ns / eng.vs);
     eng.vs = ns;
