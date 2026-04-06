@@ -76,6 +76,10 @@ export class PixiLayer {
     this._root = new Container();
     this._app.stage.addChild(this._root);
 
+    // Screen-space label layer (not affected by pan/zoom — crisp text)
+    this._labelRoot = new Container();
+    this._app.stage.addChild(this._labelRoot);
+
     // Screen-space particle layer (not affected by pan/zoom)
     this._particleRoot = new Container();
     this._app.stage.addChild(this._particleRoot);
@@ -142,6 +146,7 @@ export class PixiLayer {
       if (!tokens[cn]) {
         this._root.removeChild(obj.container);
         obj.container.destroy({ children: true, texture: false });
+        if (obj.labelGroup) { this._labelRoot.removeChild(obj.labelGroup); obj.labelGroup.destroy({ children: true, texture: false }); }
         this._tokens.delete(cn);
       }
     }
@@ -331,23 +336,23 @@ export class PixiLayer {
     const hpBar = new Graphics();
     container.addChild(hpBar);
 
-    // Leader line from token centre to label (shown when label is offset sideways)
+    // Leader line from token centre to label (drawn in screen-space label group)
     const leaderLine = new Graphics();
-    container.addChild(leaderLine);
 
-    // Name badge (pill background + text)
+    // Name badge (pill background + text) — rendered in SCREEN SPACE for crisp text
+    const labelGroup = new Container();
     const nameBadge = new Graphics();
-    container.addChild(nameBadge);
+    labelGroup.addChild(nameBadge);
     const nameText = new Text({ text: cn, style: new TextStyle({
-      fontFamily: 'Arial', fontSize: Math.max(13, size * 0.22),
+      fontFamily: 'Arial', fontSize: 13,
       fontWeight: 'bold', fill: 0xffffff,
-      stroke: { color: 0x000000, width: 4 },
+      stroke: { color: 0x000000, width: 3 },
     })});
-    nameText.resolution = 2;  // 2x resolution for crisp text at all zoom levels
     nameText.anchor.set(0.5, 0.5);
-    nameText.x = size / 2;
-    nameText.y = size + 28;
-    container.addChild(nameText);
+    labelGroup.addChild(nameText);
+    labelGroup.addChild(leaderLine);
+    // Add to screen-space layer (not root — avoids GPU downscale blur)
+    this._labelRoot.addChild(labelGroup);
 
     // Stacking badge (top-right corner)
     const stackBadge = new Graphics();
@@ -360,11 +365,11 @@ export class PixiLayer {
     container.addChild(stackText);
 
     this._root.addChild(container);
-    return { container, shadow, glow, portrait, mask, initialText, hpBar, leaderLine, nameBadge, nameText, stackBadge, stackText, size, lastPortrait: null };
+    return { container, labelGroup, shadow, glow, portrait, mask, initialText, hpBar, leaderLine, nameBadge, nameText, stackBadge, stackText, size, lastPortrait: null };
   }
 
   _updateTokenSprite(obj, cn, pl, tk, px, py, size, isActive, isGhost, isDying, stackCount = 0, labelOffset = { dx: 0, dy: 1 }) {
-    const { container, shadow, glow, portrait, mask, initialText, hpBar, leaderLine, nameBadge, nameText, stackBadge, stackText } = obj;
+    const { container, labelGroup, shadow, glow, portrait, mask, initialText, hpBar, leaderLine, nameBadge, nameText, stackBadge, stackText } = obj;
 
     // vs = current map zoom; UI elements divided by vs so they stay constant screen-size
     const vs = Math.max(0.15, this._root.scale.x);
@@ -490,34 +495,33 @@ export class PixiLayer {
       hpBar.roundRect(bx, by, Math.max(bh, bw * pct), bh, r).fill(barCol);
     }
 
-    // ── Name badge — font size and pill are constant screen-pixels ──
+    // ── Name badge — rendered in SCREEN SPACE for crisp text ──
     const label = cn.length > 12 ? cn.slice(0, 11) + '…' : cn;
     if (nameText.text !== label) nameText.text = label;
-    // Clamp to half-pixels to minimise PixiJS text re-cache
-    const nameFontSz = Math.round((13 / vs) * 2) / 2;
-    if (Math.abs(nameText.style.fontSize - nameFontSz) > 0.4) {
-      nameText.style.fontSize = nameFontSz;
-      nameText.resolution = Math.max(2, window.devicePixelRatio || 1);
-    }
-    // Label placement: disc-edge + constant screen gap + overlap push
-    const labelRadius = size * 0.5 + 26 / vs + (labelOffset.push || 0);
-    const hpNudge     = pl.maxHp ? (10 / vs) : 0;
-    const lx = size / 2 + labelOffset.dx * labelRadius;
-    const ly = size / 2 + labelOffset.dy * labelRadius + hpNudge;
-    nameText.x = lx;
-    nameText.y = ly;
-    // Pill behind text — padding in screen-px
+    if (nameText.style.fontSize !== 13) nameText.style.fontSize = 13;
+
+    // Convert token centre to screen coords for label placement
+    const rootVx = this._root.x, rootVy = this._root.y;
+    const tokenScreenX = rootVx + (px + size / 2) * vs;
+    const tokenScreenY = rootVy + (py + size / 2) * vs;
+    const labelDist = size * 0.5 * vs + 26 + (labelOffset.push || 0) * vs;
+    const hpNudge = pl.maxHp ? 10 : 0;
+    const slx = tokenScreenX + labelOffset.dx * labelDist;
+    const sly = tokenScreenY + labelOffset.dy * labelDist + hpNudge;
+    nameText.x = slx;
+    nameText.y = sly;
+    // Pill behind text — all in screen pixels
     nameBadge.clear();
-    const tw = nameText.width + 10 / vs, th = nameText.height + 6 / vs;
-    nameBadge.roundRect(lx - tw / 2, ly - th / 2, tw, th, 5 / vs)
+    const tw = nameText.width + 10, th = nameText.height + 6;
+    nameBadge.roundRect(slx - tw / 2, sly - th / 2, tw, th, 5)
              .fill({ color: 0x000000, alpha: 0.82 });
     // Leader line — visible when label is pushed sideways
     leaderLine.clear();
     const isDefaultPos = Math.abs(labelOffset.dx) < 0.15 && labelOffset.dy > 0.7;
     if (!isDefaultPos) {
-      leaderLine.moveTo(size / 2, size / 2)
-                .lineTo(lx, ly)
-                .stroke({ color: 0xffffff, alpha: 0.35, width: 1.5 / vs });
+      leaderLine.moveTo(tokenScreenX, tokenScreenY)
+                .lineTo(slx, sly)
+                .stroke({ color: 0xffffff, alpha: 0.35, width: 1.5 });
     }
 
     // ── Stacking badge — constant screen size ──
