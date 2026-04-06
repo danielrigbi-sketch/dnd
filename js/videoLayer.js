@@ -64,7 +64,7 @@ export class VideoLayer {
   /**
    * Parse clip start/end and the YouTube `t=` share timestamp from a URL string.
    * Supports:
-   *   ?start=30&end=60   — custom clip params (stored by CritRoll)
+   *   ?start=30&end=60   — custom clip params (stored by ParaDice)
    *   ?t=30  or  ?t=1m30s — YouTube native share timestamp (used as start)
    * @returns {{ start: number, end: number|null }}
    */
@@ -74,7 +74,7 @@ export class VideoLayer {
       const url = new URL(urlOrId.trim());
       const p = url.searchParams;
 
-      // Explicit start/end stored by CritRoll
+      // Explicit start/end stored by ParaDice
       const start = p.has('start') ? parseInt(p.get('start')) || 0 : null;
       const end   = p.has('end')   ? parseInt(p.get('end'))   || null : null;
       if (start !== null) return { start, end };

@@ -85,6 +85,7 @@ export function compute(raw) {
   const r = {};
   const level = parseInt(raw.level) || 1;
   const cls   = (raw.class || '').toLowerCase().trim();
+  const subMech = SUBCLASS_MECHANICS[(raw.subclass || '').toLowerCase().trim()];
 
   // ── 1. Ability Scores ───────────────────────────────────────────────────────
   const raceSlug = _resolveRaceSlug(raw);
@@ -241,7 +242,6 @@ export function compute(raw) {
   });
 
   // Subclass max HP bonus (Draconic Sorcerer +1/level)
-  const subMech = SUBCLASS_MECHANICS[(raw.subclass || '').toLowerCase().trim()];
   _activeSubclassEffects(subMech, 1).forEach(e => {
     // Only level-1 features for max_hp_bonus (applies from level 1)
     if (e.type === 'max_hp_bonus') maxHp += e.perLevel * level;

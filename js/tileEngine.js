@@ -162,10 +162,10 @@ export class TileEngine {
   /** Grouped tiles for the tile picker UI */
   static get tileGroups() {
     return {
-      '🪨 Floor':  ['floor','floor_alt','dirt','stone_floor','wood_floor','grass'],
-      '🧱 Walls':  ['wall_n','wall_s','wall_e','wall_w','wall_rough','wall_corner','pillar','void'],
-      '🚪 Doors':  ['door_closed','door_open','door_locked'],
-      '🗝 Props':   ['stairs_down','stairs_up','chest_closed','chest_open','altar','shrine','torch','barrel'],
+      '<img src="/assets/icons/action/floor.png" alt="" class="custom-icon" style="width:12px;height:12px;vertical-align:middle;" loading="lazy"> Floor':  ['floor','floor_alt','dirt','stone_floor','wood_floor','grass'],
+      '<img src="/assets/icons/action/wall.png" alt="" class="custom-icon" style="width:12px;height:12px;vertical-align:middle;" loading="lazy"> Walls':  ['wall_n','wall_s','wall_e','wall_w','wall_rough','wall_corner','pillar','void'],
+      '<img src="/assets/icons/toolbar/door.png" alt="" class="custom-icon" style="width:12px;height:12px;vertical-align:middle;" loading="lazy"> Doors':  ['door_closed','door_open','door_locked'],
+      '<img src="/assets/icons/action/props.png" alt="" class="custom-icon" style="width:12px;height:12px;vertical-align:middle;" loading="lazy"> Props':   ['stairs_down','stairs_up','chest_closed','chest_open','altar','shrine','torch','barrel'],
     };
   }
 }

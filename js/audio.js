@@ -1,4 +1,4 @@
-// audio.js - Sound management CritRoll v120
+// audio.js - Sound management ParaDice v120
 
 const rollSound   = new Audio('assets/dice-3.wav');
 const critSound   = new Audio('assets/17.mp3');

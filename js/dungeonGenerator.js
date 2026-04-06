@@ -1,6 +1,6 @@
 // js/dungeonGenerator.js — Rot.js Dungeon Generator  (E3-D / E3-G)
 //
-// Wraps ROT.Map.Digger / Cellular / BSP to produce CritRoll-compatible
+// Wraps ROT.Map.Digger / Cellular / BSP to produce ParaDice-compatible
 // dungeon data: obstacle grid, fog grid, room metadata.
 //
 // Seeded via ROT.RNG so the same roomCode always produces the same dungeon.
@@ -90,7 +90,7 @@ export function generateDungeon({ size = 'M', style = 'dungeon', seed } = {}) {
   return { width: w, height: h, tiles, rooms, doors, seed: usedSeed };
 }
 
-/** Convert dungeon tiles array → CritRoll obstacle key-map { "x,y": true } */
+/** Convert dungeon tiles array → ParaDice obstacle key-map { "x,y": true } */
 export function tilesToObstacleGrid(tiles) {
   const obs = {};
   tiles.forEach((row, y) => {
@@ -111,7 +111,7 @@ export function tilesToFogGrid(tiles) {
       // We fog everything; the FOV system reveals floor tiles on movement
     });
   });
-  return fog; // empty = all fogged (matching CritRoll fog convention)
+  return fog; // empty = all fogged (matching ParaDice fog convention)
 }
 
 /**

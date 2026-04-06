@@ -1,7 +1,7 @@
 // js/pathfinder.js — EasyStar.js A* Pathfinding  (E6-A)
 //
 // Wraps easystarjs with a Promise-based API and a dirty-grid rebuild.
-// Designed for CritRoll: grid cells are either passable (floor) or
+// Designed for ParaDice: grid cells are either passable (floor) or
 // impassable (obstacle).  Diagonal movement enabled (D&D 5e uses
 // Chebyshev distance for diagonal cost).
 //
@@ -30,7 +30,7 @@ export class Pathfinder {
   }
 
   /**
-   * Rebuild the A* grid from the CritRoll obstacle map.
+   * Rebuild the A* grid from the ParaDice obstacle map.
    * Call whenever obstacles change.
    *
    * @param {object} obstacleMap  — { "x,y": true }

@@ -1,4 +1,4 @@
-// js/core/eventBus.js — CritRoll Typed Event Bus
+// js/core/eventBus.js — ParaDice Typed Event Bus
 // Replaces all direct cross-system coupling with a clean pub/sub channel.
 //
 // Emitted events (contract):

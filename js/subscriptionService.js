@@ -1,9 +1,13 @@
 // subscriptionService.js — Client-side subscription tier management
 import { getDatabase, ref, onValue, get } from "firebase/database";
-import { initializeApp } from "firebase/app";
-import { firebaseConfig } from "./constants.js";
+import { getApp } from "firebase/app";
 
-const db = getDatabase(initializeApp(firebaseConfig, 'sub-reader'));
+// Lazy-init: deferred until first use so firebaseService.js has time to call initializeApp()
+let _db = null;
+function db() {
+    if (!_db) _db = getDatabase(getApp());
+    return _db;
+}
 
 const TIER_LIMITS = {
     player:  { maxChars: 3, maxCampaigns: 0, canCreateRoom: false, hasAI: false },
@@ -14,9 +18,26 @@ const TIER_LIMITS = {
 let _currentSub = { tier: 'player', status: 'active', plan: null, trialEnd: 0, currentPeriodEnd: 0, gracePeriodEnd: 0 };
 let _listeners = [];
 
-export function listenToSubscription(uid, callback) {
+export async function listenToSubscription(uid, callback) {
     if (!uid) return;
-    const subRef = ref(db, `users/${uid}/subscription`);
+    const subRef = ref(db(), `users/${uid}/subscription`);
+    // Immediate one-time fetch so _currentSub is populated before any UI interaction
+    try {
+        const snap = await get(subRef);
+        const data = snap.val() || {};
+        _currentSub = {
+            tier: data.tier || 'player',
+            status: data.status || 'active',
+            plan: data.plan || null,
+            trialEnd: data.trialEnd || 0,
+            currentPeriodEnd: data.currentPeriodEnd || 0,
+            gracePeriodEnd: data.gracePeriodEnd || 0,
+        };
+        const resolved = resolveAccess(_currentSub);
+        callback(resolved);
+        _listeners.forEach(fn => fn(resolved));
+    } catch (e) { console.warn('[Sub] initial fetch failed, falling back to listener:', e.message); }
+    // Then keep listening for real-time changes
     onValue(subRef, (snap) => {
         const data = snap.val() || {};
         _currentSub = {
@@ -40,7 +61,8 @@ export function resolveAccess(sub) {
     const inTrial = sub.status === 'trial' && sub.trialEnd > now;
     const inGrace = sub.gracePeriodEnd > now;
     const periodActive = sub.currentPeriodEnd > now;
-    const isActive = sub.tier !== 'player' && (sub.status === 'active' || inTrial || inGrace || periodActive);
+    const isLifetime = sub.plan === 'lifetime' && sub.currentPeriodEnd === 0;
+    const isActive = sub.tier !== 'player' && (sub.status === 'active' || inTrial || inGrace || periodActive || isLifetime);
 
     return {
         tier: isActive ? sub.tier : 'player',
@@ -71,4 +93,8 @@ export function checkCanCreateCampaign(currentCount) {
 
 export function checkCanCreateRoom() {
     return getCurrentSub().limits.canCreateRoom;
+}
+
+export function checkCanCreateListing() {
+    return getCurrentSub().limits.canCreateRoom; // same gate: DM/Founder only
 }
