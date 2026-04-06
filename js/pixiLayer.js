@@ -124,6 +124,8 @@ export class PixiLayer {
     this._root.x = vx;
     this._root.y = vy;
     this._root.scale.set(vs);
+    // Store for screen-space label positioning
+    this._vx = vx; this._vy = vy; this._vs = vs;
   }
 
   /**
@@ -501,10 +503,12 @@ export class PixiLayer {
     if (nameText.style.fontSize !== 13) nameText.style.fontSize = 13;
 
     // Convert token centre to screen coords for label placement
-    const rootVx = this._root.x, rootVy = this._root.y;
-    const tokenScreenX = rootVx + (px + size / 2) * vs;
-    const tokenScreenY = rootVy + (py + size / 2) * vs;
-    const labelDist = size * 0.5 * vs + 26 + (labelOffset.push || 0) * vs;
+    const rootVx = this._vx ?? this._root.x;
+    const rootVy = this._vy ?? this._root.y;
+    const rootVs = this._vs ?? vs;
+    const tokenScreenX = rootVx + (px + size / 2) * rootVs;
+    const tokenScreenY = rootVy + (py + size / 2) * rootVs;
+    const labelDist = size * 0.5 * rootVs + 26 + (labelOffset.push || 0) * rootVs;
     const hpNudge = pl.maxHp ? 10 : 0;
     const slx = tokenScreenX + labelOffset.dx * labelDist;
     const sly = tokenScreenY + labelOffset.dy * labelDist + hpNudge;
