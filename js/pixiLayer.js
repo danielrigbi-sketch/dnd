@@ -191,9 +191,10 @@ export class PixiLayer {
         if (!ca || !cb) continue;
         const dist = Math.hypot(ca.cx - cb.cx, ca.cy - cb.cy);
         if (dist < pps * 1.5) {
-          // Labels likely overlap — nudge both further out
-          _labelOffsets[names[a]].extra = Math.max(_labelOffsets[names[a]].extra, 12 / vs);
-          _labelOffsets[names[b]].extra = Math.max(_labelOffsets[names[b]].extra, 12 / vs);
+          // Labels likely overlap — nudge both further out (use pps-relative offset)
+          const nudge = pps * 0.2;
+          _labelOffsets[names[a]].extra = Math.max(_labelOffsets[names[a]].extra, nudge);
+          _labelOffsets[names[b]].extra = Math.max(_labelOffsets[names[b]].extra, nudge);
         }
       }
     }

@@ -292,7 +292,8 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
             `;
         } else {
             // Prefer pre-attached _resolved; compute if missing (fallback for first render)
-            const resolved = (i.type !== 'npc' && i._str != null)
+            // NPCs use raw data directly — charEngine.compute() doesn't handle NPC stats
+            const resolved = (i.userRole !== 'npc' && i.type !== 'npc' && i._str != null)
                 ? (i._resolved || compute(i))
                 : i;
             const resolvedMaxHp = resolved.maxHp ?? i.maxHp;
