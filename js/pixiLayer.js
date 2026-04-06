@@ -495,7 +495,10 @@ export class PixiLayer {
     if (nameText.text !== label) nameText.text = label;
     // Clamp to half-pixels to minimise PixiJS text re-cache
     const nameFontSz = Math.round((13 / vs) * 2) / 2;
-    if (Math.abs(nameText.style.fontSize - nameFontSz) > 0.4) nameText.style.fontSize = nameFontSz;
+    if (Math.abs(nameText.style.fontSize - nameFontSz) > 0.4) {
+      nameText.style.fontSize = nameFontSz;
+      nameText.resolution = Math.max(2, window.devicePixelRatio || 1);
+    }
     // Label placement: disc-edge + constant screen gap + overlap push
     const labelRadius = size * 0.5 + 26 / vs + (labelOffset.push || 0);
     const hpNudge     = pl.maxHp ? (10 / vs) : 0;

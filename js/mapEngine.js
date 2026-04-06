@@ -724,13 +724,23 @@ export class MapEngine {
     const mW = (mapW ?? MAP_W_DEFAULT) * pps * this.vs;
     const mH = (mapH ?? MAP_H_DEFAULT) * pps * this.vs;
     const oxS = ox * this.vs, oyS = oy * this.vs;
-    // Allow panning so the map edge can reach just inside the usable (non-overlay) area
-    const vxMax = -oxS + ins.left;
-    const vxMin = (W - ins.right) - oxS - mW;
-    const vyMax = -oyS + ins.top;
-    const vyMin = (H - ins.bottom) - oyS - mH;
-    this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
-    this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
+    const usableW = W - ins.left - ins.right;
+    const usableH = H - ins.top  - ins.bottom;
+    // When map is smaller than viewport on an axis, center it; otherwise clamp to edges
+    if (mW <= usableW) {
+      this.vx = ins.left + (usableW - mW) / 2 - oxS;
+    } else {
+      const vxMax = -oxS + ins.left;
+      const vxMin = (W - ins.right) - oxS - mW;
+      this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
+    }
+    if (mH <= usableH) {
+      this.vy = ins.top + (usableH - mH) / 2 - oyS;
+    } else {
+      const vyMax = -oyS + ins.top;
+      const vyMin = (H - ins.bottom) - oyS - mH;
+      this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
+    }
   }
 
   /** Pan the map to center on a specific token. */
