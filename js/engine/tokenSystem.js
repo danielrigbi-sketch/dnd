@@ -360,27 +360,19 @@ export class TokenSystem {
     const { sx, sy } = this._cp(e);
     const delta = e.deltaY < 0 ? 1.1 : 0.91;
     const eng = this.e;
-    // Guard: if current zoom is corrupt, reset to 1
-    if (!isFinite(eng.vs) || eng.vs <= 0) { eng.vs = 1; eng.fitToView(); return; }
     // Minimum zoom: map fills the usable viewport (accounting for UI overlay insets)
     const { mapW = 30, mapH = 20, pps } = eng.S.cfg;
     const ins = eng._insets || { left: 0, top: 0, right: 0, bottom: 0 };
     const usableW = Math.max(1, eng.cv.width  - ins.left - ins.right);
     const usableH = Math.max(1, eng.cv.height - ins.top  - ins.bottom);
+    // Math.max = "cover" behaviour: min zoom is when the map fills the screen on its shorter axis
     const vsMin = Math.max(
       usableW / Math.max(1, (mapW ?? 30) * pps),
       usableH / Math.max(1, (mapH ?? 20) * pps)
     );
-    const safeVsMin = (isFinite(vsMin) && vsMin > 0) ? Math.max(0.1, vsMin) : 0.2;
-    const ns = Math.min(4, Math.max(safeVsMin, eng.vs * delta));
-    if (!isFinite(ns) || ns <= 0) return;
-    const ratio = ns / eng.vs;
-    if (!isFinite(ratio)) { eng.vs = ns; eng.fitToView(); return; }
-    eng.vx = sx - (sx - eng.vx) * ratio;
-    eng.vy = sy - (sy - eng.vy) * ratio;
-    // Guard vx/vy against NaN/Infinity
-    if (!isFinite(eng.vx)) eng.vx = 0;
-    if (!isFinite(eng.vy)) eng.vy = 0;
+    const ns = Math.min(4, Math.max(vsMin, eng.vs * delta));
+    eng.vx = sx - (sx - eng.vx) * (ns / eng.vs);
+    eng.vy = sy - (sy - eng.vy) * (ns / eng.vs);
     eng.vs = ns;
     eng._clampPan();
     eng._dirty();

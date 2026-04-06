@@ -706,8 +706,8 @@ export class MapEngine {
       usableH / Math.max(1, (mapH ?? MAP_H_DEFAULT) * pps)
     );
     this.vs = vsFill;
-    const mW  = (mapW  || MAP_W_DEFAULT) * pps * this.vs;
-    const mH  = (mapH  || MAP_H_DEFAULT) * pps * this.vs;
+    const mW  = (mapW ?? MAP_W_DEFAULT) * pps * this.vs;
+    const mH  = (mapH ?? MAP_H_DEFAULT) * pps * this.vs;
     const oxS = ox * this.vs, oyS = oy * this.vs;
     // Center within usable area (excess will be off-screen, pannable)
     this.vx = ins.left + (usableW - mW) / 2 - oxS;
@@ -718,25 +718,19 @@ export class MapEngine {
   /** Clamp vx/vy so the map never slides fully outside the usable (non-overlay) area.
    *  Insets allow the edge of the map to reach the inner edge of the overlay. */
   _clampPan() {
-    // Recovery: if vx/vy/vs are corrupt, reset
-    if (!isFinite(this.vx) || !isFinite(this.vy) || !isFinite(this.vs) || this.vs <= 0) {
-      this.vs = 1; this.vx = 0; this.vy = 0; this.fitToView(); return;
-    }
     const ins = this._insets;
     const W = this.cv.width, H = this.cv.height;
     const { ox, oy, pps, mapW, mapH } = this.S.cfg;
     const mW = (mapW ?? MAP_W_DEFAULT) * pps * this.vs;
     const mH = (mapH ?? MAP_H_DEFAULT) * pps * this.vs;
     const oxS = ox * this.vs, oyS = oy * this.vs;
-
+    // Allow panning so the map edge can reach just inside the usable (non-overlay) area
     const vxMax = -oxS + ins.left;
     const vxMin = (W - ins.right) - oxS - mW;
-    // Only clamp when map is larger than viewport; otherwise let zoom position freely
-    if (vxMin <= vxMax) this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
-
     const vyMax = -oyS + ins.top;
     const vyMin = (H - ins.bottom) - oyS - mH;
-    if (vyMin <= vyMax) this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
+    this.vx = Math.min(vxMax, Math.max(vxMin, this.vx));
+    this.vy = Math.min(vyMax, Math.max(vyMin, this.vy));
   }
 
   /** Pan the map to center on a specific token. */
