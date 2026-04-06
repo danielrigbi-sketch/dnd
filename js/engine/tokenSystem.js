@@ -662,7 +662,7 @@ export class TokenSystem {
     if (!actions.length) return;
 
     // Group actions into sections for collapsible display
-    const SECTION_KEYS = ['──────────────', '── ⚡ Bonus', '── 👑 Legendary', '── 🔮 Spells ──', '── ✨ Traits ──', '── ⚔ Class ──', '── 🤝 Ally ──'];
+    const SECTION_KEYS = ['──────────────', '── ⚡ Bonus', '── 👑 Legendary', '── 🔮 Spells ──', '── ✨ Traits ──', '── ⚔ Class ──', '── 🤝 Ally ──', '── ⚠ Conditions'];
     const isSectionHeader = a => SECTION_KEYS.some(k => a.label.startsWith(k));
 
     // Split actions into groups

@@ -652,6 +652,7 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                             </div>`;
                         })() : ''}
                         ${canViewStats && isOwner ? _renderClassAbilities(i) : ''}
+                        ${canViewStats && isOwner ? _renderWeaponActions(i) : ''}
                     ` : `
                         <div style="text-align:center; padding:10px 0; color:#888; font-style:italic; font-size:11px;">${t('hidden_data')}</div>
                     `}
@@ -849,11 +850,49 @@ function _renderClassAbilities(player) {
     if (!btns.length && !subHtml) return '';
 
     return `
-        <div class="class-ability-section">
-            <div style="font-size:10px; color:#c9aa71; font-weight:bold; margin-bottom:6px; letter-spacing:0.5px;">${iconImg('⚔️','14px')} CLASS ABILITIES</div>
-            <div style="display:flex; flex-wrap:wrap; gap:5px;">${btns.join('')}</div>
+        <details open class="class-ability-section" style="margin-top:8px;border-top:1px dashed rgba(200,128,58,0.3);padding-top:8px;">
+            <summary style="font-size:10px; color:#c9aa71; font-weight:bold; cursor:pointer; user-select:none; letter-spacing:0.5px;">${iconImg('⚔️','14px')} CLASS ABILITIES</summary>
+            <div style="display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;">${btns.join('')}</div>
             ${subHtml}
-        </div>
+        </details>
+    `;
+}
+
+// ── Weapon attacks section for character card ─────────────────────────────────
+function _renderWeaponActions(player) {
+    const eq = player.equipment;
+    if (!eq) return '';
+    const lvl = player.level || 1;
+    const pb = Math.ceil(lvl / 4) + 1;
+    const strMod = Math.floor(((player._str || 10) - 10) / 2);
+    const dexMod = Math.floor(((player._dex || 10) - 10) / 2);
+    const cn = escapeHtml(player.name);
+    const rows = [];
+
+    if (eq.mainHand?.name) {
+        const isFinesse = (eq.mainHand.properties || '').toLowerCase().includes('finesse');
+        const mod = isFinesse ? Math.max(strMod, dexMod) : strMod;
+        const hit = pb + mod;
+        const dmg = eq.mainHand.damageDice || '1d6';
+        rows.push(`<div style="display:flex;gap:4px;">
+            <button class="class-ability-btn" onclick="window.rollMacro('${cn}','${escapeHtml(eq.mainHand.name)}',${hit})">${iconImg('⚔️','12px')} ${escapeHtml(eq.mainHand.name)} +${hit}</button>
+            <button class="class-ability-btn" onclick="window.rollDamageMacro('${cn}','${escapeHtml(eq.mainHand.name)}','${dmg}',${mod})">${iconImg('💥','12px')} ${dmg}+${mod}</button>
+        </div>`);
+    }
+    if (eq.ranged?.name) {
+        const hit = pb + dexMod;
+        const dmg = eq.ranged.damageDice || '1d6';
+        rows.push(`<div style="display:flex;gap:4px;">
+            <button class="class-ability-btn" onclick="window.rollMacro('${cn}','${escapeHtml(eq.ranged.name)}',${hit})">${iconImg('🏹','12px')} ${escapeHtml(eq.ranged.name)} +${hit}</button>
+            <button class="class-ability-btn" onclick="window.rollDamageMacro('${cn}','${escapeHtml(eq.ranged.name)}','${dmg}',${dexMod})">${iconImg('💥','12px')} ${dmg}+${dexMod}</button>
+        </div>`);
+    }
+    if (!rows.length) return '';
+    return `
+        <details style="margin-top:8px;border-top:1px dashed rgba(200,128,58,0.3);padding-top:8px;">
+            <summary style="font-size:10px;color:#e74c3c;font-weight:bold;cursor:pointer;user-select:none;">${iconImg('⚔️','14px')} ATTACKS</summary>
+            <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">${rows.join('')}</div>
+        </details>
     `;
 }
 

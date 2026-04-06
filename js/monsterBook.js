@@ -377,6 +377,16 @@ async function _showCustomizeForm(slug) {
       <!-- Spellbook placeholder — filled async if monster is a spellcaster -->
       <div id="mb-spellbook-section"></div>
 
+      <!-- Faction picker -->
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">
+        <label style="color:#aaa;font-size:11px;">${t('faction_label') || 'Faction'}:</label>
+        <select id="mb-faction-select" style="flex:1;padding:4px 8px;border-radius:6px;background:#1a0e04;color:#c8803a;border:1px solid #c8803a;font-size:12px;">
+          <option value="foe" selected>🔴 ${t('faction_foe') || 'Foe'}</option>
+          <option value="neutral">🟡 ${t('faction_neutral') || 'Neutral'}</option>
+          <option value="ally">🟢 ${t('faction_ally') || 'Ally'}</option>
+        </select>
+      </div>
+
       <button id="mb-spawn-confirm"
         style="width:100%; padding:10px; border-radius:8px; font-size:13px; font-weight:700;
                cursor:pointer; border:1px solid ${col};
@@ -426,7 +436,8 @@ async function _showCustomizeForm(slug) {
       _cha:     _n('mb-c-_cha')     || stats._cha,
       initBonus,
     };
-    _doSpawn(m, finalName, { ...stats, ...overrides }, col, initBonus);
+    const faction = document.getElementById('mb-faction-select')?.value || 'foe';
+    _doSpawn(m, finalName, { ...stats, ...overrides, faction }, col, initBonus);
   };
 
   // Run translations + portrait load in parallel — all non-blocking

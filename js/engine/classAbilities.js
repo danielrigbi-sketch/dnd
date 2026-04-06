@@ -108,28 +108,44 @@ export function getSelfActions(player) {
       const hitBonus = pb + mod;
       const dmg = eq.mainHand.damageDice || '1d6';
       actions.push({
-        label: `${iconImg('⚔️','14px')} ${eq.mainHand.name} (+${hitBonus}, ${dmg}+${mod})`,
+        label: `${iconImg('⚔️','14px')} ${eq.mainHand.name} — Hit +${hitBonus}`,
         cls: 'attack', available: true,
         fn: (cn) => window.rollMacro?.(cn, eq.mainHand.name, hitBonus)
+      });
+      actions.push({
+        label: `${iconImg('💥','14px')} ${eq.mainHand.name} — Dmg ${dmg}+${mod}`,
+        cls: 'attack damage', available: true,
+        fn: (cn) => window.rollDamageMacro?.(cn, eq.mainHand.name, dmg, mod)
       });
     }
     if (eq.ranged?.name) {
       const hitBonus = pb + dexMod;
       const dmg = eq.ranged.damageDice || '1d6';
       actions.push({
-        label: `${iconImg('🏹','14px')} ${eq.ranged.name} (+${hitBonus}, ${dmg}+${dexMod})`,
+        label: `${iconImg('🏹','14px')} ${eq.ranged.name} — Hit +${hitBonus}`,
         cls: 'attack', available: true,
         fn: (cn) => window.rollMacro?.(cn, eq.ranged.name, hitBonus)
+      });
+      actions.push({
+        label: `${iconImg('💥','14px')} ${eq.ranged.name} — Dmg ${dmg}+${dexMod}`,
+        cls: 'attack damage', available: true,
+        fn: (cn) => window.rollDamageMacro?.(cn, eq.ranged.name, dmg, dexMod)
       });
     }
     if (eq.offHand?.name && !eq.shield) {
       const isFinesse = (eq.offHand.properties || '').toLowerCase().includes('finesse');
       const mod = isFinesse ? Math.max(strMod, dexMod) : strMod;
       const hitBonus = pb + mod;
+      const dmg = eq.offHand.damageDice || '1d6';
       actions.push({
-        label: `${iconImg('🗡️','14px')} ${eq.offHand.name} (off, +${hitBonus})`,
+        label: `${iconImg('🗡️','14px')} ${eq.offHand.name} (off) — Hit +${hitBonus}`,
         cls: 'attack bonus', available: true,
         fn: (cn) => window.rollMacro?.(cn, eq.offHand.name, hitBonus)
+      });
+      actions.push({
+        label: `${iconImg('💥','14px')} ${eq.offHand.name} (off) — Dmg ${dmg}+${mod}`,
+        cls: 'attack damage bonus', available: true,
+        fn: (cn) => window.rollDamageMacro?.(cn, eq.offHand.name, dmg, mod)
       });
     }
     if (actions.length > 0) actions.push({ label: '──────────────', cls: 'disabled', available: false, fn: null });
