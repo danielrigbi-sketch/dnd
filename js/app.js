@@ -51,6 +51,7 @@ import { compute } from "./engine/charEngine.js";
 import { skillMod, SKILL_ABILITIES, profBonus } from "./engine/combatUtils.js";
 import { MusicPlayer, MUSIC_LIBRARY, MUSIC_CATEGORIES, TRACK_BY_ID } from "./musicPlayer.js";
 import * as videoChat from "./videoChat.js";
+import { makeDraggable, makeScrollable, ensureCloseButton } from "./core/draggable.js";
 
 // One-time migration: move old critroll_ keys to paradice_ prefix
 ['initBonus', 'cName'].forEach(k => {
@@ -3509,24 +3510,68 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById(id)?.addEventListener('change', _dmScheduleNoteSave);
     });
 
-    // ── Make action popup draggable via header ────────────────────────
-    const popupHeader = document.getElementById('action-popup-header');
-    const popup = document.getElementById('action-popup');
-    if (popupHeader && popup) {
-        let _dx = 0, _dy = 0, _dragging = false;
-        popupHeader.addEventListener('mousedown', (e) => {
-            if (e.target.tagName === 'BUTTON') return;
-            _dragging = true;
-            _dx = e.clientX - popup.offsetLeft;
-            _dy = e.clientY - popup.offsetTop;
-            e.preventDefault();
-        });
-        document.addEventListener('mousemove', (e) => {
-            if (!_dragging) return;
-            popup.style.left = Math.max(0, e.clientX - _dx) + 'px';
-            popup.style.top  = Math.max(0, e.clientY - _dy) + 'px';
-        });
-        document.addEventListener('mouseup', () => { _dragging = false; });
+    // ── Make all popups draggable, scrollable, closeable ────────────
+    // Action popup (combat right-click)
+    makeDraggable(document.getElementById('action-popup'), document.getElementById('action-popup-header'));
+
+    // DM popups (toolbar popups)
+    const dmPopups = [
+        { id: 'dm-combat-popup',    header: '.dm-popup-header' },
+        { id: 'dm-broadcast-popup', header: '.dm-popup-header' },
+        { id: 'dm-rest-popup',      header: '.dm-popup-header' },
+        { id: 'dm-scenes-popup',    header: '.dm-popup-header' },
+        { id: 'dm-campaign-popup',  header: '.dm-popup-header' },
+        { id: 'dm-notes-popup',     header: '.dm-popup-header' },
+    ];
+    dmPopups.forEach(({ id, header }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const handle = el.querySelector(header);
+        if (handle) makeDraggable(el, handle);
+        makeScrollable(el, 70);
+    });
+
+    // Player popups
+    const ptPopups = ['pt-special-popup', 'pt-rest-popup', 'pt-action-picker'];
+    ptPopups.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const handle = el.querySelector('.pt-popup-header') || el.querySelector('h4') || el.firstElementChild;
+        if (handle) makeDraggable(el, handle);
+        makeScrollable(el, 60);
+    });
+
+    // Music panel
+    const musicPanel = document.getElementById('music-panel');
+    if (musicPanel) {
+        const musicHeader = musicPanel.querySelector('.music-header') || musicPanel.firstElementChild;
+        if (musicHeader) makeDraggable(musicPanel, musicHeader);
+        ensureCloseButton(musicPanel, () => window._toggleMusicPanel?.(), '.music-close');
     }
+
+    // Map token roster
+    const roster = document.getElementById('map-token-roster-popup');
+    if (roster) {
+        makeScrollable(roster, 50);
+        ensureCloseButton(roster, () => { roster.style.display = 'none'; });
+    }
+
+    // ── Auto-enhance dynamically created panels ──────────────────────
+    // Spell panel, NPC panel, stat block — created on first open
+    const _enhanced = new Set();
+    new MutationObserver(() => {
+        const panels = [
+            { dialog: 'spell-panel-dialog',  header: 'spell-panel-header' },
+            { dialog: 'npc-panel-dialog',    header: null }, // first child as handle
+            { dialog: 'stat-block-panel',    header: null },
+        ];
+        panels.forEach(({ dialog, header }) => {
+            const el = document.getElementById(dialog);
+            if (!el || _enhanced.has(dialog)) return;
+            _enhanced.add(dialog);
+            const handle = header ? document.getElementById(header) : el.firstElementChild;
+            if (handle) makeDraggable(el, handle);
+        });
+    }).observe(document.body, { childList: true, subtree: true });
 });
 
