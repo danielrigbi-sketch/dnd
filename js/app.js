@@ -2169,9 +2169,14 @@ function initMap() {
     // Forward ui:toast bus events to showToast
     mapEngine.bus.on('ui:toast', ({ msg, type }) => showToast(msg, type || 'info'));
 
-    // ── Floating zoom controls (attached to dice-arena, not map-container, to avoid pointer-events:none) ──
-    const arena = document.getElementById('dice-arena');
-    if (arena) _createZoomControls(arena, mapEngine);
+    // ── Wire up static zoom controls (shown/hidden by _activateMapCanvas / deactivateScene) ──
+    document.getElementById('zoom-in-btn')?.addEventListener('click', () => mapEngine.zoomBy(1.25));
+    document.getElementById('zoom-fit-btn')?.addEventListener('click', () => mapEngine.fitToView());
+    document.getElementById('zoom-out-btn')?.addEventListener('click', () => mapEngine.zoomBy(0.8));
+
+    // ── Keep canvas sized to container (ResizeObserver) ──────────────
+    const ro = new ResizeObserver(() => resize());
+    ro.observe(container);
 
     // ── Opportunity Attack detection (3B) ──────────────────────────────
     mapEngine.bus.on('token:moved', ({ cName: moverCName, gx, gy, prevGx, prevGy }) => {
@@ -2612,6 +2617,7 @@ window.deactivateScene = () => {
     container?.classList.add('map-bg-hidden');
     document.getElementById('dice-arena')?.classList.remove('map-active');
     document.getElementById('map-toolbar').style.display = 'none';
+    document.getElementById('zoom-controls').style.display = 'none';
     document.getElementById('dm-slot-11')?.classList.remove('dm-slot--active');
     document.getElementById('map-token-roster-popup').style.display = 'none';
     document.querySelectorAll('.scene-gallery-card').forEach(c => c.classList.remove('active'));
@@ -2699,6 +2705,7 @@ function _activateMapCanvas(sceneData) {
     container?.classList.remove('map-bg-hidden');
     container?.classList.add('map-bg-active');
     document.getElementById('dice-arena')?.classList.add('map-active');
+    document.getElementById('zoom-controls').style.display = 'flex';
     if (userRole === 'dm') {
         document.getElementById('map-toolbar').style.display = 'flex';
         document.getElementById('dm-slot-11')?.classList.add('dm-slot--active');
@@ -3445,34 +3452,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ── Floating Zoom Controls ───────────────────────────────────────────
-function _createZoomControls(container, eng) {
-    // Remove old controls if they exist (e.g., re-init)
-    container.querySelector('.zoom-controls')?.remove();
-
-    const wrap = document.createElement('div');
-    wrap.className = 'zoom-controls';
-
-    const btnIn = document.createElement('button');
-    btnIn.className = 'zoom-btn';
-    btnIn.textContent = '+';
-    btnIn.title = 'Zoom In';
-    btnIn.addEventListener('click', () => eng.zoomBy(1.25));
-
-    const btnFit = document.createElement('button');
-    btnFit.className = 'zoom-btn zoom-btn-fit';
-    btnFit.textContent = '⊡';
-    btnFit.title = 'Fit to Screen';
-    btnFit.addEventListener('click', () => eng.fitToView());
-
-    const btnOut = document.createElement('button');
-    btnOut.className = 'zoom-btn';
-    btnOut.textContent = '−';
-    btnOut.title = 'Zoom Out';
-    btnOut.addEventListener('click', () => eng.zoomBy(0.8));
-
-    wrap.appendChild(btnIn);
-    wrap.appendChild(btnFit);
-    wrap.appendChild(btnOut);
-    container.appendChild(wrap);
-}

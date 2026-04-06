@@ -650,10 +650,10 @@ details.action-section[open] > .action-section-header::after { content: '▴'; }
     font-size: 16px;
 }
 
-/* RTL mirror */
+/* Keep zoom controls on the right regardless of text direction */
 [dir="rtl"] .zoom-controls {
-    right: auto;
-    left: 12px;
+    right: 12px;
+    left: auto;
 }
 
 @media (max-width: 768px) {

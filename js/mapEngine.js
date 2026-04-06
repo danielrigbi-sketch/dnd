@@ -697,6 +697,7 @@ export class MapEngine {
 
   /** Zoom and center the map so it fills the usable viewport exactly (max zoom-out view). */
   fitToView() {
+    if (this.cv.width < 1 || this.cv.height < 1) return;
     const ins = this._insets;
     const W = this.cv.width, H = this.cv.height;
     const { ox, oy, pps, mapW, mapH } = this.S.cfg;
@@ -815,6 +816,7 @@ export class MapEngine {
   /** Zoom by a multiplier, anchored to the center of the usable viewport.
    *  @param {number} factor — >1 zooms in, <1 zooms out */
   zoomBy(factor) {
+    if (this.cv.width < 1 || this.cv.height < 1) return;
     const ins = this._insets;
     const W = this.cv.width, H = this.cv.height;
     const { mapW, mapH, pps } = this.S.cfg;
@@ -824,7 +826,8 @@ export class MapEngine {
       usableW / Math.max(1, (mapW ?? MAP_W_DEFAULT) * pps),
       usableH / Math.max(1, (mapH ?? MAP_H_DEFAULT) * pps)
     );
-    const ns = Math.min(4, Math.max(vsMin, this.vs * factor));
+    const vsMax = Math.max(4, vsMin * 1.5); // max zoom is at least 1.5× the fill level
+    const ns = Math.min(vsMax, Math.max(vsMin, this.vs * factor));
     if (Math.abs(ns - this.vs) < 0.0001) return;
     // Anchor to center of usable viewport
     const cx = ins.left + usableW / 2;
