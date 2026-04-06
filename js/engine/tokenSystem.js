@@ -9,7 +9,7 @@ import { typeColor } from '../monsters.js';
 import { escapeJSString } from '../core/sanitize.js';
 import { t } from '../i18n.js';
 import { getTileSize, getVisualScale, footprintsOverlap } from './sizeUtils.js';
-import { tileDistance, rollDice, parseSpellRangeFt, applyDamageModifiers, getConditionModifiers } from './combatUtils.js';
+import { tileDistance, rollDice, parseSpellRangeFt, applyDamageModifiers, getConditionModifiers, contestedCheck, skillMod } from './combatUtils.js';
 import { getCombatActions, getAllyActions, getSelfActions, applyMeleeModifier, onKill } from './classAbilities.js';
 
 const STS_ICON = {
@@ -20,6 +20,11 @@ const STS_ICON = {
 };
 
 const ALL_CONDITIONS = ['Poisoned','Charmed','Unconscious','Frightened','Paralyzed','Restrained','Blinded','Prone','Stunned','Incapacitated','Petrified','Deafened','Grappled'];
+
+// Action menu icon helper — uses PNG icons from public/assets/icons/
+function _actIcon(path, size = '14px') {
+    return `<img src="/assets/icons/${path}" alt="" style="width:${size};height:${size};vertical-align:middle;margin-inline-end:4px;" class="custom-icon">`;
+}
 
 function ck(gx, gy) { return `${Math.floor(gx)}_${Math.floor(gy)}`; }
 function cheb(ax, ay, bx, by) { return Math.max(Math.abs(ax - bx), Math.abs(ay - by)); }
@@ -387,8 +392,45 @@ export class TokenSystem {
 
       const popup = document.getElementById('action-popup');
       if (!popup) return;
-      document.getElementById('action-popup-header').innerHTML = `<span>🧙 ${myCName} — Self</span>`;
+      document.getElementById('action-popup-header').innerHTML = `<span>${_actIcon('toolbar/character.png','16px')} ${myCName}</span>`;
+      // ── Standard D&D 5e Actions ──
+      selfActions.push({ label: `── ${_actIcon('action/melee.png','14px')} ${t('sect_attacks')} ──`, cls: 'disabled', available: false, fn: null });
+      selfActions.push({ label: `${_actIcon('action/wand.png')} ${t('act_cast_spell')}`, cls: 'utility', available: true,
+          fn: (cn) => window.openSpellPanel?.()
+      });
+      selfActions.push({ label: `${_actIcon('toolbar/hasted.png')} ${t('act_dash')}`, cls: 'utility', available: true,
+          fn: (cn, eng) => { eng.db?.patchPlayerInDB(cn, { dashUsed: true }); eng.db?.saveRollToDB({ cName: cn, type: 'STATUS', status: `${t('act_dash')}`, ts: Date.now() }); }
+      });
+      selfActions.push({ label: `${_actIcon('action/hide.png')} ${t('act_disengage')}`, cls: 'utility', available: true,
+          fn: (cn, eng) => { eng.db?.patchPlayerInDB(cn, { disengaged: true }); eng.db?.saveRollToDB({ cName: cn, type: 'STATUS', status: `${t('act_disengage')}`, ts: Date.now() }); }
+      });
+      selfActions.push({ label: `${_actIcon('action/shield.png')} ${t('act_dodge')}`, cls: 'utility', available: true,
+          fn: (cn, eng) => { eng.db?.patchPlayerInDB(cn, { dodging: true }); eng.db?.saveRollToDB({ cName: cn, type: 'STATUS', status: `${t('act_dodge')}`, ts: Date.now() }); }
+      });
+      selfActions.push({ label: `${_actIcon('toolbar/party.png')} ${t('act_help')}`, cls: 'utility', available: true,
+          fn: (cn, eng) => { eng.db?.saveRollToDB({ cName: cn, type: 'STATUS', status: `${t('act_help')}`, ts: Date.now() }); }
+      });
+      selfActions.push({ label: `${_actIcon('action/hide.png')} ${t('act_hide')}`, cls: 'utility', available: true,
+          fn: (cn) => window.rollSkillCheck?.(cn, 'Stealth')
+      });
+      selfActions.push({ label: `${_actIcon('toolbar/initiative.png')} ${t('act_ready')}`, cls: 'utility', available: true,
+          fn: (cn, eng) => { eng.db?.saveRollToDB({ cName: cn, type: 'STATUS', status: `${t('act_ready')}`, ts: Date.now() }); }
+      });
+      selfActions.push({ label: `${_actIcon('action/reveal.png')} ${t('act_search')}`, cls: 'utility', available: true,
+          fn: (cn) => window.rollSkillCheck?.(cn, 'Perception')
+      });
+      selfActions.push({ label: `${_actIcon('toolbar/dice.png')} ${t('act_use_object')}`, cls: 'utility', available: true,
+          fn: (cn, eng) => { eng.db?.saveRollToDB({ cName: cn, type: 'STATUS', status: `${t('act_use_object')}`, ts: Date.now() }); }
+      });
+      // ── Skill Checks section ──
+      selfActions.push({ label: `── ${_actIcon('toolbar/dice.png','14px')} ${t('sect_checks')} ──`, cls: 'disabled', available: false, fn: null });
+      ['Athletics','Acrobatics','Stealth','Perception','Insight','Intimidation','Persuasion','Deception','Investigation','Medicine','Sleight of Hand','Survival','Nature','Arcana','History','Religion','Performance','Animal Handling'].forEach(skill => {
+          const key = 'check_' + skill.toLowerCase().replace(/\s+/g, '_');
+          selfActions.push({ label: `${_actIcon('toolbar/dice.png')} ${t(key) || skill}`, cls: 'utility', available: true,
+              fn: (cn) => window.rollSkillCheck?.(cn, skill) });
+      });
       const body = document.getElementById('action-popup-body');
+      // Note: innerHTML used with safe i18n labels only, no user-generated content
       body.innerHTML = selfActions.map((a, i) =>
         `<button class="action-btn ${a.cls}" ${a.available && a.fn ? `data-idx="${i}"` : 'disabled'}>${a.label}</button>`
       ).join('');
@@ -417,13 +459,20 @@ export class TokenSystem {
     const attacker = eng.S.players[myCName] || {};
     const target   = eng.S.players[targetCName] || {};
 
+    const targetFaction = target.faction || (target.userRole === 'npc' ? 'foe' : 'ally');
+    const attackerFaction = attacker.faction || (attacker.userRole === 'npc' ? 'foe' : 'ally');
+    const isFoe = targetFaction !== attackerFaction && targetFaction !== 'neutral';
+    const isAlly = targetFaction === attackerFaction;
+    const isNeutral = targetFaction === 'neutral';
+
     const popup = document.getElementById('action-popup');
     if (!popup) return;
     const header = document.getElementById('action-popup-header');
     const body   = document.getElementById('action-popup-body');
 
     const fromLabel = myCName || 'DM';
-    header.innerHTML = `<span>⚔️ ${fromLabel} → ${targetCName}</span><span class="action-dist-badge">${distFt === Infinity ? '?' : distFt} ft</span>`;
+    const factionEmoji = { ally: '🟢', neutral: '🟡', foe: '🔴' }[targetFaction] || '';
+    header.innerHTML = `<span>${factionEmoji} ${fromLabel} → ${targetCName}</span><span class="action-dist-badge">${distFt === Infinity ? '?' : distFt} ft</span>`;
 
     const actions = [];
     const rangedRangeFt = attacker.rangedRange || 80; // ft, default shortbow
@@ -533,6 +582,33 @@ export class TokenSystem {
           actions.push({ label: `⚔️ Out of melee reach (${distFt} ft)`, cls: 'disabled', fn: null });
         }
 
+        if (dist <= 1 && isFoe) {
+          // Grapple
+          actions.push({ label: `${_actIcon('toolbar/grappled.png')} ${t('act_grapple')}`, cls: 'attack',
+              fn: () => {
+                  const aMod = skillMod('Athletics', attacker);
+                  const dMod = Math.max(skillMod('Athletics', target), skillMod('Acrobatics', target));
+                  const result = contestedCheck(aMod, dMod);
+                  if (result.success) eng.db?.addStatus(targetCName, 'Grappled');
+                  eng.db?.saveRollToDB({ cName: myCName, type: 'CONTEST', target: targetCName,
+                      status: `${t('act_grapple')}: ${result.attackerTotal} vs ${result.defenderTotal} — ${result.success ? '✓' : '✗'}`,
+                      ts: Date.now() });
+              }
+          });
+          // Shove
+          actions.push({ label: `${_actIcon('action/wind.png')} ${t('act_shove')}`, cls: 'attack',
+              fn: () => {
+                  const aMod = skillMod('Athletics', attacker);
+                  const dMod = Math.max(skillMod('Athletics', target), skillMod('Acrobatics', target));
+                  const result = contestedCheck(aMod, dMod);
+                  if (result.success) eng.db?.addStatus(targetCName, 'Prone');
+                  eng.db?.saveRollToDB({ cName: myCName, type: 'CONTEST', target: targetCName,
+                      status: `${t('act_shove')}: ${result.attackerTotal} vs ${result.defenderTotal} — ${result.success ? '✓ Prone' : '✗'}`,
+                      ts: Date.now() });
+              }
+          });
+        }
+
         const hasRanged = !!(attacker.rangedDmg && attacker.rangedDmg !== '0');
         if (hasRanged) {
           if (distFt <= rangedRangeFt) {
@@ -612,6 +688,18 @@ export class TokenSystem {
             label: a.label, cls: a.available ? a.cls : 'disabled', fn: a.available ? () => a.fn(myCName, targetCName, eng) : null,
           }));
         }
+        // Help action (adjacent ally)
+        if (dist <= 1) {
+          actions.push({
+            label: `${_actIcon('toolbar/party.png')} ${t('act_help')}`,
+            cls: 'utility',
+            fn: () => {
+              eng.db?.patchPlayerInDB(targetCName, { helpedBy: myCName });
+              eng.db?.saveRollToDB({ cName: myCName, type: 'STATUS',
+                status: `${myCName} ${t('act_help')} → ${targetCName}`, ts: Date.now() });
+            }
+          });
+        }
       } else {
         // Enemy targeting: class combat abilities
         const combatExtras = getCombatActions(attacker, target, distFt, myCName);
@@ -622,6 +710,58 @@ export class TokenSystem {
           }));
         }
       }
+    }
+
+    // ── Skill checks vs target ──
+    if (myCName && attTk) {
+        const checkActions = [];
+        if (isFoe || isNeutral) {
+            checkActions.push({ skill: 'Insight', icon: 'toolbar/concentrating.png' });
+            checkActions.push({ skill: 'Intimidation', icon: 'toolbar/frightened.png' });
+            if (dist <= 1) checkActions.push({ skill: 'Sleight of Hand', icon: 'action/dagger.png' });
+        }
+        if (isAlly || isNeutral) {
+            checkActions.push({ skill: 'Persuasion', icon: 'toolbar/npc.png' });
+            checkActions.push({ skill: 'Medicine', icon: 'action/heal.png' });
+            if (target.hp <= 0 && dist <= 1) {
+                // Medicine: Stabilize dying ally
+                checkActions.push({ skill: '_stabilize', icon: 'action/heal.png' });
+            }
+        }
+        checkActions.push({ skill: 'Perception', icon: 'action/reveal.png' });
+
+        if (checkActions.length) {
+            actions.push({ label: `── ${_actIcon('toolbar/dice.png','14px')} ${t('sect_checks')} ──`, cls: 'disabled', fn: null });
+            checkActions.forEach(({ skill, icon }) => {
+                if (skill === '_stabilize') {
+                    actions.push({
+                        label: `${_actIcon(icon)} ${t('act_medicine_stabilize')}`,
+                        cls: 'heal',
+                        fn: () => {
+                            const mod = skillMod('Medicine', attacker);
+                            const roll = Math.floor(Math.random() * 20) + 1;
+                            const success = (roll + mod) >= 10;
+                            if (success) {
+                                const saves = target.deathSaves || {};
+                                saves.stable = true;
+                                eng.db?.updateDeathSavesInDB?.(targetCName, saves);
+                            }
+                            eng.db?.saveRollToDB({ cName: myCName, type: 'SKILL', skillName: 'Medicine',
+                                mod, res: roll, total: roll + mod,
+                                flavor: `${t('act_medicine_stabilize')} DC 10: ${roll}+${mod}=${roll+mod} ${success ? '✓' : '✗'}`,
+                                ts: Date.now() });
+                        }
+                    });
+                } else {
+                    const key = 'check_' + skill.toLowerCase().replace(/\s+/g, '_');
+                    actions.push({
+                        label: `${_actIcon(icon)} ${t(key) || skill}`,
+                        cls: 'utility',
+                        fn: () => window.rollSkillCheck?.(myCName, skill)
+                    });
+                }
+            });
+        }
     }
 
     if (isDM) {
@@ -662,7 +802,7 @@ export class TokenSystem {
     if (!actions.length) return;
 
     // Group actions into sections for collapsible display
-    const SECTION_KEYS = ['──────────────', '── ⚡ Bonus', '── 👑 Legendary', '── 🔮 Spells ──', '── ✨ Traits ──', '── ⚔ Class ──', '── 🤝 Ally ──', '── ⚠ Conditions'];
+    const SECTION_KEYS = ['──────────────', `── ${_actIcon('action/melee.png','14px')}`, '── ⚡ Bonus', '── 👑 Legendary', '── 🔮 Spells ──', '── ✨ Traits ──', '── ⚔ Class ──', '── 🤝 Ally ──', '── ⚠ Conditions', `── ${_actIcon('toolbar/dice.png','14px')}`];
     const isSectionHeader = a => SECTION_KEYS.some(k => a.label.startsWith(k));
 
     // Split actions into groups

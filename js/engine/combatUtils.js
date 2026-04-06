@@ -83,6 +83,11 @@ export function getConditionModifiers(attacker, target, isMelee = true, distFt =
   // Petrified target → advantage on attacks against
   if (tSts.includes('Petrified'))  { advantage = true; reasons.push('target petrified'); }
 
+  // Dodging target → disadvantage for attacker
+  if (target.dodging) { disadvantage = true; reasons.push('target dodging'); }
+  // Helped attacker → advantage
+  if (attacker.helpedBy) { advantage = true; reasons.push('helped by ' + attacker.helpedBy); }
+
   // Invisible attacker → advantage
   if (aSts.includes('Invisible'))  { advantage = true; reasons.push('invisible'); }
 
@@ -119,6 +124,20 @@ export function getSaveModifiers(saver, ability) {
 
   if (advantage && disadvantage) { advantage = false; disadvantage = false; }
   return { advantage, disadvantage, autoFail, reasons };
+}
+
+/**
+ * Contested ability check (e.g., Grapple: Athletics vs Athletics/Acrobatics).
+ * @returns {{ attackerRoll: number, defenderRoll: number, success: boolean }}
+ */
+export function contestedCheck(attackerMod, defenderMod) {
+    const aRoll = Math.floor(Math.random() * 20) + 1;
+    const dRoll = Math.floor(Math.random() * 20) + 1;
+    return {
+        attackerRoll: aRoll, attackerTotal: aRoll + attackerMod,
+        defenderRoll: dRoll, defenderTotal: dRoll + defenderMod,
+        success: (aRoll + attackerMod) >= (dRoll + defenderMod)
+    };
 }
 
 /** Chebyshev tile distance between two tokens (diagonal counts as 1). */

@@ -1610,6 +1610,10 @@ window.nextTurn = () => {
         if (p.legendaryMax > 0) patch.legendaryUsed = 0;
         // Reset sneak attack per-turn flag
         if (p.classResources?.sneakUsedThisTurn) patch['classResources/sneakUsedThisTurn'] = false;
+        if (p.dashUsed)     patch.dashUsed     = false;
+        if (p.disengaged)   patch.disengaged   = false;
+        if (p.dodging)      patch.dodging      = false;
+        if (p.helpedBy)     patch.helpedBy     = null;
         if (Object.keys(patch).length) db.patchPlayerInDB?.(endingName, patch);
     }
 
@@ -2259,6 +2263,7 @@ function initMap() {
         if (wasAdj && !isAdj) {
           // Skip if reaction already used this round
           if (p.reactionUsed) return;
+          if (mover.disengaged) return; // Disengage suppresses OA
           _showOAPrompt(cName, moverCName, () => {
             db.patchPlayerInDB?.(cName, { reactionUsed: true });
             mapEngine.tokens._doMeleeAttack(cName, moverCName);
