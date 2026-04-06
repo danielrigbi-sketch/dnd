@@ -1616,6 +1616,13 @@
                         <canvas id="map-canvas"></canvas>
                         <canvas id="fow-canvas"></canvas>
                     </div>
+                    <!-- Floating zoom controls -->
+                    <div id="zoom-controls" class="zoom-controls" style="display:none;">
+                        <button class="zoom-btn" id="zoom-in-btn" title="Zoom In">+</button>
+                        <button class="zoom-btn zoom-btn-fit" id="zoom-fit-btn" title="Fit to Screen">⊡</button>
+                        <button class="zoom-btn" id="zoom-out-btn" title="Zoom Out">−</button>
+                    </div>
+
                     <!-- Compact DM toolbar (shown when map is active, DM only) — outside container to escape stacking context -->
                     <div id="map-toolbar" style="display:none;">
                         <button class="map-tb-btn active" data-mode="view"    onclick="window._mapToolBtn(this)" title="Select / Move (V)">
