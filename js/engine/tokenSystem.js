@@ -1253,19 +1253,22 @@ export class TokenSystem {
       }
 
       // ── Apply cantrip scaling for damage cantrips ──
+      const casterLvl = attacker.level || 1;
       if (fx.scales && fx.dice) {
-        const casterLvl = attacker.level || 1;
         const scaledDice = _cantripDice(fx.dice, casterLvl);
-        // Override the spell's damage_dice with scaled version
-        spell = { ...spell, damage_dice: scaledDice };
         dmgDice = scaledDice;
         // Toll the Dead: use altDice if target below max HP
         if (fx.altDice && fx.altIf === 'belowMax' && (target.hp || 0) < (target.maxHp || 1)) {
-          const altScaled = _cantripDice(fx.altDice, casterLvl);
-          spell = { ...spell, damage_dice: altScaled };
-          dmgDice = altScaled;
+          dmgDice = _cantripDice(fx.altDice, casterLvl);
         }
+      } else if (fx.dice) {
+        dmgDice = fx.dice;
       }
+
+      // Inject attack_type / dc_type from fx if spell data is missing them
+      spell = { ...spell, damage_dice: dmgDice || spell.damage_dice };
+      if (fx.atk && !spell.attack_type) spell.attack_type = fx.atk === 'melee' ? 'melee' : 'ranged';
+      if (fx.save && !spell.dc_type) spell.dc_type = fx.save;
     }
     // ── End spell effect dispatcher — existing code continues below ──
 
