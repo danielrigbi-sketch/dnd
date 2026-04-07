@@ -651,6 +651,22 @@ export function updateInitiativeUI(data, currentUserRole, activeRoller = null, a
                                 ${i.loot ? `<div style="margin-top:4px;font-size:10px;color:#f1c40f;">${iconImg('💰','12px')} ${escapeHtml(String(i.loot))}</div>` : ''}
                             </div>`;
                         })() : ''}
+                        ${canViewStats && i.inventory ? (() => {
+                            const items = Array.isArray(i.inventory) ? i.inventory : Object.values(i.inventory || {});
+                            if (!items.length) return '';
+                            const rows = items.map((item, idx) =>
+                                `<div style="display:flex;align-items:center;gap:5px;padding:2px 4px;font-size:11px;">
+                                    <span style="flex:1;color:#ddd;">${escapeHtml(item.name || 'Item')}</span>
+                                    <span style="color:#aaa;font-size:10px;">x${item.qty || 1}</span>
+                                    ${(isDM || isOwner) ? `<button onclick="window.removeInventoryItem('${escapeHtml(i.name)}',${idx})" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:10px;padding:0 2px;" title="Remove">✕</button>` : ''}
+                                </div>`
+                            ).join('');
+                            return `<details style="margin-top:8px;border-top:1px dashed rgba(200,128,58,0.3);padding-top:8px;">
+                                <summary style="font-size:10px;color:#f39c12;font-weight:bold;cursor:pointer;">${iconImg('🎒','14px')} ${t('card_inventory') || 'INVENTORY'} (${items.length})</summary>
+                                <div style="margin-top:4px;">${rows}</div>
+                                ${(isDM || isOwner) ? `<button onclick="window.addInventoryItem('${escapeHtml(i.name)}')" style="margin-top:4px;width:100%;padding:3px;background:rgba(200,128,58,0.1);border:1px dashed rgba(200,128,58,0.3);color:#c8803a;border-radius:4px;cursor:pointer;font-size:10px;">+ ${t('inventory_add_btn') || 'Add Item'}</button>` : ''}
+                            </details>`;
+                        })() : ''}
                         ${canViewStats && isOwner ? _renderClassAbilities(i) : ''}
                         ${canViewStats && isOwner ? _renderWeaponActions(i) : ''}
                     ` : `

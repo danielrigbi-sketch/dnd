@@ -235,6 +235,24 @@ window.removeSpellFromBook = (targetCName, slug) => {
     db.removeSpellFromBook(targetCName, slug);
 };
 
+// ── Inventory Management ────────────────────────────────────────────────────
+window.addInventoryItem = async (cName) => {
+    const name = prompt(t('inventory_add_name') || 'Item name:');
+    if (!name) return;
+    const qty = parseInt(prompt(t('inventory_add_qty') || 'Quantity:', '1')) || 1;
+    const p = await db.getPlayerData(cName);
+    const inv = Array.isArray(p?.inventory) ? [...p.inventory] : Object.values(p?.inventory || {});
+    inv.push({ name, qty });
+    db.patchPlayerInDB(cName, { inventory: inv });
+};
+
+window.removeInventoryItem = async (cName, idx) => {
+    const p = await db.getPlayerData(cName);
+    const inv = Array.isArray(p?.inventory) ? [...p.inventory] : Object.values(p?.inventory || {});
+    inv.splice(idx, 1);
+    db.patchPlayerInDB(cName, { inventory: inv });
+};
+
 // ── DM Spell Slot Editor ─────────────────────────────────────────────────────
 window.editSpellSlots = async (targetCName) => {
     const p = await db.getPlayerData(targetCName);
