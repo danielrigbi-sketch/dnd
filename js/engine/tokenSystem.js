@@ -1145,8 +1145,13 @@ export class TokenSystem {
     const eng = this.e;
     const attacker = eng.S.players[attackerCName] || {};
     const target   = eng.S.players[targetCName]   || {};
-    const spellAttackBonus = attacker.spellAttackBonus ?? 0;
-    const spellSaveDC      = attacker.spellSaveDC ?? 8;
+    const casterLevel = attacker.level || 1;
+    const pb = Math.ceil(casterLevel / 4) + 1;
+    const spellMod = attacker._resolved?.spellMod ?? Math.floor(((attacker._wis || attacker._cha || attacker._int || 10) - 10) / 2);
+    // Spell attack bonus: prefer stored value, fall back to proficiency + spell ability mod
+    const spellAttackBonus = attacker.spellAttackBonus || (attacker._resolved?.spellAttackBonus ?? (pb + spellMod));
+    // Spell save DC: prefer stored value, fall back to 8 + proficiency + spell ability mod
+    const spellSaveDC = attacker.spellSaveDC || (attacker._resolved?.spellSaveDC ?? (8 + pb + spellMod));
     const ac = target.ac ?? 10;
     const baseLevel = spell.level || 0;
     const slotLevel = (castLevel != null && castLevel >= baseLevel) ? castLevel : baseLevel;
@@ -1157,9 +1162,6 @@ export class TokenSystem {
     // ── Spell Effect Dispatcher ──────────────────────────────────────
     const fx = SPELL_EFFECTS[spell.slug];
     if (fx) {
-      const casterLevel = attacker.level || 1;
-      const spellMod = attacker._resolved?.spellMod ?? Math.floor(((attacker._wis || attacker._cha || attacker._int || 10) - 10) / 2);
-      const spellSaveDC2 = attacker._resolved?.spellSaveDC ?? (8 + (Math.ceil(casterLevel / 4) + 1) + spellMod);
 
       switch (fx.cat) {
         case 'BUFF': {
@@ -1208,7 +1210,7 @@ export class TokenSystem {
           const saveType = fx.save || 'wis';
           const saveMod = target.savingThrows?.[saveType] ?? Math.floor(((target['_' + saveType] || 10) - 10) / 2);
           const saveRoll2 = Math.floor(Math.random() * 20) + 1;
-          const saved = (saveRoll2 + saveMod) >= spellSaveDC2;
+          const saved = (saveRoll2 + saveMod) >= spellSaveDC;
           if (!saved && fx.onFail) {
             if (fx.onFail.condition) eng.db?.addStatus(targetCName, fx.onFail.condition);
             if (fx.onFail.disadvNextAttack) eng.db?.patchPlayerInDB(targetCName, { disadvNextAttack: true });
@@ -1222,9 +1224,9 @@ export class TokenSystem {
           }
           eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
             target: targetCName, spellName: spell.name, spellLevel: 0,
-            savingThrow: true, saveRoll: saveRoll2 + saveMod, spellSaveDC: spellSaveDC2,
+            savingThrow: true, saveRoll: saveRoll2 + saveMod, spellSaveDC: spellSaveDC,
             savedHalf: saved,
-            flavor: `${_actIcon(fx.icon)} ${spell.name} — ${saveType.toUpperCase()} save ${saveRoll2}+${saveMod}=${saveRoll2+saveMod} vs DC ${spellSaveDC2}: ${saved ? '✓ Saved' : '✗ Failed!'}`,
+            flavor: `${_actIcon(fx.icon)} ${spell.name} — ${saveType.toUpperCase()} save ${saveRoll2}+${saveMod}=${saveRoll2+saveMod} vs DC ${spellSaveDC}: ${saved ? '✓ Saved' : '✗ Failed!'}`,
             color: attacker.pColor || '#9b59b6', ts: Date.now() });
           return;
         }

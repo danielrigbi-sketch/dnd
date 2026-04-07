@@ -613,9 +613,17 @@ window.rollSaveCheck = async (cName, ability) => {
     const ab = ability.toLowerCase();
     const saveVal = resolved?.saves?.[ab] ?? Math.floor(((p['_'+ab] || 10) - 10) / 2);
     const roll = Math.floor(Math.random() * 20) + 1;
-    const total = roll + saveVal;
+    // Resistance bonus: +1d4 to saving throws (one-use, then consumed)
+    let resistBonus = 0;
+    if (p.spellSaveBonus) {
+        const match = p.spellSaveBonus.match(/(\d+)d(\d+)/);
+        if (match) resistBonus = Math.floor(Math.random() * parseInt(match[2])) + 1;
+        db.patchPlayerInDB?.(cName, { spellSaveBonus: null }); // consume
+    }
+    const total = roll + saveVal + resistBonus;
+    const bonusNote = resistBonus ? ` +${resistBonus} Resistance` : '';
     db.saveRollToDB({ cName, type: 'ABILITY_CHECK', ability: `${ability} Save`,
-        res: roll, mod: saveVal, total, color: p.pColor, ts: Date.now() });
+        res: roll, mod: saveVal, total, color: p.pColor, flavor: bonusNote || undefined, ts: Date.now() });
 };
 
 // ── Portent die use (Divination Wizard) ──────────────────────────────────────
@@ -1878,13 +1886,22 @@ window.rollSkillCheck = async (targetCName, skillName) => {
     if (isCooldown || !isDiceBoxReady) return;
     isCooldown = true; setDiceCooldown(true); playStartRollSound(isMuted);
     const p = await db.getPlayerData(targetCName);
-    const mod = skillMod(skillName, p || {});
+    let mod = skillMod(skillName, p || {});
+    // Guidance bonus: +1d4 to ability checks (one-use, then consumed)
+    let guidanceBonus = 0;
+    if (p?.spellCheckBonus) {
+        const match = p.spellCheckBonus.match(/(\d+)d(\d+)/);
+        if (match) guidanceBonus = Math.floor(Math.random() * parseInt(match[2])) + 1;
+        db.patchPlayerInDB?.(targetCName, { spellCheckBonus: null }); // consume
+    }
     const color = p?.pColor || '#27ae60';
     await updateDiceColor(color);
     let finalRes;
     try { finalRes = (await roll3DDice('1d20'))[0].value; }
     catch { isCooldown = false; setDiceCooldown(false); return; }
-    db.saveRollToDB({ pName: p?.pName || targetCName, cName: targetCName, type: 'SKILL', skillName, mod, res: finalRes, total: finalRes + mod, color, ts: Date.now() });
+    const total = finalRes + mod + guidanceBonus;
+    const bonusNote = guidanceBonus ? ` +${guidanceBonus} Guidance` : '';
+    db.saveRollToDB({ pName: p?.pName || targetCName, cName: targetCName, type: 'SKILL', skillName, mod, res: finalRes, total, color, flavor: bonusNote || undefined, ts: Date.now() });
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
