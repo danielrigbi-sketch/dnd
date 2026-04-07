@@ -535,7 +535,11 @@ export class TokenSystem {
               actions.push({
                 label: `⚔️⚔️ Multiattack ${oi + 1}: ${names}`,
                 cls: 'attack multiattack',
-                fn: () => this._doMultiattack(myCName, targetCName, opt),
+                fn: async () => {
+                  for (const act of opt) {
+                    await openActionWizard({ type: 'monster', attackerCName: myCName, targetCName, attacker, target, eng, action: act, distFt });
+                  }
+                },
               });
             });
           } else if (options[0]?.length > 1) {
@@ -544,7 +548,11 @@ export class TokenSystem {
             actions.push({
               label: `⚔️⚔️ Multiattack (${seq.length}x)`,
               cls: 'attack multiattack',
-              fn: () => this._doMultiattack(myCName, targetCName, seq),
+              fn: async () => {
+                for (const act of seq) {
+                  await openActionWizard({ type: 'monster', attackerCName: myCName, targetCName, attacker, target, eng, action: act, distFt });
+                }
+              },
             });
           }
           if (actions.length) actions.push({ label: `── ${_actIcon('action/melee.png','14px')} ${t('sect_attacks')} ──`, cls: 'disabled', fn: null });
@@ -589,7 +597,7 @@ export class TokenSystem {
               label: `⚡ ${ba.name}${dmgLabel}${!inRange ? ' (out of range)' : ''}`,
               cls: unavail ? 'disabled' : 'attack bonus',
               fn: unavail ? null : () => {
-                this._doMonsterAction(myCName, targetCName, ba, false);
+                openActionWizard({ type: 'monster', attackerCName: myCName, targetCName, attacker, target, eng, action: ba, distFt });
                 eng.db?.patchPlayerInDB(myCName, { bonusActionUsed: true });
               },
             });
@@ -611,7 +619,16 @@ export class TokenSystem {
             actions.push({
               label: `👑 ${la.name}${dmgLabel}${cost > 1 ? ` ×${cost}` : ''}`,
               cls: canUse ? 'attack legendary' : 'disabled',
-              fn: canUse ? () => this._doLegendaryAction(myCName, targetCName, la) : null,
+              fn: canUse ? () => {
+                const cost = _legendaryCost(la);
+                const newUsed = (attacker.legendaryUsed || 0) + cost;
+                eng.db?.patchPlayerInDB(myCName, { legendaryUsed: newUsed });
+                if (la.attack_bonus != null || _normActionDmg(la)) {
+                  openActionWizard({ type: 'monster', attackerCName: myCName, targetCName, attacker, target, eng, action: la, distFt });
+                } else {
+                  eng.db?.saveRollToDB({ type: 'STATUS', cName: myCName, status: `👑 ${attacker.pName || myCName} uses legendary action: ${la.name}`, ts: Date.now() });
+                }
+              } : null,
             });
           });
         }

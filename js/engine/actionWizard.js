@@ -8,6 +8,17 @@ import { applyDamageModifiers, getConditionModifiers, skillMod } from './combatU
 import { t } from '../i18n.js';
 import { SPELL_EFFECTS } from '../../data/spellEffects.js';
 
+function _upcastExtra(higherLevel, baseLevel, castLevel) {
+  if (!higherLevel || castLevel <= baseLevel) return '';
+  const m = higherLevel.match(/(\d+d\d+)\s+for\s+each\s+(?:slot\s+)?level\s+above/i);
+  if (!m) return '';
+  const perLevel = m[1];
+  const levelsAbove = castLevel - baseLevel;
+  const match = perLevel.match(/(\d+)d(\d+)/);
+  if (!match) return '';
+  return `${parseInt(match[1]) * levelsAbove}d${match[2]}`;
+}
+
 let _activeWizard = null;
 
 /**
@@ -53,6 +64,18 @@ class ActionWizard {
       this._el.style.display = 'flex';
       const popup = document.getElementById('action-popup');
       if (popup) popup.style.display = 'none';
+      // Make draggable via header
+      const hdr = this._header;
+      if (hdr && !hdr._dragBound) {
+        hdr._dragBound = true;
+        let dx=0, dy=0, dragging=false;
+        hdr.addEventListener('mousedown', (e) => {
+          if (e.target.closest('button')) return;
+          dragging = true; dx = e.clientX - this._el.offsetLeft; dy = e.clientY - this._el.offsetTop; e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => { if (!dragging) return; this._el.style.left = (e.clientX-dx)+'px'; this._el.style.top = (e.clientY-dy)+'px'; this._el.style.transform = 'none'; });
+        document.addEventListener('mouseup', () => { dragging = false; });
+      }
     }
   }
 
@@ -82,6 +105,17 @@ class ActionWizard {
 
   // ── MELEE / RANGED ATTACK ────────────────────────────────────────────
   async _flowAttack() {
+    const cantAct = ['Unconscious','Incapacitated','Stunned','Petrified'].some(s => (this.attacker.statuses||[]).includes(s));
+    if (cantAct) {
+      this._setBody(`<div class="wiz-result wiz-miss">${this.attackerCName} cannot act!</div>`);
+      await this._closeButton();
+      return this._hide();
+    }
+    if ((this.target.hp ?? this.target.maxHp ?? 1) <= 0 && this.type !== 'skill') {
+      this._setBody(`<div class="wiz-result wiz-miss">${this.targetCName} is already down!</div>`);
+      await this._closeButton();
+      return this._hide();
+    }
     const isMelee = this.type === 'melee';
     const a = this.attacker, tgt = this.target;
     const distFt = this.opts.distFt || 5;
@@ -131,11 +165,9 @@ class ActionWizard {
     if (this.cancelled) return this._hide();
 
     const damage = Math.max(1, dmg.reduce((s,d) => s+d.value, 0));
-    const newHp = Math.max(0, (tgt.hp ?? tgt.maxHp ?? 0) - damage);
-    this.db?.updatePlayerHPInDB(this.targetCName, newHp);
+    const { newHp, absorbed } = this._applyDamage(this.targetCName, tgt, damage);
     this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, damage, dmgDice:cd, crit, color:a.pColor||'#e74c3c', ts:Date.now() });
-    this._showDmg(damage, cd, tgt.hp, newHp, tgt.maxHp);
-    if (newHp <= 0) this.db?.addStatus?.(this.targetCName, 'Unconscious');
+    this._showDmg(damage, cd + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
 
     await this._closeButton(); this._hide();
     window.setMode?.('normal');
@@ -143,6 +175,17 @@ class ActionWizard {
 
   // ── MONSTER ACTION ───────────────────────────────────────────────────
   async _flowMonsterAction() {
+    const cantAct = ['Unconscious','Incapacitated','Stunned','Petrified'].some(s => (this.attacker.statuses||[]).includes(s));
+    if (cantAct) {
+      this._setBody(`<div class="wiz-result wiz-miss">${this.attackerCName} cannot act!</div>`);
+      await this._closeButton();
+      return this._hide();
+    }
+    if ((this.target.hp ?? this.target.maxHp ?? 1) <= 0 && this.type !== 'skill') {
+      this._setBody(`<div class="wiz-result wiz-miss">${this.targetCName} is already down!</div>`);
+      await this._closeButton();
+      return this._hide();
+    }
     const act = this.action; if (!act) return this._hide();
     const a = this.attacker, tgt = this.target;
     const bonus = act.attack_bonus ?? 0;
@@ -159,7 +202,7 @@ class ActionWizard {
     if (this.cancelled) return this._hide();
 
     const raw = d20[0].value, total = raw + bonus;
-    const crit = raw === 20, miss = raw === 1, hit = crit || (!miss && total >= ac);
+    const crit = raw >= (a._resolved?.critThreshold ?? 20), miss = raw === 1, hit = crit || (!miss && total >= ac);
 
     this.db?.saveRollToDB({ type:'ATTACK', attackType:'melee', actionName:act.name, cName:this.attackerCName, pName:a.pName||this.attackerCName, target:this.targetCName, rawRoll:raw, total, ac, hit, crit, miss, color:a.pColor||'#e74c3c', ts:Date.now() });
     this._showHitMiss(raw, bonus, total, ac, hit, crit, miss);
@@ -174,17 +217,26 @@ class ActionWizard {
     let damage = Math.max(1, dmg.reduce((s,d) => s+d.value, 0));
     let note = '';
     if (dmgType) { const r = applyDamageModifiers(damage, dmgType, tgt); damage = r.damage; note = r.note; }
-    const newHp = Math.max(0, (tgt.hp ?? tgt.maxHp ?? 0) - damage);
-    this.db?.updatePlayerHPInDB(this.targetCName, newHp);
+    const { newHp, absorbed } = this._applyDamage(this.targetCName, tgt, damage);
     this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, damage, dmgDice:cd, dmgNote:note, crit, color:a.pColor||'#e74c3c', ts:Date.now() });
-    this._showDmg(damage, cd + (note ? ' '+note : ''), tgt.hp, newHp, tgt.maxHp);
-    if (newHp <= 0) this.db?.addStatus?.(this.targetCName, 'Unconscious');
+    this._showDmg(damage, cd + (note ? ' '+note : '') + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
 
     await this._closeButton(); this._hide();
   }
 
   // ── SPELL ATTACK ─────────────────────────────────────────────────────
   async _flowSpellAttack() {
+    const cantAct = ['Unconscious','Incapacitated','Stunned','Petrified'].some(s => (this.attacker.statuses||[]).includes(s));
+    if (cantAct) {
+      this._setBody(`<div class="wiz-result wiz-miss">${this.attackerCName} cannot act!</div>`);
+      await this._closeButton();
+      return this._hide();
+    }
+    if ((this.target.hp ?? this.target.maxHp ?? 1) <= 0 && this.type !== 'skill') {
+      this._setBody(`<div class="wiz-result wiz-miss">${this.targetCName} is already down!</div>`);
+      await this._closeButton();
+      return this._hide();
+    }
     const spell = this.action; if (!spell) return this._hide();
     const a = this.attacker, tgt = this.target, lvl = a.level || 1;
     const pb = Math.ceil(lvl/4)+1;
@@ -194,16 +246,17 @@ class ActionWizard {
     const fx = SPELL_EFFECTS[spell.slug];
     let dmgDice = spell.damage_dice || fx?.dice || '1d8';
     if (fx?.scales && fx.dice) { const s=parseInt(fx.dice.match(/d(\d+)/)?.[1]||8); const c=lvl>=17?4:lvl>=11?3:lvl>=5?2:1; dmgDice=`${c}d${s}`; }
+    const extraDice = _upcastExtra(spell.higher_level, spell.level || 0, this.opts.castLevel || spell.level || 0);
 
     this._setHeader(`&#x1F52E; ${spell.name} <button class="wiz-close" id="wiz-x">&#x2715;</button>`);
     this._renderInfo(`${this.attackerCName} &#x2192; ${this.targetCName}`, `Spell +${bonus} vs AC ${ac}`, '', false, false);
     this._bindCancel();
 
-    if ((spell.level||0)>0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel||spell.level);
-
     await updateDiceColor(a.pColor || '#9b59b6');
     const d20 = await this._rollStep('1d20', t('wizard_roll_attack') || 'Roll Attack');
     if (this.cancelled) return this._hide();
+
+    if ((spell.level||0)>0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel||spell.level);
 
     const raw=d20[0].value, total=raw+bonus, crit=raw===20, miss=raw===1, hit=crit||(!miss&&total>=ac);
     this.db?.saveRollToDB({ type:'SPELL', cName:this.attackerCName, pName:a.pName||this.attackerCName, target:this.targetCName, spellName:spell.name, rawRoll:raw, total, ac, hit, crit, miss, color:a.pColor||'#9b59b6', ts:Date.now() });
@@ -212,23 +265,33 @@ class ActionWizard {
     if (!hit) { await this._closeButton(); return this._hide(); }
 
     await this._delay(300); clearDice();
-    const cd = crit ? this._doubleDice(dmgDice) : dmgDice;
+    let cd = crit ? this._doubleDice(dmgDice) : dmgDice;
+    if (extraDice) cd += '+' + (crit ? this._doubleDice(extraDice) : extraDice);
     const dmg = await this._rollStep(cd, t('wizard_roll_damage') || 'Roll Damage');
     if (this.cancelled) return this._hide();
 
     const damage = Math.max(1, dmg.reduce((s,d)=>s+d.value,0));
-    const newHp = Math.max(0, (tgt.hp??tgt.maxHp??0)-damage);
-    this.db?.updatePlayerHPInDB(this.targetCName, newHp);
+    const { newHp, absorbed } = this._applyDamage(this.targetCName, tgt, damage);
     this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, spellName:spell.name, damage, dmgDice:cd, crit, color:a.pColor||'#9b59b6', ts:Date.now() });
-    this._showDmg(damage, cd, tgt.hp, newHp, tgt.maxHp);
+    this._showDmg(damage, cd + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
     if (fx?.onHit) { if (fx.onHit.speedPenalty) this.db?.patchPlayerInDB(this.targetCName,{speedPenalty:fx.onHit.speedPenalty}); if (fx.onHit.noHealUntil) this.db?.patchPlayerInDB(this.targetCName,{noHealUntil:true}); if (fx.onHit.noReactions) this.db?.patchPlayerInDB(this.targetCName,{noReactions:true}); }
-    if (newHp<=0) this.db?.addStatus?.(this.targetCName,'Unconscious');
 
     await this._closeButton(); this._hide();
   }
 
   // ── SPELL SAVE ───────────────────────────────────────────────────────
   async _flowSpellSave() {
+    const cantAct = ['Unconscious','Incapacitated','Stunned','Petrified'].some(s => (this.attacker.statuses||[]).includes(s));
+    if (cantAct) {
+      this._setBody(`<div class="wiz-result wiz-miss">${this.attackerCName} cannot act!</div>`);
+      await this._closeButton();
+      return this._hide();
+    }
+    if ((this.target.hp ?? this.target.maxHp ?? 1) <= 0 && this.type !== 'skill') {
+      this._setBody(`<div class="wiz-result wiz-miss">${this.targetCName} is already down!</div>`);
+      await this._closeButton();
+      return this._hide();
+    }
     const spell = this.action; if (!spell) return this._hide();
     const a = this.attacker, tgt = this.target, lvl = a.level||1;
     const pb = Math.ceil(lvl/4)+1;
@@ -241,17 +304,19 @@ class ActionWizard {
     let dmgDice = spell.damage_dice || fx?.dice || '';
     if (fx?.scales && fx.dice) { const s=parseInt(fx.dice.match(/d(\d+)/)?.[1]||8); const c=lvl>=17?4:lvl>=11?3:lvl>=5?2:1; dmgDice=`${c}d${s}`; }
     if (fx?.altDice && fx.altIf==='belowMax' && (tgt.hp||0)<(tgt.maxHp||1)) { const s=parseInt(fx.altDice.match(/d(\d+)/)?.[1]||12); const c=lvl>=17?4:lvl>=11?3:lvl>=5?2:1; dmgDice=`${c}d${s}`; }
+    const extraDice = _upcastExtra(spell.higher_level, spell.level || 0, this.opts.castLevel || spell.level || 0);
+    if (extraDice && dmgDice) dmgDice += '+' + extraDice;
 
     this._setHeader(`&#x1F52E; ${spell.name} <button class="wiz-close" id="wiz-x">&#x2715;</button>`);
     this._renderInfo(`${this.attackerCName} &#x2192; ${this.targetCName}`, `DC ${dc} ${saveType.toUpperCase()} Save (${this.targetCName} +${saveMod})`, '', false, false);
     this._bindCancel();
 
-    if ((spell.level||0)>0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel||spell.level);
-
     // Target rolls save
     await updateDiceColor(tgt.pColor || '#3498db');
     const sv = await this._rollStep('1d20', `${this.targetCName}: ${t('wizard_save_roll') || 'Roll Save'}`);
     if (this.cancelled) return this._hide();
+
+    if ((spell.level||0)>0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel||spell.level);
 
     const svRaw = sv[0].value, svTotal = svRaw + saveMod, saved = svTotal >= dc;
     this._appendBody(`<div class="wiz-result ${saved?'wiz-saved':'wiz-failed'}">${saveType.toUpperCase()} Save: [${svRaw}]+${saveMod}=${svTotal} vs DC ${dc}<br><strong>${saved ? '&#x2713; Saved!' : '&#x2717; Failed!'}</strong></div>`);
@@ -264,11 +329,9 @@ class ActionWizard {
       if (this.cancelled) return this._hide();
       let damage = Math.max(1, dmg.reduce((s,d)=>s+d.value,0));
       if (saved) damage = Math.floor(damage/2);
-      const newHp = Math.max(0, (tgt.hp??tgt.maxHp??0)-damage);
-      this.db?.updatePlayerHPInDB(this.targetCName, newHp);
+      const { newHp, absorbed } = this._applyDamage(this.targetCName, tgt, damage);
       this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, spellName:spell.name, damage, dmgDice, savedHalf:saved, color:a.pColor||'#9b59b6', ts:Date.now() });
-      this._showDmg(damage, dmgDice+(saved?' (halved)':''), tgt.hp, newHp, tgt.maxHp);
-      if (newHp<=0) this.db?.addStatus?.(this.targetCName,'Unconscious');
+      this._showDmg(damage, dmgDice+(saved?' (halved)':'') + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
     }
 
     if (!saved && fx?.onFail) {
@@ -330,6 +393,38 @@ class ActionWizard {
     this.db?.saveRollToDB({ type:'SKILL', cName:roller, pName:rd.pName||roller, skillName:skill, mod, res:r[0].value, total, color:rd.pColor||'#27ae60', ts:Date.now() });
 
     await this._closeButton(); this._hide();
+  }
+
+  // ── CONCENTRATION CHECK ──────────────────────────────────────────────
+  _checkConcentration(targetCName, target, damage) {
+    if (!target.concentrating || damage <= 0) return;
+    const dc = Math.max(10, Math.floor(damage / 2));
+    const conScore = target._con ?? target.constitution ?? 10;
+    const conMod = target.savingThrows?.constitution ?? Math.floor((conScore - 10) / 2);
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const total = roll + conMod;
+    const saved = total >= dc;
+    if (!saved) window.toggleConcentration?.(targetCName, false);
+    this.db?.saveRollToDB({
+      type: 'CONCENTRATION', cName: targetCName,
+      pName: target.pName || targetCName,
+      conRoll: roll, conMod, conTotal: total, dc, saved,
+      color: target.pColor || '#9b59b6', ts: Date.now(),
+    });
+  }
+
+  // ── TEMP HP + DAMAGE APPLICATION ────────────────────────────────────
+  _applyDamage(targetCName, target, damage) {
+    const tempHp = target.tempHp || 0;
+    const absorbed = Math.min(tempHp, damage);
+    const realDmg = damage - absorbed;
+    const newTempHp = tempHp - absorbed;
+    const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - realDmg);
+    this.db?.updatePlayerHPInDB(targetCName, newHp);
+    if (newTempHp !== tempHp) this.db?.patchPlayerInDB(targetCName, { tempHp: newTempHp });
+    this._checkConcentration(targetCName, target, damage);
+    if (newHp <= 0) this.db?.addStatus?.(targetCName, 'Unconscious');
+    return { newHp, absorbed, realDmg };
   }
 
   // ── UI HELPERS ───────────────────────────────────────────────────────

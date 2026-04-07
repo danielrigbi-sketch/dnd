@@ -52,6 +52,7 @@ import { skillMod, SKILL_ABILITIES, profBonus } from "./engine/combatUtils.js";
 import { MusicPlayer, MUSIC_LIBRARY, MUSIC_CATEGORIES, TRACK_BY_ID } from "./musicPlayer.js";
 import * as videoChat from "./videoChat.js";
 import { makeDraggable, makeScrollable, ensureCloseButton } from "./core/draggable.js";
+import { openActionWizard } from './engine/actionWizard.js';
 
 // One-time migration: move old critroll_ keys to paradice_ prefix
 ['initBonus', 'cName'].forEach(k => {
@@ -2303,7 +2304,9 @@ function initMap() {
           if (mover.disengaged) return; // Disengage suppresses OA
           _showOAPrompt(cName, moverCName, () => {
             db.patchPlayerInDB?.(cName, { reactionUsed: true });
-            mapEngine.tokens._doMeleeAttack(cName, moverCName);
+            const atkData = mapEngine.S.players[cName] || {};
+            const tgtData = mapEngine.S.players[moverCName] || {};
+            openActionWizard({ type: 'melee', attackerCName: cName, targetCName: moverCName, attacker: atkData, target: tgtData, eng: mapEngine, distFt: 5 });
           });
         }
       });
