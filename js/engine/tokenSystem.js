@@ -121,29 +121,39 @@ function _actionEmoji(action) {
   return '⚔️';
 }
 
-/** Parse multiattack desc → ordered list of action objects to execute */
+/**
+ * Parse multiattack desc into OPTIONS — detects "or" for choice-based multiattack.
+ * Returns array of options: [ [action, action], [action, action] ]
+ * Each option is a sequence of actions to execute together.
+ */
 function _parseMultiattack(desc, allActions) {
   const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, a: 1, an: 1 };
-  const results = [];
-  const regex = /(one|two|three|four|five|a|an)\s+(?:with(?:\s+its)?\s+)?(\w+)/gi;
-  let m;
-  while ((m = regex.exec(desc)) !== null) {
-    const count = WORDS[m[1].toLowerCase()] || 1;
-    const keyword = m[2].toLowerCase();
-    const matched = allActions.find(a =>
-      a.name?.toLowerCase() !== 'multiattack' &&
-      a.attack_bonus != null &&
-      a.name?.toLowerCase().includes(keyword)
-    );
-    if (matched) for (let i = 0; i < count; i++) results.push(matched);
+  const _parse = (text) => {
+    const res = [];
+    const re = /(one|two|three|four|five|a|an)\s+(?:with(?:\s+its)?\s+)?(\w+)/gi;
+    let m2;
+    while ((m2 = re.exec(text)) !== null) {
+      const count = WORDS[m2[1].toLowerCase()] || 1;
+      const kw = m2[2].toLowerCase();
+      const act = allActions.find(a =>
+        a.name?.toLowerCase() !== 'multiattack' && a.attack_bonus != null && a.name?.toLowerCase().includes(kw)
+      );
+      if (act) for (let i = 0; i < count; i++) res.push(act);
+    }
+    return res;
+  };
+  // Detect "or" → split into choices
+  if (desc.toLowerCase().includes(' or ')) {
+    const parts = desc.split(/\bor\b/i);
+    const opts = parts.map(p => _parse(p)).filter(o => o.length > 0);
+    if (opts.length > 1) return opts;
   }
-  // Fallback: all non-multiattack attack actions
-  if (!results.length) {
-    allActions
-      .filter(a => a.name?.toLowerCase() !== 'multiattack' && a.attack_bonus != null)
-      .forEach(a => results.push(a));
+  // Single sequence
+  const seq = _parse(desc);
+  if (!seq.length) {
+    return [allActions.filter(a => a.name?.toLowerCase() !== 'multiattack' && a.attack_bonus != null).slice(0, 6)];
   }
-  return results.slice(0, 6);
+  return [seq.slice(0, 6)];
 }
 
 /** Extract legendary action cost from name, e.g. "Wing Attack (Costs 2 Actions)" → 2 */
@@ -516,15 +526,27 @@ export class TokenSystem {
         // ── Multiattack button (if present) ────────────────────────────────
         const multiattackAction = (attacker.actions || []).find(a => a.name?.toLowerCase() === 'multiattack');
         if (multiattackAction) {
-          const seq = _parseMultiattack(multiattackAction.desc || '', attacker.actions || []);
-          if (seq.length > 1) {
+          const options = _parseMultiattack(multiattackAction.desc || '', attacker.actions || []);
+          if (options.length > 1) {
+            // Multiple choices (e.g., "1 glaive + 1 gore OR 2 shortbow")
+            options.forEach((opt, oi) => {
+              const names = opt.map(a => a.name).join(' + ');
+              actions.push({
+                label: `⚔️⚔️ Multiattack ${oi + 1}: ${names}`,
+                cls: 'attack multiattack',
+                fn: () => this._doMultiattack(myCName, targetCName, opt),
+              });
+            });
+          } else if (options[0]?.length > 1) {
+            // Single sequence (e.g., "2 claw + 1 bite")
+            const seq = options[0];
             actions.push({
               label: `⚔️⚔️ Multiattack (${seq.length}x)`,
               cls: 'attack multiattack',
               fn: () => this._doMultiattack(myCName, targetCName, seq),
             });
-            if (actions.length === 1) actions.push({ label: '──────────────', cls: 'disabled', fn: null });
           }
+          if (actions.length) actions.push({ label: `── ${_actIcon('action/melee.png','14px')} ${t('sect_attacks')} ──`, cls: 'disabled', fn: null });
         }
 
         npcActions.forEach(action => {
@@ -840,7 +862,7 @@ export class TokenSystem {
     if (!actions.length) return;
 
     // Group actions into sections for collapsible display
-    const SECTION_KEYS = ['──────────────', `── ${_actIcon('action/melee.png','14px')}`, '── ⚡ Bonus', '── 👑 Legendary', '── 🔮 Spells ──', '── ✨ Traits ──', '── ⚔ Class ──', '── 🤝 Ally ──', '── ⚠ Conditions', `── ${_actIcon('toolbar/dice.png','14px')}`];
+    const SECTION_KEYS = [`── ${_actIcon('action/melee.png','14px')}`, '── ⚔', '── ⚡ Bonus', '── 👑 Legendary', '── 🔮 Spells ──', '── ✨ Traits ──', '── 🤝 Ally ──', '── ⚠ Conditions', `── ${_actIcon('toolbar/dice.png','14px')}`];
     const isSectionHeader = a => SECTION_KEYS.some(k => a.label.startsWith(k));
 
     // Split actions into groups

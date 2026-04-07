@@ -149,7 +149,7 @@ export function getSelfActions(player) {
         fn: (cn) => window.rollDamageMacro?.(cn, eq.offHand.name, dmg, mod)
       });
     }
-    if (actions.length > 0) actions.push({ label: '──────────────', cls: 'disabled', available: false, fn: null });
+    if (actions.length > 0) actions.push({ label: `── ⚔ ${t('sect_combat') || 'Class'} ──`, cls: 'disabled', available: false, fn: null });
   }
 
   switch (cls) {
