@@ -11,6 +11,7 @@ import { t } from '../i18n.js';
 import { getTileSize, getVisualScale, footprintsOverlap } from './sizeUtils.js';
 import { tileDistance, rollDice, parseSpellRangeFt, applyDamageModifiers, getConditionModifiers, contestedCheck, skillMod } from './combatUtils.js';
 import { getCombatActions, getAllyActions, getSelfActions, applyMeleeModifier, onKill } from './classAbilities.js';
+import { openActionWizard } from './actionWizard.js';
 import { SPELL_EFFECTS } from '../../data/spellEffects.js';
 
 const STS_ICON = {
@@ -568,7 +569,7 @@ export class TokenSystem {
             actions.push({
               label: pointBlank ? label + ' ⚠️ Disadv' : label,
               cls: 'attack',
-              fn: () => this._doMonsterAction(myCName, targetCName, action, pointBlank),
+              fn: () => openActionWizard({ type: 'monster', attackerCName: myCName, targetCName, attacker, target, eng, action, distFt }),
             });
           }
         });
@@ -628,7 +629,7 @@ export class TokenSystem {
         // ── Player character fallback: generic melee / ranged ───────────────
         if (dist <= 1) {
           actions.push({ label: '⚔️ Melee Attack', cls: 'attack',
-            fn: () => this._doMeleeAttack(myCName, targetCName) });
+            fn: () => openActionWizard({ type: 'melee', attackerCName: myCName, targetCName, attacker, target, eng, distFt }) });
         } else {
           actions.push({ label: `⚔️ Out of melee reach (${distFt} ft)`, cls: 'disabled', fn: null });
         }
@@ -636,27 +637,11 @@ export class TokenSystem {
         if (dist <= 1 && isFoe) {
           // Grapple
           actions.push({ label: `${_actIcon('toolbar/grappled.png')} ${t('act_grapple')}`, cls: 'attack',
-              fn: () => {
-                  const aMod = skillMod('Athletics', attacker);
-                  const dMod = Math.max(skillMod('Athletics', target), skillMod('Acrobatics', target));
-                  const result = contestedCheck(aMod, dMod);
-                  if (result.success) eng.db?.addStatus(targetCName, 'Grappled');
-                  eng.db?.saveRollToDB({ cName: myCName, type: 'CONTEST', target: targetCName,
-                      status: `${t('act_grapple')}: ${result.attackerTotal} vs ${result.defenderTotal} — ${result.success ? '✓' : '✗'}`,
-                      ts: Date.now() });
-              }
+              fn: () => openActionWizard({ type: 'contested', contestType: 'grapple', attackerCName: myCName, targetCName, attacker, target, eng })
           });
           // Shove
           actions.push({ label: `${_actIcon('action/wind.png')} ${t('act_shove')}`, cls: 'attack',
-              fn: () => {
-                  const aMod = skillMod('Athletics', attacker);
-                  const dMod = Math.max(skillMod('Athletics', target), skillMod('Acrobatics', target));
-                  const result = contestedCheck(aMod, dMod);
-                  if (result.success) eng.db?.addStatus(targetCName, 'Prone');
-                  eng.db?.saveRollToDB({ cName: myCName, type: 'CONTEST', target: targetCName,
-                      status: `${t('act_shove')}: ${result.attackerTotal} vs ${result.defenderTotal} — ${result.success ? '✓ Prone' : '✗'}`,
-                      ts: Date.now() });
-              }
+              fn: () => openActionWizard({ type: 'contested', contestType: 'shove', attackerCName: myCName, targetCName, attacker, target, eng })
           });
         }
 
@@ -667,7 +652,7 @@ export class TokenSystem {
             actions.push({
               label: pointBlank ? `🏹 Ranged Attack ⚠️ Disadv` : `🏹 Ranged Attack`,
               cls: 'attack',
-              fn: () => this._doRangedAttack(myCName, targetCName, pointBlank),
+              fn: () => openActionWizard({ type: 'ranged', attackerCName: myCName, targetCName, attacker, target, eng, distFt }),
             });
           } else {
             actions.push({ label: `🏹 Out of range (${distFt}/${rangedRangeFt} ft)`, cls: 'disabled', fn: null });
@@ -708,8 +693,12 @@ export class TokenSystem {
             const maxSl = maxSlots[sp.level] || 0;
             if (maxSl > 0) slotInfo = ` (${remaining}/${maxSl})`;
           }
+          const _spFx = SPELL_EFFECTS[sp.slug];
+          const _spType = (sp.attack_type || _spFx?.atk) ? 'spell_atk' : (sp.dc_type || _spFx?.save) ? 'spell_save' : null;
           actions.push({ label: `🔮 ${sp.name} (${lvlTag})${slotInfo}`, cls: 'attack',
-            fn: () => this._doCastSpell(myCName, targetCName, sp, sp.level) });
+            fn: _spType
+              ? () => openActionWizard({ type: _spType, attackerCName: myCName, targetCName, attacker, target, eng, action: sp, spellEffect: _spFx, castLevel: sp.level, distFt })
+              : () => this._doCastSpell(myCName, targetCName, sp, sp.level) });
           // Upcast buttons — for leveled spells with higher_level text
           if (sp.level > 0 && sp.higher_level) {
             let shown = 0;
