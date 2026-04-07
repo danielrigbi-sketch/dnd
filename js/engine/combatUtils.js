@@ -88,6 +88,11 @@ export function getConditionModifiers(attacker, target, isMelee = true, distFt =
   // Helped attacker → advantage
   if (attacker.helpedBy) { advantage = true; reasons.push('helped by ' + attacker.helpedBy); }
 
+  // Spell buff: advantage on next attack (True Strike)
+  if (attacker.advNextAttack) { advantage = true; reasons.push('True Strike (advantage)'); }
+  // Spell debuff: disadvantage on next attack (Vicious Mockery / etc.)
+  if (aSts.includes('disadvNextAttack') || attacker.disadvNextAttack) { disadvantage = true; reasons.push('spell debuff (disadvantage)'); }
+
   // Invisible attacker → advantage
   if (aSts.includes('Invisible'))  { advantage = true; reasons.push('invisible'); }
 

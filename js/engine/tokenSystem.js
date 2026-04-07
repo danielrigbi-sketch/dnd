@@ -11,6 +11,7 @@ import { t } from '../i18n.js';
 import { getTileSize, getVisualScale, footprintsOverlap } from './sizeUtils.js';
 import { tileDistance, rollDice, parseSpellRangeFt, applyDamageModifiers, getConditionModifiers, contestedCheck, skillMod } from './combatUtils.js';
 import { getCombatActions, getAllyActions, getSelfActions, applyMeleeModifier, onKill } from './classAbilities.js';
+import { SPELL_EFFECTS } from '../../data/spellEffects.js';
 
 const STS_ICON = {
   Poisoned: '☠', Charmed: '♥', Unconscious: '💤', Frightened: '😱',
@@ -20,6 +21,15 @@ const STS_ICON = {
 };
 
 const ALL_CONDITIONS = ['Poisoned','Charmed','Unconscious','Frightened','Paralyzed','Restrained','Blinded','Prone','Stunned','Incapacitated','Petrified','Deafened','Grappled'];
+
+/** Scale cantrip damage dice by character level (5/11/17 breakpoints). */
+function _cantripDice(baseDice, charLevel) {
+    const match = baseDice.match(/(\d*)d(\d+)/);
+    if (!match) return baseDice;
+    const sides = parseInt(match[2]);
+    const count = charLevel >= 17 ? 4 : charLevel >= 11 ? 3 : charLevel >= 5 ? 2 : 1;
+    return `${count}d${sides}`;
+}
 
 // Action menu icon helper — uses PNG icons from public/assets/icons/
 function _actIcon(path, size = '14px') {
@@ -422,6 +432,24 @@ export class TokenSystem {
       selfActions.push({ label: `${_actIcon('toolbar/dice.png')} ${t('act_use_object')}`, cls: 'utility', available: true,
           fn: (cn, eng) => { eng.db?.saveRollToDB({ cName: cn, type: 'STATUS', status: `${t('act_use_object')}`, ts: Date.now() }); }
       });
+      // ── Self-target cantrip spells from spellbook ──
+      const selfSpells = Object.values(selfPlayer.spellbook || {}).filter(sp => {
+          if (sp.level !== 0 && sp.level_int !== 0) return false; // cantrips only for now
+          const fx2 = SPELL_EFFECTS[sp.slug];
+          if (!fx2) return false;
+          return fx2.target === 'self' || fx2.cat === 'UTILITY' || fx2.cat === 'LIGHT';
+      });
+      if (selfSpells.length) {
+          selfActions.push({ label: `── ${_actIcon('action/wand.png','14px')} ${t('sect_spells')} ──`, cls: 'disabled', available: false, fn: null });
+          selfSpells.forEach(sp => {
+              const fx2 = SPELL_EFFECTS[sp.slug] || {};
+              selfActions.push({
+                  label: `${_actIcon(fx2.icon || 'action/wand.png')} ${sp.name}`,
+                  cls: 'attack', available: true,
+                  fn: (cn, eng2) => eng2.tokens._doCastSpell(cn, cn, sp, 0)
+              });
+          });
+      }
       // ── Skill Checks section ──
       selfActions.push({ label: `── ${_actIcon('toolbar/dice.png','14px')} ${t('sect_checks')} ──`, cls: 'disabled', available: false, fn: null });
       ['Athletics','Acrobatics','Stealth','Perception','Insight','Intimidation','Persuasion','Deception','Investigation','Medicine','Sleight of Hand','Survival','Nature','Arcana','History','Religion','Performance','Animal Handling'].forEach(skill => {
@@ -1124,7 +1152,122 @@ export class TokenSystem {
     const slotLevel = (castLevel != null && castLevel >= baseLevel) ? castLevel : baseLevel;
     const isCantrip = baseLevel === 0;
     const extraDice = _upcastExtraDice(spell.higher_level, baseLevel, slotLevel);
-    const dmgDice   = spell.damage_dice || '';
+    let dmgDice   = spell.damage_dice || '';
+
+    // ── Spell Effect Dispatcher ──────────────────────────────────────
+    const fx = SPELL_EFFECTS[spell.slug];
+    if (fx) {
+      const casterLevel = attacker.level || 1;
+      const spellMod = attacker._resolved?.spellMod ?? Math.floor(((attacker._wis || attacker._cha || attacker._int || 10) - 10) / 2);
+      const spellSaveDC2 = attacker._resolved?.spellSaveDC ?? (8 + (Math.ceil(casterLevel / 4) + 1) + spellMod);
+
+      switch (fx.cat) {
+        case 'BUFF': {
+          // Apply buff to target (or self)
+          const buffTarget = fx.target === 'self' ? attackerCName : targetCName;
+          const patch = {};
+          if (fx.effect?.checkBonus) patch.spellCheckBonus = fx.effect.checkBonus;
+          if (fx.effect?.saveBonus) patch.spellSaveBonus = fx.effect.saveBonus;
+          if (fx.effect?.advNextAttack) patch.advNextAttack = true;
+          if (fx.effect?.resistBPS) patch.resistBPS = true;
+          if (fx.effect?.speedBonus) patch.speedBonus = fx.effect.speedBonus;
+          if (fx.effect?.weaponDice) patch.shillelaghDice = fx.effect.weaponDice;
+          if (fx.effect?.weaponStat) patch.shillelaghStat = fx.effect.weaponStat;
+          if (fx.effect?.advChaChecks) patch.advChaChecks = true;
+          if (fx.effect?.unarmedDice) patch.unarmedOverride = fx.effect.unarmedDice;
+          if (Object.keys(patch).length) eng.db?.patchPlayerInDB(buffTarget, patch);
+          if (fx.conc) {
+            eng.db?.updateConcentrationInDB?.(attackerCName, true);
+            eng.db?.patchPlayerInDB(attackerCName, { concentratingSpell: spell.slug, concentratingTarget: buffTarget });
+          }
+          eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
+            target: buffTarget, spellName: spell.name, spellLevel: 0,
+            flavor: `${_actIcon(fx.icon)} ${spell.name} → ${buffTarget}`,
+            color: attacker.pColor || '#9b59b6', ts: Date.now() });
+          return; // handled
+        }
+
+        case 'HEAL_STABILIZE': {
+          if ((target.hp || 0) > 0 && fx.requireDying) {
+            // Target not dying — can't stabilize
+            return;
+          }
+          const saves = target.deathSaves || { successes: [false,false,false], failures: [false,false,false] };
+          saves.stable = true;
+          eng.db?.updateDeathSavesInDB?.(targetCName, saves);
+          if (fx.tempHp) eng.db?.patchPlayerInDB(targetCName, { tempHp: (target.tempHp || 0) + fx.tempHp });
+          eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
+            target: targetCName, spellName: spell.name, spellLevel: 0,
+            flavor: `${_actIcon(fx.icon)} ${spell.name} — ${targetCName} stabilized!`,
+            color: '#2ecc71', ts: Date.now() });
+          return;
+        }
+
+        case 'DEBUFF': {
+          // Target makes save or suffers effect
+          const saveType = fx.save || 'wis';
+          const saveMod = target.savingThrows?.[saveType] ?? Math.floor(((target['_' + saveType] || 10) - 10) / 2);
+          const saveRoll2 = Math.floor(Math.random() * 20) + 1;
+          const saved = (saveRoll2 + saveMod) >= spellSaveDC2;
+          if (!saved && fx.onFail) {
+            if (fx.onFail.condition) eng.db?.addStatus(targetCName, fx.onFail.condition);
+            if (fx.onFail.disadvNextAttack) eng.db?.patchPlayerInDB(targetCName, { disadvNextAttack: true });
+            if (fx.onFail.speedHalf) eng.db?.patchPlayerInDB(targetCName, { speedHalved: true });
+            if (fx.onFail.speedZero) eng.db?.patchPlayerInDB(targetCName, { speedZero: true });
+            if (fx.onFail.speedPenalty) eng.db?.patchPlayerInDB(targetCName, { speedPenalty: fx.onFail.speedPenalty });
+          }
+          if (fx.conc) {
+            eng.db?.updateConcentrationInDB?.(attackerCName, true);
+            eng.db?.patchPlayerInDB(attackerCName, { concentratingSpell: spell.slug, concentratingTarget: targetCName });
+          }
+          eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
+            target: targetCName, spellName: spell.name, spellLevel: 0,
+            savingThrow: true, saveRoll: saveRoll2 + saveMod, spellSaveDC: spellSaveDC2,
+            savedHalf: saved,
+            flavor: `${_actIcon(fx.icon)} ${spell.name} — ${saveType.toUpperCase()} save ${saveRoll2}+${saveMod}=${saveRoll2+saveMod} vs DC ${spellSaveDC2}: ${saved ? '✓ Saved' : '✗ Failed!'}`,
+            color: attacker.pColor || '#9b59b6', ts: Date.now() });
+          return;
+        }
+
+        case 'LIGHT': {
+          // TODO: integrate with mapEngine light system when available
+          eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
+            spellName: spell.name, spellLevel: 0,
+            flavor: `${_actIcon(fx.icon)} ${spell.name} cast${fx.extinguish ? ' — light extinguished' : ''}`,
+            color: attacker.pColor || '#f1c40f', ts: Date.now() });
+          if (fx.conc) eng.db?.updateConcentrationInDB?.(attackerCName, true);
+          return;
+        }
+
+        case 'UTILITY': {
+          eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
+            spellName: spell.name, spellLevel: 0,
+            flavor: `${_actIcon(fx.icon)} ${spell.name} cast`,
+            color: attacker.pColor || '#9b59b6', ts: Date.now() });
+          if (fx.conc) eng.db?.updateConcentrationInDB?.(attackerCName, true);
+          return;
+        }
+
+        // DMG_ATK and DMG_SAVE fall through to enhance the existing damage code below
+        // DMG_WEAPON falls through too
+      }
+
+      // ── Apply cantrip scaling for damage cantrips ──
+      if (fx.scales && fx.dice) {
+        const casterLvl = attacker.level || 1;
+        const scaledDice = _cantripDice(fx.dice, casterLvl);
+        // Override the spell's damage_dice with scaled version
+        spell = { ...spell, damage_dice: scaledDice };
+        dmgDice = scaledDice;
+        // Toll the Dead: use altDice if target below max HP
+        if (fx.altDice && fx.altIf === 'belowMax' && (target.hp || 0) < (target.maxHp || 1)) {
+          const altScaled = _cantripDice(fx.altDice, casterLvl);
+          spell = { ...spell, damage_dice: altScaled };
+          dmgDice = altScaled;
+        }
+      }
+    }
+    // ── End spell effect dispatcher — existing code continues below ──
 
     let hit = false, crit = false, miss = false, savedHalf = false;
     let rawRoll = 0, total = 0, damage = 0;
@@ -1146,6 +1289,15 @@ export class TokenSystem {
         _checkConcentration(eng, targetCName, target, damage);
         _applyUnconscious(eng, targetCName, target, newHp);
       }
+      // Apply cantrip onHit effects (attack spells)
+      if (fx?.onHit && hit) {
+        if (fx.onHit.speedPenalty) eng.db?.patchPlayerInDB(targetCName, { speedPenalty: fx.onHit.speedPenalty });
+        if (fx.onHit.noHealUntil) eng.db?.patchPlayerInDB(targetCName, { noHealUntil: true });
+        if (fx.onHit.noReactions) eng.db?.patchPlayerInDB(targetCName, { noReactions: true });
+        if (fx.onHit.pullToward) { /* TODO: move token toward caster */ }
+        if (fx.onHit.push) { /* TODO: push token away */ }
+        if (fx.onHit.disadvNextAttack) eng.db?.patchPlayerInDB(targetCName, { disadvNextAttack: true });
+      }
     } else if (spell.dc_type && dmgDice) {
       // Saving throw — target rolls d20 + save proficiency vs spellSaveDC (2D)
       savingThrow = true;
@@ -1165,6 +1317,12 @@ export class TokenSystem {
         _applyUnconscious(eng, targetCName, target, newHp);
       }
       hit = true; // always "fires"
+      // Apply cantrip onFail effects (save spells)
+      if (fx?.onFail && !savedHalf) {
+        if (fx.onFail.disadvNextAttack) eng.db?.patchPlayerInDB(targetCName, { disadvNextAttack: true });
+        if (fx.onFail.condition) eng.db?.addStatus(targetCName, fx.onFail.condition);
+        if (fx.onFail.speedPenalty) eng.db?.patchPlayerInDB(targetCName, { speedPenalty: fx.onFail.speedPenalty });
+      }
     } else {
       // Utility / no-damage spell
       hit = true;

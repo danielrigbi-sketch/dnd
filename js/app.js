@@ -1614,6 +1614,17 @@ window.nextTurn = () => {
         if (p.disengaged)   patch.disengaged   = false;
         if (p.dodging)      patch.dodging      = false;
         if (p.helpedBy)     patch.helpedBy     = null;
+        if (p.speedPenalty)     patch.speedPenalty     = null;
+        if (p.speedHalved)      patch.speedHalved      = null;
+        if (p.speedZero)        patch.speedZero        = null;
+        if (p.noHealUntil)      patch.noHealUntil      = null;
+        if (p.noReactions)      patch.noReactions       = null;
+        if (p.disadvNextAttack) patch.disadvNextAttack  = null;
+        if (p.disadvNextSave)   patch.disadvNextSave    = null;
+        if (p.advNextAttack)    patch.advNextAttack     = null;
+        if (p.spellCheckBonus)  patch.spellCheckBonus   = null;
+        if (p.spellSaveBonus)   patch.spellSaveBonus    = null;
+        if (p.resistBPS)        patch.resistBPS         = null;
         if (Object.keys(patch).length) db.patchPlayerInDB?.(endingName, patch);
     }
 
