@@ -71,10 +71,11 @@
     background: linear-gradient(160deg, rgba(20,10,4,0.98), rgba(12,6,2,0.99));
     border: 1px solid rgba(200,135,58,0.3);
     border-top-color: rgba(200,135,58,0.5);
-    border-radius: 6px; padding: 10px 12px 12px; min-width: 180px; max-width: 260px;
+    border-radius: 6px; padding: 10px 12px 12px; min-width: 180px; max-width: min(260px, 90vw);
     max-height: 70vh; display: flex; flex-direction: column;
     box-shadow: 0 8px 30px rgba(0,0,0,0.9), 0 0 0 1px rgba(0,0,0,0.5);
     font-family: 'Assistant', sans-serif; pointer-events: auto;
+    overflow: hidden;
 }
 #action-popup-header {
     font-size: 12px; font-weight: bold; color: var(--pd-gold); margin-bottom: 8px;
@@ -130,11 +131,13 @@ details.action-section[open] > .action-section-header::after { content: '▴'; }
 #map-token-roster-popup {
     position:absolute; top:56px; left:50%; transform:translateX(-50%); z-index:30;
     background:rgba(10,8,20,0.96); border:1.5px solid rgba(241,196,15,0.4);
-    border-radius:12px; padding:10px; min-width:200px; max-height:280px;
-    overflow-y:auto; box-shadow:0 8px 30px rgba(0,0,0,0.7);
+    border-radius:12px; padding:10px; min-width:200px; max-width:min(400px, 90vw);
+    max-height:280px; overflow-y:auto; overflow-x:hidden;
+    box-shadow:0 8px 30px rgba(0,0,0,0.7);
 }
 .map-popup-title { font-size:12px; font-weight:bold; color:var(--pd-gold); margin-bottom:8px; text-align:center; }
-.map-token-row { display:flex; align-items:center; gap:7px; padding:4px 2px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.map-token-row { display:flex; align-items:center; gap:7px; padding:4px 2px; border-bottom:1px solid rgba(255,255,255,0.06); overflow:hidden; }
+.map-token-row span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .map-token-row:last-child { border-bottom:none; }
 .map-dash-btn { padding:3px 8px; background:rgba(52,152,219,0.25); border:1px solid var(--pd-blue); color:var(--pd-blue); border-radius:5px; cursor:pointer; font-size:11px; font-weight:bold; transition:0.15s; }
 .map-dash-btn:hover { background:rgba(52,152,219,0.45); }
