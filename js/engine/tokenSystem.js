@@ -392,7 +392,8 @@ export class TokenSystem {
     if (!targetCName) return;
 
     const isDM = eng.userRole === 'dm';
-    const myCName = eng.cName;
+    // When DM is impersonating a monster, use that as the attacker
+    const myCName = (isDM && eng._dmRoller?.cName) ? eng._dmRoller.cName : eng.cName;
 
     // Self right-click — show self abilities popup
     if (!isDM && targetCName === myCName) {
@@ -463,7 +464,7 @@ export class TokenSystem {
         `<button class="action-btn ${a.cls}" ${a.available && a.fn ? `data-idx="${i}"` : 'disabled'}>${a.label}</button>`
       ).join('');
       this._attachActionDelegation(body, (idx) => {
-        selfActions[idx].fn?.(myCName, eng);
+        try { selfActions[idx].fn?.(myCName, eng); } catch(e) { console.error('[VC] Self action error:', e); }
         popup.style.display = 'none';
       });
       const cc = document.getElementById('map-canvas-container');
@@ -871,7 +872,7 @@ export class TokenSystem {
 
     body.innerHTML = html;
     this._attachActionDelegation(body, (idx) => {
-      actions[idx].fn?.();
+      try { actions[idx].fn?.(); } catch(e) { console.error('[VC] Action error:', e); }
       popup.style.display = 'none';
     });
 
@@ -1184,7 +1185,7 @@ export class TokenSystem {
           }
           eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
             target: buffTarget, spellName: spell.name, spellLevel: 0,
-            flavor: `${_actIcon(fx.icon)} ${spell.name} → ${buffTarget}`,
+            flavor: `${spell.name} → ${buffTarget}`,
             color: attacker.pColor || '#9b59b6', ts: Date.now() });
           return; // handled
         }
@@ -1200,7 +1201,7 @@ export class TokenSystem {
           if (fx.tempHp) eng.db?.patchPlayerInDB(targetCName, { tempHp: (target.tempHp || 0) + fx.tempHp });
           eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
             target: targetCName, spellName: spell.name, spellLevel: 0,
-            flavor: `${_actIcon(fx.icon)} ${spell.name} — ${targetCName} stabilized!`,
+            flavor: `${spell.name} — ${targetCName} stabilized!`,
             color: '#2ecc71', ts: Date.now() });
           return;
         }
@@ -1226,7 +1227,7 @@ export class TokenSystem {
             target: targetCName, spellName: spell.name, spellLevel: 0,
             savingThrow: true, saveRoll: saveRoll2 + saveMod, spellSaveDC: spellSaveDC,
             savedHalf: saved,
-            flavor: `${_actIcon(fx.icon)} ${spell.name} — ${saveType.toUpperCase()} save ${saveRoll2}+${saveMod}=${saveRoll2+saveMod} vs DC ${spellSaveDC}: ${saved ? '✓ Saved' : '✗ Failed!'}`,
+            flavor: `${spell.name} — ${saveType.toUpperCase()} save ${saveRoll2}+${saveMod}=${saveRoll2+saveMod} vs DC ${spellSaveDC}: ${saved ? '✓ Saved' : '✗ Failed!'}`,
             color: attacker.pColor || '#9b59b6', ts: Date.now() });
           return;
         }
@@ -1235,7 +1236,7 @@ export class TokenSystem {
           // TODO: integrate with mapEngine light system when available
           eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
             spellName: spell.name, spellLevel: 0,
-            flavor: `${_actIcon(fx.icon)} ${spell.name} cast${fx.extinguish ? ' — light extinguished' : ''}`,
+            flavor: `${spell.name} cast${fx.extinguish ? ' — light extinguished' : ''}`,
             color: attacker.pColor || '#f1c40f', ts: Date.now() });
           if (fx.conc) eng.db?.updateConcentrationInDB?.(attackerCName, true);
           return;
@@ -1244,7 +1245,7 @@ export class TokenSystem {
         case 'UTILITY': {
           eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
             spellName: spell.name, spellLevel: 0,
-            flavor: `${_actIcon(fx.icon)} ${spell.name} cast`,
+            flavor: `${spell.name} cast`,
             color: attacker.pColor || '#9b59b6', ts: Date.now() });
           if (fx.conc) eng.db?.updateConcentrationInDB?.(attackerCName, true);
           return;

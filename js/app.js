@@ -2021,6 +2021,7 @@ window.impersonate = async (targetCName) => {
     const p = await db.getPlayerData(targetCName);
     if (!p) return;
     activeRoller = { cName: targetCName, pName: "DM", color: p.pColor || "#c0392b" };
+    if (mapEngine) mapEngine._dmRoller = activeRoller; // expose to tokenSystem
     document.getElementById('active-roller-banner').style.display = 'flex';
     document.getElementById('active-roller-name').innerText = targetCName;
     // Sync HUD identity
@@ -2030,6 +2031,7 @@ window.impersonate = async (targetCName) => {
 };
 window.resetRoller = () => {
     activeRoller = null;
+    if (mapEngine) mapEngine._dmRoller = null;
     document.getElementById('active-roller-banner').style.display = 'none';
     // Restore HUD identity to own character name
     const myLabel = localStorage.getItem('paradice_cName') || '—';
