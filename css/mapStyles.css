@@ -136,8 +136,8 @@ details.action-section[open] > .action-section-header::after { content: '▴'; }
     box-shadow:0 8px 30px rgba(0,0,0,0.7);
 }
 .map-popup-title { font-size:12px; font-weight:bold; color:var(--pd-gold); margin-bottom:8px; text-align:center; }
-.map-token-row { display:flex; align-items:center; gap:7px; padding:4px 2px; border-bottom:1px solid rgba(255,255,255,0.06); overflow:hidden; }
-.map-token-row span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.map-token-row { display:flex; align-items:center; gap:7px; padding:4px 2px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.map-token-row > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
 .map-token-row:last-child { border-bottom:none; }
 .map-dash-btn { padding:3px 8px; background:rgba(52,152,219,0.25); border:1px solid var(--pd-blue); color:var(--pd-blue); border-radius:5px; cursor:pointer; font-size:11px; font-weight:bold; transition:0.15s; }
 .map-dash-btn:hover { background:rgba(52,152,219,0.45); }

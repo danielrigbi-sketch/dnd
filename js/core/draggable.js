@@ -59,8 +59,10 @@ export function makeDraggable(el, handle) {
  */
 export function makeScrollable(el, maxH = 70) {
     if (!el) return;
-    el.style.maxHeight = maxH + 'vh';
-    el.style.overflowY = 'auto';
+    // Only set max-height if element doesn't already have one in CSS
+    const existing = getComputedStyle(el).maxHeight;
+    if (!existing || existing === 'none') el.style.maxHeight = maxH + 'vh';
+    if (getComputedStyle(el).overflowY === 'visible') el.style.overflowY = 'auto';
 }
 
 /**
@@ -80,6 +82,8 @@ export function ensureCloseButton(el, onClose, existingCloseSelector) {
     btn.onmouseenter = () => { btn.style.color = '#fff'; btn.style.background = 'rgba(255,255,255,0.1)'; };
     btn.onmouseleave = () => { btn.style.color = '#888'; btn.style.background = 'none'; };
     btn.onclick = (e) => { e.stopPropagation(); onClose(); };
-    el.style.position = el.style.position || 'relative';
+    // Only set position if element has no positioning context (static)
+    const pos = getComputedStyle(el).position;
+    if (pos === 'static') el.style.position = 'relative';
     el.insertBefore(btn, el.firstChild);
 }
