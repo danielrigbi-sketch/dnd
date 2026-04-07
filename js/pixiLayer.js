@@ -397,12 +397,17 @@ export class PixiLayer {
       glow.circle(size / 2, size / 2, r)
           .stroke({ color: 0x00e5ff, alpha: 0.9, width: 4 / vs });
     } else if (isActive) {
-      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
-      const r = size * 0.44 + 6 / vs;
-      glow.circle(size / 2, size / 2, r)
-          .fill({ color: GLOW_COLOR, alpha: 0.25 + pulse * 0.15 });
-      glow.circle(size / 2, size / 2, r)
-          .stroke({ color: GLOW_COLOR, alpha: 0.9, width: 3 / vs });
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+      // Outer pulsing glow ring (large, visible)
+      const rOuter = size * 0.52 + 10 / vs;
+      glow.circle(size / 2, size / 2, rOuter)
+          .fill({ color: GLOW_COLOR, alpha: 0.10 + pulse * 0.20 });
+      glow.circle(size / 2, size / 2, rOuter)
+          .stroke({ color: GLOW_COLOR, alpha: 0.6 + pulse * 0.4, width: 4 / vs });
+      // Inner solid ring
+      const rInner = size * 0.44 + 4 / vs;
+      glow.circle(size / 2, size / 2, rInner)
+          .stroke({ color: 0xffffff, alpha: 0.9, width: 2 / vs });
     } else {
       const factionCol = FACTION_COLORS[pl.faction] || _hexColor(pl.pColor || '#3498db');
       glow.circle(size / 2, size / 2, size * 0.44)

@@ -794,6 +794,15 @@ export class TokenSystem {
     }
 
     if (isDM) {
+      // ── Act As (impersonate) ────────────────────────────────────
+      const isImpersonating = eng._dmRoller?.cName === targetCName;
+      actions.push({
+        label: isImpersonating
+          ? `${_actIcon('toolbar/character.png')} ${t('act_stop_impersonate') || 'Stop Acting As'}`
+          : `${_actIcon('toolbar/character.png')} ${t('act_impersonate') || 'Act As'} ${targetCName}`,
+        cls: 'utility',
+        fn: () => isImpersonating ? window.resetRoller?.() : window.impersonate?.(targetCName)
+      });
       actions.push({ label: '🩹 Heal (1d4)', cls: 'heal', fn: () => {
         const roll = Math.floor(Math.random() * 4) + 1;
         const newHp = Math.min(target.maxHp || 999, (target.hp || 0) + roll);
