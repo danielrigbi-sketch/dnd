@@ -820,6 +820,29 @@ export function uploadPortrait(uid, file, onProgress) {
 }
 
 // ==========================================
+// Cross-Player Save Prompts
+// ==========================================
+export function sendPendingSave(targetCName, data) {
+    const k = sanitizeCName(targetCName);
+    set(ref(db, `rooms/${activeRoom}/pendingSaves/${k}`), { ...data, ts: Date.now() });
+}
+
+export function listenToPendingSave(cName, cb) {
+    const k = sanitizeCName(cName);
+    return onValue(ref(db, `rooms/${activeRoom}/pendingSaves/${k}`), snap => cb(snap.val()));
+}
+
+export function submitSaveResult(targetCName, result) {
+    const k = sanitizeCName(targetCName);
+    update(ref(db, `rooms/${activeRoom}/pendingSaves/${k}`), { result });
+}
+
+export function clearPendingSave(targetCName) {
+    const k = sanitizeCName(targetCName);
+    remove(ref(db, `rooms/${activeRoom}/pendingSaves/${k}`));
+}
+
+// ==========================================
 // Faction & Conditions
 // ==========================================
 export function setFaction(cName, faction) {

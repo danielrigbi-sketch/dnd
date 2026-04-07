@@ -868,6 +868,73 @@ function _showOAPrompt(attackerName, targetName, onAttack) {
     el.querySelector('.oa-no-btn').onclick  = () => { clearTimeout(timer); remove(); };
 }
 
+/** Save prompt — shown to a player when another player/DM targets them with a save spell. */
+function _showSavePrompt(data) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    // Remove old save prompt if any
+    container.querySelector('.save-prompt')?.remove();
+
+    const el = document.createElement('div');
+    el.className = 'cr-toast save-prompt';
+    el.style.cssText = 'min-width:240px; padding:12px 14px; cursor:default;';
+
+    const saveType = (data.saveType || 'wis').toUpperCase();
+    const dc = data.dc || 10;
+
+    const title = document.createElement('div');
+    title.style.cssText = 'font-weight:700; margin-bottom:6px; color:#e6b800;';
+    title.textContent = '\u2728 ' + (t('wizard_save_roll') || 'Saving Throw');
+    el.appendChild(title);
+
+    const info = document.createElement('div');
+    info.style.cssText = 'font-size:13px; margin-bottom:8px; color:#ddd;';
+    info.textContent = `${data.casterCName} \u2192 ${data.spellName || 'Spell'}`;
+    el.appendChild(info);
+
+    const dcLine = document.createElement('div');
+    dcLine.style.cssText = 'font-size:12px; color:#aaa; margin-bottom:10px;';
+    dcLine.textContent = `DC ${dc} ${saveType} Save`;
+    el.appendChild(dcLine);
+
+    const btn = document.createElement('button');
+    btn.style.cssText = 'width:100%; padding:10px; background:#8e44ad; border:none; color:white; border-radius:6px; cursor:pointer; font-weight:700; font-size:14px;';
+    btn.textContent = '\uD83C\uDFB2 ' + (t('wizard_save_roll') || 'Roll Save');
+    btn.onclick = async () => {
+        btn.disabled = true;
+        btn.textContent = '\uD83C\uDFB2...';
+        const p = await db.getPlayerData(cName);
+        const saveMod = p?.savingThrows?.[data.saveType] ?? Math.floor(((p?.['_' + data.saveType] || 10) - 10) / 2);
+        await updateDiceColor(p?.pColor || '#3498db');
+        let rollVal;
+        try { rollVal = (await roll3DDice('1d20'))[0].value; }
+        catch { rollVal = Math.floor(Math.random() * 20) + 1; }
+        const total = rollVal + saveMod;
+        const saved = total >= dc;
+
+        // Show result on own screen
+        const resultEl = document.createElement('div');
+        resultEl.style.cssText = `font-size:14px; font-weight:700; margin-top:8px; color:${saved ? '#2ecc71' : '#e74c3c'};`;
+        resultEl.textContent = `[${rollVal}]+${saveMod}=${total} vs DC ${dc} \u2014 ${saved ? '\u2713 Saved!' : '\u2717 Failed!'}`;
+        el.appendChild(resultEl);
+
+        // Submit result to Firebase for caster's wizard
+        db.submitSaveResult(cName, { roll: rollVal, mod: saveMod, total, saved });
+
+        // Log to combat log
+        db.saveRollToDB({ cName, type: 'SAVE', ability: `${saveType} Save`, res: rollVal, mod: saveMod, total, color: p?.pColor, ts: Date.now() });
+
+        // Remove prompt after 3 seconds
+        setTimeout(() => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); }, 3000);
+    };
+    el.appendChild(btn);
+
+    container.appendChild(el);
+
+    // Auto-remove after 30 seconds if not acted on
+    setTimeout(() => { if (el.parentElement) { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); } }, 30000);
+}
+
 // Show/hide the loading spinner overlay
 export function showSpinner(label='Loading…') {
     const el = document.getElementById('cr-spinner-overlay');
@@ -1402,6 +1469,15 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
     setupDatabaseListeners();
     initMap();
     unlockAudio();
+
+    // Listen for incoming save prompts (for player characters)
+    if (userRole === 'player' && cName) {
+        db.listenToPendingSave(cName, (data) => {
+            if (!data || data.result) return; // already resolved or no pending
+            _showSavePrompt(data);
+        });
+    }
+
     // Purge roll log on game start (keep last 200 entries)
     db.purgeOldRolls().catch(e => console.warn('purgeOldRolls:', e));
 

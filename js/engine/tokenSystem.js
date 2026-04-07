@@ -711,20 +711,26 @@ export class TokenSystem {
             if (maxSl > 0) slotInfo = ` (${remaining}/${maxSl})`;
           }
           const _spFx = SPELL_EFFECTS[sp.slug];
-          const _spType = (sp.attack_type || _spFx?.atk) ? 'spell_atk' : (sp.dc_type || _spFx?.save) ? 'spell_save' : null;
+          const _spType = _spFx?.cat === 'HEAL' ? 'heal'
+            : (sp.attack_type || _spFx?.atk) ? 'spell_atk'
+            : (sp.dc_type || _spFx?.save) ? 'spell_save'
+            : _spFx?.cat === 'CONDITION' ? 'spell_save'
+            : null;
           actions.push({ label: `🔮 ${sp.name} (${lvlTag})${slotInfo}`, cls: 'attack',
             fn: _spType
               ? () => openActionWizard({ type: _spType, attackerCName: myCName, targetCName, attacker, target, eng, action: sp, spellEffect: _spFx, castLevel: sp.level, distFt })
               : () => this._doCastSpell(myCName, targetCName, sp, sp.level) });
           // Upcast buttons — for leveled spells with higher_level text
-          if (sp.level > 0 && sp.higher_level) {
+          if (sp.level > 0 && (sp.higher_level || _spFx?.upcastDice || _spFx?.upcastMissiles)) {
             let shown = 0;
             for (let lv = sp.level + 1; lv <= 9 && shown < 2; lv++) {
               const rem = (maxSlots[lv] || 0) - (usedSlots[lv] || 0);
               if (rem > 0) {
                 const castLv = lv;
                 actions.push({ label: `  ↑ ${sp.name} Lv${castLv} (${rem}/${maxSlots[castLv]||0})`, cls: 'attack',
-                  fn: () => this._doCastSpell(myCName, targetCName, sp, castLv) });
+                  fn: _spType
+                    ? () => openActionWizard({ type: _spType, attackerCName: myCName, targetCName, attacker, target, eng, action: sp, spellEffect: _spFx, castLevel: castLv, distFt })
+                    : () => this._doCastSpell(myCName, targetCName, sp, castLv) });
                 shown++;
               }
             }
@@ -1208,6 +1214,7 @@ export class TokenSystem {
           const patch = {};
           if (fx.effect?.checkBonus) patch.spellCheckBonus = fx.effect.checkBonus;
           if (fx.effect?.saveBonus) patch.spellSaveBonus = fx.effect.saveBonus;
+          if (fx.effect?.attackBonus) patch.spellAttackBonus = fx.effect.attackBonus;
           if (fx.effect?.advNextAttack) patch.advNextAttack = true;
           if (fx.effect?.resistBPS) patch.resistBPS = true;
           if (fx.effect?.speedBonus) patch.speedBonus = fx.effect.speedBonus;
@@ -1215,15 +1222,20 @@ export class TokenSystem {
           if (fx.effect?.weaponStat) patch.shillelaghStat = fx.effect.weaponStat;
           if (fx.effect?.advChaChecks) patch.advChaChecks = true;
           if (fx.effect?.unarmedDice) patch.unarmedOverride = fx.effect.unarmedDice;
+          if (fx.effect?.acBonus) patch.acBonus = fx.effect.acBonus;
+          if (fx.effect?.setAC) patch.setAC = fx.effect.setAC;
+          if (fx.effect?.resistElement) patch.resistElement = true;
+          if (fx.effect?.bonusMeleeDmg) patch.bonusMeleeDmg = fx.effect.bonusMeleeDmg;
           if (Object.keys(patch).length) eng.db?.patchPlayerInDB(buffTarget, patch);
           if (fx.conc) {
             eng.db?.updateConcentrationInDB?.(attackerCName, true);
             eng.db?.patchPlayerInDB(attackerCName, { concentratingSpell: spell.slug, concentratingTarget: buffTarget });
           }
           eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
-            target: buffTarget, spellName: spell.name, spellLevel: 0,
+            target: buffTarget, spellName: spell.name, spellLevel: slotLevel,
             flavor: `${spell.name} → ${buffTarget}`,
             color: attacker.pColor || '#9b59b6', ts: Date.now() });
+          if (slotLevel > 0) window.useSpellSlot?.(attackerCName, slotLevel);
           return; // handled
         }
 
@@ -1261,11 +1273,12 @@ export class TokenSystem {
             eng.db?.patchPlayerInDB(attackerCName, { concentratingSpell: spell.slug, concentratingTarget: targetCName });
           }
           eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
-            target: targetCName, spellName: spell.name, spellLevel: 0,
+            target: targetCName, spellName: spell.name, spellLevel: slotLevel,
             savingThrow: true, saveRoll: saveRoll2 + saveMod, spellSaveDC: spellSaveDC,
             savedHalf: saved,
             flavor: `${spell.name} — ${saveType.toUpperCase()} save ${saveRoll2}+${saveMod}=${saveRoll2+saveMod} vs DC ${spellSaveDC}: ${saved ? '✓ Saved' : '✗ Failed!'}`,
             color: attacker.pColor || '#9b59b6', ts: Date.now() });
+          if (slotLevel > 0) window.useSpellSlot?.(attackerCName, slotLevel);
           return;
         }
 
@@ -1285,6 +1298,128 @@ export class TokenSystem {
             flavor: `${spell.name} cast`,
             color: attacker.pColor || '#9b59b6', ts: Date.now() });
           if (fx.conc) eng.db?.updateConcentrationInDB?.(attackerCName, true);
+          if (slotLevel > 0) window.useSpellSlot?.(attackerCName, slotLevel);
+          return;
+        }
+
+        case 'HEAL': {
+          // Dice-based heal fallback (when wizard is not used)
+          const healMod = fx.noMod ? 0 : spellMod;
+          let healTotal = 0;
+          if (fx.flat && fx.noMod) {
+            healTotal = fx.flat;
+          } else {
+            let healDice = fx.dice || '1d8';
+            if (fx.upcastDice && slotLevel > baseLevel) {
+              const extra = slotLevel - baseLevel;
+              const dm = fx.upcastDice.match(/(\d+)d(\d+)/);
+              if (dm) healDice += `+${parseInt(dm[1]) * extra}d${dm[2]}`;
+            }
+            const dm2 = healDice.match(/(\d+)d(\d+)/g);
+            if (dm2) dm2.forEach(dd => { const p = dd.match(/(\d+)d(\d+)/); if (p) for (let i=0;i<parseInt(p[1]);i++) healTotal += Math.floor(Math.random()*parseInt(p[2]))+1; });
+            healTotal += healMod;
+          }
+          const oldHp = target.hp ?? 0;
+          const maxHp = target.maxHp ?? oldHp;
+          const newHp = Math.min(maxHp, oldHp + healTotal);
+          eng.db?.updatePlayerHPInDB(targetCName, newHp);
+          if (oldHp <= 0 && newHp > 0) {
+            eng.db?.removeStatus?.(targetCName, 'Unconscious');
+            const sv2 = target.deathSaves || {};
+            sv2.stable = false; sv2.dead = false;
+            sv2.successes = [false,false,false]; sv2.failures = [false,false,false];
+            eng.db?.updateDeathSavesInDB?.(targetCName, sv2);
+          }
+          eng.db?.saveRollToDB({ type: 'HEAL', cName: attackerCName, pName: attacker.pName || attackerCName,
+            target: targetCName, spellName: spell.name, res: healTotal, newHp,
+            flavor: `${spell.name} — ${targetCName} healed ${healTotal} HP (${oldHp}→${newHp})`,
+            color: '#2ecc71', ts: Date.now() });
+          if (slotLevel > 0) window.useSpellSlot?.(attackerCName, slotLevel);
+          return;
+        }
+
+        case 'CONDITION': {
+          // Save-or-suffer condition (Charm Person, Command, Entangle, etc.)
+          if (fx.noSave) {
+            // No save — apply condition directly (Sleep, Color Spray: HP-based)
+            eng.db?.addStatus?.(targetCName, fx.condition);
+            eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
+              target: targetCName, spellName: spell.name,
+              flavor: `${spell.name} — ${targetCName} is ${fx.condition}!`,
+              color: attacker.pColor || '#9b59b6', ts: Date.now() });
+          } else {
+            const saveType3 = fx.save || 'wis';
+            const saveMod3 = target.savingThrows?.[saveType3] ?? Math.floor(((target['_' + saveType3] || 10) - 10) / 2);
+            const saveRoll3 = Math.floor(Math.random() * 20) + 1;
+            const saved3 = (saveRoll3 + saveMod3) >= spellSaveDC;
+            if (!saved3 && fx.condition) eng.db?.addStatus?.(targetCName, fx.condition);
+            if (fx.conc) {
+              eng.db?.updateConcentrationInDB?.(attackerCName, true);
+              eng.db?.patchPlayerInDB(attackerCName, { concentratingSpell: spell.slug, concentratingTarget: targetCName });
+            }
+            eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
+              target: targetCName, spellName: spell.name,
+              savingThrow: true, saveRoll: saveRoll3 + saveMod3, spellSaveDC,
+              savedHalf: saved3,
+              flavor: `${spell.name} — ${saveType3.toUpperCase()} save ${saveRoll3}+${saveMod3}=${saveRoll3+saveMod3} vs DC ${spellSaveDC}: ${saved3 ? '✓ Saved' : '✗ ' + fx.condition + '!'}`,
+              color: attacker.pColor || '#9b59b6', ts: Date.now() });
+          }
+          if (slotLevel > 0) window.useSpellSlot?.(attackerCName, slotLevel);
+          return;
+        }
+
+        case 'TEMP_HP': {
+          // False Life, Heroism, etc.
+          let tempAmount = 0;
+          if (fx.flat === 'spellMod') {
+            tempAmount = spellMod;
+          } else if (fx.dice) {
+            const dm3 = fx.dice.match(/(\d+)d(\d+)(?:\+(\d+))?/);
+            if (dm3) {
+              for (let i = 0; i < parseInt(dm3[1]); i++) tempAmount += Math.floor(Math.random() * parseInt(dm3[2])) + 1;
+              if (dm3[3]) tempAmount += parseInt(dm3[3]);
+            }
+            if (fx.upcastFlat && slotLevel > baseLevel) tempAmount += fx.upcastFlat * (slotLevel - baseLevel);
+          }
+          const curTemp = target.tempHp || 0;
+          if (tempAmount > curTemp) eng.db?.patchPlayerInDB(targetCName, { tempHp: tempAmount });
+          if (fx.effect?.immuneTo) eng.db?.addStatus?.(targetCName, 'Immune:' + fx.effect.immuneTo);
+          if (fx.conc) {
+            eng.db?.updateConcentrationInDB?.(attackerCName, true);
+            eng.db?.patchPlayerInDB(attackerCName, { concentratingSpell: spell.slug, concentratingTarget: targetCName });
+          }
+          eng.db?.saveRollToDB({ type: 'SPELL', cName: attackerCName, pName: attacker.pName || attackerCName,
+            target: targetCName, spellName: spell.name,
+            flavor: `${spell.name} — ${targetCName} gains ${tempAmount} temp HP`,
+            color: attacker.pColor || '#9b59b6', ts: Date.now() });
+          if (slotLevel > 0) window.useSpellSlot?.(attackerCName, slotLevel);
+          return;
+        }
+
+        case 'SPECIAL': {
+          // Magic Missile, etc.
+          if (fx.autoHit && fx.missiles) {
+            const numMissiles = fx.missiles + (fx.upcastMissiles && slotLevel > baseLevel ? fx.upcastMissiles * (slotLevel - baseLevel) : 0);
+            let totalDmg = 0;
+            const dm4 = fx.missileDice.match(/(\d+)d(\d+)(?:\+(\d+))?/);
+            for (let m = 0; m < numMissiles; m++) {
+              let mDmg = 0;
+              if (dm4) {
+                for (let i = 0; i < parseInt(dm4[1]); i++) mDmg += Math.floor(Math.random() * parseInt(dm4[2])) + 1;
+                if (dm4[3]) mDmg += parseInt(dm4[3]);
+              }
+              totalDmg += mDmg;
+            }
+            const oldHp2 = target.hp ?? target.maxHp ?? 0;
+            const newHp2 = Math.max(0, oldHp2 - totalDmg);
+            eng.db?.updatePlayerHPInDB(targetCName, newHp2);
+            if (newHp2 <= 0) eng.db?.addStatus?.(targetCName, 'Unconscious');
+            eng.db?.saveRollToDB({ type: 'DAMAGE', cName: attackerCName, pName: attacker.pName || attackerCName,
+              target: targetCName, spellName: spell.name, damage: totalDmg,
+              flavor: `${spell.name} — ${numMissiles} missiles hit ${targetCName} for ${totalDmg} ${fx.dmgType} damage`,
+              color: attacker.pColor || '#9b59b6', ts: Date.now() });
+          }
+          if (slotLevel > 0) window.useSpellSlot?.(attackerCName, slotLevel);
           return;
         }
 
