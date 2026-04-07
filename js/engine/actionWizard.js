@@ -128,9 +128,9 @@ class ActionWizard {
     if (adv && dis) { adv = false; dis = false; }
     const bonus = isMelee ? (parseInt(a.melee) || 0) : (parseInt(a.ranged) || 0);
     const ac = tgt.ac ?? 10;
-    const dmgDice = isMelee ? (a.meleeDmg || '1d6') : (a.rangedDmg || '1d6');
+    const dmgDice = this.opts.overrideDmgDice || (isMelee ? (a.meleeDmg || '1d6') : (a.rangedDmg || '1d6'));
     const critThresh = a._resolved?.critThreshold ?? 20;
-    const weapon = isMelee ? (a.equipment?.mainHand?.name || t('act_melee_attack')) : (a.equipment?.ranged?.name || t('act_ranged_attack'));
+    const weapon = this.opts.overrideWeaponName || (isMelee ? (a.equipment?.mainHand?.name || t('act_melee_attack')) : (a.equipment?.ranged?.name || t('act_ranged_attack')));
 
     // Detect active buffs
     const buffs = [];
@@ -221,6 +221,9 @@ class ActionWizard {
         }
     }
 
+    // Pre-action callback (e.g., consume spell slot for Divine Smite)
+    if (this.opts.preAction) this.opts.preAction();
+
     // Roll damage
     await this._delay(300); clearDice();
     const cd = crit ? this._doubleDice(dmgDice) : dmgDice;
@@ -228,10 +231,27 @@ class ActionWizard {
     if (this.cancelled) return this._hide();
 
     let damage = Math.max(1, dmg.reduce((s,d) => s+d.value, 0));
-    if (this._halfDmg) damage = Math.floor(damage / 2);
+
+    // Bonus damage (Sneak Attack, Divine Smite, Colossus Slayer, etc.)
+    let bonusDmg = 0;
+    if (this.opts.bonusDice) {
+      await this._delay(200); clearDice();
+      const bonusCd = crit ? this._doubleDice(this.opts.bonusDice) : this.opts.bonusDice;
+      const bonusRoll = await this._rollStep(bonusCd, `\uD83C\uDFB2 ${this.opts.bonusLabel || 'Bonus Damage'}`);
+      if (this.cancelled) return this._hide();
+      bonusDmg = bonusRoll.reduce((s,d) => s+d.value, 0);
+    }
+    if (this.opts.bonusFlat) bonusDmg += this.opts.bonusFlat;
+    const totalDamage = damage + bonusDmg;
+
+    if (this._halfDmg) damage = Math.floor(totalDamage / 2); else damage = totalDamage;
+    const bonusNote = this.opts.bonusLabel ? ` +${this.opts.bonusLabel}` : '';
     const { newHp, absorbed } = this._applyDamage(this.targetCName, tgt, damage);
-    this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, damage, dmgDice:cd, crit, color:a.pColor||'#e74c3c', ts:Date.now() });
-    this._showDmg(damage, cd + (this._halfDmg ? ' (halved)' : '') + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
+    this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, damage, dmgDice:cd + (this.opts.bonusDice ? `+${this.opts.bonusDice}` : ''), crit, color:a.pColor||'#e74c3c', ts:Date.now() });
+    this._showDmg(damage, cd + (this.opts.bonusDice ? `+${this.opts.bonusDice}` : '') + bonusNote + (this._halfDmg ? ' (halved)' : '') + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
+
+    // Post-action callback (e.g., mark sneak used, remove Invisible)
+    if (this.opts.postAction) this.opts.postAction();
 
     await this._closeButton(); this._hide();
     window.setMode?.('normal');

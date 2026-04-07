@@ -9,6 +9,7 @@ import { statusFlavor } from '../combatFlavor.js';
 import { getResolved } from './charEngine.js';
 import { iconImg } from '../iconMap.js';
 import { t } from '../i18n.js';
+import { openActionWizard } from './actionWizard.js';
 
 // ── Wild Magic Surge Table (20-entry simplified) ──────────────────────────────
 export const WILD_MAGIC_SURGES = [
@@ -292,7 +293,18 @@ export function getCombatActions(attacker, target, distFt, myCName) {
         actions.push({
           label: `${iconImg('🗡️','14px')} Sneak Attack (+${snkDice})`,
           cls: 'attack', available: true,
-          fn: (cn, tc, eng) => _doSneakAttack(cn, tc, eng, snkDice),
+          fn: (cn, tc, eng) => openActionWizard({
+            type: 'melee', attackerCName: cn, targetCName: tc,
+            attacker: eng.S.players[cn] || {}, target: eng.S.players[tc] || {},
+            eng, distFt: 5,
+            bonusDice: snkDice, bonusLabel: 'Sneak Attack',
+            postAction: () => {
+              window.patchClassResources?.(cn, { sneakUsedThisTurn: true });
+              if (Array.isArray((eng.S.players[cn] || {}).statuses) && (eng.S.players[cn] || {}).statuses.includes('Invisible')) {
+                window.toggleStatus?.(cn, 'Invisible');
+              }
+            }
+          }),
         });
       }
       break;
@@ -304,13 +316,19 @@ export function getCombatActions(attacker, target, distFt, myCName) {
       const max      = slots.max  || {};
       const lowestSlot = [1,2,3,4,5].find(l => (max[l] || 0) - (used[l] || 0) > 0);
       if (lowestSlot && distFt <= 5) {
-        const smiteDice = `${lowestSlot + 1}d8`;
         const undead    = (target.monsterType || '').toLowerCase().includes('undead')
                        || (target.monsterType || '').toLowerCase().includes('fiend');
+        const smiteDice = undead ? `${(lowestSlot + 1) * 2}d8` : `${lowestSlot + 1}d8`;
         actions.push({
-          label: `${iconImg('✨','14px')} Divine Smite (${undead ? '×2 ' : ''}${smiteDice} radiant)`,
+          label: `${iconImg('✨','14px')} Divine Smite (${undead ? '×2 ' : ''}${lowestSlot + 1}d8 radiant)`,
           cls: 'attack', available: true,
-          fn: (cn, tc, eng) => _doDivineSmite(cn, tc, eng, lowestSlot, undead),
+          fn: (cn, tc, eng) => openActionWizard({
+            type: 'melee', attackerCName: cn, targetCName: tc,
+            attacker: eng.S.players[cn] || {}, target: eng.S.players[tc] || {},
+            eng, distFt: 5,
+            bonusDice: smiteDice, bonusLabel: `Divine Smite${undead ? ' (Undead)' : ''}`,
+            preAction: () => window.useSpellSlot?.(cn, lowestSlot),
+          }),
         });
       }
       break;
@@ -333,7 +351,15 @@ export function getCombatActions(attacker, target, distFt, myCName) {
         actions.push({
           label: `${iconImg('✝️','14px')} Turn Undead`,
           cls: 'attack', available: true,
-          fn: (cn, tc, eng) => _doTurnUndead(cn, tc, eng, lvl),
+          fn: (cn, tc, eng) => {
+            window.patchClassResources?.(cn, { channelDivinity: Math.max(0, ((eng.S.players[cn] || {}).classResources?.channelDivinity ?? 1) - 1) });
+            openActionWizard({
+              type: 'spell_save', attackerCName: cn, targetCName: tc,
+              attacker: eng.S.players[cn] || {}, target: eng.S.players[tc] || {},
+              eng, distFt: 5,
+              action: { name: 'Turn Undead', slug: 'turn-undead', dc_type: 'wis', level: 0 },
+            });
+          },
         });
       }
       break;
@@ -344,7 +370,17 @@ export function getCombatActions(attacker, target, distFt, myCName) {
         actions.push({
           label: `${iconImg('🥋','14px')} Flurry of Blows (${cr.kiPoints} ki left)`,
           cls: 'attack', available: true,
-          fn: (cn, tc, eng) => _doFlurryOfBlows(cn, tc, eng),
+          fn: async (cn, tc, eng) => {
+            window.patchClassResources?.(cn, { kiPoints: Math.max(0, ((eng.S.players[cn] || {}).classResources?.kiPoints ?? 0) - 1) });
+            for (let i = 0; i < 2; i++) {
+              await openActionWizard({
+                type: 'melee', attackerCName: cn, targetCName: tc,
+                attacker: eng.S.players[cn] || {}, target: eng.S.players[tc] || {},
+                eng, distFt: 5,
+                overrideDmgDice: '1d4', overrideWeaponName: `Flurry ${i + 1}`,
+              });
+            }
+          },
         });
       }
       break;
@@ -372,7 +408,12 @@ export function getCombatActions(attacker, target, distFt, myCName) {
         const tHp    = target.hp ?? tMaxHp;
         if (tHp < tMaxHp) {
           actions.push({ label: `${iconImg('🏹','14px')} Colossus Slayer (+1d8)`, cls: 'attack', available: true,
-            fn: (cn, tc, eng) => _doColossusSlayer(cn, tc, eng) });
+            fn: (cn, tc, eng) => openActionWizard({
+              type: 'melee', attackerCName: cn, targetCName: tc,
+              attacker: eng.S.players[cn] || {}, target: eng.S.players[tc] || {},
+              eng, distFt: 5,
+              bonusDice: '1d8', bonusLabel: 'Colossus Slayer',
+            }) });
         }
         break;
       }
@@ -416,7 +457,12 @@ export function getCombatActions(attacker, target, distFt, myCName) {
           const dmgType = slug.replace('divine_strike_', '');
           const dice    = lvl >= 14 ? '2d8' : '1d8';
           actions.push({ label: `${iconImg('✝️','14px')} Divine Strike (${dice} ${dmgType})`, cls: 'attack', available: true,
-            fn: (cn, tc, eng) => _doDivineStrike(cn, tc, eng, dice, dmgType) });
+            fn: (cn, tc, eng) => openActionWizard({
+              type: 'melee', attackerCName: cn, targetCName: tc,
+              attacker: eng.S.players[cn] || {}, target: eng.S.players[tc] || {},
+              eng, distFt: 5,
+              bonusDice: dice, bonusLabel: `Divine Strike (${dmgType})`,
+            }) });
         }
         break;
       }
@@ -447,7 +493,12 @@ export function getCombatActions(attacker, target, distFt, myCName) {
   // Tag-based combat actions
   if (resolvedA?.tags?.has('dread_ambusher')) {
     actions.push({ label: `${iconImg('🌑','14px')} Dread Ambusher (+1d8, first turn)`, cls: 'attack', available: true,
-      fn: (cn, tc, eng) => _doDreadAmbusher(cn, tc, eng) });
+      fn: (cn, tc, eng) => openActionWizard({
+        type: 'melee', attackerCName: cn, targetCName: tc,
+        attacker: eng.S.players[cn] || {}, target: eng.S.players[tc] || {},
+        eng, distFt: 5,
+        bonusDice: '1d8', bonusLabel: 'Dread Ambusher',
+      }) });
   }
 
   return actions;
