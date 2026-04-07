@@ -210,6 +210,10 @@ window.onSpellAdd = (spell) => {
     const target = window._spellAddTarget || cName || (userRole === 'dm' && activeRoller?.cName);
     if (!target) return;
     window._spellAddTarget = null; // one-shot override
+    // Get vault IDs for cross-session persistence
+    const targetPlayer = mapEngine?.S?.players?.[target] || {};
+    const vaultUid = targetPlayer._vaultUid || window._vaultUid;
+    const vaultId  = targetPlayer._vaultId  || window._vaultId;
     db.addSpellToBook(target, {
         slug:         spell.slug || spell.name,
         name:         spell.name,
@@ -222,7 +226,7 @@ window.onSpellAdd = (spell) => {
         dc_type:       spell.dc?.dc_type?.name || '',
         concentration: spell.concentration || false,
         higher_level:  spell.higher_level || '',
-    });
+    }, vaultUid, vaultId);
     db.saveRollToDB({ cName: target, type: 'STATUS', status: statusFlavor('spellLearned', target, null, spell.name), ts: Date.now() });
 };
 
@@ -1319,6 +1323,9 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
         cName       = charData.name;
         pColor      = charData.color || "#3498db";
         charPortrait = charData.portrait;
+        // Store vault IDs for cross-session spell persistence
+        window._vaultUid = charData._vaultUid || null;
+        window._vaultId  = charData._vaultId  || null;
         localStorage.setItem('paradice_initBonus', charData.initBonus || 0);
         localStorage.setItem('paradice_cName', cName);
         db.joinPlayerToDB(cName, pName, pColor, userRole, charPortrait, charData, isCampaign);

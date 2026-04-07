@@ -452,15 +452,23 @@ export function restoreAllSpellSlotsInDB(cName, maxSlots) {
     // Restore used slots back to 0 (long rest)
     update(ref(db, `rooms/${activeRoom}/players/${sanitizeCName(cName)}`), { 'spellSlots/used': {} });
 }
-export function addSpellToBook(cName, spell) {
+export function addSpellToBook(cName, spell, vaultUid, vaultId) {
     const k = sanitizeCName(cName);
     const slug = (spell.slug || spell.name || '').replace(/[.#$[\]]/g, '_');
+    // Save to room (live game state)
     update(ref(db, `rooms/${activeRoom}/players/${k}/spellbook`), { [slug]: spell });
+    // Also persist to character vault for cross-session persistence
+    if (vaultUid && vaultId) {
+        update(ref(db, `users/${vaultUid}/characters/${vaultId}/spellbook`), { [slug]: spell });
+    }
 }
-export function removeSpellFromBook(cName, slug) {
+export function removeSpellFromBook(cName, slug, vaultUid, vaultId) {
     const k = sanitizeCName(cName);
     const safeSlug = slug.replace(/[.#$[\]]/g, '_');
     remove(ref(db, `rooms/${activeRoom}/players/${k}/spellbook/${safeSlug}`));
+    if (vaultUid && vaultId) {
+        remove(ref(db, `users/${vaultUid}/characters/${vaultId}/spellbook/${safeSlug}`));
+    }
 }
 
 // ==========================================

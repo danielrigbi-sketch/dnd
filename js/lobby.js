@@ -1663,6 +1663,9 @@ function renderVault(characters) {
             langToggleBtn.style.display = 'none';
             if(lobbyScreen) lobbyScreen.style.display = 'none';
             showSpinner('Joining room…');
+            // Attach vault ID so in-game spell changes can persist back to vault
+            selectedChar._vaultId = charId;
+            selectedChar._vaultUid = currentUserUid;
             startGame('player', selectedChar, roomCode);
         };
     });
