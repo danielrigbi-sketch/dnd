@@ -99,6 +99,10 @@ class ActionWizard {
       case 'spell_atk': await this._flowSpellAttack(); break;
       case 'spell_save': await this._flowSpellSave(); break;
       case 'heal': await this._flowHeal(); break;
+      case 'buff': await this._flowBuff(); break;
+      case 'temp_hp': await this._flowTempHp(); break;
+      case 'special': await this._flowSpecial(); break;
+      case 'detect': await this._flowDetect(); break;
       case 'contested': await this._flowContested(); break;
       case 'skill': await this._flowSkillCheck(); break;
       default: this._hide();
@@ -722,6 +726,157 @@ class ActionWizard {
     this._checkConcentration(targetCName, target, damage);
     if (newHp <= 0) this.db?.addStatus?.(targetCName, 'Unconscious');
     return { newHp, absorbed, realDmg, oldHp: currentHp, maxHp: currentMaxHp };
+  }
+
+  // ── BUFF SPELL ────────────────────────────────────────────────────────
+  async _flowBuff() {
+    const spell = this.action; if (!spell) return this._hide();
+    const a = this.attacker;
+    const fx = SPELL_EFFECTS[spell.slug];
+    const target = fx?.target === 'self' ? this.attackerCName : this.targetCName;
+
+    this._setHeader(`\u2728 ${spell.name} <button class="wiz-close" id="wiz-x">\u2715</button>`);
+    const effectDesc = Object.entries(fx?.effect || {}).map(([k,v]) => `${k}: ${v}`).join(', ');
+    this._renderInfo(`${this.attackerCName} \u2192 ${target}`, effectDesc || 'Buff applied', '', false, false);
+    this._bindCancel();
+
+    if ((spell.level || 0) > 0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel || spell.level);
+
+    // Apply buff effects
+    const patch = {};
+    const eff = fx?.effect || {};
+    if (eff.acBonus) patch.acBonus = (patch.acBonus || 0) + eff.acBonus;
+    if (eff.acBonusRanged) patch.acBonusRanged = eff.acBonusRanged;
+    if (eff.setAC) patch.overrideAC = eff.setAC;
+    if (eff.advNextAttack) patch.advNextAttack = true;
+    if (eff.advStealth) patch.advStealth = true;
+    if (eff.advPerception) patch.advPerception = true;
+    if (eff.advPersuasion) patch.advPersuasion = true;
+    if (eff.advSaves) patch.advSaves = true;
+    if (eff.resistBPS) patch.resistBPS = true;
+    if (eff.immuneTo) this.db?.addStatus?.(target, 'Immune:' + eff.immuneTo);
+    if (eff.speedBonus) patch.speedBonus = eff.speedBonus;
+    if (eff.noOA) patch.disengaged = true;
+    if (eff.weaponBonusDice) patch.weaponBonusDice = eff.weaponBonusDice;
+    if (eff.weaponBonusType) patch.weaponBonusType = eff.weaponBonusType;
+    if (eff.weaponBonus) patch.weaponBonus = eff.weaponBonus;
+    if (eff.checkBonus) patch.spellCheckBonus = eff.checkBonus;
+    if (eff.saveBonus) patch.spellSaveBonus = eff.saveBonus;
+    if (eff.attackBonus) patch.blessBonus = eff.attackBonus;
+
+    if (Object.keys(patch).length) this.db?.patchPlayerInDB(target, patch);
+    if (fx?.conc) {
+      this.db?.updateConcentrationInDB?.(this.attackerCName, true);
+      this.db?.patchPlayerInDB(this.attackerCName, { concentratingSpell: spell.slug, concentratingTarget: target });
+    }
+
+    this.db?.saveRollToDB({ type: 'SPELL', cName: this.attackerCName, pName: a.pName || this.attackerCName,
+      target, spellName: spell.name, flavor: `${spell.name} \u2192 ${target}`,
+      color: a.pColor || '#9b59b6', ts: Date.now() });
+
+    this._appendBody(`<div class="wiz-result wiz-hit">\u2728 ${spell.name} applied to ${target}</div>`);
+    await this._closeButton(); this._hide();
+  }
+
+  // ── TEMP HP SPELL ────────────────────────────────────────────────────
+  async _flowTempHp() {
+    const spell = this.action; if (!spell) return this._hide();
+    const a = this.attacker, tgt = this.target;
+    const fx = SPELL_EFFECTS[spell.slug];
+    const target = fx?.target === 'self' ? this.attackerCName : this.targetCName;
+
+    this._setHeader(`\uD83D\uDEE1 ${spell.name} <button class="wiz-close" id="wiz-x">\u2715</button>`);
+    this._bindCancel();
+
+    if ((spell.level || 0) > 0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel || spell.level);
+
+    let tempHpGain = 0;
+    if (fx?.dice) {
+      this._renderInfo(`${this.attackerCName} \u2192 ${target}`, `Temp HP: ${fx.dice}`, '', false, false);
+      await updateDiceColor('#f39c12');
+      const roll = await this._rollStep(fx.dice, '\uD83D\uDEE1 Roll Temp HP');
+      if (this.cancelled) return this._hide();
+      tempHpGain = roll.reduce((s,d) => s + d.value, 0);
+    } else if (fx?.flat) {
+      const spellMod = a._resolved?.spellMod ?? Math.floor(((a._wis||a._cha||a._int||10)-10)/2);
+      tempHpGain = fx.flat === 'spellMod' ? spellMod : (typeof fx.flat === 'number' ? fx.flat : 0);
+      this._renderInfo(`${this.attackerCName} \u2192 ${target}`, `Temp HP: ${tempHpGain}`, '', false, false);
+    }
+
+    // Upcast bonus
+    const castLevel = this.opts.castLevel || spell.level || 1;
+    if (fx?.upcastFlat && castLevel > (spell.level || 1)) {
+      tempHpGain += fx.upcastFlat * (castLevel - (spell.level || 1));
+    }
+
+    this.db?.patchPlayerInDB(target, { tempHp: Math.max(tempHpGain, (tgt.tempHp || 0)) });
+
+    this.db?.saveRollToDB({ type: 'SPELL', cName: this.attackerCName, pName: a.pName || this.attackerCName,
+      target, spellName: spell.name, flavor: `${spell.name}: +${tempHpGain} temp HP`,
+      color: '#f39c12', ts: Date.now() });
+
+    this._appendBody(`<div class="wiz-result wiz-hit">\uD83D\uDEE1 +${tempHpGain} Temporary HP</div>`);
+    if (fx?.conc) this.db?.updateConcentrationInDB?.(this.attackerCName, true);
+
+    await this._closeButton(); this._hide();
+  }
+
+  // ── SPECIAL SPELL (Magic Missile etc.) ───────────────────────────────
+  async _flowSpecial() {
+    const spell = this.action; if (!spell) return this._hide();
+    const a = this.attacker, tgt = this.target;
+    const fx = SPELL_EFFECTS[spell.slug];
+
+    this._setHeader(`\u2728 ${spell.name} <button class="wiz-close" id="wiz-x">\u2715</button>`);
+    this._bindCancel();
+
+    if ((spell.level || 0) > 0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel || spell.level);
+
+    if (fx?.autoHit && fx?.missiles) {
+      // Magic Missile style: auto-hit missiles
+      const castLevel = this.opts.castLevel || spell.level || 1;
+      const numMissiles = fx.missiles + (fx.upcastMissiles || 0) * Math.max(0, castLevel - (spell.level || 1));
+      this._renderInfo(`${this.attackerCName} \u2192 ${this.targetCName}`, `${numMissiles} missiles (auto-hit)`, '', false, false);
+
+      await updateDiceColor(a.pColor || '#9b59b6');
+      let totalDmg = 0;
+      for (let i = 0; i < numMissiles; i++) {
+        if (i > 0) { await this._delay(200); clearDice(); }
+        const roll = await this._rollStep(fx.missileDice || '1d4+1', `Missile ${i+1}`);
+        if (this.cancelled) return this._hide();
+        const dmg = roll.reduce((s,d) => s + d.value, 0);
+        totalDmg += dmg;
+      }
+
+      const { newHp, oldHp, maxHp } = await this._applyDamage(this.targetCName, tgt, totalDmg);
+      this.db?.saveRollToDB({ type: 'SPELL', cName: this.attackerCName, target: this.targetCName,
+        spellName: spell.name, damage: totalDmg, color: a.pColor || '#9b59b6', ts: Date.now() });
+      this._showDmg(totalDmg, `${numMissiles}x ${fx.missileDice}`, oldHp, newHp, maxHp);
+    }
+
+    await this._closeButton(); this._hide();
+  }
+
+  // ── DETECT SPELL ─────────────────────────────────────────────────────
+  async _flowDetect() {
+    const spell = this.action; if (!spell) return this._hide();
+    const a = this.attacker;
+    const fx = SPELL_EFFECTS[spell.slug];
+
+    this._setHeader(`\uD83D\uDD0D ${spell.name} <button class="wiz-close" id="wiz-x">\u2715</button>`);
+    this._renderInfo(this.attackerCName, `Detecting: ${fx?.detects || 'magic'}`, '', false, false);
+    this._bindCancel();
+
+    if ((spell.level || 0) > 0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel || spell.level);
+    if (fx?.conc) this.db?.updateConcentrationInDB?.(this.attackerCName, true);
+
+    this.db?.addStatus?.(this.attackerCName, 'Detecting');
+    this.db?.saveRollToDB({ type: 'SPELL', cName: this.attackerCName, pName: a.pName || this.attackerCName,
+      spellName: spell.name, flavor: `${spell.name} active`,
+      color: a.pColor || '#9b59b6', ts: Date.now() });
+
+    this._appendBody(`<div class="wiz-result wiz-hit">\uD83D\uDD0D ${spell.name} active \u2014 detecting ${fx?.detects || 'magic'}</div>`);
+    await this._closeButton(); this._hide();
   }
 
   // ── UI HELPERS ───────────────────────────────────────────────────────

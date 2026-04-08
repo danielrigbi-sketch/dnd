@@ -712,9 +712,16 @@ export class TokenSystem {
           }
           const _spFx = SPELL_EFFECTS[sp.slug];
           const _spType = _spFx?.cat === 'HEAL' ? 'heal'
+            : _spFx?.cat === 'HEAL_STABILIZE' ? 'heal'
+            : _spFx?.cat === 'TEMP_HP' ? 'temp_hp'
+            : _spFx?.cat === 'SPECIAL' ? 'special'
+            : _spFx?.cat === 'DETECT' ? 'detect'
+            : _spFx?.cat === 'BUFF' ? 'buff'
+            : _spFx?.cat === 'SUMMON' ? 'buff'
             : (sp.attack_type || _spFx?.atk) ? 'spell_atk'
             : (sp.dc_type || _spFx?.save) ? 'spell_save'
             : _spFx?.cat === 'CONDITION' ? 'spell_save'
+            : _spFx?.cat === 'DEBUFF' ? 'spell_save'
             : null;
           actions.push({ label: `🔮 ${sp.name} (${lvlTag})${slotInfo}`, cls: 'attack',
             fn: _spType
