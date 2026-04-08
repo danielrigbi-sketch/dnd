@@ -394,13 +394,156 @@ export class TokenSystem {
   _tm(e) { e.preventDefault(); this._mm({ ...e, clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }); }
   _te(e) { e.preventDefault(); this._mu(e); }
 
+  // ── Empty tile right-click menu ─────────────────────────────────────
+  _showEmptyTileMenu(e, gx, gy, wx, wy) {
+    const eng = this.e;
+    const isDM = eng.userRole === 'dm';
+    const myCName = (isDM && eng._dmRoller?.cName) ? eng._dmRoller.cName : eng.cName;
+    const myData = eng.S.players[myCName] || {};
+    const distFt = this._calcDistToTile(gx, gy, myCName);
+
+    const popup = document.getElementById('action-popup');
+    if (!popup) return;
+    const header = document.getElementById('action-popup-header');
+    const body = document.getElementById('action-popup-body');
+
+    header.innerHTML = `&#x1F4CD; ${t('tile_move_here') ? t('tile_move_here').split(' ')[0] : 'Tile'} (${gx}, ${gy}) <button class="wiz-close" onclick="this.parentElement.parentElement.style.display='none'">&times;</button>`;
+
+    const actions = [];
+
+    // Move Here (if player's token on map, in movement range)
+    const myTok = eng.S.tokens?.[myCName];
+    if (myTok && distFt <= (myData.speed || 30)) {
+      actions.push({
+        label: `${_actIcon('toolbar/hasted.png')} ${t('tile_move_here') || 'Move Here'} (${distFt}ft)`,
+        cls: 'utility',
+        fn: () => { eng.placeToken(myCName, gx, gy); }
+      });
+    }
+
+    // AoE spells from spellbook (spells that target areas — Self: cone/radius/line/cube/sphere)
+    const spellbook = Object.values(myData.spellbook || {});
+    const aoeSpells = spellbook.filter(sp => {
+      const range = (sp.range || '').toLowerCase();
+      return range.includes('self') && (range.includes('cone') || range.includes('radius') || range.includes('line') || range.includes('cube') || range.includes('sphere'));
+    });
+
+    // Summon spells
+    const summonSpells = spellbook.filter(sp => {
+      const fx = SPELL_EFFECTS[sp.slug];
+      return fx?.cat === 'SUMMON';
+    });
+
+    if (aoeSpells.length || summonSpells.length) {
+      actions.push({ label: `── ${_actIcon('action/wand.png','14px')} ${t('sect_spells')} ──`, cls: 'disabled', fn: null });
+    }
+
+    // AoE spells
+    aoeSpells.forEach(sp => {
+      const fx = SPELL_EFFECTS[sp.slug];
+      actions.push({
+        label: `${_actIcon(fx?.icon || 'action/wand.png')} ${sp.name}`,
+        cls: 'attack',
+        fn: () => openActionWizard({
+          type: fx?.save ? 'spell_save' : fx?.atk ? 'spell_atk' : 'buff',
+          attackerCName: myCName, targetCName: myCName,
+          attacker: myData, target: myData,
+          eng, action: sp, spellEffect: fx,
+          castLevel: sp.level, aoeCenter: { gx, gy }
+        })
+      });
+    });
+
+    // Summon spells
+    summonSpells.forEach(sp => {
+      const fx = SPELL_EFFECTS[sp.slug];
+      actions.push({
+        label: `${_actIcon(fx?.icon || 'action/wand.png')} ${sp.name} (summon)`,
+        cls: 'attack',
+        fn: () => {
+          if ((sp.level || 0) > 0) window.useSpellSlot?.(myCName, sp.level);
+          const summon = fx?.summon || { name: sp.name, hp: 1, ac: 10 };
+          window._spawnNPCToken?.({ ...summon, faction: 'ally' });
+          eng.db?.saveRollToDB({ type: 'SPELL', cName: myCName, spellName: sp.name,
+            flavor: `Summoned ${summon.name}`, color: myData.pColor, ts: Date.now() });
+        }
+      });
+    });
+
+    // DM tools
+    if (isDM) {
+      actions.push({ label: `── ${_actIcon('toolbar/editor.png','14px')} ${t('sect_dm_tools')} ──`, cls: 'disabled', fn: null });
+      actions.push({
+        label: `${_actIcon('action/lantern.png')} ${t('tile_place_light') || 'Place Light'}`,
+        cls: 'utility',
+        fn: () => { eng.setMode('light'); }
+      });
+    }
+
+    if (!actions.length) return;
+
+    // Render — group into collapsible sections
+    const SECTION_KEYS_LOCAL = [`── ${_actIcon('action/wand.png','14px')}`, `── ${_actIcon('toolbar/editor.png','14px')}`];
+    const isSH = a => SECTION_KEYS_LOCAL.some(k => a.label?.startsWith(k));
+
+    const groups = [];
+    let current = { header: null, items: [] };
+    actions.forEach((a, i) => {
+      if (isSH(a)) {
+        if (current.items.length || current.header) groups.push(current);
+        current = { header: { ...a, idx: i }, items: [] };
+      } else {
+        current.items.push({ ...a, idx: i });
+      }
+    });
+    if (current.items.length || current.header) groups.push(current);
+
+    let html = '';
+    groups.forEach(grp => {
+      if (!grp.header) {
+        grp.items.forEach(a => { html += `<button class="action-btn ${a.cls}" ${a.fn ? `data-idx="${a.idx}"` : 'disabled'}>${a.label}</button>`; });
+      } else {
+        html += `<details open class="action-section"><summary class="action-section-header">${grp.header.label}</summary><div class="action-section-body">`;
+        grp.items.forEach(a => { html += `<button class="action-btn ${a.cls}" ${a.fn ? `data-idx="${a.idx}"` : 'disabled'}>${a.label}</button>`; });
+        html += `</div></details>`;
+      }
+    });
+
+    body.innerHTML = html;
+    this._attachActionDelegation(body, (idx) => {
+      try { actions[idx].fn?.(); } catch(err) { console.error('[Tile] Action error:', err); }
+      popup.style.display = 'none';
+    });
+
+    const cc = document.getElementById('map-canvas-container');
+    const rect = cc ? cc.getBoundingClientRect() : { left: 0, top: 0 };
+    popup.style.left = Math.min(e.clientX - rect.left + 10, (cc?.clientWidth || 600) - 180) + 'px';
+    popup.style.top = Math.max(0, e.clientY - rect.top - 20) + 'px';
+    popup.style.display = 'block';
+    const closeOnOutside = ev => {
+      if (!popup.contains(ev.target)) { popup.style.display = 'none'; document.removeEventListener('click', closeOnOutside); }
+    };
+    setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
+  }
+
+  _calcDistToTile(gx, gy, cName) {
+    const tok = this.e.S.tokens?.[cName];
+    if (!tok) return Infinity;
+    return Math.max(Math.abs(tok.gx - gx), Math.abs(tok.gy - gy)) * 5;
+  }
+
   // ── Right-click context action menu ───────────────────────────────────
   _rightClick(e) {
     const { sx, sy } = this._cp(e);
     const { x: wx, y: wy } = this._sw(sx, sy);
     const eng = this.e;
     const targetCName = this.tokenAt(wx, wy);
-    if (!targetCName) return;
+    if (!targetCName) {
+      // Empty tile right-click — show tile action menu
+      const { gx, gy } = this._wg(wx, wy);
+      this._showEmptyTileMenu(e, gx, gy, wx, wy);
+      return;
+    }
 
     const isDM = eng.userRole === 'dm';
     // When DM is impersonating a monster, use that as the attacker
