@@ -147,7 +147,10 @@ class ActionWizard {
 
     // Roll attack
     await updateDiceColor(a.pColor || '#e74c3c');
-    const d20 = await this._rollStep((adv || dis) ? '2d20' : '1d20', t('wizard_roll_attack') || 'Roll Attack');
+    const rollLabel = (adv ? `${t('wizard_roll_attack') || 'Roll Attack'} (${t('wizard_advantage') || 'ADV'} - 2d20)` :
+                       dis ? `${t('wizard_roll_attack') || 'Roll Attack'} (${t('wizard_disadvantage') || 'DIS'} - 2d20)` :
+                       t('wizard_roll_attack') || 'Roll Attack');
+    const d20 = await this._rollStep((adv || dis) ? '2d20' : '1d20', rollLabel);
     if (this.cancelled) return this._hide();
 
     let raw;
