@@ -163,7 +163,7 @@ class ActionWizard {
     const miss = raw === 1 && !conds.autoCrit;
     const hit = crit || (!miss && total >= ac);
 
-    this.db?.saveRollToDB({ type:'ATTACK', attackType: isMelee?'melee':'ranged', cName:this.attackerCName, pName:a.pName||this.attackerCName, target:this.targetCName, rawRoll:raw, total, ac, hit, crit, miss, advantage:adv, disadvantage:dis, condNote:conds.reasons.length?` (${conds.reasons.join(', ')})`:'', color:a.pColor||'#e74c3c', ts:Date.now() });
+    this.db?.saveRollToDB({ type:'ATTACK', attackType: isMelee?'melee':'ranged', cName:this.attackerCName, pName:a.pName||this.attackerCName, target:this.targetCName, res:raw, rawRoll:raw, total, ac, hit, crit, miss, advantage:adv, disadvantage:dis, condNote:conds.reasons.length?` (${conds.reasons.join(', ')})`:'', color:a.pColor||'#e74c3c', ts:Date.now() });
 
     this._showHitMiss(raw, bonus, total, ac, hit, crit, miss);
 
@@ -246,9 +246,9 @@ class ActionWizard {
 
     if (this._halfDmg) damage = Math.floor(totalDamage / 2); else damage = totalDamage;
     const bonusNote = this.opts.bonusLabel ? ` +${this.opts.bonusLabel}` : '';
-    const { newHp, absorbed } = this._applyDamage(this.targetCName, tgt, damage);
+    const { newHp, absorbed, oldHp, maxHp } = await this._applyDamage(this.targetCName, tgt, damage);
     this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, damage, dmgDice:cd + (this.opts.bonusDice ? `+${this.opts.bonusDice}` : ''), crit, color:a.pColor||'#e74c3c', ts:Date.now() });
-    this._showDmg(damage, cd + (this.opts.bonusDice ? `+${this.opts.bonusDice}` : '') + bonusNote + (this._halfDmg ? ' (halved)' : '') + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
+    this._showDmg(damage, cd + (this.opts.bonusDice ? `+${this.opts.bonusDice}` : '') + bonusNote + (this._halfDmg ? ' (halved)' : '') + (absorbed ? ` (${absorbed} absorbed)` : ''), oldHp, newHp, maxHp);
 
     // Post-action callback (e.g., mark sneak used, remove Invisible)
     if (this.opts.postAction) this.opts.postAction();
@@ -288,7 +288,7 @@ class ActionWizard {
     const raw = d20[0].value, total = raw + bonus;
     const crit = raw >= (a._resolved?.critThreshold ?? 20), miss = raw === 1, hit = crit || (!miss && total >= ac);
 
-    this.db?.saveRollToDB({ type:'ATTACK', attackType:'melee', actionName:act.name, cName:this.attackerCName, pName:a.pName||this.attackerCName, target:this.targetCName, rawRoll:raw, total, ac, hit, crit, miss, color:a.pColor||'#e74c3c', ts:Date.now() });
+    this.db?.saveRollToDB({ type:'ATTACK', attackType:'melee', actionName:act.name, cName:this.attackerCName, pName:a.pName||this.attackerCName, target:this.targetCName, res:raw, rawRoll:raw, total, ac, hit, crit, miss, color:a.pColor||'#e74c3c', ts:Date.now() });
     this._showHitMiss(raw, bonus, total, ac, hit, crit, miss);
 
     if (!hit) { await this._closeButton(); return this._hide(); }
@@ -354,9 +354,9 @@ class ActionWizard {
     if (this._halfDmg) damage = Math.floor(damage / 2);
     let note = '';
     if (dmgType) { const r = applyDamageModifiers(damage, dmgType, tgt); damage = r.damage; note = r.note; }
-    const { newHp, absorbed } = this._applyDamage(this.targetCName, tgt, damage);
+    const { newHp, absorbed, oldHp, maxHp } = await this._applyDamage(this.targetCName, tgt, damage);
     this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, damage, dmgDice:cd, dmgNote:note, crit, color:a.pColor||'#e74c3c', ts:Date.now() });
-    this._showDmg(damage, cd + (this._halfDmg ? ' (halved)' : '') + (note ? ' '+note : '') + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
+    this._showDmg(damage, cd + (this._halfDmg ? ' (halved)' : '') + (note ? ' '+note : '') + (absorbed ? ` (${absorbed} absorbed)` : ''), oldHp, newHp, maxHp);
 
     await this._closeButton(); this._hide();
   }
@@ -407,7 +407,7 @@ class ActionWizard {
     if ((spell.level||0)>0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel||spell.level);
 
     const raw=d20[0].value, total=raw+bonus, crit=raw===20, miss=raw===1, hit=crit||(!miss&&total>=ac);
-    this.db?.saveRollToDB({ type:'SPELL', cName:this.attackerCName, pName:a.pName||this.attackerCName, target:this.targetCName, spellName:spell.name, rawRoll:raw, total, ac, hit, crit, miss, color:a.pColor||'#9b59b6', ts:Date.now() });
+    this.db?.saveRollToDB({ type:'SPELL', cName:this.attackerCName, pName:a.pName||this.attackerCName, target:this.targetCName, spellName:spell.name, res:raw, rawRoll:raw, total, ac, hit, crit, miss, color:a.pColor||'#9b59b6', ts:Date.now() });
     this._showHitMiss(raw, bonus, total, ac, hit, crit, miss);
 
     if (!hit) { await this._closeButton(); return this._hide(); }
@@ -419,9 +419,9 @@ class ActionWizard {
     if (this.cancelled) return this._hide();
 
     const damage = Math.max(1, dmg.reduce((s,d)=>s+d.value,0));
-    const { newHp, absorbed } = this._applyDamage(this.targetCName, tgt, damage);
+    const { newHp, absorbed, oldHp, maxHp } = await this._applyDamage(this.targetCName, tgt, damage);
     this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, spellName:spell.name, damage, dmgDice:cd, crit, color:a.pColor||'#9b59b6', ts:Date.now() });
-    this._showDmg(damage, cd + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
+    this._showDmg(damage, cd + (absorbed ? ` (${absorbed} absorbed)` : ''), oldHp, newHp, maxHp);
     if (fx?.onHit) { if (fx.onHit.speedPenalty) this.db?.patchPlayerInDB(this.targetCName,{speedPenalty:fx.onHit.speedPenalty}); if (fx.onHit.noHealUntil) this.db?.patchPlayerInDB(this.targetCName,{noHealUntil:true}); if (fx.onHit.noReactions) this.db?.patchPlayerInDB(this.targetCName,{noReactions:true}); if (fx.onHit.grantAdvantage) this.db?.patchPlayerInDB(this.targetCName,{grantAdvantage:true}); }
 
     await this._closeButton(); this._hide();
@@ -520,9 +520,9 @@ class ActionWizard {
       if (this.cancelled) return this._hide();
       let damage = Math.max(1, dmg.reduce((s,d)=>s+d.value,0));
       if (saved) damage = Math.floor(damage/2);
-      const { newHp, absorbed } = this._applyDamage(this.targetCName, tgt, damage);
+      const { newHp, absorbed, oldHp, maxHp } = await this._applyDamage(this.targetCName, tgt, damage);
       this.db?.saveRollToDB({ type:'DAMAGE', cName:this.attackerCName, target:this.targetCName, spellName:spell.name, damage, dmgDice, savedHalf:saved, color:a.pColor||'#9b59b6', ts:Date.now() });
-      this._showDmg(damage, dmgDice+(saved?' (halved)':'') + (absorbed ? ` (${absorbed} absorbed)` : ''), tgt.hp, newHp, tgt.maxHp);
+      this._showDmg(damage, dmgDice+(saved?' (halved)':'') + (absorbed ? ` (${absorbed} absorbed)` : ''), oldHp, newHp, maxHp);
     }
 
     if (!saved && fx?.onFail) {
@@ -696,17 +696,29 @@ class ActionWizard {
   }
 
   // ── TEMP HP + DAMAGE APPLICATION ────────────────────────────────────
-  _applyDamage(targetCName, target, damage) {
-    const tempHp = target.tempHp || 0;
+  async _applyDamage(targetCName, target, damage) {
+    // Fetch fresh HP from Firebase to avoid stale data
+    let currentHp = target.hp ?? target.maxHp ?? 0;
+    let currentMaxHp = target.maxHp ?? currentHp;
+    let tempHp = target.tempHp || 0;
+    try {
+      const fresh = await this.db?.getPlayerData?.(targetCName);
+      if (fresh) {
+        currentHp = fresh.hp ?? fresh.maxHp ?? currentHp;
+        currentMaxHp = fresh.maxHp ?? currentMaxHp;
+        tempHp = fresh.tempHp || 0;
+      }
+    } catch (_) { /* use cached values */ }
+
     const absorbed = Math.min(tempHp, damage);
     const realDmg = damage - absorbed;
     const newTempHp = tempHp - absorbed;
-    const newHp = Math.max(0, (target.hp ?? target.maxHp ?? 0) - realDmg);
+    const newHp = Math.max(0, currentHp - realDmg);
     this.db?.updatePlayerHPInDB(targetCName, newHp);
     if (newTempHp !== tempHp) this.db?.patchPlayerInDB(targetCName, { tempHp: newTempHp });
     this._checkConcentration(targetCName, target, damage);
     if (newHp <= 0) this.db?.addStatus?.(targetCName, 'Unconscious');
-    return { newHp, absorbed, realDmg };
+    return { newHp, absorbed, realDmg, oldHp: currentHp, maxHp: currentMaxHp };
   }
 
   // ── UI HELPERS ───────────────────────────────────────────────────────
