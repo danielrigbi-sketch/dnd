@@ -653,7 +653,7 @@ window.rollSaveCheck = async (cName, ability) => {
     const total = roll + saveVal + resistBonus;
     const bonusNote = resistBonus ? ` +${resistBonus} Resistance` : '';
     db.saveRollToDB({ cName, type: 'ABILITY_CHECK', ability: `${ability} Save`,
-        res: roll, mod: saveVal, total, color: p.pColor, flavor: bonusNote || undefined, ts: Date.now() });
+        res: roll, mod: saveVal, total, color: p.pColor, ...(bonusNote ? { flavor: bonusNote } : {}), ts: Date.now() });
 };
 
 // ── Portent die use (Divination Wizard) ──────────────────────────────────────
@@ -2079,7 +2079,7 @@ window.rollSkillCheck = async (targetCName, skillName) => {
     catch { isCooldown = false; setDiceCooldown(false); return; }
     const total = finalRes + mod + guidanceBonus;
     const bonusNote = guidanceBonus ? ` +${guidanceBonus} Guidance` : '';
-    db.saveRollToDB({ pName: p?.pName || targetCName, cName: targetCName, type: 'SKILL', skillName, mod, res: finalRes, total, color, flavor: bonusNote || undefined, ts: Date.now() });
+    db.saveRollToDB({ pName: p?.pName || targetCName, cName: targetCName, type: 'SKILL', skillName, mod, res: finalRes, total, color, ...(bonusNote ? { flavor: bonusNote } : {}), ts: Date.now() });
     setTimeout(() => { isCooldown = false; setDiceCooldown(false); }, 1000);
 };
 
