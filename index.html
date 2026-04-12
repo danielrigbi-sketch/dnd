@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="ParaDice — Your party's home away from home.">
     <meta name="theme-color" content="#1c1510">
     <title>ParaDice - Virtual Tabletop</title>
@@ -52,7 +52,7 @@
             <p data-i18n="app_desc" style="font-style: italic; color: #7a6045; margin-bottom: 30px; font-size: 14px;"></p>
             
             <div id="auth-error" style="display:none; background:rgba(231,76,60,0.15); border:1px solid #e74c3c; color:#ff6b6b; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:13px; text-align:center;"></div>
-            <button type="submit" id="google-login-btn" class="hover-btn w-100 flex-center" style="background: linear-gradient(180deg, #2a1a08, #1a1006); color: #c8803a; border: 1px solid rgba(200,100,20,0.45); border-top-color: rgba(220,130,40,0.6); padding: 12px 24px; font-size: 15px; font-weight: 700; border-radius: 4px; gap: 10px; box-shadow: 0 2px 16px rgba(0,0,0,0.7), inset 0 1px 0 rgba(220,140,60,0.1); letter-spacing: 0.03em;">
+            <button type="submit" id="google-login-btn" class="hover-btn w-100 flex-center" aria-label="Sign in with Google" style="background: linear-gradient(180deg, #2a1a08, #1a1006); color: #c8803a; border: 1px solid rgba(200,100,20,0.45); border-top-color: rgba(220,130,40,0.6); padding: 12px 24px; font-size: 15px; font-weight: 700; border-radius: 4px; gap: 10px; box-shadow: 0 2px 16px rgba(0,0,0,0.7), inset 0 1px 0 rgba(220,140,60,0.1); letter-spacing: 0.03em;">
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width:20px; height:20px;">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.7 17.74 9.5 24 9.5z"></path>
                     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
@@ -207,16 +207,16 @@
 
             <!-- Tabs -->
             <div class="acct-tabs">
-                <button class="acct-tab active" data-acct-tab="profile" data-i18n="acct_tab_profile"></button>
-                <button class="acct-tab" data-acct-tab="settings" data-i18n="acct_tab_settings"></button>
-                <button class="acct-tab" data-acct-tab="billing" data-i18n="acct_tab_billing"></button>
-                <button class="acct-tab" data-acct-tab="mechanics" data-i18n="acct_tab_mechanics"></button>
+                <button class="acct-tab active" data-acct-tab="profile" data-i18n="acct_tab_profile" aria-label="Profile tab"></button>
+                <button class="acct-tab" data-acct-tab="settings" data-i18n="acct_tab_settings" aria-label="Settings tab"></button>
+                <button class="acct-tab" data-acct-tab="billing" data-i18n="acct_tab_billing" aria-label="Billing tab"></button>
+                <button class="acct-tab" data-acct-tab="mechanics" data-i18n="acct_tab_mechanics" aria-label="Mechanics tab"></button>
             </div>
 
             <!-- Profile Panel -->
             <div id="acct-panel-profile" class="acct-panel active">
                 <div id="acct-profile-stats"></div>
-                <button class="acct-btn acct-btn-logout" id="acct-logout-btn" data-i18n="logout"></button>
+                <button class="acct-btn acct-btn-logout" id="acct-logout-btn" data-i18n="logout" aria-label="Log out"></button>
             </div>
 
             <!-- Settings Panel -->
@@ -233,11 +233,11 @@
                 <div class="acct-section-title" data-i18n="acct_dice_color"></div>
                 <div class="acct-setting-row">
                     <span class="acct-setting-label" data-i18n="acct_dice_color"></span>
-                    <input type="color" id="acct-dice-color" class="acct-color-input" value="#c8873a">
+                    <input type="color" id="acct-dice-color" class="acct-color-input" value="#c8873a" aria-label="Dice color">
                 </div>
                 <div class="acct-setting-row">
                     <span class="acct-setting-label" data-i18n="acct_dice_scale"></span>
-                    <select id="acct-dice-scale" class="acct-select">
+                    <select id="acct-dice-scale" class="acct-select" aria-label="Dice scale">
                         <option value="small" data-i18n="acct_dice_small"></option>
                         <option value="medium" data-i18n="acct_dice_medium"></option>
                         <option value="large" data-i18n="acct_dice_large"></option>
@@ -247,27 +247,27 @@
                 <div class="acct-section-title">UI</div>
                 <div class="acct-setting-row">
                     <div><span class="acct-setting-label" data-i18n="acct_compact_tracker"></span></div>
-                    <label class="acct-toggle"><input type="checkbox" id="acct-compact-tracker"><span class="acct-toggle-track"></span></label>
+                    <label class="acct-toggle"><input type="checkbox" id="acct-compact-tracker" aria-label="Compact tracker"><span class="acct-toggle-track"></span></label>
                 </div>
                 <div class="acct-setting-row">
                     <div><span class="acct-setting-label" data-i18n="acct_show_hp_numbers"></span></div>
-                    <label class="acct-toggle"><input type="checkbox" id="acct-show-hp" checked><span class="acct-toggle-track"></span></label>
+                    <label class="acct-toggle"><input type="checkbox" id="acct-show-hp" checked aria-label="Show HP numbers"><span class="acct-toggle-track"></span></label>
                 </div>
                 <div class="acct-setting-row">
                     <div><span class="acct-setting-label" data-i18n="acct_auto_scroll_log"></span></div>
-                    <label class="acct-toggle"><input type="checkbox" id="acct-auto-scroll" checked><span class="acct-toggle-track"></span></label>
+                    <label class="acct-toggle"><input type="checkbox" id="acct-auto-scroll" checked aria-label="Auto-scroll combat log"><span class="acct-toggle-track"></span></label>
                 </div>
                 <div class="acct-setting-row">
                     <div><span class="acct-setting-label" data-i18n="acct_sound_fx"></span></div>
-                    <label class="acct-toggle"><input type="checkbox" id="acct-sound-fx" checked><span class="acct-toggle-track"></span></label>
+                    <label class="acct-toggle"><input type="checkbox" id="acct-sound-fx" checked aria-label="Sound effects"><span class="acct-toggle-track"></span></label>
                 </div>
                 <div class="acct-setting-row">
                     <div><span class="acct-setting-label" data-i18n="acct_reduced_anim"></span></div>
-                    <label class="acct-toggle"><input type="checkbox" id="acct-reduced-anim"><span class="acct-toggle-track"></span></label>
+                    <label class="acct-toggle"><input type="checkbox" id="acct-reduced-anim" aria-label="Reduced animations"><span class="acct-toggle-track"></span></label>
                 </div>
                 <div class="acct-setting-row">
                     <span class="acct-setting-label" data-i18n="acct_toast_duration"></span>
-                    <select id="acct-toast-duration" class="acct-select">
+                    <select id="acct-toast-duration" class="acct-select" aria-label="Toast notification duration">
                         <option value="2000" data-i18n="acct_toast_short"></option>
                         <option value="3000" data-i18n="acct_toast_normal"></option>
                         <option value="5000" data-i18n="acct_toast_long"></option>
@@ -433,7 +433,7 @@
                 <!-- Gender -->
                 <div>
                     <label style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;" data-i18n="cb_gender_label">Gender</label>
-                    <select id="cb-gender-visible" class="builder-input">
+                    <select id="cb-gender-visible" class="builder-input" aria-label="Character gender">
                         <option value="male" data-i18n="gender_male">Male</option>
                         <option value="female" data-i18n="gender_female">Female</option>
                         <option value="nonbinary" data-i18n="gender_nonbinary">Non-binary</option>
@@ -517,7 +517,7 @@
                 <!-- Subclass -->
                 <div>
                     <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_subclass_ph">Subclass</label>
-                    <select id="cb-subclass" class="builder-input">
+                    <select id="cb-subclass" class="builder-input" aria-label="Subclass">
                         <option value="" data-i18n="cb_subclass_ph">Subclass&#x2026;</option>
                     </select>
                 </div>
@@ -607,12 +607,12 @@
                 <div class="flex-row" style="gap:8px;">
                     <div style="flex:1;">
                         <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_init">Initiative</label>
-                        <input type="number" id="cb-init" class="builder-input" data-i18n-placeholder="cb_init">
+                        <input type="number" id="cb-init" class="builder-input" data-i18n-placeholder="cb_init" aria-label="Initiative">
                         <div id="cb-init-auto-badge" class="cb-autofill-badge" style="display:none;" data-i18n="autofill_badge">auto</div>
                     </div>
                     <div style="flex:1;">
                         <label style="font-size:10px; color:#aaa; display:block; margin-bottom:3px;" data-i18n="cb_pp">Passive Perception</label>
-                        <input type="number" id="cb-pp" class="builder-input" data-i18n-placeholder="cb_pp">
+                        <input type="number" id="cb-pp" class="builder-input" data-i18n-placeholder="cb_pp" aria-label="Passive Perception">
                         <div id="cb-pp-auto-badge" class="cb-autofill-badge" style="display:none;" data-i18n="autofill_badge">auto</div>
                     </div>
                 </div>
@@ -627,7 +627,7 @@
                 <!-- Background -->
                 <div>
                     <label style="font-size:11px; color:#aaa; display:block; margin-bottom:4px;" data-i18n="cb_background_label">&#x1F4DC; Background</label>
-                    <select id="cb-background" class="builder-input" data-i18n-placeholder="cb_background_ph">
+                    <select id="cb-background" class="builder-input" data-i18n-placeholder="cb_background_ph" aria-label="Background">
                         <option value="" data-i18n="cb_background_ph">Background&#x2026;</option>
                         <option value="acolyte" data-i18n="bg_acolyte">Acolyte</option>
                         <option value="charlatan" data-i18n="bg_charlatan">Charlatan</option>
@@ -934,10 +934,10 @@
                 <div class="text-center" style="margin-bottom:4px;">
                     <div data-i18n="cb_portrait" style="font-size:12px; color:#ccc; margin-bottom:5px;"></div>
                     <div class="flex-center" style="gap:8px; margin-bottom:10px; flex-wrap:wrap;">
-                        <button type="button" id="tab-portrait-preset" class="portrait-tab" data-i18n="port_tab_preset"></button>
-                        <button type="button" id="tab-portrait-2mt" class="portrait-tab" data-i18n="port_tab_2mt"></button>
-                        <button type="button" id="tab-portrait-url" class="portrait-tab" data-i18n="port_tab_url"></button>
-                        <button type="button" id="tab-portrait-file" class="portrait-tab" data-i18n="port_tab_file"></button>
+                        <button type="button" id="tab-portrait-preset" class="portrait-tab" data-i18n="port_tab_preset" aria-label="Preset portraits"></button>
+                        <button type="button" id="tab-portrait-2mt" class="portrait-tab" data-i18n="port_tab_2mt" aria-label="2-Minute Tabletop portraits"></button>
+                        <button type="button" id="tab-portrait-url" class="portrait-tab" data-i18n="port_tab_url" aria-label="Portrait from URL"></button>
+                        <button type="button" id="tab-portrait-file" class="portrait-tab" data-i18n="port_tab_file" aria-label="Upload portrait file"></button>
                     </div>
                     <div id="portrait-preset-area" style="display:none; flex-direction:column; gap:6px;">
                         <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
@@ -1019,7 +1019,7 @@
                         <span id="portrait-upload-progress" style="display:none; font-size:11px; color:#f1c40f; margin-top:4px;"></span>
                     </div>
                     <div style="margin-top:8px;">
-                        <img id="portrait-preview" src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png" style="width:60px; height:60px; border-radius:0; object-fit:cover; border:2px solid #f1c40f; background:transparent;">
+                        <img id="portrait-preview" src="https://tools.2minutetabletop.com/token-editor/token-uploads/humanoid/humanfighter3/preview.png" alt="Character portrait preview" style="width:60px; height:60px; border-radius:0; object-fit:cover; border:2px solid #f1c40f; background:transparent;">
                     </div>
                 </div>
 
@@ -1037,7 +1037,7 @@
                         <div class="color-swatch" data-color="#e67e22" style="background:#e67e22;" title="Dragonfire Orange"></div>
                         <div class="color-swatch" data-color="custom" style="background:conic-gradient(red,yellow,lime,aqua,blue,magenta,red); font-size:14px; display:flex; align-items:center; justify-content:center; color:#fff;" title="Custom">🎨</div>
                     </div>
-                    <input type="color" id="cb-color" value="#c0392b" style="width:0; height:0; opacity:0; position:absolute;">
+                    <input type="color" id="cb-color" value="#c0392b" aria-label="Custom dice color" style="width:0; height:0; opacity:0; position:absolute;">
                     <div class="d20-preview" id="cb-d20-preview">
                         <svg viewBox="0 0 80 80" width="80" height="80">
                             <polygon points="40,4 72,24 72,56 40,76 8,56 8,24" fill="none" stroke="#c0392b" stroke-width="3" id="cb-d20-shape"/>
@@ -1929,8 +1929,8 @@
             <div id="cr-confirm-title"></div>
             <div id="cr-confirm-msg"></div>
             <div class="cr-confirm-btns">
-                <button class="cr-confirm-btn cancel" id="cr-confirm-cancel" data-i18n="confirm_cancel"></button>
-                <button class="cr-confirm-btn ok"     id="cr-confirm-ok" data-i18n="confirm_ok"></button>
+                <button class="cr-confirm-btn cancel" id="cr-confirm-cancel" data-i18n="confirm_cancel" aria-label="Cancel"></button>
+                <button class="cr-confirm-btn ok"     id="cr-confirm-ok" data-i18n="confirm_ok" aria-label="OK"></button>
             </div>
         </div>
     </div>
@@ -2069,7 +2069,7 @@
     <div class="dice-popup-mod-row">
         <span class="mult-label" data-i18n="pt_mod_label">MOD</span>
         <button class="mod-step-btn" onclick="window._ptAdjMod(-1)">−</button>
-        <input type="number" id="pt-mod-input" class="pt-mod-input" value="0" min="-10" max="20">
+        <input type="number" id="pt-mod-input" class="pt-mod-input" value="0" min="-10" max="20" aria-label="Roll modifier">
         <button class="mod-step-btn" onclick="window._ptAdjMod(1)">+</button>
     </div>
     <!-- Dice grid (populated by JS) -->
@@ -2128,7 +2128,7 @@
     <div class="pt-choice-mod-row">
         <span class="mult-label" data-i18n="pt_mod_label">MOD</span>
         <button class="mod-step-btn" onclick="window._ptAdjActionMod(-1)">−</button>
-        <input type="number" id="pt-action-mod-input" class="pt-mod-input" value="0" min="-20" max="20">
+        <input type="number" id="pt-action-mod-input" class="pt-mod-input" value="0" min="-20" max="20" aria-label="Action roll modifier">
         <button class="mod-step-btn" onclick="window._ptAdjActionMod(1)">+</button>
     </div>
 </div>
