@@ -181,6 +181,13 @@ window.toggleConcentration = async (targetCName) => {
     const newVal = !p.concentrating;
     db.updateConcentrationInDB(targetCName, newVal);
     db.saveRollToDB({ cName: targetCName, type: "STATUS", status: newVal ? `${iconImg('🔮','14px')} ${targetCName} is concentrating!` : `${iconImg('🔮','14px')} ${targetCName} lost concentration.`, ts: Date.now() });
+
+    // Remove summoned creature when concentration breaks
+    if (!newVal && p.summonName) {
+        db.removePlayerFromDB(p.summonName);
+        db.patchPlayerInDB(targetCName, { summonName: null, concentratingSpell: null, concentratingTarget: null });
+        db.saveRollToDB({ cName: targetCName, type: 'STATUS', status: `${p.summonName} vanishes (concentration lost)`, ts: Date.now() });
+    }
 };
 
 window.useSpellSlot = async (targetCName, level) => {
@@ -953,6 +960,67 @@ function _showSavePrompt(data) {
     setTimeout(() => { if (el.parentElement) { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); } }, 30000);
 }
 
+/** Reaction prompt — shown to a player when they can react (Shield, Uncanny Dodge) to an incoming attack. */
+function _showReactionPrompt(data) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    container.querySelector('.reaction-prompt')?.remove();
+
+    const el = document.createElement('div');
+    el.className = 'cr-toast reaction-prompt';
+    el.style.cssText = 'min-width:240px; padding:12px 14px; cursor:default;';
+
+    const title = document.createElement('div');
+    title.style.cssText = 'font-weight:700; margin-bottom:6px; color:#e67e22;';
+    title.textContent = '\u26A1 Reaction Available!';
+    el.appendChild(title);
+
+    const info = document.createElement('div');
+    info.style.cssText = 'font-size:13px; margin-bottom:8px; color:#ddd;';
+    info.textContent = `${data.attackerCName} attacks you \u2014 ${data.reactionName || 'Use reaction?'}`;
+    el.appendChild(info);
+
+    const btnYes = document.createElement('button');
+    btnYes.style.cssText = 'width:48%; padding:8px; background:#e67e22; border:none; color:white; border-radius:6px; cursor:pointer; font-weight:700; margin-right:4%;';
+    btnYes.textContent = '\u2713 Use ' + (data.reactionName || 'Reaction');
+    btnYes.onclick = async () => {
+        btnYes.disabled = true;
+        // Submit reaction result
+        db.submitReactionResult(cName, { used: true, reactionType: data.reactionType });
+        // Consume resource (spell slot, reaction action)
+        if (data.slotLevel) window.useSpellSlot?.(cName, data.slotLevel);
+        db.patchPlayerInDB(cName, { reactionUsed: true });
+
+        const result = document.createElement('div');
+        result.style.cssText = 'margin-top:8px; font-weight:700; color:#e67e22;';
+        result.textContent = `${data.reactionName} used!`;
+        el.appendChild(result);
+        setTimeout(() => { el.classList.add('fade-out'); setTimeout(() => el.remove(), 320); }, 2000);
+    };
+    el.appendChild(btnYes);
+
+    const btnNo = document.createElement('button');
+    btnNo.style.cssText = 'width:48%; padding:8px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); color:#aaa; border-radius:6px; cursor:pointer;';
+    btnNo.textContent = '\u2717 Skip';
+    btnNo.onclick = () => {
+        db.submitReactionResult(cName, { used: false });
+        el.classList.add('fade-out');
+        setTimeout(() => el.remove(), 320);
+    };
+    el.appendChild(btnNo);
+
+    container.appendChild(el);
+
+    // Auto-skip after 15 seconds
+    setTimeout(() => {
+        if (el.parentElement && !el.querySelector('[disabled]')) {
+            db.submitReactionResult(cName, { used: false, timeout: true });
+            el.classList.add('fade-out');
+            setTimeout(() => el.remove(), 320);
+        }
+    }, 15000);
+}
+
 // Show/hide the loading spinner overlay
 export function showSpinner(label='Loading…') {
     const el = document.getElementById('cr-spinner-overlay');
@@ -1493,6 +1561,14 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
         db.listenToPendingSave(cName, (data) => {
             if (!data || data.result) return; // already resolved or no pending
             _showSavePrompt(data);
+        });
+    }
+
+    // Listen for incoming reaction prompts (for player characters)
+    if (userRole === 'player' && cName) {
+        db.listenToPendingReaction(cName, (data) => {
+            if (!data || data.result) return;
+            _showReactionPrompt(data);
         });
     }
 

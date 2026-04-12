@@ -843,6 +843,27 @@ export function clearPendingSave(targetCName) {
 }
 
 // ==========================================
+// Cross-Player Reactions
+// ==========================================
+export function sendPendingReaction(targetCName, data) {
+    const k = sanitizeCName(targetCName);
+    set(ref(db, `rooms/${activeRoom}/pendingReactions/${k}`), { ...data, ts: Date.now() });
+}
+
+export function listenToPendingReaction(cName, cb) {
+    return onValue(ref(db, `rooms/${activeRoom}/pendingReactions/${sanitizeCName(cName)}`), snap => cb(snap.val()));
+}
+
+export function submitReactionResult(targetCName, result) {
+    const k = sanitizeCName(targetCName);
+    update(ref(db, `rooms/${activeRoom}/pendingReactions/${k}`), { result });
+}
+
+export function clearPendingReaction(targetCName) {
+    remove(ref(db, `rooms/${activeRoom}/pendingReactions/${sanitizeCName(targetCName)}`));
+}
+
+// ==========================================
 // Faction & Conditions
 // ==========================================
 export function setFaction(cName, faction) {

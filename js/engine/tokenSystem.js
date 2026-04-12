@@ -860,7 +860,7 @@ export class TokenSystem {
             : _spFx?.cat === 'SPECIAL' ? 'special'
             : _spFx?.cat === 'DETECT' ? 'detect'
             : _spFx?.cat === 'BUFF' ? 'buff'
-            : _spFx?.cat === 'SUMMON' ? 'buff'
+            : _spFx?.cat === 'SUMMON' ? 'summon'
             : (sp.attack_type || _spFx?.atk) ? 'spell_atk'
             : (sp.dc_type || _spFx?.save) ? 'spell_save'
             : _spFx?.cat === 'CONDITION' ? 'spell_save'

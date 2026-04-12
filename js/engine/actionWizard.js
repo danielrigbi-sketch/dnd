@@ -103,6 +103,7 @@ class ActionWizard {
       case 'temp_hp': await this._flowTempHp(); break;
       case 'special': await this._flowSpecial(); break;
       case 'detect': await this._flowDetect(); break;
+      case 'summon': await this._flowSummon(); break;
       case 'contested': await this._flowContested(); break;
       case 'skill': await this._flowSkillCheck(); break;
       default: this._hide();
@@ -176,54 +177,96 @@ class ActionWizard {
 
     if (!hit) { await this._closeButton(); return this._hide(); }
 
-    // Reaction window (DM-controlled for now)
-    if (hit && this.eng?.userRole === 'dm') {
-        const reactions = [];
+    // Reaction window — DM inline buttons for NPC targets, Firebase prompt for player targets
+    if (hit) {
+        const isPlayerTarget = !!(tgt.authUid && tgt.userRole === 'player');
+        const isDM = this.eng?.userRole === 'dm';
         const tgtSpells = Object.values(tgt.spellbook || {});
-        // Shield spell (+5 AC)
-        if (tgtSpells.some(s => s.slug === 'shield' || s.name?.toLowerCase() === 'shield')) {
-            const newAc = ac + 5;
-            if (total < newAc) {
-                reactions.push({ label: `\uD83D\uDEE1 Shield (+5 AC = ${newAc}, MISS!)`, turns_miss: true });
-            } else {
-                reactions.push({ label: `\uD83D\uDEE1 Shield (+5 AC = ${newAc}, still hit)`, turns_miss: false });
-            }
-        }
-        // Uncanny Dodge (Rogue 5+)
-        if ((tgt.class || '').toLowerCase() === 'rogue' && (tgt.level || 1) >= 5) {
-            reactions.push({ label: '\uD83E\uDD38 Uncanny Dodge (half damage)', half_dmg: true });
-        }
+        const hasShield = tgtSpells.some(s => s.slug === 'shield' || s.name?.toLowerCase() === 'shield');
+        const hasUncannyDodge = (tgt.class || '').toLowerCase() === 'rogue' && (tgt.level || 1) >= 5;
 
-        if (reactions.length) {
-            for (const r of reactions) {
-                const rBtn = document.createElement('button');
-                rBtn.className = 'wiz-roll-btn wiz-btn-save';
-                rBtn.textContent = r.label;
-                this._body.appendChild(rBtn);
-                const used = await new Promise(resolve => {
-                    rBtn.onclick = () => resolve(true);
-                    const skipBtn = document.createElement('button');
-                    skipBtn.className = 'wiz-roll-btn';
-                    skipBtn.textContent = 'Skip Reactions';
-                    skipBtn.style.cssText = 'font-size:11px; padding:6px; opacity:0.7;';
-                    this._body.appendChild(skipBtn);
-                    skipBtn.onclick = () => { skipBtn.remove(); rBtn.remove(); resolve(false); };
-                });
-                if (used) {
-                    if (r.turns_miss) {
-                        this._appendBody('<div class="wiz-result wiz-miss">\uD83D\uDEE1 Shield cast! Attack becomes MISS!</div>');
-                        window.useSpellSlot?.(this.targetCName, 1);
-                        this.db?.saveRollToDB({ type: 'SPELL', cName: this.targetCName, spellName: 'Shield', flavor: 'Reaction: Shield (+5 AC)', ts: Date.now() });
-                        await this._closeButton();
-                        return this._hide();
-                    }
-                    if (r.half_dmg) {
-                        this._halfDmg = true;
-                        this._appendBody('<div class="wiz-result wiz-saved">\uD83E\uDD38 Uncanny Dodge! Damage will be halved.</div>');
-                        this.db?.patchPlayerInDB(this.targetCName, { reactionUsed: true });
-                    }
-                    rBtn.remove();
+        if (isDM && !isPlayerTarget) {
+            // DM-controlled NPC target: show inline reaction buttons
+            const reactions = [];
+            if (hasShield) {
+                const newAc = ac + 5;
+                if (total < newAc) {
+                    reactions.push({ label: `\uD83D\uDEE1 Shield (+5 AC = ${newAc}, MISS!)`, turns_miss: true });
+                } else {
+                    reactions.push({ label: `\uD83D\uDEE1 Shield (+5 AC = ${newAc}, still hit)`, turns_miss: false });
                 }
+            }
+            if (hasUncannyDodge) {
+                reactions.push({ label: '\uD83E\uDD38 Uncanny Dodge (half damage)', half_dmg: true });
+            }
+            if (reactions.length) {
+                for (const r of reactions) {
+                    const rBtn = document.createElement('button');
+                    rBtn.className = 'wiz-roll-btn wiz-btn-save';
+                    rBtn.textContent = r.label;
+                    this._body.appendChild(rBtn);
+                    const used = await new Promise(resolve => {
+                        rBtn.onclick = () => resolve(true);
+                        const skipBtn = document.createElement('button');
+                        skipBtn.className = 'wiz-roll-btn';
+                        skipBtn.textContent = 'Skip Reactions';
+                        skipBtn.style.cssText = 'font-size:11px; padding:6px; opacity:0.7;';
+                        this._body.appendChild(skipBtn);
+                        skipBtn.onclick = () => { skipBtn.remove(); rBtn.remove(); resolve(false); };
+                    });
+                    if (used) {
+                        if (r.turns_miss) {
+                            this._appendBody('<div class="wiz-result wiz-miss">\uD83D\uDEE1 Shield cast! Attack becomes MISS!</div>');
+                            window.useSpellSlot?.(this.targetCName, 1);
+                            this.db?.saveRollToDB({ type: 'SPELL', cName: this.targetCName, spellName: 'Shield', flavor: 'Reaction: Shield (+5 AC)', ts: Date.now() });
+                            await this._closeButton();
+                            return this._hide();
+                        }
+                        if (r.half_dmg) {
+                            this._halfDmg = true;
+                            this._appendBody('<div class="wiz-result wiz-saved">\uD83E\uDD38 Uncanny Dodge! Damage will be halved.</div>');
+                            this.db?.patchPlayerInDB(this.targetCName, { reactionUsed: true });
+                        }
+                        rBtn.remove();
+                    }
+                }
+            }
+        } else if (isPlayerTarget && (hasShield || hasUncannyDodge)) {
+            // Player target: send reaction prompt via Firebase and wait for response
+            const reactionType = hasShield ? 'shield' : 'uncanny_dodge';
+            this.db?.sendPendingReaction?.(this.targetCName, {
+                attackerCName: this.attackerCName,
+                reactionName: hasShield ? 'Shield (+5 AC)' : 'Uncanny Dodge',
+                reactionType,
+                slotLevel: hasShield ? 1 : null,
+                currentTotal: total,
+                currentAC: ac,
+            });
+
+            this._appendBody('<div class="wiz-info-conds" style="color:#e67e22; margin:10px 0;">&#x23F3; Waiting for ' + this.targetCName + ' to respond...</div>');
+            const response = await new Promise(resolve => {
+                const unsub = this.db?.listenToPendingReaction?.(this.targetCName, (data) => {
+                    if (data?.result) { unsub?.(); resolve(data.result); }
+                });
+                setTimeout(() => { unsub?.(); resolve({ used: false, timeout: true }); }, 16000);
+            });
+            this.db?.clearPendingReaction?.(this.targetCName);
+
+            if (response?.used) {
+                if (response.reactionType === 'shield') {
+                    const newAC = ac + 5;
+                    if (total < newAC) {
+                        this._appendBody('<div class="wiz-result wiz-miss">\uD83D\uDEE1 Shield cast! Attack becomes MISS!</div>');
+                        await this._closeButton(); return this._hide();
+                    } else {
+                        this._appendBody('<div class="wiz-result wiz-saved">\uD83D\uDEE1 Shield cast (+5 AC), still hit.</div>');
+                    }
+                } else if (response.reactionType === 'uncanny_dodge') {
+                    this._halfDmg = true;
+                    this._appendBody('<div class="wiz-result wiz-saved">\uD83E\uDD38 Uncanny Dodge! Damage halved.</div>');
+                }
+            } else if (response?.timeout) {
+                this._appendBody('<div class="wiz-info-conds" style="color:#aaa;">(No reaction \u2014 timed out)</div>');
             }
         }
     }
@@ -300,54 +343,96 @@ class ActionWizard {
 
     if (!hit) { await this._closeButton(); return this._hide(); }
 
-    // Reaction window (DM-controlled for now)
-    if (hit && this.eng?.userRole === 'dm') {
-        const reactions = [];
+    // Reaction window — DM inline buttons for NPC targets, Firebase prompt for player targets
+    if (hit) {
+        const isPlayerTarget = !!(tgt.authUid && tgt.userRole === 'player');
+        const isDM = this.eng?.userRole === 'dm';
         const tgtSpells = Object.values(tgt.spellbook || {});
-        // Shield spell (+5 AC)
-        if (tgtSpells.some(s => s.slug === 'shield' || s.name?.toLowerCase() === 'shield')) {
-            const newAc = ac + 5;
-            if (total < newAc) {
-                reactions.push({ label: `\uD83D\uDEE1 Shield (+5 AC = ${newAc}, MISS!)`, turns_miss: true });
-            } else {
-                reactions.push({ label: `\uD83D\uDEE1 Shield (+5 AC = ${newAc}, still hit)`, turns_miss: false });
-            }
-        }
-        // Uncanny Dodge (Rogue 5+)
-        if ((tgt.class || '').toLowerCase() === 'rogue' && (tgt.level || 1) >= 5) {
-            reactions.push({ label: '\uD83E\uDD38 Uncanny Dodge (half damage)', half_dmg: true });
-        }
+        const hasShield = tgtSpells.some(s => s.slug === 'shield' || s.name?.toLowerCase() === 'shield');
+        const hasUncannyDodge = (tgt.class || '').toLowerCase() === 'rogue' && (tgt.level || 1) >= 5;
 
-        if (reactions.length) {
-            for (const r of reactions) {
-                const rBtn = document.createElement('button');
-                rBtn.className = 'wiz-roll-btn wiz-btn-save';
-                rBtn.textContent = r.label;
-                this._body.appendChild(rBtn);
-                const used = await new Promise(resolve => {
-                    rBtn.onclick = () => resolve(true);
-                    const skipBtn = document.createElement('button');
-                    skipBtn.className = 'wiz-roll-btn';
-                    skipBtn.textContent = 'Skip Reactions';
-                    skipBtn.style.cssText = 'font-size:11px; padding:6px; opacity:0.7;';
-                    this._body.appendChild(skipBtn);
-                    skipBtn.onclick = () => { skipBtn.remove(); rBtn.remove(); resolve(false); };
-                });
-                if (used) {
-                    if (r.turns_miss) {
-                        this._appendBody('<div class="wiz-result wiz-miss">\uD83D\uDEE1 Shield cast! Attack becomes MISS!</div>');
-                        window.useSpellSlot?.(this.targetCName, 1);
-                        this.db?.saveRollToDB({ type: 'SPELL', cName: this.targetCName, spellName: 'Shield', flavor: 'Reaction: Shield (+5 AC)', ts: Date.now() });
-                        await this._closeButton();
-                        return this._hide();
-                    }
-                    if (r.half_dmg) {
-                        this._halfDmg = true;
-                        this._appendBody('<div class="wiz-result wiz-saved">\uD83E\uDD38 Uncanny Dodge! Damage will be halved.</div>');
-                        this.db?.patchPlayerInDB(this.targetCName, { reactionUsed: true });
-                    }
-                    rBtn.remove();
+        if (isDM && !isPlayerTarget) {
+            // DM-controlled NPC target: show inline reaction buttons
+            const reactions = [];
+            if (hasShield) {
+                const newAc = ac + 5;
+                if (total < newAc) {
+                    reactions.push({ label: `\uD83D\uDEE1 Shield (+5 AC = ${newAc}, MISS!)`, turns_miss: true });
+                } else {
+                    reactions.push({ label: `\uD83D\uDEE1 Shield (+5 AC = ${newAc}, still hit)`, turns_miss: false });
                 }
+            }
+            if (hasUncannyDodge) {
+                reactions.push({ label: '\uD83E\uDD38 Uncanny Dodge (half damage)', half_dmg: true });
+            }
+            if (reactions.length) {
+                for (const r of reactions) {
+                    const rBtn = document.createElement('button');
+                    rBtn.className = 'wiz-roll-btn wiz-btn-save';
+                    rBtn.textContent = r.label;
+                    this._body.appendChild(rBtn);
+                    const used = await new Promise(resolve => {
+                        rBtn.onclick = () => resolve(true);
+                        const skipBtn = document.createElement('button');
+                        skipBtn.className = 'wiz-roll-btn';
+                        skipBtn.textContent = 'Skip Reactions';
+                        skipBtn.style.cssText = 'font-size:11px; padding:6px; opacity:0.7;';
+                        this._body.appendChild(skipBtn);
+                        skipBtn.onclick = () => { skipBtn.remove(); rBtn.remove(); resolve(false); };
+                    });
+                    if (used) {
+                        if (r.turns_miss) {
+                            this._appendBody('<div class="wiz-result wiz-miss">\uD83D\uDEE1 Shield cast! Attack becomes MISS!</div>');
+                            window.useSpellSlot?.(this.targetCName, 1);
+                            this.db?.saveRollToDB({ type: 'SPELL', cName: this.targetCName, spellName: 'Shield', flavor: 'Reaction: Shield (+5 AC)', ts: Date.now() });
+                            await this._closeButton();
+                            return this._hide();
+                        }
+                        if (r.half_dmg) {
+                            this._halfDmg = true;
+                            this._appendBody('<div class="wiz-result wiz-saved">\uD83E\uDD38 Uncanny Dodge! Damage will be halved.</div>');
+                            this.db?.patchPlayerInDB(this.targetCName, { reactionUsed: true });
+                        }
+                        rBtn.remove();
+                    }
+                }
+            }
+        } else if (isPlayerTarget && (hasShield || hasUncannyDodge)) {
+            // Player target: send reaction prompt via Firebase and wait for response
+            const reactionType = hasShield ? 'shield' : 'uncanny_dodge';
+            this.db?.sendPendingReaction?.(this.targetCName, {
+                attackerCName: this.attackerCName,
+                reactionName: hasShield ? 'Shield (+5 AC)' : 'Uncanny Dodge',
+                reactionType,
+                slotLevel: hasShield ? 1 : null,
+                currentTotal: total,
+                currentAC: ac,
+            });
+
+            this._appendBody('<div class="wiz-info-conds" style="color:#e67e22; margin:10px 0;">&#x23F3; Waiting for ' + this.targetCName + ' to respond...</div>');
+            const response = await new Promise(resolve => {
+                const unsub = this.db?.listenToPendingReaction?.(this.targetCName, (data) => {
+                    if (data?.result) { unsub?.(); resolve(data.result); }
+                });
+                setTimeout(() => { unsub?.(); resolve({ used: false, timeout: true }); }, 16000);
+            });
+            this.db?.clearPendingReaction?.(this.targetCName);
+
+            if (response?.used) {
+                if (response.reactionType === 'shield') {
+                    const newAC = ac + 5;
+                    if (total < newAC) {
+                        this._appendBody('<div class="wiz-result wiz-miss">\uD83D\uDEE1 Shield cast! Attack becomes MISS!</div>');
+                        await this._closeButton(); return this._hide();
+                    } else {
+                        this._appendBody('<div class="wiz-result wiz-saved">\uD83D\uDEE1 Shield cast (+5 AC), still hit.</div>');
+                    }
+                } else if (response.reactionType === 'uncanny_dodge') {
+                    this._halfDmg = true;
+                    this._appendBody('<div class="wiz-result wiz-saved">\uD83E\uDD38 Uncanny Dodge! Damage halved.</div>');
+                }
+            } else if (response?.timeout) {
+                this._appendBody('<div class="wiz-info-conds" style="color:#aaa;">(No reaction \u2014 timed out)</div>');
             }
         }
     }
@@ -876,6 +961,58 @@ class ActionWizard {
       color: a.pColor || '#9b59b6', ts: Date.now() });
 
     this._appendBody(`<div class="wiz-result wiz-hit">\uD83D\uDD0D ${spell.name} active \u2014 detecting ${fx?.detects || 'magic'}</div>`);
+    await this._closeButton(); this._hide();
+  }
+
+  // ── SUMMON SPELL ──────────────────────────────────────────────────────
+  async _flowSummon() {
+    const spell = this.action; if (!spell) return this._hide();
+    const a = this.attacker;
+    const fx = SPELL_EFFECTS[spell.slug];
+    const summon = fx?.summon || { name: spell.name, hp: 1, ac: 10, speed: 30, type: 'creature' };
+
+    this._setHeader(`\u2728 ${spell.name} <button class="wiz-close" id="wiz-x">\u2715</button>`);
+    this._renderInfo(this.attackerCName, `Summon: ${summon.name}`, `HP: ${summon.hp}, AC: ${summon.ac}, Speed: ${summon.speed}ft`, false, false);
+    this._bindCancel();
+
+    if ((spell.level || 0) > 0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel || spell.level);
+
+    // Spawn the creature as an NPC token
+    const rollInit = Math.floor(Math.random() * 20) + 1;
+    const tokenData = {
+      name: summon.name,
+      hp: summon.hp || 1,
+      maxHp: summon.hp || 1,
+      ac: summon.ac || 10,
+      speed: summon.speed || 30,
+      type: summon.type || 'beast',
+      faction: 'ally',
+      controller: this.attackerCName,
+      summonedBy: this.attackerCName,
+      isHidden: false,
+      portrait: `https://api.dicebear.com/8.x/bottts/png?seed=${encodeURIComponent(summon.name)}`,
+    };
+
+    // Use the existing NPC spawn system
+    if (typeof window.addNPCFromWizard === 'function') {
+      window.addNPCFromWizard(summon.name, a.pColor || '#2ecc71', tokenData.portrait, rollInit, tokenData);
+    }
+
+    // Set concentration if spell requires it
+    if (fx?.conc) {
+      this.db?.updateConcentrationInDB?.(this.attackerCName, true);
+      this.db?.patchPlayerInDB(this.attackerCName, {
+        concentratingSpell: spell.slug,
+        concentratingTarget: summon.name,
+        summonName: summon.name
+      });
+    }
+
+    this.db?.saveRollToDB({ type: 'SPELL', cName: this.attackerCName, pName: a.pName || this.attackerCName,
+      spellName: spell.name, flavor: `Summoned ${summon.name} (Init: ${rollInit})`,
+      color: a.pColor || '#2ecc71', ts: Date.now() });
+
+    this._appendBody(`<div class="wiz-result wiz-hit">\u2728 ${summon.name} summoned! (Init: ${rollInit})</div>`);
     await this._closeButton(); this._hide();
   }
 
