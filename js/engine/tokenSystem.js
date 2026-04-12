@@ -460,13 +460,11 @@ export class TokenSystem {
       actions.push({
         label: `${_actIcon(fx?.icon || 'action/wand.png')} ${sp.name} (summon)`,
         cls: 'attack',
-        fn: () => {
-          if ((sp.level || 0) > 0) window.useSpellSlot?.(myCName, sp.level);
-          const summon = fx?.summon || { name: sp.name, hp: 1, ac: 10 };
-          window._spawnNPCToken?.({ ...summon, faction: 'ally' });
-          eng.db?.saveRollToDB({ type: 'SPELL', cName: myCName, spellName: sp.name,
-            flavor: `Summoned ${summon.name}`, color: myData.pColor, ts: Date.now() });
-        }
+        fn: () => openActionWizard({
+          type: 'summon', attackerCName: myCName, targetCName: myCName,
+          attacker: myData, target: myData, eng, action: sp,
+          spellEffect: fx, castLevel: sp.level
+        })
       });
     });
 

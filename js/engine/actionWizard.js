@@ -248,7 +248,7 @@ class ActionWizard {
                 const unsub = this.db?.listenToPendingReaction?.(this.targetCName, (data) => {
                     if (data?.result) { unsub?.(); resolve(data.result); }
                 });
-                setTimeout(() => { unsub?.(); resolve({ used: false, timeout: true }); }, 16000);
+                setTimeout(() => { unsub?.(); resolve({ used: false, timeout: true }); }, 15000);
             });
             this.db?.clearPendingReaction?.(this.targetCName);
 
@@ -414,7 +414,7 @@ class ActionWizard {
                 const unsub = this.db?.listenToPendingReaction?.(this.targetCName, (data) => {
                     if (data?.result) { unsub?.(); resolve(data.result); }
                 });
-                setTimeout(() => { unsub?.(); resolve({ used: false, timeout: true }); }, 16000);
+                setTimeout(() => { unsub?.(); resolve({ used: false, timeout: true }); }, 15000);
             });
             this.db?.clearPendingReaction?.(this.targetCName);
 
@@ -769,6 +769,24 @@ class ActionWizard {
     await this._closeButton(); this._hide();
   }
 
+  async _dropOldConcentration(casterCName) {
+    // If already concentrating, drop the old spell first
+    const caster = this.eng?.S?.players?.[casterCName];
+    if (caster?.concentrating) {
+      // Drop old concentration
+      this.db?.updateConcentrationInDB?.(casterCName, false);
+      // Remove summoned creature if any
+      if (caster.summonName) {
+        this.db?.removePlayerFromDB?.(caster.summonName);
+        this.db?.saveRollToDB({ cName: casterCName, type: 'STATUS',
+          status: `${caster.summonName} vanishes (new concentration)`, ts: Date.now() });
+      }
+      this.db?.patchPlayerInDB(casterCName, {
+        summonName: null, concentratingSpell: null, concentratingTarget: null
+      });
+    }
+  }
+
   // ── CONCENTRATION CHECK ──────────────────────────────────────────────
   _checkConcentration(targetCName, target, damage) {
     if (!target.concentrating || damage <= 0) return;
@@ -850,6 +868,7 @@ class ActionWizard {
     if (eff.attackBonus) patch.blessBonus = eff.attackBonus;
 
     if (Object.keys(patch).length) this.db?.patchPlayerInDB(target, patch);
+    await this._dropOldConcentration(this.attackerCName);
     if (fx?.conc) {
       this.db?.updateConcentrationInDB?.(this.attackerCName, true);
       this.db?.patchPlayerInDB(this.attackerCName, { concentratingSpell: spell.slug, concentratingTarget: target });
@@ -901,6 +920,7 @@ class ActionWizard {
       color: '#f39c12', ts: Date.now() });
 
     this._appendBody(`<div class="wiz-result wiz-hit">\uD83D\uDEE1 +${tempHpGain} Temporary HP</div>`);
+    await this._dropOldConcentration(this.attackerCName);
     if (fx?.conc) this.db?.updateConcentrationInDB?.(this.attackerCName, true);
 
     await this._closeButton(); this._hide();
@@ -953,6 +973,7 @@ class ActionWizard {
     this._bindCancel();
 
     if ((spell.level || 0) > 0) window.useSpellSlot?.(this.attackerCName, this.opts.castLevel || spell.level);
+    await this._dropOldConcentration(this.attackerCName);
     if (fx?.conc) this.db?.updateConcentrationInDB?.(this.attackerCName, true);
 
     this.db?.addStatus?.(this.attackerCName, 'Detecting');
@@ -999,6 +1020,7 @@ class ActionWizard {
     }
 
     // Set concentration if spell requires it
+    await this._dropOldConcentration(this.attackerCName);
     if (fx?.conc) {
       this.db?.updateConcentrationInDB?.(this.attackerCName, true);
       this.db?.patchPlayerInDB(this.attackerCName, {
@@ -1068,9 +1090,15 @@ class ActionWizard {
   _doubleDice(d) { return d.replace(/^(\d+)/, m => String(parseInt(m)*2)); }
 
   _bindCancel() {
-    const bind = (q) => { const el = this._el?.querySelector(q); if (el) el.onclick = () => { this.cancelled = true; this._hide(); }; };
+    const onCancel = () => {
+      this.cancelled = true;
+      this.db?.clearPendingReaction?.(this.targetCName);
+      this.db?.clearPendingSave?.(this.targetCName);
+      this._hide();
+    };
+    const bind = (q) => { const el = this._el?.querySelector(q); if (el) el.onclick = onCancel; };
     bind('#wiz-x'); bind('#wiz-cancel-btn2');
-    this._el?.querySelectorAll('.wiz-close').forEach(el => { el.onclick = () => { this.cancelled = true; this._hide(); }; });
+    this._el?.querySelectorAll('.wiz-close').forEach(el => { el.onclick = onCancel; });
   }
 }
 

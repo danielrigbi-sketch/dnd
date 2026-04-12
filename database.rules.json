@@ -101,6 +101,19 @@
               ".read": "auth != null"
             }
           }
+        },
+
+        "pendingSaves": {
+          "$cName": {
+            ".write": "auth != null",
+            ".read": "auth != null"
+          }
+        },
+        "pendingReactions": {
+          "$cName": {
+            ".write": "auth != null",
+            ".read": "auth != null"
+          }
         }
       }
     },

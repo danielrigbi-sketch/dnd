@@ -36,7 +36,6 @@ export function tilesInCone(ox, oy, tx, ty, lengthFt) {
   const tiles = [];
   for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++) {
     for (let dy = -Math.ceil(r); dy <= Math.ceil(r); dy++) {
-      if (dx === 0 && dy === 0) continue;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > r + 0.5) continue;
       const tileAngle = Math.atan2(dy, dx);
@@ -90,9 +89,9 @@ export function tilesInCube(cx, cy, sizeFt) {
   const s = Math.ceil(sizeFt / 5);
   const half = Math.floor(s / 2);
   const tiles = [];
-  for (let dx = -half; dx < s - half; dx++) {
-    for (let dy = -half; dy < s - half; dy++) {
-      tiles.push({ gx: cx + dx, gy: cy + dy });
+  for (let dx = 0; dx < s; dx++) {
+    for (let dy = 0; dy < s; dy++) {
+      tiles.push({ gx: cx - half + dx, gy: cy - half + dy });
     }
   }
   return tiles;
@@ -108,9 +107,15 @@ export function tokensInTiles(tiles, tokensMap) {
   const tileSet = new Set(tiles.map(t => `${t.gx}_${t.gy}`));
   const found = [];
   for (const [cName, tok] of Object.entries(tokensMap || {})) {
-    if (tileSet.has(`${tok.gx}_${tok.gy}`)) {
-      found.push(cName);
+    // Handle multi-tile tokens (Large=2, Huge=3, Gargantuan=4)
+    const size = tok.tileSize || 1;
+    let hit = false;
+    for (let dx = 0; dx < size && !hit; dx++) {
+      for (let dy = 0; dy < size && !hit; dy++) {
+        if (tileSet.has(`${(tok.gx || 0) + dx}_${(tok.gy || 0) + dy}`)) hit = true;
+      }
     }
+    if (hit) found.push(cName);
   }
   return found;
 }

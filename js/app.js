@@ -1558,18 +1558,18 @@ export async function startGame(role, charData, roomCode, isCampaign = false) {
 
     // Listen for incoming save prompts (for player characters)
     if (userRole === 'player' && cName) {
-        db.listenToPendingSave(cName, (data) => {
+        _appUnsubs.push(db.listenToPendingSave(cName, (data) => {
             if (!data || data.result) return; // already resolved or no pending
             _showSavePrompt(data);
-        });
+        }));
     }
 
     // Listen for incoming reaction prompts (for player characters)
     if (userRole === 'player' && cName) {
-        db.listenToPendingReaction(cName, (data) => {
+        _appUnsubs.push(db.listenToPendingReaction(cName, (data) => {
             if (!data || data.result) return;
             _showReactionPrompt(data);
-        });
+        }));
     }
 
     // Purge roll log on game start (keep last 200 entries)
